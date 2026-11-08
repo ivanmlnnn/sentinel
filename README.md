@@ -15,8 +15,8 @@ AI can explain evidence; it cannot choose or override the verdict.
 ## What works in this prototype
 
 - NEAR Testnet account-state lookup through FastNear JSON-RPC.
-- Indexed NEAR transaction-history ingestion through the NearBlocks v3 account transactions endpoint (`GET /v3/accounts/{account}/txns`) using `NEARBLOCKS_API_KEY` as a Worker secret. The request filters by the inspected account as signer and normalizes v3 `data` envelopes before successful real-signer frequency analysis against wall-clock 5-minute and 1-hour windows. Timestamp parsing supports ISO timestamps and Unix seconds, milliseconds, microseconds, and nanoseconds, including numeric timestamp strings.
-- Explainable spam/automation anomaly signals: 10+ successful signed transactions in the last 5 minutes or 40+ in the last hour trigger WARN; 30+ in 5 minutes raises the review score. Evidence includes newest transaction time, age, timestamp coverage, and invalid timestamp count. Observed transaction anomalies trigger WARN. If NearBlocks is unavailable, rate-limits a request (HTTP 429), or returns an unrecognized transaction schema, the API returns INCOMPLETE without inflating the receiver's risk score; retry before relying on the assessment. Frequency alone never labels an account as a scam or triggers BLOCK.
+- Wallet activity tracking from NearBlocks v3 account transactions, receipts, and fungible-token transfer endpoints using `NEARBLOCKS_API_KEY` as a Worker secret. The tracker records incoming/outgoing transaction direction where the indexed fields support it, transaction hashes, timestamps, receipt identifiers, token contract, transfer amount, and pagination coverage. Each source is fetched with cursor pagination up to five pages of 100 records; a remaining cursor or unrecognized required fields makes the assessment INCOMPLETE rather than silently claiming a full scan.
+- Explainable spam/automation anomaly signals: 10+ successful transactions signed by the inspected wallet in the last 5 minutes or 40+ in the last hour trigger WARN; 30+ in 5 minutes raises the review score. Incoming transactions and receipts remain visible in wallet activity evidence but are not misclassified as transactions signed by the wallet. Frequency alone never labels an account as a scam or triggers BLOCK. Missing providers, unrecognized attribution fields, and truncated pagination return INCOMPLETE.
 - Deterministic risk engine and structured evidence.
 - D1 persistence for investigations and threat reports.
 - Verified threat matches trigger BLOCK; community reports remain unverified by default.
@@ -92,10 +92,11 @@ The guard is a pre-sign integration layer: it calls the Sentinel assessment API,
 ## Security model and limitations
 
 - The current dashboard is read-only and does not sign or broadcast transactions.
+- Wallet history is an indexed Explorer view, not a complete raw-chain archival node. The current per-source scan cap is 500 records; if NearBlocks reports another page, Sentinel marks the assessment INCOMPLETE and exposes the remaining-history flag.
 - The generic signer in the guard is an integration callback, not a built-in NEAR signer.
 - This repository does **not yet provision or cryptographically enforce a NEAR function-call access key**. A function-call key is scoped to contract calls and cannot directly transfer NEAR; native payments require a deliberately designed payment/escrow contract.
 - The offline attack demo validates guard behavior, not a live NEAR wallet integration.
-- Transaction history is fetched separately from FastNear Transactions API (`tx.test.fastnear.com` for Testnet, `tx.main.fastnear.com` for Mainnet); the current scan evaluates up to 100 recent successful real-signer transactions. Set `FASTNEAR_API_KEY` as a server-side secret if your FastNear plan requires it. If the history service is unavailable, or returned transaction timestamps cannot be validated, the response exposes that limitation in `evidence.transaction_history` and returns WARN rather than pretending history was checked.
+
 - Account age, prior interactions, and historical contract code changes are not currently inferred.
 - A code hash is a point-in-time fingerprint, not proof of malicious code.
 - ALLOW is not a guarantee of safety.
