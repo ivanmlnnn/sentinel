@@ -12,7 +12,7 @@ export async function onRequestPost({ request, env }) {
 
   const network = env.NEAR_NETWORK === "mainnet" ? "mainnet" : "testnet";
   const rpc = network === "mainnet" ? "https://rpc.mainnet.fastnear.com" : "https://rpc.testnet.fastnear.com";
-  const txApi = network === "mainnet" ? "https://tx.main.fastnear.com/v0/account" : "https://tx.test.fastnear.com/v0/account";
+  const nearblocksBase = network === "mainnet" ? "https://api.nearblocks.io" : "https://api-testnet.nearblocks.io";
   let account = null;
   let rpcError = null;
   try {
@@ -27,27 +27,56 @@ export async function onRequestPost({ request, env }) {
     else rpcError = data.error?.message || "Account not found or RPC error";
   } catch (error) { rpcError = error?.message || "NEAR RPC unavailable"; }
 
-  // FastNear's indexed account-history endpoint returns signer/receiver activity.
-  // Restrict to successful real-signer transactions for reproducible spam analysis.
+  // NearBlocks v3 is the indexed transaction source. v3 is GET-only and
+  // uses { data, meta } envelopes with cursor pagination (not the legacy v1/v2 shape).
   let behavior = null;
   let historyError = null;
+  let historyStatus = null;
+  const historyUrl = `${nearblocksBase}/v3/accounts/${encodeURIComponent(receiver)}/txns?limit=100&signer=${encodeURIComponent(receiver)}`;
   try {
-    const headers = { "content-type": "application/json" };
-    if (env.FASTNEAR_API_KEY) headers.authorization = `Bearer ${env.FASTNEAR_API_KEY}`;
-    const historyResponse = await fetch(txApi, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ account_id: receiver, desc: true, is_real_signer: true, is_success: true, limit: 100 }),
+    if (!env.NEARBLOCKS_API_KEY) throw new Error("NEARBLOCKS_API_KEY is not configured on the Worker.");
+    const historyResponse = await fetch(historyUrl, {
+      method: "GET",
+      headers: { authorization: `Bearer ${env.NEARBLOCKS_API_KEY}`, accept: "application/json" },
       signal: AbortSignal.timeout(12000)
     });
-    if (!historyResponse.ok) throw new Error(`Transaction history service returned HTTP ${historyResponse.status}`);
+    historyStatus = historyResponse.status;
+    if (!historyResponse.ok) {
+      const code = historyResponse.status;
+      throw new Error(`NearBlocks transaction history returned HTTP ${code}`);
+    }
     const history = await historyResponse.json();
-    if (!Array.isArray(history.account_txs)) throw new Error("Transaction history response was missing account_txs.");
-    behavior = analyzeTransactionBehavior(history.account_txs);
-    behavior.total_indexed = Number(history.txs_count || history.account_txs.length);
-    behavior.source = txApi;
+    if (!Array.isArray(history.data)) throw new Error("NearBlocks v3 response did not contain a data array; refusing to infer transaction activity from an unknown schema.");
+
+    const normalized = history.data.map(row => {
+      const tx = row?.transaction && typeof row.transaction === "object" ? row.transaction : row;
+      const signer = tx?.signer_account_id ?? tx?.signer_id ?? tx?.signer ?? row?.signer_account_id ?? row?.signer_id ?? row?.signer;
+      const rawStatus = tx?.outcome_status ?? tx?.transaction_status ?? tx?.status ?? tx?.success ?? row?.outcome_status ?? row?.transaction_status ?? row?.status ?? row?.success ?? tx?.outcome?.status ?? row?.outcome?.status;
+      const rawTimestamp = tx?.block_timestamp ?? tx?.block_timestamp_nanosec ?? tx?.block_timestamp_ms ?? tx?.timestamp ?? row?.block_timestamp ?? row?.block_timestamp_nanosec ?? row?.block_timestamp_ms ?? row?.timestamp;
+      let isSuccess = null;
+      if (typeof rawStatus === "boolean") isSuccess = rawStatus;
+      else if (typeof rawStatus === "string") {
+        if (/success/i.test(rawStatus)) isSuccess = true;
+        else if (/fail|error|failure/i.test(rawStatus)) isSuccess = false;
+      }
+      if (typeof signer !== "string" || isSuccess === null || rawTimestamp == null) {
+        throw new Error("NearBlocks v3 returned transactions without a recognized signer, success status, or block timestamp. Assessment is incomplete rather than guessing.");
+      }
+      return {
+        is_success: isSuccess,
+        is_real_signer: signer.toLowerCase() === receiver,
+        tx_block_timestamp: rawTimestamp,
+        transaction_hash: tx?.transaction_hash ?? tx?.transaction_hash_base58 ?? tx?.hash ?? row?.transaction_hash ?? row?.hash ?? null
+      };
+    });
+    behavior = analyzeTransactionBehavior(normalized);
+    behavior.total_indexed = history.data.length;
+    behavior.source = "NearBlocks v3";
+    behavior.provider = "NearBlocks";
+    behavior.next_page_available = Boolean(history.meta?.next_page);
+    behavior.explorer_url = `https://${network === "mainnet" ? "nearblocks.io" : "testnet.nearblocks.io"}/address/${encodeURIComponent(receiver)}`;
   } catch (error) {
-    historyError = error?.message || "Transaction history unavailable";
+    historyError = error?.message || "NearBlocks transaction history unavailable";
   }
 
   const threat = await env.DB.prepare("SELECT id, category, evidence, status FROM threat_reports WHERE account_id = ? AND status = 'verified' ORDER BY created_at DESC LIMIT 1").bind(receiver).first();
@@ -57,19 +86,19 @@ export async function onRequestPost({ request, env }) {
   // intact; otherwise return INCOMPLETE rather than inflating the wallet risk score.
   const historyUnavailable = !behavior;
   if (historyUnavailable) {
-    const rateLimited = /HTTP 429/.test(historyError || "");
+    const rateLimited = historyStatus === 429 || /HTTP 429/.test(historyError || "");
     verdict.risk_factors.push({
       code: rateLimited ? "TRANSACTION_HISTORY_RATE_LIMITED" : "TRANSACTION_HISTORY_UNAVAILABLE",
       severity: "info",
       detail: rateLimited
-        ? "The history provider rate-limited this request (HTTP 429). No conclusion about receiver activity can be made."
+        ? "NearBlocks rate-limited this request (HTTP 429). No conclusion about receiver activity can be made."
         : (historyError || "Transaction history could not be verified; activity review is incomplete.")
     });
     if (!threat && verdict.risk_score === 0) verdict.decision = "INCOMPLETE";
   }
   const assessment_status = historyUnavailable ? "INCOMPLETE" : "COMPLETE";
   const evidence = {
-    network, source: rpc, checked_at: new Date().toISOString(),
+    network, source: rpc, transaction_history_provider: "NearBlocks v3", transaction_history_endpoint: historyUrl, checked_at: new Date().toISOString(),
     account: account ? { account_exists: true, balance_yocto: account.amount, locked_yocto: account.locked, code_hash: account.code_hash, storage_usage: account.storage_usage, contract_present: account.code_hash !== "11111111111111111111111111111111" } : { account_exists: false, rpc_error: rpcError },
     transaction_history: behavior || { available: false, source: txApi, error: historyError },
     verified_threat: threat || null,
