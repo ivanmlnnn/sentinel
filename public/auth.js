@@ -92,7 +92,7 @@ function Root() {
       loginMethods: ['email'],
       appearance: {
         theme: 'dark',
-        accentColor: '#b4c9b4',
+        accentColor: '#e8df78',
         showWalletLoginFirst: false,
         landingHeader: 'Sign in to NEAR Sentinel',
         loginMessage: 'Access the NEAR Sentinel security dashboard'
