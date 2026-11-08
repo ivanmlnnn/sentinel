@@ -132,11 +132,13 @@ function renderResult(data) {
     BLOCK:'This account matched a verified threat report. Do not proceed unless that report is proven incorrect.'
   }[verdict];
   const factors = Array.isArray(data.risk_factors) ? data.risk_factors : [];
+  const simulationNote = data.simulation ? '<p class="result-explanation"><b>SIMULATION ONLY</b> — This is a local policy demo, not a live finding about this account. It is not saved to audit metrics.</p>' : '<p class="result-explanation">'+explanation+'</p>';
+  const aiButton = data.simulation ? '' : '<button class="secondary-btn" id="aiExplain" type="button">Explain this result</button>';
   el.innerHTML = '<div class="result-top"><b class="result-verdict" style="color:'+color+'">'+verdict+'</b><span class="result-score">Risk score: '+(Number(data.risk_score)||0)+'/100</span></div>'
-    + '<p class="result-explanation">'+explanation+'</p><ul>'
+    + simulationNote + '<ul>'
     + factors.map(x => '<li><b>'+escapeHtml(x.code)+'</b> — '+escapeHtml(x.detail)+'</li>').join('')
-    + '</ul><div class="result-actions"><button class="secondary-btn" id="aiExplain" type="button">Explain this result</button><button class="secondary-btn" id="viewEvidence" type="button">Technical evidence</button></div><div id="aiExplanation"></div><pre id="evidenceJson" class="ai-text hidden"></pre>';
-  $('aiExplain').addEventListener('click', async () => {
+    + '</ul><div class="result-actions">'+aiButton+'<button class="secondary-btn" id="viewEvidence" type="button">Technical evidence</button></div><div id="aiExplanation"></div><pre id="evidenceJson" class="ai-text hidden"></pre>';
+  if (!data.simulation) $('aiExplain').addEventListener('click', async () => {
     const button = $('aiExplain'); button.disabled = true; button.textContent = 'Preparing…';
     try {
       const answer = await request('/ai-review',{method:'POST',body:JSON.stringify({investigation_id:data.id})});
@@ -191,6 +193,17 @@ $('pasteReceiver').addEventListener('click', async () => {
   try { $('receiver').value = await navigator.clipboard.readText(); }
   catch { toast('Clipboard unavailable. Paste the account ID manually.'); }
 });
+document.querySelectorAll('[data-demo]').forEach(button => button.addEventListener('click', () => {
+  const scenario = button.dataset.demo;
+  const scenarios = {
+    allow: { receiver_account:'ordinary-demo.testnet', decision:'ALLOW', risk_score:0, risk_factors:[{code:'ACCOUNT_EXISTS',detail:'Demo account exists on-chain.'},{code:'NO_VERIFIED_THREAT',detail:'No verified threat match in this example.'}] },
+    warn: { receiver_account:'unverified-demo.testnet', decision:'WARN', risk_score:55, risk_factors:[{code:'ACCOUNT_NOT_FOUND',detail:'The receiver could not be verified in this example.'},{code:'INSUFFICIENT_EVIDENCE',detail:'A human review is required before proceeding.'}] },
+    block: { receiver_account:'sentinel-block-demo.testnet', decision:'BLOCK', risk_score:100, risk_factors:[{code:'VERIFIED_THREAT_REPORT',detail:'Simulated verified threat match. This is a demo fixture, not a real accusation.'}] }
+  };
+  const sample = scenarios[scenario];
+  renderResult({ ...sample, id:null, simulation:true, evidence:{simulation:true,network:'testnet',source:'Local policy simulator',checked_at:new Date().toISOString(),note:'Synthetic scenario. No RPC query, D1 write, wallet action, or transaction was performed.'} });
+  $('result').scrollIntoView({behavior:'smooth',block:'nearest'});
+}));
 $('refreshBtn').addEventListener('click',() => {loadMetrics();loadThreats();toast('Activity refreshed.');});
 $('reportBtn').addEventListener('click',() => $('reportForm').classList.toggle('hidden'));
 $('sendReport').addEventListener('click',async () => {
