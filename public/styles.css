@@ -981,3 +981,33 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
   transition:none!important;will-change:auto
  }
 }
+
+
+/* Keep copy static; only the hero underline responds to page scroll. */
+.scroll-copy,.scroll-copy.scroll-copy-visible{
+ opacity:1!important;transform:none!important;filter:none!important;
+ text-shadow:none!important;transition:none!important;animation:none!important;
+ will-change:auto!important;
+}
+.hero h1,.hero h1 em{animation:none!important;opacity:1!important;transform:none!important}
+.hero h1 em{
+ position:relative;
+ display:inline-block;
+ text-decoration:none!important;
+}
+.hero h1 em:after{
+ content:"";
+ position:absolute;
+ left:0;
+ right:0;
+ height:3px;
+ bottom:-8px;
+ background:#e8df78;
+ transform:scaleX(var(--tagline-progress,.12));
+ transform-origin:left center;
+ box-shadow:0 0 10px #e8df7855;
+ will-change:transform;
+}
+@media(prefers-reduced-motion:reduce){
+ .hero h1 em:after{transform:scaleX(1);will-change:auto}
+}
