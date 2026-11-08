@@ -28,196 +28,55 @@ export async function onRequestPost({ request, env }) {
   } catch (error) { rpcError = error?.message || "NEAR RPC unavailable"; }
 
   // NearBlocks v3 is the indexed transaction source. v3 is GET-only and
-  // uses { data, meta } envelopes with cursor pagination.
+  // uses { data, meta } envelopes with cursor pagination (not the legacy v1/v2 shape).
   let behavior = null;
   let historyError = null;
   let historyStatus = null;
-  let pairHistory = null;
-  let pairHistoryError = null;
-  const accountTxnsUrl = new URL(`${nearblocksBase}/v3/accounts/${encodeURIComponent(receiver)}/txns`);
-  accountTxnsUrl.searchParams.set("limit", "100");
-  accountTxnsUrl.searchParams.set("signer", receiver);
-  const historyUrl = accountTxnsUrl.toString();
-
-  const fetchNearBlocks = async url => {
-    const response = await fetch(url, {
+  const historyUrl = `${nearblocksBase}/v3/accounts/${encodeURIComponent(receiver)}/txns?limit=100&signer=${encodeURIComponent(receiver)}`;
+  try {
+    if (!env.NEARBLOCKS_API_KEY) throw new Error("NEARBLOCKS_API_KEY is not configured on the Worker.");
+    const historyResponse = await fetch(historyUrl, {
       method: "GET",
       headers: { authorization: `Bearer ${env.NEARBLOCKS_API_KEY}`, accept: "application/json" },
       signal: AbortSignal.timeout(12000)
     });
-    if (!response.ok) {
-      const error = new Error(`NearBlocks returned HTTP ${response.status}`);
-      error.status = response.status;
-      throw error;
+    historyStatus = historyResponse.status;
+    if (!historyResponse.ok) {
+      const code = historyResponse.status;
+      throw new Error(`NearBlocks transaction history returned HTTP ${code}`);
     }
-    const payload = await response.json();
-    if (!Array.isArray(payload.data)) throw new Error("NearBlocks v3 response did not contain a data array.");
-    return payload;
-  };
+    const history = await historyResponse.json();
+    if (!Array.isArray(history.data)) throw new Error("NearBlocks v3 response did not contain a data array; refusing to infer transaction activity from an unknown schema.");
 
-  const normalizeNearBlocksRows = (rows, expectedSigner = null, expectedReceiver = null) => rows.map(row => {
-    const tx = row?.transaction && typeof row.transaction === "object" ? row.transaction : row;
-    const signer = tx?.signer_account_id ?? tx?.signer_id ?? tx?.signer ?? row?.signer_account_id ?? row?.signer_id ?? row?.signer;
-    const txReceiver = tx?.receiver_account_id ?? tx?.receiver_id ?? tx?.receiver ?? row?.receiver_account_id ?? row?.receiver_id ?? row?.receiver;
-    const rawStatus = tx?.outcome_status ?? tx?.transaction_status ?? tx?.status ?? tx?.success ?? row?.outcome_status ?? row?.transaction_status ?? row?.status ?? row?.success ?? tx?.outcome?.status ?? row?.outcome?.status;
-    const rawTimestamp = tx?.block_timestamp ?? tx?.block_timestamp_nanosec ?? tx?.block_timestamp_ms ?? tx?.timestamp ?? row?.block_timestamp ?? row?.block_timestamp_nanosec ?? row?.block_timestamp_ms ?? row?.timestamp;
-    let isSuccess = null;
-    if (typeof rawStatus === "boolean") isSuccess = rawStatus;
-    else if (typeof rawStatus === "string") {
-      if (/success/i.test(rawStatus)) isSuccess = true;
-      else if (/fail|error|failure/i.test(rawStatus)) isSuccess = false;
-    }
-    return {
-      is_success: isSuccess,
-      is_real_signer: typeof signer === "string" && (!expectedSigner || signer.toLowerCase() === expectedSigner),
-      tx_block_timestamp: rawTimestamp,
-      signer_account_id: typeof signer === "string" ? signer.toLowerCase() : null,
-      receiver_account_id: typeof txReceiver === "string" ? txReceiver.toLowerCase() : null,
-      transaction_hash: tx?.transaction_hash ?? tx?.transaction_hash_base58 ?? tx?.hash ?? row?.transaction_hash ?? row?.hash ?? null,
-      parse_complete: typeof signer === "string" && isSuccess !== null && rawTimestamp != null
-    };
-  });
-
-  try {
-    if (!env.NEARBLOCKS_API_KEY) throw new Error("NEARBLOCKS_API_KEY is not configured on the Worker.");
-    const history = await fetchNearBlocks(historyUrl);
-    historyStatus = 200;
-    const normalized = normalizeNearBlocksRows(history.data, receiver);
-    const incompleteRows = normalized.filter(row => !row.parse_complete).length;
+    const normalized = history.data.map(row => {
+      const tx = row?.transaction && typeof row.transaction === "object" ? row.transaction : row;
+      const signer = tx?.signer_account_id ?? tx?.signer_id ?? tx?.signer ?? row?.signer_account_id ?? row?.signer_id ?? row?.signer;
+      const rawStatus = tx?.outcome_status ?? tx?.transaction_status ?? tx?.status ?? tx?.success ?? row?.outcome_status ?? row?.transaction_status ?? row?.status ?? row?.success ?? tx?.outcome?.status ?? row?.outcome?.status;
+      const rawTimestamp = tx?.block_timestamp ?? tx?.block_timestamp_nanosec ?? tx?.block_timestamp_ms ?? tx?.timestamp ?? row?.block_timestamp ?? row?.block_timestamp_nanosec ?? row?.block_timestamp_ms ?? row?.timestamp;
+      let isSuccess = null;
+      if (typeof rawStatus === "boolean") isSuccess = rawStatus;
+      else if (typeof rawStatus === "string") {
+        if (/success/i.test(rawStatus)) isSuccess = true;
+        else if (/fail|error|failure/i.test(rawStatus)) isSuccess = false;
+      }
+      if (typeof signer !== "string" || isSuccess === null || rawTimestamp == null) {
+        throw new Error("NearBlocks v3 returned transactions without a recognized signer, success status, or block timestamp. Assessment is incomplete rather than guessing.");
+      }
+      return {
+        is_success: isSuccess,
+        is_real_signer: signer.toLowerCase() === receiver,
+        tx_block_timestamp: rawTimestamp,
+        transaction_hash: tx?.transaction_hash ?? tx?.transaction_hash_base58 ?? tx?.hash ?? row?.transaction_hash ?? row?.hash ?? null
+      };
+    });
     behavior = analyzeTransactionBehavior(normalized);
     behavior.total_indexed = history.data.length;
-    behavior.unparsed_transactions = incompleteRows;
     behavior.source = "NearBlocks v3";
     behavior.provider = "NearBlocks";
     behavior.next_page_available = Boolean(history.meta?.next_page);
     behavior.explorer_url = `https://${network === "mainnet" ? "nearblocks.io" : "testnet.nearblocks.io"}/address/${encodeURIComponent(receiver)}`;
-    if (incompleteRows) {
-      behavior.schema_warning = `${incompleteRows} transaction rows did not expose all fields needed for reliable activity analysis.`;
-      behavior.available = false;
-    }
   } catch (error) {
-    historyStatus = error?.status || historyStatus;
     historyError = error?.message || "NearBlocks transaction history unavailable";
-  }
-
-  // If a sender is supplied, make a separate pairwise query. This finds
-  // sender -> receiver transactions; it must not be counted as receiver-signed spam.
-  if (sender && env.NEARBLOCKS_API_KEY) {
-    const pairUrl = new URL(`${nearblocksBase}/v3/accounts/${encodeURIComponent(receiver)}/txns`);
-    pairUrl.searchParams.set("limit", "100");
-    pairUrl.searchParams.set("signer", sender);
-    pairUrl.searchParams.set("receiver", receiver);
-    try {
-      const pairPayload = await fetchNearBlocks(pairUrl.toString());
-      const pairRows = normalizeNearBlocksRows(pairPayload.data, sender, receiver);
-      const matched = pairRows.filter(row =>
-        row.signer_account_id === sender &&
-        row.receiver_account_id === receiver &&
-        row.is_success === true &&
-        row.transaction_hash
-      );
-      pairHistory = {
-        available: true,
-        provider: "NearBlocks v3",
-        indexed_rows: pairPayload.data.length,
-        matched_transactions: matched.length,
-        transactions: matched.map(row => ({
-          transaction_hash: row.transaction_hash,
-          signer_account_id: row.signer_account_id,
-          receiver_account_id: row.receiver_account_id,
-          block_timestamp: row.tx_block_timestamp,
-          status: "success",
-          explorer_url: `https://${network === "mainnet" ? "nearblocks.io" : "testnet.nearblocks.io"}/txns/${encodeURIComponent(row.transaction_hash)}`
-        })),
-        next_page_available: Boolean(pairPayload.meta?.next_page),
-        endpoint: pairUrl.toString()
-      };
-    } catch (error) {
-      pairHistoryError = error?.message || "Sender-to-receiver transaction lookup unavailable";
-    }
-  }
-
-  // NEP-141 transfers are indexed separately from ordinary account transactions.
-  // Query both account histories because a token transfer's transaction receiver is
-  // usually the token contract, while the actual token recipient is in FT transfer data.
-  let ftHistory = null;
-  let ftHistoryError = null;
-  let ftHistoryStatus = null;
-  if (env.NEARBLOCKS_API_KEY) {
-    try {
-      const accountsToCheck = [...new Set([receiver, sender].filter(Boolean))];
-      const ftPayloads = await Promise.all(accountsToCheck.map(async accountId => {
-        const url = new URL(`${nearblocksBase}/v3/accounts/${encodeURIComponent(accountId)}/ft-txns`);
-        url.searchParams.set("limit", "100");
-        const payload = await fetchNearBlocks(url.toString());
-        return { account: accountId, url: url.toString(), payload };
-      }));
-      const seen = new Set();
-      const rows = [];
-      let unparsedRows = 0;
-      for (const item of ftPayloads) {
-        for (const raw of item.payload.data) {
-          const row = raw?.transaction && typeof raw.transaction === "object" ? { ...raw, ...raw.transaction } : raw;
-          const affected = row?.affected_account_id ?? null;
-          const involved = row?.involved_account_id ?? null;
-          let from = row?.sender_account_id ?? row?.sender_id ?? row?.old_owner_id ?? row?.from_account_id ?? row?.from ?? null;
-          let to = row?.receiver_account_id ?? row?.receiver_id ?? row?.new_owner_id ?? row?.to_account_id ?? row?.to ?? null;
-          // NearBlocks account ft-txns uses affected/involved + signed delta_amount:
-          // negative means the affected account sent tokens; positive means it received.
-          if ((!from || !to) && affected && involved) {
-            if (affected.toLowerCase() === item.account.toLowerCase()) {
-              const delta = Number(row?.delta_amount ?? 0);
-              if (delta < 0) { from = affected; to = involved; }
-              else if (delta > 0) { from = involved; to = affected; }
-            }
-          }
-          const hash = row?.transaction_hash ?? row?.transaction_hash_base58 ?? row?.hash ?? null;
-          const timestamp = row?.block_timestamp ?? row?.block_timestamp_nanosec ?? row?.block_timestamp_ms ?? row?.timestamp ?? null;
-          const ft = row?.ft_meta ?? row?.ft ?? row?.token ?? row?.fungible_token ?? {};
-          const contract = row?.contract_account_id ?? row?.contract ?? row?.token_account_id ?? ft?.contract ?? ft?.contract_account_id ?? null;
-          const amountRaw = row?.amount ?? row?.delta_amount ?? row?.transfer_amount ?? null;
-          const key = hash ? `${hash}:${from || ""}:${to || ""}:${amountRaw || ""}` : JSON.stringify(raw);
-          if (seen.has(key)) continue;
-          seen.add(key);
-          const parsed = {
-            transaction_hash: hash,
-            sender_account_id: typeof from === "string" ? from.toLowerCase() : null,
-            receiver_account_id: typeof to === "string" ? to.toLowerCase() : null,
-            amount: amountRaw == null ? null : String(amountRaw).replace(/^-/, ""),
-            token_contract: typeof contract === "string" ? contract : null,
-            token_symbol: ft?.symbol ?? row?.symbol ?? null,
-            token_name: ft?.name ?? row?.name ?? null,
-            token_decimals: ft?.decimals ?? row?.decimals ?? null,
-            block_timestamp: timestamp,
-            status: row?.status ?? row?.outcome_status ?? null,
-            source_account: item.account,
-            parse_complete: Boolean(hash && from && to && timestamp != null)
-          };
-          if (!parsed.parse_complete) unparsedRows++;
-          rows.push(parsed);
-        }
-      }
-      const pairTransfers = rows.filter(row =>
-        row.sender_account_id === sender && row.receiver_account_id === receiver
-      );
-      ftHistory = {
-        available: true,
-        provider: "NearBlocks v3",
-        endpoint_type: "account ft-txns",
-        accounts_checked: accountsToCheck,
-        indexed_rows: rows.length,
-        unparsed_rows: unparsedRows,
-        matched_transfers: pairTransfers.length,
-        transfers: pairTransfers,
-        schema_warning: unparsedRows ? "Some FT transfer rows did not expose sender, receiver, hash, or timestamp fields; verify the provider schema before treating zero matches as no activity." : null
-      };
-    } catch (error) {
-      ftHistoryStatus = error?.status || null;
-      ftHistoryError = error?.message || "NearBlocks fungible-token history unavailable";
-      ftHistory = { available: false, provider: "NearBlocks v3", error: ftHistoryError };
-    }
-  } else {
-    ftHistory = { available: false, provider: "NearBlocks v3", error: "NEARBLOCKS_API_KEY is not configured on the Worker." };
   }
 
   const threat = await env.DB.prepare("SELECT id, category, evidence, status FROM threat_reports WHERE account_id = ? AND status = 'verified' ORDER BY created_at DESC LIMIT 1").bind(receiver).first();
@@ -225,15 +84,15 @@ export async function onRequestPost({ request, env }) {
   // Provider outages are assessment-quality problems, not evidence against the receiver.
   // Keep independent wallet signals (e.g. missing account, large transfer, verified threat)
   // intact; otherwise return INCOMPLETE rather than inflating the wallet risk score.
-  const historyUnavailable = !behavior || behavior.available === false || Boolean(sender && !pairHistory) || !ftHistory?.available || Boolean(ftHistory?.unparsed_rows);
+  const historyUnavailable = !behavior;
   if (historyUnavailable) {
-    const rateLimited = historyStatus === 429 || ftHistoryStatus === 429 || /HTTP 429/.test(historyError || "") || /HTTP 429/.test(pairHistoryError || "") || /HTTP 429/.test(ftHistoryError || "");
+    const rateLimited = historyStatus === 429 || /HTTP 429/.test(historyError || "");
     verdict.risk_factors.push({
       code: rateLimited ? "TRANSACTION_HISTORY_RATE_LIMITED" : "TRANSACTION_HISTORY_UNAVAILABLE",
       severity: "info",
       detail: rateLimited
         ? "NearBlocks rate-limited this request (HTTP 429). No conclusion about receiver activity can be made."
-        : (pairHistoryError || ftHistoryError || ftHistory?.schema_warning || historyError || "Transaction history could not be verified; activity review is incomplete.")
+        : (historyError || "Transaction history could not be verified; activity review is incomplete.")
     });
     if (!threat && verdict.risk_score === 0) verdict.decision = "INCOMPLETE";
   }
@@ -242,11 +101,9 @@ export async function onRequestPost({ request, env }) {
     network, source: rpc, transaction_history_provider: "NearBlocks v3", transaction_history_endpoint: historyUrl, checked_at: new Date().toISOString(),
     account: account ? { account_exists: true, balance_yocto: account.amount, locked_yocto: account.locked, code_hash: account.code_hash, storage_usage: account.storage_usage, contract_present: account.code_hash !== "11111111111111111111111111111111" } : { account_exists: false, rpc_error: rpcError },
     transaction_history: behavior || { available: false, source: "NearBlocks v3", error: historyError },
-    sender_to_receiver: sender ? (pairHistory || { available: false, error: pairHistoryError || "Pairwise transaction lookup unavailable." }) : null,
-    fungible_token_transfers: ftHistory,
     verified_threat: threat || null,
     assessment_status,
-    limitations: ["A provider outage or HTTP 429 makes the assessment INCOMPLETE; it is not a receiver-risk signal and must not be treated as ALLOW.", "Transaction frequency is an anomaly signal, not proof of fraud; it produces WARN, not an automatic BLOCK.", "History analysis currently evaluates up to 100 recent receiver-signed transactions. Sender-to-receiver matching is reported separately and is not counted as receiver-signed activity.", "NEP-141 fungible-token transfers are queried separately through the account ft-txns endpoint; rows without parseable sender/receiver/hash/timestamp remain incomplete.", "Account age and historical contract code changes are not inferred from this response.", "This is a risk screening result, not a guarantee that a transaction is safe."]
+    limitations: ["A provider outage or HTTP 429 makes the assessment INCOMPLETE; it is not a receiver-risk signal and must not be treated as ALLOW.", "Transaction frequency is an anomaly signal, not proof of fraud; it produces WARN, not an automatic BLOCK.", "History analysis currently evaluates up to 100 recent successful real-signer transactions.", "Account age and historical contract code changes are not inferred from this response.", "This is a risk screening result, not a guarantee that a transaction is safe."]
   };
   const id = crypto.randomUUID();
   const createdAt = new Date().toISOString();
