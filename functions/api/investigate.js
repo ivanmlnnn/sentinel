@@ -33,6 +33,7 @@ export async function onRequestPost({ request, env }) {
   let historyError = null;
   let historyStatus = null;
   let ftTransfers = null;
+  let ftNextPageAvailable = false;
   let ftHistoryError = null;
   let ftHistoryStatus = null;
   const historyUrl = `${nearblocksBase}/v3/accounts/${encodeURIComponent(receiver)}/txns?limit=100`;
@@ -96,6 +97,7 @@ export async function onRequestPost({ request, env }) {
     if (!ftResponse.ok) throw new Error(`NearBlocks FT history returned HTTP ${ftResponse.status}`);
     const ftPayload = await ftResponse.json();
     if (!Array.isArray(ftPayload.data)) throw new Error("NearBlocks v3 FT response did not contain a data array; token activity cannot be verified.");
+    ftNextPageAvailable = Boolean(ftPayload.meta?.next_page);
     ftTransfers = ftPayload.data.map(row => {
       const block = row?.block && typeof row.block === "object" ? row.block : {};
       const from = row?.old_owner_id ?? row?.sender_account_id ?? row?.sender_id ?? row?.from_account_id ?? null;
@@ -155,7 +157,7 @@ export async function onRequestPost({ request, env }) {
     account: account ? { account_exists: true, balance_yocto: account.amount, locked_yocto: account.locked, code_hash: account.code_hash, storage_usage: account.storage_usage, contract_present: account.code_hash !== "11111111111111111111111111111111" } : { account_exists: false, rpc_error: rpcError },
     transaction_history: behavior || { available: false, source: "NearBlocks v3", error: historyError },
     transaction_history_endpoint: historyUrl,
-    fungible_token_history: Array.isArray(ftTransfers) ? { available: true, source: "NearBlocks v3", endpoint: ftHistoryUrl, observed_transfers: ftTransfers.length, transfers: ftTransfers, next_page_available: Boolean(ftPayload.meta?.next_page) } : { available: false, source: "NearBlocks v3", endpoint: ftHistoryUrl, error: ftHistoryError },
+    fungible_token_history: Array.isArray(ftTransfers) ? { available: true, source: "NearBlocks v3", endpoint: ftHistoryUrl, observed_transfers: ftTransfers.length, transfers: ftTransfers, next_page_available: ftNextPageAvailable } : { available: false, source: "NearBlocks v3", endpoint: ftHistoryUrl, error: ftHistoryError },
     verified_threat: threat || null,
     assessment_status,
     limitations: ["A provider outage or HTTP 429 makes the assessment INCOMPLETE; it is not a receiver-risk signal and must not be treated as ALLOW.", "Transaction frequency is an anomaly signal, not proof of fraud; it produces WARN, not an automatic BLOCK.", "Native transaction history currently requests up to 100 recent account transactions; token transfers are retrieved separately from the NearBlocks v3 FT endpoint.", "Account age and historical contract code changes are not inferred from this response.", "This is a risk screening result, not a guarantee that a transaction is safe."]
