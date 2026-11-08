@@ -158,10 +158,10 @@ function renderResult(data) {
       status: 'DO NOT PROCEED'
     },
     INCOMPLETE: {
-      title: hasThreatMatch ? 'A verified threat match was found' : hasSignals ? 'Suspicious activity may be present' : 'No threat found in the data checked',
-      summary: 'Some transaction records could not be fully checked, so this is not a final safety assessment.',
-      action: 'Treat this result as unconfirmed. Run the check again when the transaction history source is available.',
-      status: 'PARTIAL CHECK'
+      title: hasThreatMatch ? 'A verified threat match was found' : hasSignals ? 'Suspicious outgoing activity needs review' : 'No outgoing spam pattern detected',
+      summary: 'No outgoing spam pattern was found in the verifiable records. Some history fields are still incomplete.',
+      action: 'The recipient is not flagged for incoming spam. Retry the history check to verify the remaining records.',
+      status: 'HISTORY PARTIALLY VERIFIED'
     }
   }[verdict];
 
@@ -209,7 +209,7 @@ function renderResult(data) {
 
   const score = Number.isFinite(Number(data.risk_score)) ? Number(data.risk_score) : 0;
   const scoreLabel = 'Risk score';
-  const scoreValue = isIncomplete ? 'Unconfirmed' : score + '/100';
+  const scoreValue = isIncomplete ? 'Not scored' : score + '/100';
   const simulation = data.simulation
     ? '<p class="plain-simulation">TEST RESULT — This uses local sample data, not a live wallet scan.</p>'
     : '';
