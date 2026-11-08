@@ -130,8 +130,8 @@ function renderResult(data) {
 
   const sourceVerdict = ['ALLOW','WARN','BLOCK','INCOMPLETE'].includes(data.decision) ? data.decision : 'WARN';
   const isIncomplete = sourceVerdict === 'INCOMPLETE';
-  const verdict = isIncomplete ? 'WARN' : sourceVerdict;
-  const riskLabel = verdict === 'ALLOW' ? 'LOW RISK' : verdict;
+  const verdict = sourceVerdict;
+  const riskLabel = verdict === 'ALLOW' ? 'LOW RISK' : verdict === 'INCOMPLETE' ? 'UNCONFIRMED' : verdict;
   const factors = Array.isArray(data.risk_factors) ? data.risk_factors : [];
   const codes = factors.map(item => String(item.code || ''));
   const hasThreatMatch = codes.some(code => ['VERIFIED_THREAT_MATCH','VERIFIED_THREAT_REPORT'].includes(code));
@@ -179,6 +179,9 @@ function renderResult(data) {
         return '<div class="plain-evidence-row"><span>' + label + '</span><b>' + count + '</b><small>' + note + '</small></div>';
       }).join('') +
       '</div>' +
+      (Array.isArray(activity.native_transactions?.incoming_spam_sources) && activity.native_transactions.incoming_spam_sources.length
+        ? '<div class="incoming-spam-sources"><h4>Incoming spam sources</h4>' + activity.native_transactions.incoming_spam_sources.map(source => '<div class="plain-evidence-row"><span>' + escapeHtml(source.sender_account) + '</span><b>' + Number(source.successful_incoming_transactions_5m) + '</b><small>successful incoming transactions in 5 minutes · sender review</small></div>').join('') + '</div>'
+        : '') +
       (activity.explorer_url ? '<a class="explorer-link" href="' + escapeHtml(activity.explorer_url) + '" target="_blank" rel="noopener noreferrer">Open wallet activity in NEAR Explorer ↗</a>' : '') +
       '</section>';
   })() : '';
@@ -205,7 +208,7 @@ function renderResult(data) {
     : '<li><b>No additional warning signs</b><span>The checks completed did not report other known warning signs.</span></li>';
 
   const score = Number.isFinite(Number(data.risk_score)) ? Number(data.risk_score) : 0;
-  const scoreLabel = isIncomplete ? 'Risk score' : 'Risk score';
+  const scoreLabel = 'Risk score';
   const scoreValue = isIncomplete ? 'Unconfirmed' : score + '/100';
   const simulation = data.simulation
     ? '<p class="plain-simulation">TEST RESULT — This uses local sample data, not a live wallet scan.</p>'
