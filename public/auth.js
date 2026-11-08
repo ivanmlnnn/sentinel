@@ -103,3 +103,4 @@ function Root() {
 }
 
 createRoot(document.getElementById('auth-root')).render(React.createElement(Root));
+document.getElementById('auth-root').dataset.authBooted = '1';
