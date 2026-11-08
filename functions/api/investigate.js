@@ -99,7 +99,7 @@ function normalizeReceipt(row, accountId) {
     direction: receiver?.toLowerCase() === accountId ? "INCOMING" : predecessor?.toLowerCase() === accountId ? "OUTGOING" : "RELATED",
     status: status === true ? "SUCCESS" : status === false ? "FAILED" : "UNKNOWN",
     block_timestamp: timestamp,
-    schema_recognized: Boolean(predecessor || receiver || receiptId || timestamp)
+    schema_recognized: Boolean(predecessor || receiver)
   };
 }
 
@@ -179,7 +179,7 @@ export async function onRequestPost({ request, env }) {
     const transactions = txHistory ? txHistory.rows.map(row => normalizeTransaction(row, receiver)) : [];
     const receipts = receiptHistory ? receiptHistory.rows.map(row => normalizeReceipt(row, receiver)) : [];
     const ftTransfers = ftHistory ? ftHistory.rows.map(row => normalizeFtTransfer(row, receiver)) : [];
-    const txSchemaComplete = transactions.every(row => row.transaction_hash && row.status !== "UNKNOWN" && row.block_timestamp !== null);
+    const txSchemaComplete = transactions.every(row => row.transaction_hash && row.signer_account && row.status !== "UNKNOWN" && row.block_timestamp !== null);
     const receiptSchemaRecognized = receipts.every(row => row.schema_recognized);
     const ftSchemaRecognized = ftTransfers.every(row => row.schema_recognized);
 
