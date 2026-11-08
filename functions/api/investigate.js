@@ -142,7 +142,7 @@ export async function onRequestPost({ request, env }) {
   // Provider outages are assessment-quality problems, not evidence against the receiver.
   // Keep independent wallet signals (e.g. missing account, large transfer, verified threat)
   // intact; otherwise return INCOMPLETE rather than inflating the wallet risk score.
-  const historyUnavailable = !behavior;
+  const historyUnavailable = !behavior || behavior.available === false;
   if (historyUnavailable) {
     const rateLimited = historyStatus === 429 || /HTTP 429/.test(historyError || "");
     verdict.risk_factors.push({
