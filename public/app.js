@@ -61,6 +61,10 @@ async function initWallet() {
       syncWalletUI(account?.accountId, event.wallet?.manifest?.name || 'NEAR wallet');
     });
     connector.on('wallet:signOut', () => syncWalletUI(null, null));
+    connector.on('wallet:signIn', event => {
+      const account = event.accounts && event.accounts[0];
+      syncWalletUI(account?.accountId, event.wallet?.manifest?.name || 'NEAR wallet');
+    });
 
     try {
       const current = await connector.getConnectedWallet();
