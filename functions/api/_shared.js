@@ -44,7 +44,7 @@ export function analyzeTransactionBehavior(rows = [], now = Date.now()) {
   const five = dated.filter(t => now - t <= 300000 && now >= t).length;
   const hour = dated.filter(t => now - t <= 3600000 && now >= t).length;
 
-  // Detect at least two distinct recipients in any rolling five-minute window.
+  // Detect at least 30 distinct recipients in any rolling five-minute window.
   const recipientEvents = successful
     .map(row => ({ time: parseTransactionTimestamp(row.tx_block_timestamp), recipient: typeof row.receiver_account === "string" ? row.receiver_account.toLowerCase() : null }))
     .filter(row => Number.isFinite(row.time) && row.time > 0 && row.time <= now + 60000 && row.recipient);
