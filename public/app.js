@@ -130,11 +130,19 @@ function renderResult(data) {
   el.classList.add('result-enter');
 
   const verdict = ['ALLOW','WARN','BLOCK','INCOMPLETE'].includes(data.decision) ? data.decision : 'WARN';
+  const factors = Array.isArray(data.risk_factors) ? data.risk_factors : [];
+  const hasThreatMatch = factors.some(item => ['VERIFIED_THREAT_MATCH','VERIFIED_THREAT_REPORT'].includes(String(item.code || '')));
+  const observedSignals = factors.filter(item => ['SPAM_ACTIVITY','EXTREME_TRANSACTION_FREQUENCY','HIGH_TRANSACTION_FREQUENCY','ELEVATED_TRANSACTION_FREQUENCY','PARTIAL_TRANSACTION_TIMESTAMP_DATA','TRANSACTION_TIMESTAMP_UNVERIFIABLE'].includes(String(item.code || '')));
+  const provisionalTitle = hasThreatMatch
+    ? 'Verified threat match'
+    : observedSignals.length
+      ? 'Risk signals found in available data'
+      : 'No verified threat match in available data';
   const config = {
-    ALLOW: { title:'No verified threat found', label:'No threat match', note:'The checks completed without finding a match in the verified threat registry. This is not a guarantee that the wallet is safe.', color:'var(--green)' },
-    WARN: { title:'Review this wallet', label:'Needs review', note:'The scan found activity or evidence that deserves a closer look before you interact with this wallet.', color:'var(--amber)' },
-    BLOCK: { title:'Verified threat match', label:'Do not proceed', note:'This wallet matches a verified threat record. Avoid sending funds or interacting with it.', color:'var(--red)' },
-    INCOMPLETE: { title:'Scan could not be completed', label:'Incomplete scan', note:'Sentinel could not verify enough transaction history to assess this wallet. This does not mean the wallet is safe or malicious.', color:'#a9d8e9' }
+    ALLOW: { title:'No verified threat found', label:'Checks completed', note:'No match was found in the verified threat registry during the checks completed. This is not a guarantee that the wallet is safe.' },
+    WARN: { title:'Review this wallet', label:'Needs review', note:'The scan found activity or evidence that deserves a closer look before you interact with this wallet.' },
+    BLOCK: { title:'Verified threat match', label:'Do not proceed', note:'This wallet matches a verified threat record. Avoid sending funds or interacting with it.' },
+    INCOMPLETE: { title:provisionalTitle, label:'Provisional assessment · incomplete history', note:'This is the best assessment supported by the data received so far. Some transaction history could not be verified, so do not treat this result as a safety clearance.' }
   }[verdict];
 
   const activity = data.evidence?.wallet_activity;
@@ -153,26 +161,30 @@ function renderResult(data) {
       '</div><a class="explorer-link" href="'+escapeHtml(activity.explorer_url || '#')+'" target="_blank" rel="noopener noreferrer">View on NEAR Explorer ↗</a></section>';
   })() : '';
 
-  const factors = Array.isArray(data.risk_factors) ? data.risk_factors : [];
-  const important = factors.filter(item => [
-    'VERIFIED_THREAT_MATCH','SPAM_ACTIVITY','TRANSACTION_HISTORY_INCOMPLETE','TRANSACTION_HISTORY_UNAVAILABLE'
-  ].includes(String(item.code || '')));
   const descriptions = {
     VERIFIED_THREAT_MATCH:['Verified threat match','This wallet matches a verified threat registry entry.'],
+    VERIFIED_THREAT_REPORT:['Verified threat match','This wallet matches a verified threat registry entry.'],
     SPAM_ACTIVITY:['Unusual activity','Repeated transaction activity needs review.'],
+    EXTREME_TRANSACTION_FREQUENCY:['Very high transaction frequency','A high volume of successful transactions was observed in a short period. This is an automation signal, not proof of fraud.'],
+    HIGH_TRANSACTION_FREQUENCY:['High transaction frequency','Repeated successful transactions were observed in a short period. Review for automation or spam.'],
+    ELEVATED_TRANSACTION_FREQUENCY:['Elevated transaction frequency','Transaction volume is higher than the configured review threshold.'],
+    PARTIAL_TRANSACTION_TIMESTAMP_DATA:['Partial timestamp data','Some successful transactions have missing or invalid timestamps.'],
+    TRANSACTION_TIMESTAMP_UNVERIFIABLE:['Timestamps could not be verified','Transactions were returned, but their timestamps could not be validated.'],
     TRANSACTION_HISTORY_INCOMPLETE:['Transaction history incomplete','Some transaction records are missing fields needed for verification.'],
-    TRANSACTION_HISTORY_UNAVAILABLE:['History source unavailable','The transaction history provider could not return usable data.']
+    TRANSACTION_HISTORY_UNAVAILABLE:['History source unavailable','The transaction history provider could not return usable data.'],
+    ACCOUNT_NOT_FOUND:['Account not found','The account could not be verified on the selected network.']
   };
-  const findingMarkup = important.length
-    ? important.map(item => {
-        const entry = descriptions[String(item.code)] || ['Review required','Additional evidence needs review.'];
+  const visibleFactors = factors.filter(item => descriptions[String(item.code || '')]);
+  const findingMarkup = visibleFactors.length
+    ? visibleFactors.map(item => {
+        const entry = descriptions[String(item.code)];
         return '<li class="readable-factor"><b>'+escapeHtml(entry[0])+'</b><span>'+escapeHtml(entry[1])+'</span></li>';
       }).join('')
-    : '<li class="readable-factor"><b>No additional risk signals</b><span>No other risk signals were reported by the completed checks.</span></li>';
+    : '<li class="readable-factor"><b>No additional risk signals</b><span>No other risk signals were reported by the checks completed so far.</span></li>';
 
   const score = Number.isFinite(Number(data.risk_score)) ? Number(data.risk_score) : 0;
   const scoreMarkup = verdict === 'INCOMPLETE'
-    ? '<div class="result-score-row"><div><span>Risk score</span><b>Unavailable</b></div><small>Not calculated because the scan is incomplete.</small></div>'
+    ? '<div class="result-score-row provisional-score"><div><span>Observed risk signals</span><b>'+(score > 0 ? score+'/100' : 'None found')+'</b></div><small>Based on verified evidence received so far — not a complete wallet risk score.</small></div>'
     : '<div class="result-score-row"><div><span>Risk score</span><b>'+score+'/100</b></div><small>Use the verdict and evidence together; the score is not a safety guarantee.</small></div>';
   const simulationNote = data.simulation
     ? '<p class="result-explanation"><b>SIMULATION</b> — Local test data, not a live network finding.</p>'
@@ -182,7 +194,6 @@ function renderResult(data) {
     activitySummary +
     '<section class="result-factors"><div class="readable-section-title">Key findings</div><ul class="readable-factor-list">'+findingMarkup+'</ul></section>' +
     '<div class="result-actions"><button class="secondary-btn" id="viewEvidence" type="button">Technical details</button></div><pre id="evidenceJson" class="ai-text hidden"></pre>';
-
 
   $('viewEvidence').addEventListener('click', () => {
     const evidence = $('evidenceJson');
