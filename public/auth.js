@@ -69,7 +69,11 @@ function AuthGate() {
   }
 
   const sessionControl = React.createElement('div', { className: 'sentinel-session-control' },
-    React.createElement('span', { className: 'sentinel-session-email', 'aria-label': 'Signed-in profile' }, 'Profile'),
+    React.createElement('span', { className: 'sentinel-session-avatar', role: 'img', 'aria-label': 'Signed-in profile' },
+      React.createElement('svg', { viewBox: '0 0 24 24', 'aria-hidden': 'true' },
+        React.createElement('path', { d: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5Z' })
+      )
+    ),
     React.createElement('button', {
       type: 'button',
       className: 'sentinel-signout-button',
