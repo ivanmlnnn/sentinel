@@ -167,21 +167,30 @@ function renderResult(data) {
 
   const activity = data.evidence?.wallet_activity;
   const activityMarkup = !data.simulation && activity ? (() => {
+    const native = activity.native_transactions || {};
+    const records = Array.isArray(native.records) ? native.records : [];
+    const incoming = records.filter(row => row.direction === 'INCOMING').length;
+    const outgoing = records.filter(row => row.direction === 'OUTGOING_SIGNED').length;
+    const senders = Array.isArray(native.incoming_spam_sources) ? native.incoming_spam_sources : [];
     const sources = [
-      ['NEAR transactions', activity.native_transactions || {}],
+      ['NEAR transactions', native],
       ['Receipts', activity.receipts || {}],
       ['Token transfers', activity.fungible_token_transfers || {}]
     ];
-    return '<section class="plain-evidence"><h4>Activity found</h4><div class="plain-evidence-rows">' +
+    const senderSection = senders.length
+      ? '<div class="incoming-spam-sources"><h4>SPAM SENDER CANDIDATES</h4><p>These accounts sent repeated transactions to the wallet being checked. The recipient is not flagged for receiving them.</p>' + senders.map(source => '<div class="plain-evidence-row"><span>' + escapeHtml(source.sender_account) + '</span><b>' + Number(source.successful_incoming_transactions_5m) + '</b><small>successful transactions sent in 5 minutes · sender review</small></div>').join('') + '</div>'
+      : '<div class="incoming-spam-sources"><h4>INCOMING SENDER CHECK</h4><p>' + (native.complete
+          ? 'No sender exceeded 10 successful incoming transactions within a five-minute window in the checked records.'
+          : 'Sender attribution is not fully verified because some transaction records are incomplete. The receiving wallet is not marked as spam for receiving transactions.') + '</p></div>';
+    return '<section class="plain-evidence"><h4>Wallet activity</h4><p>The account entered above is the wallet being checked. Incoming transactions are activity sent by other accounts; outgoing transactions are signed by this wallet.</p><div class="plain-evidence-rows">' +
+      '<div class="plain-evidence-row"><span>Incoming · sent TO this wallet</span><b>' + incoming.toLocaleString() + '</b><small>Sender is the other account</small></div>' +
+      '<div class="plain-evidence-row"><span>Outgoing · sent BY this wallet</span><b>' + outgoing.toLocaleString() + '</b><small>Checked for this wallet’s own spam activity</small></div>' +
       sources.map(([label, source]) => {
         const count = Number(source.count ?? 0).toLocaleString();
         const note = source.complete ? 'History checked' : 'Some records not verified';
         return '<div class="plain-evidence-row"><span>' + label + '</span><b>' + count + '</b><small>' + note + '</small></div>';
       }).join('') +
-      '</div>' +
-      (Array.isArray(activity.native_transactions?.incoming_spam_sources) && activity.native_transactions.incoming_spam_sources.length
-        ? '<div class="incoming-spam-sources"><h4>Incoming spam sources</h4>' + activity.native_transactions.incoming_spam_sources.map(source => '<div class="plain-evidence-row"><span>' + escapeHtml(source.sender_account) + '</span><b>' + Number(source.successful_incoming_transactions_5m) + '</b><small>successful incoming transactions in 5 minutes · sender review</small></div>').join('') + '</div>'
-        : '') +
+      '</div>' + senderSection +
       (activity.explorer_url ? '<a class="explorer-link" href="' + escapeHtml(activity.explorer_url) + '" target="_blank" rel="noopener noreferrer">Open wallet activity in NEAR Explorer ↗</a>' : '') +
       '</section>';
   })() : '';
