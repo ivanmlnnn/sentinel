@@ -212,7 +212,7 @@ function renderResult(data) {
 
   el.innerHTML =
     '<section class="plain-result-head result-' + verdict.toLowerCase() + '">' +
-      '<div class="plain-status">' + escapeHtml(copy.status) + '</div>' +
+      '<div class="plain-status-row"><span class="plain-verdict plain-verdict-' + verdict.toLowerCase() + '">' + verdict + '</span><span class="plain-status">' + escapeHtml(copy.status) + '</span></div>' +
       '<h3>' + escapeHtml(copy.title) + '</h3>' +
       '<p class="plain-summary">' + escapeHtml(copy.summary) + '</p>' +
       '<div class="plain-score"><span>' + scoreLabel + '</span><b>' + scoreValue + '</b></div>' +
