@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101512"><meta name="description" content="NEAR Sentinel — on-chain security for NEAR Protocol.">
 <title>NEAR Sentinel — Account Risk Intelligence</title>
-<link rel="stylesheet" href="/styles.css?v=20261108-07">
+<link rel="stylesheet" href="/styles.css?v=20261108-08">
 <script type="importmap">{"imports":{"react":"https://esm.sh/react@18.3.1","react/":"https://esm.sh/react@18.3.1/","react-dom":"https://esm.sh/react-dom@18.3.1","react-dom/client":"https://esm.sh/react-dom@18.3.1/client"}}</script>
 </head>
 <body>
@@ -22,11 +22,11 @@
 <section class="hero reveal" id="overview">
  <div class="hero-copy"><div class="eyebrow"><span class="live-pulse"></span> ON-CHAIN SECURITY / TESTNET</div>
  <h1>Check an address.<br><em>Before you trust it.</em></h1>
- <p class="hero-sub">A simple safety check for NEAR accounts. See the evidence before you interact.</p>
+ <p class="hero-sub">Check a NEAR account before you interact.</p>
  <div class="hero-actions"><a class="cta" href="#investigate">Check an address <span>↘</span></a><span class="hero-note">READ-ONLY · NO TRANSACTION SIGNING</span></div></div>
  <div class="chain-visual" aria-hidden="true"><div class="chain-grid"></div><div class="chain-node node-a">NEAR<span>RPC</span></div><div class="chain-node node-b">IV<span>SECURITY</span></div><div class="chain-node node-c">◆<span>RISK</span></div><div class="chain-line line-a"></div><div class="chain-line line-b"></div><div class="chain-line line-c"></div><div class="chain-label">SENTINEL API <b id="apiStatus">CHECKING</b></div></div>
 </section>
-<section class="wallet-guide reveal" id="wallet-guide"><div class="wallet-guide-head"><span class="section-index">GET STARTED / 30 SECONDS</span><b>Three simple steps</b></div><div class="wallet-guide-grid"><div><strong>01 · Connect a wallet</strong><p>Tap <b>Connect NEAR Wallet</b> and choose a wallet from the NEAR connector list. On mobile or desktop, choose a wallet that appears in the connector list for NEAR Testnet. Not every wallet supports Testnet. A MetaMask EVM address alone is not a native NEAR account.</p></div><div><strong>02 · Check the account</strong><p>Your real NEAR account ID appears in the Sender field after connecting. Only choose a wallet shown in the NEAR connection window.</p></div><div><strong>03 · Inspect safely</strong><p>Enter the destination NEAR account and tap <b>Check address</b>. Sentinel reads public testnet data. It never asks for your seed phrase, private key, or a transaction signature.</p></div></div><p class="wallet-guide-note">TESTNET ONLY · READ-ONLY · No transaction will be sent.</p></section>
+<section class="wallet-guide reveal" id="wallet-guide"><div class="wallet-guide-head"><span class="section-index">QUICK START</span><b>Start in three steps</b></div><div class="wallet-guide-grid"><div><strong>01 · Connect a wallet</strong><p>Connect a wallet that supports NEAR Testnet. MetaMask EVM accounts are not NEAR accounts.</p></div><div><strong>02 · Check the account</strong><p>Your NEAR account ID fills in automatically.</p></div><div><strong>03 · Inspect safely</strong><p>Enter an account and run a read-only check. No keys or signatures are requested.</p></div></div><p class="wallet-guide-note">TESTNET · READ-ONLY · NO TRANSACTIONS</p></section>
 <section class="metrics reveal" aria-label="Security metrics">
  <div class="metric"><span>SCANS</span><b id="mTotal">—</b><small>ALL ASSESSMENTS</small></div>
  <div class="metric"><span class="green">ALLOW</span><b id="mAllowed">—</b><small>NO MATCH FOUND</small></div>
@@ -39,20 +39,20 @@
  <div class="panel scan-panel">
   <div class="panel-top"><span>ADDRESS TO CHECK</span><span class="panel-status"><i></i> READ-ONLY</span></div>
   <form id="investigateForm">
-   <label for="receiver">WHICH NEAR ACCOUNT DO YOU WANT TO CHECK?</label>
+   <label for="receiver">ACCOUNT TO CHECK</label>
    <div class="account-input"><span>near://</span><input id="receiver" placeholder="receiver.near" autocomplete="off" required maxlength="64"><button type="button" id="pasteReceiver">PASTE</button></div>
-   <div class="form-row"><div><label for="sender">YOUR CONNECTED ACCOUNT <small>OPTIONAL</small></label><input id="sender" placeholder="Connect wallet"></div><div><label for="amount">PLANNED AMOUNT <small>NEAR · OPTIONAL</small></label><input id="amount" type="number" min="0" step="0.0001" value="0"></div></div>
-   <p id="walletConnectionState" class="wallet-connection-state" aria-live="polite">Not connected — you can still check any public NEAR account.</p>
+   <div class="form-row"><div><label for="sender">YOUR ACCOUNT <small>OPTIONAL</small></label><input id="sender" placeholder="Connect wallet"></div><div><label for="amount">PLANNED AMOUNT <small>NEAR · OPTIONAL</small></label><input id="amount" type="number" min="0" step="0.0001" value="0"></div></div>
+   <p id="walletConnectionState" class="wallet-connection-state" aria-live="polite">Wallet not connected. Public account checks are still available.</p>
    <div class="scan-submit"><span>◈ Public blockchain data only</span><button class="primary-btn" id="scanBtn" type="submit">Check address <b>↗</b></button></div>
   </form>
   <div id="result" class="result hidden" aria-live="polite"></div>
  </div>
  <aside class="panel decision-panel">
   <div class="panel-top"><span>WHAT THE RESULT MEANS</span><span class="section-meta">DETERMINISTIC</span></div>
-  <div class="verdict"><b class="v-allow">01</b><div><strong>ALLOW</strong><small>No known threat was found</small></div><span>LOW</span></div>
-  <div class="verdict"><b class="v-warn">02</b><div><strong>WARN</strong><small>Not enough information — review first</small></div><span>REVIEW</span></div>
-  <div class="verdict"><b class="v-block">03</b><div><strong>BLOCK</strong><small>Matches a verified threat report</small></div><span>DENY</span></div>
-  <div class="decision-foot">Sentinel never sends money or signs transactions. A result is a warning signal, not a guarantee.</div>
+  <div class="verdict"><b class="v-allow">01</b><div><strong>ALLOW</strong><small>No known threat found</small></div><span>LOW</span></div>
+  <div class="verdict"><b class="v-warn">02</b><div><strong>WARN</strong><small>Limited evidence — review first</small></div><span>REVIEW</span></div>
+  <div class="verdict"><b class="v-block">03</b><div><strong>BLOCK</strong><small>Verified threat match</small></div><span>DENY</span></div>
+  <div class="decision-foot">Read-only checks. Results are signals, not guarantees.</div>
  </aside>
 </section>
 <div class="section-heading reveal" id="activity"><div><span class="section-index">02 / YOUR ACTIVITY</span><h2>Recent checks</h2></div><button class="plain-btn" id="refreshBtn">Refresh ↻</button></div>
@@ -63,7 +63,7 @@
  <div id="reportForm" class="report-form hidden"><input id="reportAccount" placeholder="Account ID"><input id="reportCategory" placeholder="Category"><textarea id="reportEvidence" placeholder="Evidence / transaction hash / source URL"></textarea><button class="primary-btn" id="sendReport">Submit unverified report ↗</button></div></div>
  <aside class="panel fingerprint-panel"><span class="section-index">SIGNAL SOURCES</span><div class="signal-line"><b>01</b><span>Account state</span><i>RPC</i></div><div class="signal-line"><b>02</b><span>Contract code hash</span><i>RPC</i></div><div class="signal-line"><b>03</b><span>Verified reports</span><i>DB</i></div><div class="signal-line"><b>04</b><span>Risk policy</span><i>RULES</i></div></aside>
 </section>
-<section class="protocol reveal" id="protocol"><div><span class="section-index">04 / PROTOCOL NOTES</span><h2>Check the evidence. Stay in control.</h2><p>Code hash is a current fingerprint, not proof of malicious code or historical change. ALLOW is not a guarantee. AI may explain evidence; it never decides the verdict.</p></div><div class="protocol-mark">N<span>◆</span></div></section>
+<section class="protocol reveal" id="protocol"><div><span class="section-index">04 / PROTOCOL NOTES</span><h2>Evidence first. Your decision.</h2><p>A code hash is a fingerprint, not proof of malicious code. ALLOW is not a guarantee. AI explains; rules decide.</p></div><div class="protocol-mark">N<span>◆</span></div></section>
 <footer><span>NEAR SENTINEL <b>·</b> NEAR SECURITY</span><span>TESTNET / READ-ONLY MVP / 2026</span></footer>
 </main>
 <div id="toast" class="toast"></div>
