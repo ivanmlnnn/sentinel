@@ -1,108 +1,184 @@
-# NEAR SENTINEL
+# NEAR Sentinel
 
-**Deterministic pre-sign risk screening for NEAR agents**  
-Built by Ivan Maulana Alaudin · IVTECH · NEAR Protocol
+**A safety checkpoint for NEAR-powered AI agents — before a transaction is signed.**
 
-NEAR Sentinel screens a proposed receiver before an agent reaches its signing step. It combines live NEAR account-state evidence with a verified threat registry and returns an explainable deterministic decision:
+NEAR Sentinel checks a destination account, explains the evidence behind its assessment, and gives an agent a deterministic policy decision before it reaches the signing step.
 
-- **ALLOW** — no configured blocking signal was found.
-- **WARN** — an observed wallet-risk signal or review threshold requires a human decision.
-- **INCOMPLETE** — a required data provider did not return evidence; this is not a wallet-risk verdict and must not be treated as ALLOW.
-- **BLOCK** — a verified threat match requires denial.
+**Built by Ivan Maulana Alaudin · IVTECH · NEAR**
 
-AI can explain evidence; it cannot choose or override the verdict.
+[Live dashboard](https://sentinel.ivmaladin.workers.dev) · [Source code](https://github.com/ivanmlnnn/sentinel)
 
-## What works in this prototype
+---
 
-- NEAR Testnet account-state lookup through FastNear JSON-RPC.
-- Wallet activity tracking from NearBlocks v3 account transactions, receipts, and fungible-token transfer endpoints using `NEARBLOCKS_API_KEY` as a Worker secret. The tracker records incoming/outgoing transaction direction where the indexed fields support it, transaction hashes, timestamps, receipt identifiers, token contract, transfer amount, and pagination coverage. Each source is fetched with cursor pagination up to five pages of 100 records; a remaining cursor or unrecognized required fields makes the assessment INCOMPLETE rather than silently claiming a full scan.
-- Explainable spam/automation anomaly signals: 10+ successful transactions signed by the inspected wallet in the last 5 minutes or 40+ in the last hour trigger WARN; 30+ in 5 minutes raises the review score. Incoming transactions and receipts remain visible in wallet activity evidence but are not misclassified as transactions signed by the wallet. Frequency alone never labels an account as a scam or triggers BLOCK. Missing providers, unrecognized attribution fields, and truncated pagination return INCOMPLETE.
-- Deterministic risk engine and structured evidence.
-- D1 persistence for investigations and threat reports.
-- Verified threat matches trigger BLOCK; community reports remain unverified by default.
-- Privy email authentication gate before dashboard access, with sign-out controls.
-- Browser dashboard with HOT Labs NEAR Connect, the current recommended NEAR connector. Wallet availability depends on the device and whether a wallet supports Testnet.
-- Evidence-grounded AI explanation endpoint (requires `ANTHROPIC_API_KEY`).
-- Agent-side pre-sign guard in `src/agent-guard.mjs`: BLOCK denies, WARN requires explicit human approval, ALLOW proceeds to a caller-supplied signer.
-- Fail-closed behavior for preflight outage, invalid verdict, or receiver mismatch.
-- Offline prompt-injection attack demo and automated policy tests.
+## The problem
 
-## Worker secrets and data attribution
+AI agents can act quickly, but a prompt or tool result should never be enough to authorize a payment. An agent needs a separate, inspectable security layer that can distinguish a risky destination from an ordinary account — and distinguish suspicious sending behavior from a wallet that is merely receiving spam.
 
-Configure `NEARBLOCKS_API_KEY` as a Cloudflare Worker secret. Do not commit API keys to the repository or expose them in browser code. `NEAR_NETWORK` selects `testnet` (default) or `mainnet`; the API host switches accordingly. The public dashboard includes the required NearBlocks attribution: Powered by NearBlocks.io APIs.
+## The solution
 
-## Run locally
+Sentinel combines NEAR account-state checks, indexed wallet activity, a verified threat registry, and deterministic policy rules. It returns an explainable result:
 
-Requirements: Node.js 20+.
+| Decision | Meaning | Agent behavior |
+| --- | --- | --- |
+| **ALLOW** | No configured blocking signal was found and required checks completed. | Continue to the signer. |
+| **WARN** | A review threshold or risk signal was detected. | Pause for explicit human approval. |
+| **BLOCK** | The destination matches a verified threat record. | Deny; do not invoke the signer. |
+| **INCOMPLETE** | Required evidence could not be fully verified. | Fail closed; retry or review. |
+
+**INCOMPLETE is not a risk accusation and is never a safety guarantee.** AI-generated explanations do not create, change, or override the deterministic decision.
+
+## What Sentinel checks
+
+- **NEAR account state** using FastNear JSON-RPC.
+- **Native transaction history, receipts, and fungible-token transfers** using NearBlocks v3.
+- **Transaction direction and attribution** so incoming activity is not mistaken for activity signed by the inspected wallet.
+- **Verified threat records** stored in D1. Unverified community reports cannot trigger BLOCK.
+- **Behavioral anomalies** from successful outgoing transactions actually signed by the inspected wallet.
+
+### Behavioral rules
+
+| Observed activity | Result |
+| --- | --- |
+| 10 or fewer successful outgoing transactions to one recipient in a rolling 5-minute window | Does not trigger the repeated-recipient frequency rule. |
+| **11 or more** successful outgoing transactions to one recipient in a rolling 5-minute window | **WARN** |
+| 29 or fewer distinct recipients in a rolling 5-minute window | Does not trigger the multiple-recipient rule. |
+| **30 or more distinct recipients** in a rolling 5-minute window | **WARN** |
+| 40 or more successful outgoing transactions in the last hour | **WARN** |
+| Incoming spam received by the inspected wallet | Attribute the activity to the incoming sender; do not flag the receiver just for receiving it. |
+| Verified threat registry match | **BLOCK** |
+
+Only successful transactions with verified signer attribution count toward outgoing behavior rules. Frequency is an anomaly signal, **not proof of fraud**. A behavior-based WARN does not automatically become BLOCK.
+
+## How it works
+
+1. The user or agent submits a NEAR receiver account and proposed amount.
+2. Sentinel checks the account on the selected NEAR network.
+3. Sentinel retrieves and normalizes indexed transaction, receipt, and token-transfer history.
+4. The risk engine evaluates verified threat records and outgoing behavior.
+5. Sentinel returns a decision with structured evidence and completeness status.
+6. The agent-side guard applies the policy before calling the supplied signer.
+
+```text
+Agent / Dashboard
+       |
+       v
+POST /api/investigate
+       |
+       +---- FastNear JSON-RPC: account state
+       |
+       +---- NearBlocks v3: transactions / receipts / FT transfers
+       |
+       +---- D1: verified threat registry
+       |
+       v
+Deterministic risk engine
+       |
+       +---- ALLOW ------> signer may proceed
+       +---- WARN -------> explicit human approval required
+       +---- BLOCK ------> deny; signer is not called
+       +---- INCOMPLETE -> fail closed; retry or review
+```
+
+## Try the dashboard
+
+1. Open the [NEAR Sentinel dashboard](https://sentinel.ivmaladin.workers.dev).
+2. Sign in through the Privy email authentication modal.
+3. Enter a NEAR account ID and select **Check address**.
+4. Review the decision and its evidence. Expand the technical details when you want to inspect the underlying activity.
+5. Connecting a NEAR wallet is optional; it can fill the sender field. A check does not sign or broadcast a transaction.
+
+The dashboard currently targets NEAR Testnet by default. Wallet availability depends on the wallet, device, and Testnet support.
+
+## Run the tests locally
+
+**Requirements:** Node.js 20 or later.
 
 ```bash
 npm test
 npm run demo:attack
 ```
 
-Expected attack-demo result: `DENIED - SENTINEL_BLOCK`, `Signer invoked: NO`, and `PASS`.
+The automated tests cover decision rules, successful versus failed transactions, timestamp parsing, outgoing signer attribution, repeated-recipient frequency, and distinct-recipient thresholds.
 
-The attack demo is a deterministic offline simulation. It does not connect to RPC, use a wallet, sign, or transfer funds.
+The prompt-injection demo is an **offline simulation**. Its expected result is:
 
-## Try the demo
+```text
+DENIED - SENTINEL_BLOCK
+Signer invoked: NO
+PASS
+```
 
-1. Open the dashboard: https://sentinel.ivmaladin.workers.dev
-2. Sign in with email through Privy's authentication modal. Email login must be enabled for the Privy app and the deployed origin must be allowlisted.
-3. Optional: select **Connect NEAR Wallet** and choose one of the wallets shown for NEAR Testnet. Not every wallet supports Testnet, and the available list depends on your device. A MetaMask EVM address alone is not a native NEAR account.
-4. Paste a destination account ending in `.testnet` (or another valid NEAR account ID) into the address field.
-5. Select **Check address**. Read the ALLOW / WARN / BLOCK explanation and expand technical evidence if needed. A wallet connection is optional; it only fills your sender account. No transaction is signed or sent.
+It does not connect to RPC, use a wallet, sign a transaction, or transfer funds.
 
-Privy controls the dashboard sign-in session. The current gate is a client-side dashboard access gate; API endpoints still require server-side Privy token verification before this should be treated as production-grade access control. Wallet connection only identifies the account for the optional sender field. The dashboard is read-only: it does not request signatures or send funds. It uses HOT Labs NEAR Connect (0.12.0), with Testnet-only wallet filtering. Wallet support depends on each wallet manifest and the device. You can run a public address check without connecting a wallet.
+## Agent integration
 
-- Dashboard: https://sentinel.ivmaladin.workers.dev
-- Repository: https://github.com/ivanmlnnn/sentinel
+The reusable pre-sign guard is in [`src/agent-guard.mjs`](src/agent-guard.mjs). See [Agent Guard documentation](docs/AGENT_GUARD.md) for an integration example.
+
+- **BLOCK:** deny without calling the signer.
+- **WARN:** require an explicit human approval callback.
+- **ALLOW:** permit the caller-supplied signer.
+- **INCOMPLETE, API failure, invalid verdict, or receiver mismatch:** fail closed.
+
+The guard is wallet-agnostic. The application integrating it must route every signing path through the guard; the callback is not a built-in NEAR signer.
 
 ## API
 
-### POST /api/investigate
+### `POST /api/investigate`
+
+Request:
 
 ```json
-{"sender_account":"agent.testnet","receiver_account":"guest-book.testnet","amount_near":0.1}
+{
+  "sender_account": "agent.testnet",
+  "receiver_account": "merchant.testnet",
+  "amount_near": 0.1
+}
 ```
 
-Returns a deterministic decision, risk factors, investigation ID, and observed RPC evidence.
+Returns a deterministic decision, risk score, risk factors, investigation ID, assessment completeness, and supporting evidence.
 
-### POST /api/ai-review
+### Other endpoints
 
-```json
-{"investigation_id":"UUID"}
-```
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /api/ai-review` | Generate an evidence-grounded explanation for an investigation. Requires `ANTHROPIC_API_KEY`. |
+| `GET /api/metrics` | Read aggregate investigation metrics. |
+| `GET /api/threats` | Read recent threat reports. |
+| `POST /api/threats` | Submit an unverified community threat report. |
 
-Returns an evidence-grounded explanation. Requires an AI provider key. AI does not modify the saved verdict.
+AI review is explanatory only; it does not modify the saved verdict.
 
-### GET /api/metrics and GET /api/threats
+## Architecture and configuration
 
-Return aggregate metrics and recent threat reports.
+- **Cloudflare Worker / Pages Functions:** API and dashboard delivery.
+- **FastNear JSON-RPC:** NEAR account-state lookup.
+- **NearBlocks v3:** indexed transaction, receipt, and fungible-token history.
+- **Cloudflare D1:** investigations and threat reports.
+- **Privy:** dashboard email sign-in.
+- **HOT Labs NEAR Connect:** optional NEAR wallet connection.
+- **Anthropic API:** optional evidence-grounded AI explanation.
 
-### POST /api/threats
+Configure `NEARBLOCKS_API_KEY` as a Cloudflare Worker secret. Optionally configure `ANTHROPIC_API_KEY` for AI explanations. Set `NEAR_NETWORK` to `testnet` (default) or `mainnet`. **Never commit API keys, seed phrases, or private keys to the repository or browser bundle.**
 
-Creates an unverified community report. An unverified report cannot trigger BLOCK.
+The dashboard includes the required NearBlocks API attribution: “Powered by NearBlocks.io APIs.”
 
-## Agent-side guard
+## Security boundaries and current limitations
 
-See [docs/AGENT_GUARD.md](docs/AGENT_GUARD.md).
+Sentinel is a hackathon prototype and risk-screening layer, not a guarantee that a transaction is safe.
 
-The guard is a pre-sign integration layer: it calls the Sentinel assessment API, denies BLOCK, asks a human about WARN, and invokes the supplied signer only for ALLOW or explicitly approved WARN. INCOMPLETE and unknown verdicts fail closed and must be retried or reviewed; they are never silently converted to ALLOW. Integrators must route every signing path through the guard.
-
-## Security model and limitations
-
-- The current dashboard is read-only and does not sign or broadcast transactions.
-- Wallet history is an indexed Explorer view, not a complete raw-chain archival node. The current per-source scan cap is 500 records; if NearBlocks reports another page, Sentinel marks the assessment INCOMPLETE and exposes the remaining-history flag.
-- The generic signer in the guard is an integration callback, not a built-in NEAR signer.
-- This repository does **not yet provision or cryptographically enforce a NEAR function-call access key**. A function-call key is scoped to contract calls and cannot directly transfer NEAR; native payments require a deliberately designed payment/escrow contract.
-- The offline attack demo validates guard behavior, not a live NEAR wallet integration.
-
-- Account age, prior interactions, and historical contract code changes are not currently inferred.
+- Explorer history is indexed data, not a complete archival-node history. Each source is paginated up to five pages of 100 records; remaining pages or unrecognized required fields make the assessment INCOMPLETE.
+- A provider outage or incomplete response is not evidence that an account is malicious or safe.
+- The dashboard is read-only: it does not sign or broadcast transactions.
+- The Privy gate currently protects dashboard access on the client. API endpoints still need server-side Privy token verification before this can be treated as production-grade access control.
+- The agent guard is a policy wrapper, not cryptographic enforcement. This repository does not yet provision or enforce a restricted NEAR function-call access key.
+- A function-call access key is contract-scoped and cannot directly transfer native NEAR. Native payments need a deliberately designed payment or escrow contract.
+- The offline attack demo validates guard behavior, not a live wallet integration.
+- Account age, prior interaction graphs, and historical contract-code changes are not currently inferred.
 - A code hash is a point-in-time fingerprint, not proof of malicious code.
-- ALLOW is not a guarantee of safety.
+- A wallet with no deployed contract code is not considered suspicious for that reason alone.
 
-Never put a seed phrase, private key, full-access key, or API secret in the browser bundle or repository.
+## Hackathon focus
 
-## Hackathon track
+**AI Security & Defense.** Sentinel demonstrates a deterministic pre-sign policy layer for NEAR agents, explainable on-chain evidence, human approval for WARN, fail-closed handling of incomplete assessments, and a prompt-injection denial test.
 
-Primary: **AI Security & Defense** (`security`). The prototype demonstrates deterministic transaction preflight, a policy gate, human approval for WARN, and a prompt-injection denial test. Restricted-key enforcement and an audited on-chain payment contract remain future work; they are not claimed as implemented.
+Restricted-key enforcement, a production-grade server-side authentication boundary, and an audited on-chain payment/escrow design are future work — not claimed as completed features.
