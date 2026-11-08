@@ -224,13 +224,25 @@ function renderResult(data) {
     '<div class="result-actions"><button class="secondary-btn" id="viewEvidence" type="button">Show technical data</button></div>' +
     '<pre id="evidenceJson" class="ai-text hidden"></pre>';
 
-  $('viewEvidence').addEventListener('click', () => {
-    const evidence = $('evidenceJson');
-    const opening = evidence.classList.contains('hidden');
-    evidence.textContent = JSON.stringify(data.evidence || {}, null, 2);
-    evidence.classList.toggle('hidden');
-    $('viewEvidence').textContent = opening ? 'Hide technical data' : 'Show technical data';
-  });
+  const evidenceButton = $('viewEvidence');
+  const evidencePanel = $('evidenceJson');
+  if (evidenceButton && evidencePanel) {
+    evidenceButton.addEventListener('click', () => {
+      const opening = evidencePanel.classList.contains('hidden');
+      if (opening) {
+        try {
+          evidencePanel.textContent = JSON.stringify(data.evidence ?? {}, null, 2);
+        } catch (error) {
+          evidencePanel.textContent = 'Technical data could not be displayed. Please run the scan again.';
+        }
+      }
+      evidencePanel.classList.toggle('hidden', !opening);
+      evidenceButton.textContent = opening ? 'Hide technical data' : 'Show technical data';
+      evidenceButton.setAttribute('aria-expanded', String(opening));
+    });
+    evidenceButton.setAttribute('aria-controls', 'evidenceJson');
+    evidenceButton.setAttribute('aria-expanded', 'false');
+  }
 }
 
 async function loadMetrics() {
