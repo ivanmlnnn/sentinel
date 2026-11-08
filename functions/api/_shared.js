@@ -54,7 +54,7 @@ export function analyzeTransactionBehavior(rows = [], now = Date.now()) {
   for (let left = 0, right = 0; right < recipientEvents.length; right++) {
     while (recipientEvents[right].time - recipientEvents[left].time > 300000) left++;
     const distinct = new Set(recipientEvents.slice(left, right + 1).map(event => event.recipient)).size;
-    if (distinct >= 2) {
+    if (distinct >= 30) {
       multipleRecipients5m = true;
       multipleRecipientsCount = Math.max(multipleRecipientsCount, distinct);
     }
