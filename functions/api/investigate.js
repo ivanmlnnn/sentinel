@@ -17,9 +17,9 @@ function timestampOf(row) {
   return firstValue(row?.block_timestamp, row?.block_timestamp_nanosec, row?.block_timestamp_ms, row?.timestamp, block?.block_timestamp, block?.timestamp);
 }
 
-function transactionStatus(row) {
+export function transactionStatus(row) {
   const tx = row?.transaction && typeof row.transaction === "object" ? row.transaction : row;
-  const value = firstValue(tx?.outcome_status, tx?.transaction_status, tx?.status, tx?.success, row?.outcome_status, row?.transaction_status, row?.status, row?.success, tx?.outcome?.status, row?.outcome?.status);
+  const value = firstValue(tx?.outcome_status, tx?.transaction_status, tx?.status, tx?.success, row?.outcome_status, row?.transaction_status, row?.status, row?.success, tx?.outcome?.status, row?.outcome?.status, tx?.outcomes?.status, row?.outcomes?.status);
   if (typeof value === "boolean") return value;
   if (typeof value === "string") {
     if (/success/i.test(value)) return true;
@@ -76,7 +76,7 @@ function timestampMs(value) {
   return /^\\d+(\\.\\d+)?$/.test(v) ? timestampMs(Number(v)) : Date.parse(v);
 }
 
-function findIncomingSpamSources(rows) {
+export function findIncomingSpamSources(rows) {
   const bySender = new Map();
   for (const row of rows) {
     if (row.direction !== "INCOMING" || row.is_success !== true || !row.signer_account) continue;
@@ -110,7 +110,7 @@ function findIncomingSpamSources(rows) {
   return sources.sort((a, b) => b.successful_incoming_transactions_5m - a.successful_incoming_transactions_5m);
 }
 
-function normalizeTransaction(row, accountId) {
+export function normalizeTransaction(row, accountId) {
   const tx = row?.transaction && typeof row.transaction === "object" ? row.transaction : row;
   const signer = firstString(tx?.signer_account_id, tx?.signer_id, tx?.signer, row?.signer_account_id, row?.signer_id, row?.signer);
   const receiver = firstString(tx?.receiver_account_id, tx?.receiver_id, tx?.receiver, row?.receiver_account_id, row?.receiver_id, row?.receiver);
