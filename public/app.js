@@ -124,12 +124,13 @@ async function initWallet() {
 
 function renderResult(data) {
   const el = $('result'); el.classList.remove('hidden');
-  const verdict = ['ALLOW','WARN','BLOCK'].includes(data.decision) ? data.decision : 'WARN';
-  const color = {ALLOW:'var(--green)',WARN:'var(--amber)',BLOCK:'var(--red)'}[verdict];
+  const verdict = ['ALLOW','WARN','BLOCK','INCOMPLETE'].includes(data.decision) ? data.decision : 'WARN';
+  const color = {ALLOW:'var(--green)',WARN:'var(--amber)',BLOCK:'var(--red)',INCOMPLETE:'#82919a'}[verdict];
   const explanation = {
     ALLOW:'No matching verified threat was found in the available checks. This is not a safety guarantee.',
-    WARN:'Evidence is incomplete or indicates caution. Verify independently before proceeding.',
-    BLOCK:'This account matched a verified threat report. Do not proceed unless that report is proven incorrect.'
+    WARN:'A wallet-risk signal requires review. Verify independently before proceeding.',
+    BLOCK:'This account matched a verified threat report. Do not proceed unless that report is proven incorrect.',
+    INCOMPLETE:'The receiver is not flagged as risky. The history provider did not return enough data, so the assessment is incomplete. Retry later; do not treat this as an ALLOW.'
   }[verdict];
   const factors = Array.isArray(data.risk_factors) ? data.risk_factors : [];
   const simulationNote = data.simulation ? '<p class="result-explanation"><b>SIMULATION ONLY</b> — This is a local policy demo, not a live finding about this account. It is not saved to audit metrics.</p>' : '<p class="result-explanation">'+explanation+'</p>';
