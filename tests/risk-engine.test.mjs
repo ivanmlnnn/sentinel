@@ -54,7 +54,7 @@ test('thirty recent successful signed transactions trigger elevated WARN, never 
 
 test('numeric Unix seconds timestamps are parsed correctly', () => {
   const rows = Array.from({ length: 10 }, (_, i) => ({
-    is_success: true, is_real_signer: true,
+    direction: 'OUTGOING_SIGNED', is_success: true, is_real_signer: true,
     tx_block_timestamp: Math.floor((NOW - i * 20000) / 1000)
   }));
   const behavior = analyzeTransactionBehavior(rows, NOW);
@@ -64,7 +64,7 @@ test('numeric Unix seconds timestamps are parsed correctly', () => {
 
 test('numeric string nanosecond timestamps from indexers are parsed correctly', () => {
   const rows = Array.from({ length: 10 }, (_, i) => ({
-    is_success: true, is_real_signer: true,
+    direction: 'OUTGOING_SIGNED', is_success: true, is_real_signer: true,
     tx_block_timestamp: String((NOW - i * 20000) * 1_000_000)
   }));
   const behavior = analyzeTransactionBehavior(rows, NOW);
@@ -74,7 +74,7 @@ test('numeric string nanosecond timestamps from indexers are parsed correctly', 
 
 test('old transactions do not become recent just because they are newest in the index', () => {
   const rows = Array.from({ length: 19 }, (_, i) => ({
-    is_success: true, is_real_signer: true,
+    direction: 'OUTGOING_SIGNED', is_success: true, is_real_signer: true,
     tx_block_timestamp: new Date(NOW - 10800000 - i * 1000).toISOString()
   }));
   const behavior = analyzeTransactionBehavior(rows, NOW);
