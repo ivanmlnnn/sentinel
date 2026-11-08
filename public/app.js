@@ -52,8 +52,8 @@ async function initWallet() {
   button.textContent = 'Loading NEAR wallet options…';
   try {
     // NEAR Connect is the current recommended connector in the NEAR Wallet Selector transition.
-    const { NearConnector } = await import('https://esm.sh/@hot-labs/near-connect@0.11.4');
-    connector = new NearConnector({ network:'testnet', autoConnect:false });
+    const { NearConnector } = await import('https://esm.sh/@hot-labs/near-connect@0.12.0');
+    connector = new NearConnector({ network:'testnet', features:{ testnet:true }, autoConnect:false });
     await connector.whenManifestLoaded;
 
     connector.on('wallet:signIn', event => {
@@ -83,7 +83,7 @@ async function initWallet() {
     $('walletConnectionState').textContent = walletCount
       ? 'Not connected — ' + walletCount + ' compatible Testnet wallet(s) found. Connect to autofill your account.'
       : 'No compatible Testnet wallet is currently available. You can still check any public account.';
-    console.info('NEAR Connect ready. Network: testnet. Available wallets:', walletCount);
+    console.info('NEAR Connect ready. Network: testnet. Testnet-compatible wallets:', walletCount);
   } catch (error) {
     console.error('NEAR Connect initialization failed:', error);
     button.disabled = false;
