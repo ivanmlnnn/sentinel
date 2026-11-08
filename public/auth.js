@@ -47,7 +47,7 @@ function AuthGate() {
   if (!authenticated) {
     return React.createElement('main', { className: 'sentinel-auth-screen' },
       React.createElement('section', { className: 'sentinel-auth-card' },
-        React.createElement('div', { className: 'sentinel-auth-mark' }, 'N'),
+        React.createElement('div', { className: 'sentinel-auth-mark' }, React.createElement('img', { src: '/wayang-logo.jpg?v=2', alt: 'Wayang Tech and Kitchen Needs' })),
         React.createElement('p', { className: 'sentinel-auth-kicker' }, 'NEAR PROTOCOL / ACCOUNT INTELLIGENCE'),
         React.createElement('h1', null, 'NEAR SENTINEL'),
         React.createElement('p', { className: 'sentinel-auth-copy' }, 'A clearer view of account risk before you interact with the NEAR network.'),
