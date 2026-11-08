@@ -471,3 +471,118 @@ body{background-image:radial-gradient(ellipse at 82% 8%,rgba(139,212,239,.10),tr
 .protocol-logo{width:120px;height:120px;overflow:hidden;border-radius:0;background:transparent}
 .protocol-logo img{width:100%;height:100%;object-fit:contain}
 @media(max-width:640px){.sentinel-auth-mark{width:150px;height:150px}.brand-logo{width:42px;height:42px}.protocol-logo{width:90px;height:90px}}
+
+
+/* Automatic responsive layout: adapts to available screen width */
+.main{width:100%;max-width:1540px;margin-inline:auto}
+.topbar{width:100%;padding-inline:clamp(14px,4vw,64px)}
+.main{padding-inline:clamp(14px,4vw,64px)}
+img,svg,video{max-width:100%;height:auto}
+button,a,input,textarea{touch-action:manipulation}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #8bd4ef;outline-offset:3px}
+
+/* Wide desktop */
+@media(min-width:1440px){
+ .main{max-width:1640px}
+ .hero{min-height:410px}
+ .hero-copy{max-width:720px}
+ .chain-visual{width:min(34vw,430px);height:290px}
+ .metrics{grid-template-columns:repeat(5,minmax(0,1fr))}
+ .scan-layout{grid-template-columns:minmax(0,1.7fr) minmax(300px,.8fr);gap:36px}
+ .threat-layout{grid-template-columns:minmax(0,1.4fr) minmax(280px,.8fr);gap:36px}
+}
+
+/* Tablet and compact laptops */
+@media(min-width:761px) and (max-width:1100px){
+ .topbar{height:auto;min-height:68px;flex-wrap:wrap;gap:8px 18px;padding-block:12px}
+ .main-nav{order:3;flex:1 0 100%;overflow-x:auto;scrollbar-width:none}
+ .main-nav::-webkit-scrollbar{display:none}
+ .top-actions{margin-left:auto}
+ .hero{min-height:300px}
+ .chain-visual{width:260px;height:220px}
+ .metrics{grid-template-columns:repeat(3,minmax(0,1fr));row-gap:14px}
+ .metric:nth-child(3){border-right:0}
+ .metric:nth-child(4){padding-left:0}
+ .scan-layout{grid-template-columns:minmax(0,1.2fr) minmax(240px,.8fr);gap:20px}
+ .scan-panel,.decision-panel,.audit-panel,.registry-panel,.fingerprint-panel{padding:18px 0}
+}
+
+/* Phones: single-column content, touch-sized controls, compact sticky navigation */
+@media(max-width:760px){
+ html{scroll-padding-top:116px}
+ .topbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 10px;height:auto;min-height:0;padding:10px 14px}
+ .brand{min-width:0;gap:8px}
+ .brand-name{font-size:10px;letter-spacing:1px}
+ .brand-logo{width:36px;height:36px}
+ .top-actions{grid-column:2;grid-row:1;display:flex;align-items:center;gap:6px}
+ .wallet-btn{min-height:40px;padding:8px 10px;font-size:9px;white-space:nowrap}
+ .wallet-help-link{display:none}
+ .main-nav{grid-column:1/-1;grid-row:2;display:flex;min-width:0;overflow-x:auto;gap:4px;padding:4px 0 6px;scrollbar-width:none}
+ .main-nav::-webkit-scrollbar{display:none}
+ .nav-item{flex:0 0 auto;padding:9px 10px;font-size:10px;white-space:nowrap}
+ .main{padding:0 14px 28px}
+ .hero{min-height:0}
+ .hero-copy{padding:34px 0 28px}
+ .hero h1{font-size:clamp(32px,9vw,46px);line-height:1.08;letter-spacing:-1.7px}
+ .hero-sub{font-size:13px;max-width:38ch}
+ .chain-visual{display:none}
+ .hero-actions{align-items:flex-start;gap:10px;flex-wrap:wrap}
+ .cta{min-height:44px;display:inline-flex;align-items:center}
+ .hero-note{font-size:8px;align-self:center}
+ .wallet-guide{padding:14px;margin-top:14px}
+ .wallet-guide-grid{grid-template-columns:1fr;gap:12px}
+ .wallet-guide-grid>div{padding-left:12px}
+ .metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:0;padding:12px 0}
+ .metric{min-width:0;padding:12px 10px!important;border-bottom:1px solid var(--line)}
+ .metric:nth-child(2n){border-right:0}
+ .metric:last-child{grid-column:1/-1;border-bottom:0}
+ .metric b{font-size:clamp(19px,6vw,24px);overflow-wrap:anywhere}
+ .section-heading{margin:28px 0 12px;align-items:flex-start}
+ .section-heading h2{font-size:21px}
+ .section-meta{max-width:120px;font-size:7px;line-height:1.5;text-align:right}
+ .scan-layout,.threat-layout{grid-template-columns:minmax(0,1fr);gap:12px}
+ .scan-panel,.decision-panel,.audit-panel,.registry-panel,.fingerprint-panel{min-width:0;padding:16px 0}
+ .panel-top{gap:8px;font-size:9px}
+ .form-row{grid-template-columns:minmax(0,1fr) minmax(92px,.7fr);gap:8px}
+ .account-input{min-width:0}
+ .account-input input{min-width:0}
+ .account-input button{padding-inline:9px}
+ .form-row input{width:100%;padding:11px 9px}
+ .scan-submit{display:grid;grid-template-columns:1fr;gap:12px}
+ .scan-submit .primary-btn{width:100%;min-height:46px}
+ .verdict{gap:10px}
+ .verdict>span{font-size:7px}
+ .demo-actions>div{display:flex;flex-wrap:wrap;gap:7px}
+ .demo-actions .secondary-btn{margin:8px 0 0;min-height:40px}
+ .table-head,.recent-item{grid-template-columns:minmax(0,1fr) 66px 42px;gap:6px}
+ .recent-address{overflow-wrap:anywhere;word-break:break-word}
+ .registry-numbers{gap:28px}
+ .report-form input,.report-form textarea{width:100%;min-height:44px}
+ .protocol{gap:14px;align-items:center}
+ .protocol p{font-size:11px}
+ .protocol-logo{flex:0 0 76px;width:76px;height:76px}
+ footer{gap:8px;line-height:1.6}
+ .toast{left:12px;right:12px;bottom:12px;text-align:center}
+}
+
+/* Narrow phones */
+@media(max-width:380px){
+ .topbar{padding-inline:10px}
+ .brand-logo{width:30px;height:30px}
+ .brand-name{font-size:9px}
+ .wallet-btn{font-size:8px;padding-inline:8px}
+ .main{padding-inline:11px}
+ .hero h1{font-size:32px}
+ .form-row{grid-template-columns:1fr}
+ .section-meta{max-width:105px}
+ .metric span,.metric small{font-size:7px}
+ .demo-actions .secondary-btn{flex:1 1 30%;padding-inline:6px;font-size:8px}
+}
+
+/* Landscape phones: use the extra width without forcing desktop-sized text */
+@media(max-width:760px) and (orientation:landscape){
+ .hero-copy{padding-block:24px}
+ .hero h1{font-size:clamp(30px,6vw,40px)}
+ .metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .metric:last-child{grid-column:auto}
+}
