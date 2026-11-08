@@ -63,6 +63,53 @@ async function fetchAllPages(baseUrl, headers) {
   };
 }
 
+function timestampMs(value) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const n = Math.abs(value);
+    if (n >= 1e17) return value / 1e6;
+    if (n >= 1e14) return value / 1e3;
+    if (n >= 1e11) return value;
+    return value * 1000;
+  }
+  if (typeof value !== "string" || !value.trim()) return NaN;
+  const v = value.trim();
+  return /^\\d+(\\.\\d+)?$/.test(v) ? timestampMs(Number(v)) : Date.parse(v);
+}
+
+function findIncomingSpamSources(rows) {
+  const bySender = new Map();
+  for (const row of rows) {
+    if (row.direction !== "INCOMING" || row.is_success !== true || !row.signer_account) continue;
+    const time = timestampMs(row.block_timestamp);
+    if (!Number.isFinite(time) || time <= 0) continue;
+    const key = row.signer_account.toLowerCase();
+    if (!bySender.has(key)) bySender.set(key, []);
+    bySender.get(key).push({ time, hash: row.transaction_hash });
+  }
+
+  const sources = [];
+  for (const [sender, entries] of bySender) {
+    entries.sort((a, b) => a.time - b.time);
+    let left = 0;
+    let best = null;
+    for (let right = 0; right < entries.length; right++) {
+      while (entries[right].time - entries[left].time > 300000) left++;
+      const count = right - left + 1;
+      if (count > 10 && (!best || count > best.count)) {
+        best = { count, first: entries[left].time, last: entries[right].time, hashes: entries.slice(left, right + 1).map(x => x.hash).filter(Boolean) };
+      }
+    }
+    if (best) sources.push({
+      sender_account: sender,
+      successful_incoming_transactions_5m: best.count,
+      first_transaction_at: new Date(best.first).toISOString(),
+      last_transaction_at: new Date(best.last).toISOString(),
+      transaction_hashes: best.hashes
+    });
+  }
+  return sources.sort((a, b) => b.successful_incoming_transactions_5m - a.successful_incoming_transactions_5m);
+}
+
 function normalizeTransaction(row, accountId) {
   const tx = row?.transaction && typeof row.transaction === "object" ? row.transaction : row;
   const signer = firstString(tx?.signer_account_id, tx?.signer_id, tx?.signer, row?.signer_account_id, row?.signer_id, row?.signer);
@@ -179,6 +226,7 @@ export async function onRequestPost({ request, env }) {
     const transactions = txHistory ? txHistory.rows.map(row => normalizeTransaction(row, receiver)) : [];
     const receipts = receiptHistory ? receiptHistory.rows.map(row => normalizeReceipt(row, receiver)) : [];
     const ftTransfers = ftHistory ? ftHistory.rows.map(row => normalizeFtTransfer(row, receiver)) : [];
+    const incomingSpamSources = findIncomingSpamSources(transactions);
     const txSchemaComplete = transactions.every(row => row.transaction_hash && row.signer_account && row.status !== "UNKNOWN" && row.block_timestamp !== null);
     const receiptSchemaRecognized = receipts.every(row => row.schema_recognized);
     const ftSchemaRecognized = ftTransfers.every(row => row.schema_recognized);
@@ -244,7 +292,7 @@ export async function onRequestPost({ request, env }) {
       wallet_activity: {
         wallet: receiver,
         explorer_url: `${explorer}/address/${encodeURIComponent(receiver)}`,
-        native_transactions: { available: Boolean(txHistory), count: transactions.length, pages_fetched: txHistory?.pages || 0, complete: Boolean(txHistory?.complete && txSchemaComplete), endpoint: `${nearblocksBase}/v3/accounts/${encodeURIComponent(receiver)}/txns`, records: transactions, error: txError },
+        native_transactions: { available: Boolean(txHistory), count: transactions.length, pages_fetched: txHistory?.pages || 0, complete: Boolean(txHistory?.complete && txSchemaComplete), endpoint: `${nearblocksBase}/v3/accounts/${encodeURIComponent(receiver)}/txns`, records: transactions, incoming_spam_sources: incomingSpamSources, error: txError },
         receipts: { available: Boolean(receiptHistory), count: receipts.length, pages_fetched: receiptHistory?.pages || 0, complete: Boolean(receiptHistory?.complete && receiptSchemaRecognized), endpoint: `${nearblocksBase}/v3/accounts/${encodeURIComponent(receiver)}/receipts`, records: receipts, error: receiptError },
         fungible_token_transfers: { available: Boolean(ftHistory), count: ftTransfers.length, pages_fetched: ftHistory?.pages || 0, complete: Boolean(ftHistory?.complete && ftSchemaRecognized), endpoint: `${nearblocksBase}/v3/accounts/${encodeURIComponent(receiver)}/ft-txns`, records: ftTransfers, error: ftError }
       },
@@ -253,7 +301,7 @@ export async function onRequestPost({ request, env }) {
       assessment_status,
       limitations: [
         `Each Explorer source is paginated up to ${MAX_PAGES_PER_SOURCE} pages of ${PAGE_SIZE}; if a next-page cursor remains, the result is INCOMPLETE.`,
-        "Native transaction activity is retained for incoming and outgoing directions; spam frequency counts only successful transactions signed by the inspected wallet.",
+        "The inspected wallet is assessed only on successful outgoing transactions it signed. Incoming spam is attributed separately to the sender when that sender exceeds 10 successful incoming transactions within any five-minute window.",
         "Receipts and token transfers are separately indexed sources; unknown row schemas are not guessed and keep the assessment INCOMPLETE.",
         "Transaction frequency is an anomaly signal, not proof of fraud; it produces WARN, not an automatic BLOCK.",
         "NO_CONTRACT_CODE is informational and is not treated as suspicious.",
