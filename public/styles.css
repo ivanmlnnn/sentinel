@@ -586,3 +586,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
  .metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
  .metric:last-child{grid-column:auto}
 }
+
+
+/* Compact circular profile avatar; never expose the signed-in email. */
+.sentinel-session-avatar{width:34px;height:34px;min-width:34px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;background:linear-gradient(145deg,#1c766b,#103d3b);border:1px solid rgba(130,210,190,.55);box-shadow:0 0 0 3px rgba(39,125,108,.12)}
+.sentinel-session-avatar svg{width:19px;height:19px;fill:#e5fff6}
+@media(max-width:760px){.sentinel-session-avatar{width:32px;height:32px;min-width:32px}}
