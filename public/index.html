@@ -41,7 +41,8 @@
    <label for="receiver">WHICH NEAR ACCOUNT DO YOU WANT TO CHECK?</label>
    <div class="account-input"><span>near://</span><input id="receiver" placeholder="receiver.near" autocomplete="off" required maxlength="64"><button type="button" id="pasteReceiver">PASTE</button></div>
    <div class="form-row"><div><label for="sender">YOUR CONNECTED ACCOUNT <small>OPTIONAL</small></label><input id="sender" placeholder="Connect wallet"></div><div><label for="amount">PLANNED AMOUNT <small>NEAR · OPTIONAL</small></label><input id="amount" type="number" min="0" step="0.0001" value="0"></div></div>
-   <div class="scan-submit"><span>◈ Current account state + code hash</span><button class="primary-btn" id="scanBtn" type="submit">Check address <b>↗</b></button></div>
+   <p id="walletConnectionState" class="wallet-connection-state" aria-live="polite">Not connected — you can still check any public NEAR account.</p>
+   <div class="scan-submit"><span>◈ Public blockchain data only</span><button class="primary-btn" id="scanBtn" type="submit">Check address <b>↗</b></button></div>
   </form>
   <div id="result" class="result hidden" aria-live="polite"></div>
  </div>
