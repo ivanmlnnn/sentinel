@@ -6,8 +6,12 @@ const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matche
 
 if('IntersectionObserver' in window && !reducedMotion){
   const revealObserver=new IntersectionObserver(entries=>{
-    entries.forEach(entry=>entry.target.classList.toggle('visible',entry.isIntersecting));
-  },{threshold:.06,rootMargin:'0px 0px -8% 0px'});
+    entries.forEach(entry=>{
+      if(!entry.isIntersecting)return;
+      entry.target.classList.add('visible');
+      revealObserver.unobserve(entry.target);
+    });
+  },{threshold:0,rootMargin:'0px 0px -8% 0px'});
   revealNodes.forEach(node=>revealObserver.observe(node));
   const sectionObserver=new IntersectionObserver(entries=>{
     entries.forEach(entry=>{
