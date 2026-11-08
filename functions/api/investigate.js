@@ -1,170 +1,284 @@
 import { json, readJson, validAccountId, decideRisk, analyzeTransactionBehavior } from "./_shared.js";
 
-export async function onRequestPost({ request, env }) {
-  const body = await readJson(request);
-  if (!body) return json({ error: "Invalid JSON body." }, 400);
-  const receiver = String(body.receiver_account || "").trim().toLowerCase();
-  const sender = body.sender_account ? String(body.sender_account).trim().toLowerCase() : null;
-  const amount = Number(body.amount_near || 0);
-  if (!validAccountId(receiver)) return json({ error: "Valid receiver_account is required." }, 400);
-  if (sender && !validAccountId(sender)) return json({ error: "Invalid sender_account." }, 400);
-  if (!Number.isFinite(amount) || amount < 0 || amount > 1_000_000_000) return json({ error: "amount_near must be a valid non-negative number." }, 400);
+const PAGE_SIZE = 100;
+const MAX_PAGES_PER_SOURCE = 5;
+const REQUEST_TIMEOUT_MS = 10000;
 
-  const network = env.NEAR_NETWORK === "mainnet" ? "mainnet" : "testnet";
-  const rpc = network === "mainnet" ? "https://rpc.mainnet.fastnear.com" : "https://rpc.testnet.fastnear.com";
-  const nearblocksBase = network === "mainnet" ? "https://api.nearblocks.io" : "https://api-testnet.nearblocks.io";
-  let account = null;
-  let rpcError = null;
-  try {
-    const response = await fetch(rpc, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: "sentinel", method: "query", params: { request_type: "view_account", finality: "final", account_id: receiver } }),
-      signal: AbortSignal.timeout(12000)
-    });
-    const data = await response.json();
-    if (data.result) account = data.result;
-    else rpcError = data.error?.message || "Account not found or RPC error";
-  } catch (error) { rpcError = error?.message || "NEAR RPC unavailable"; }
+function firstString(...values) {
+  return values.find(value => typeof value === "string" && value.length) || null;
+}
 
-  // NearBlocks v3 is the indexed transaction source. v3 is GET-only and
-  // uses { data, meta } envelopes with cursor pagination (not the legacy v1/v2 shape).
-  let behavior = null;
-  let historyError = null;
-  let historyStatus = null;
-  let ftTransfers = null;
-  let ftNextPageAvailable = false;
-  let ftHistoryError = null;
-  let ftHistoryStatus = null;
-  const historyUrl = `${nearblocksBase}/v3/accounts/${encodeURIComponent(receiver)}/txns?limit=100`;
-  const ftHistoryUrl = `${nearblocksBase}/v3/accounts/${encodeURIComponent(receiver)}/ft-txns?limit=100`;
-  try {
-    if (!env.NEARBLOCKS_API_KEY) throw new Error("NEARBLOCKS_API_KEY is not configured on the Worker.");
-    const historyResponse = await fetch(historyUrl, {
+function firstValue(...values) {
+  return values.find(value => value !== undefined && value !== null) ?? null;
+}
+
+function timestampOf(row) {
+  const block = row?.block && typeof row.block === "object" ? row.block : {};
+  return firstValue(row?.block_timestamp, row?.block_timestamp_nanosec, row?.block_timestamp_ms, row?.timestamp, block?.block_timestamp, block?.timestamp);
+}
+
+function transactionStatus(row) {
+  const tx = row?.transaction && typeof row.transaction === "object" ? row.transaction : row;
+  const value = firstValue(tx?.outcome_status, tx?.transaction_status, tx?.status, tx?.success, row?.outcome_status, row?.transaction_status, row?.status, row?.success, tx?.outcome?.status, row?.outcome?.status);
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    if (/success/i.test(value)) return true;
+    if (/fail|error|failure/i.test(value)) return false;
+  }
+  return null;
+}
+
+async function fetchAllPages(baseUrl, headers) {
+  const rows = [];
+  const cursors = new Set();
+  let next = null;
+  let pages = 0;
+  do {
+    const url = new URL(baseUrl);
+    url.searchParams.set("limit", String(PAGE_SIZE));
+    if (next) url.searchParams.set("next", next);
+    const response = await fetch(url.toString(), {
       method: "GET",
-      headers: { authorization: `Bearer ${env.NEARBLOCKS_API_KEY}`, accept: "application/json" },
-      signal: AbortSignal.timeout(12000)
+      headers,
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
     });
-    historyStatus = historyResponse.status;
-    if (!historyResponse.ok) {
-      const code = historyResponse.status;
-      throw new Error(`NearBlocks transaction history returned HTTP ${code}`);
+    if (!response.ok) throw new Error(`NearBlocks returned HTTP ${response.status}`);
+    const payload = await response.json();
+    if (!payload || !Array.isArray(payload.data)) {
+      throw new Error("NearBlocks v3 response did not contain a data array.");
     }
-    const history = await historyResponse.json();
-    if (!Array.isArray(history.data)) throw new Error("NearBlocks v3 response did not contain a data array; refusing to infer transaction activity from an unknown schema.");
+    rows.push(...payload.data);
+    pages += 1;
+    const candidate = payload.meta?.next_page || null;
+    if (candidate && cursors.has(candidate)) throw new Error("NearBlocks returned a repeated pagination cursor; stopping to prevent duplicate history.");
+    if (candidate) cursors.add(candidate);
+    next = candidate;
+  } while (next && pages < MAX_PAGES_PER_SOURCE);
 
-    const normalized = history.data.map(row => {
-      const tx = row?.transaction && typeof row.transaction === "object" ? row.transaction : row;
-      const signer = tx?.signer_account_id ?? tx?.signer_id ?? tx?.signer ?? row?.signer_account_id ?? row?.signer_id ?? row?.signer;
-      const rawStatus = tx?.outcome_status ?? tx?.transaction_status ?? tx?.status ?? tx?.success ?? row?.outcome_status ?? row?.transaction_status ?? row?.status ?? row?.success ?? tx?.outcome?.status ?? row?.outcome?.status;
-      const rawTimestamp = tx?.block_timestamp ?? tx?.block_timestamp_nanosec ?? tx?.block_timestamp_ms ?? tx?.timestamp ?? row?.block_timestamp ?? row?.block_timestamp_nanosec ?? row?.block_timestamp_ms ?? row?.timestamp;
-      let isSuccess = null;
-      if (typeof rawStatus === "boolean") isSuccess = rawStatus;
-      else if (typeof rawStatus === "string") {
-        if (/success/i.test(rawStatus)) isSuccess = true;
-        else if (/fail|error|failure/i.test(rawStatus)) isSuccess = false;
-      }
-      if (typeof signer !== "string" || isSuccess === null || rawTimestamp == null) {
-        throw new Error("NearBlocks v3 returned transactions without a recognized signer, success status, or block timestamp. Assessment is incomplete rather than guessing.");
-      }
-      return {
-        is_success: isSuccess,
-        is_real_signer: signer.toLowerCase() === receiver,
-        tx_block_timestamp: rawTimestamp,
-        transaction_hash: tx?.transaction_hash ?? tx?.transaction_hash_base58 ?? tx?.hash ?? row?.transaction_hash ?? row?.hash ?? null
-      };
-    });
-    behavior = analyzeTransactionBehavior(normalized);
-    behavior.total_indexed = history.data.length;
-    behavior.source = "NearBlocks v3";
-    behavior.provider = "NearBlocks";
-    behavior.next_page_available = Boolean(history.meta?.next_page);
-    behavior.explorer_url = `https://${network === "mainnet" ? "nearblocks.io" : "testnet.nearblocks.io"}/address/${encodeURIComponent(receiver)}`;
-  } catch (error) {
-    historyError = error?.message || "NearBlocks transaction history unavailable";
-  }
-
-  // NearBlocks v3 exposes fungible-token transfers separately from account transactions.
-  // Keep this source independent: a successful empty array is valid; an HTTP/schema error is not.
-  try {
-    if (!env.NEARBLOCKS_API_KEY) throw new Error("NEARBLOCKS_API_KEY is not configured on the Worker.");
-    const ftResponse = await fetch(ftHistoryUrl, {
-      method: "GET",
-      headers: { authorization: `Bearer ${env.NEARBLOCKS_API_KEY}`, accept: "application/json" },
-      signal: AbortSignal.timeout(12000)
-    });
-    ftHistoryStatus = ftResponse.status;
-    if (!ftResponse.ok) throw new Error(`NearBlocks FT history returned HTTP ${ftResponse.status}`);
-    const ftPayload = await ftResponse.json();
-    if (!Array.isArray(ftPayload.data)) throw new Error("NearBlocks v3 FT response did not contain a data array; token activity cannot be verified.");
-    ftNextPageAvailable = Boolean(ftPayload.meta?.next_page);
-    ftTransfers = ftPayload.data.map(row => {
-      const block = row?.block && typeof row.block === "object" ? row.block : {};
-      const from = row?.old_owner_id ?? row?.sender_account_id ?? row?.sender_id ?? row?.from_account_id ?? null;
-      const to = row?.new_owner_id ?? row?.receiver_account_id ?? row?.receiver_id ?? row?.to_account_id ?? null;
-      const amount = row?.amount ?? row?.delta_amount ?? null;
-      const timestamp = row?.block_timestamp ?? row?.block_timestamp_nanosec ?? row?.timestamp ?? block?.block_timestamp ?? block?.timestamp ?? null;
-      const hash = row?.transaction_hash ?? row?.transaction_hash_base58 ?? row?.hash ?? null;
-      if (typeof from !== "string" || typeof to !== "string" || amount == null) {
-        throw new Error("NearBlocks FT rows did not contain recognized sender, receiver, and amount fields; token activity is incomplete.");
-      }
-      return {
-        from_account: from,
-        to_account: to,
-        amount: String(amount),
-        token_contract: row?.contract_account_id ?? row?.contract ?? null,
-        token_metadata: row?.meta ?? null,
-        event_type: row?.event_type ?? "ft_transfer",
-        transaction_hash: hash,
-        block_timestamp: timestamp,
-        receipt_id: row?.receipt_id ?? null,
-        direction: to.toLowerCase() === receiver ? "IN" : from.toLowerCase() === receiver ? "OUT" : "RELATED"
-      };
-    });
-  } catch (error) {
-    ftHistoryError = error?.message || "NearBlocks fungible-token history unavailable";
-  }
-
-  const threat = await env.DB.prepare("SELECT id, category, evidence, status FROM threat_reports WHERE account_id = ? AND status = 'verified' ORDER BY created_at DESC LIMIT 1").bind(receiver).first();
-  const verdict = decideRisk(account, threat, amount, behavior);
-  // Provider outages are assessment-quality problems, not evidence against the receiver.
-  // Keep independent wallet signals (e.g. missing account, large transfer, verified threat)
-  // intact; otherwise return INCOMPLETE rather than inflating the wallet risk score.
-  const historyUnavailable = !behavior || !Array.isArray(ftTransfers);
-  if (!behavior) {
-    const rateLimited = historyStatus === 429 || /HTTP 429/.test(historyError || "");
-    verdict.risk_factors.push({
-      code: rateLimited ? "TRANSACTION_HISTORY_RATE_LIMITED" : "TRANSACTION_HISTORY_UNAVAILABLE",
-      severity: "info",
-      detail: rateLimited
-        ? "NearBlocks rate-limited this request (HTTP 429). No conclusion about receiver activity can be made."
-        : (historyError || "Transaction history could not be verified; activity review is incomplete.")
-    });
-    if (!threat && verdict.risk_score === 0) verdict.decision = "INCOMPLETE";
-  }
-  if (!Array.isArray(ftTransfers)) {
-    const rateLimited = ftHistoryStatus === 429 || /HTTP 429/.test(ftHistoryError || "");
-    verdict.risk_factors.push({
-      code: rateLimited ? "FT_HISTORY_RATE_LIMITED" : "FT_HISTORY_UNAVAILABLE",
-      severity: "info",
-      detail: ftHistoryError || "Fungible-token transfer history could not be verified."
-    });
-    if (!threat && verdict.risk_score === 0) verdict.decision = "INCOMPLETE";
-  }
-  const assessment_status = historyUnavailable ? "INCOMPLETE" : "COMPLETE";
-  const evidence = {
-    network, source: rpc, transaction_history_provider: "NearBlocks v3", checked_at: new Date().toISOString(),
-    account: account ? { account_exists: true, balance_yocto: account.amount, locked_yocto: account.locked, code_hash: account.code_hash, storage_usage: account.storage_usage, contract_present: account.code_hash !== "11111111111111111111111111111111" } : { account_exists: false, rpc_error: rpcError },
-    transaction_history: behavior || { available: false, source: "NearBlocks v3", error: historyError },
-    transaction_history_endpoint: historyUrl,
-    fungible_token_history: Array.isArray(ftTransfers) ? { available: true, source: "NearBlocks v3", endpoint: ftHistoryUrl, observed_transfers: ftTransfers.length, transfers: ftTransfers, next_page_available: ftNextPageAvailable } : { available: false, source: "NearBlocks v3", endpoint: ftHistoryUrl, error: ftHistoryError },
-    verified_threat: threat || null,
-    assessment_status,
-    limitations: ["A provider outage or HTTP 429 makes the assessment INCOMPLETE; it is not a receiver-risk signal and must not be treated as ALLOW.", "Transaction frequency is an anomaly signal, not proof of fraud; it produces WARN, not an automatic BLOCK.", "Native transaction history currently requests up to 100 recent account transactions; token transfers are retrieved separately from the NearBlocks v3 FT endpoint.", "Account age and historical contract code changes are not inferred from this response.", "This is a risk screening result, not a guarantee that a transaction is safe."]
+  return {
+    rows,
+    pages,
+    next_page_available: Boolean(next),
+    complete: !next
   };
-  const id = crypto.randomUUID();
-  const createdAt = new Date().toISOString();
-  await env.DB.prepare("INSERT INTO investigations (id, sender_account, receiver_account, amount_near, network, decision, risk_score, risk_factors, evidence, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-    .bind(id, sender, receiver, amount, network, verdict.decision, verdict.risk_score, JSON.stringify(verdict.risk_factors), JSON.stringify(evidence), createdAt).run();
-  return json({ id, created_at: createdAt, receiver_account: receiver, amount_near: amount, ...verdict, assessment_status, evidence });
+}
+
+function normalizeTransaction(row, accountId) {
+  const tx = row?.transaction && typeof row.transaction === "object" ? row.transaction : row;
+  const signer = firstString(tx?.signer_account_id, tx?.signer_id, tx?.signer, row?.signer_account_id, row?.signer_id, row?.signer);
+  const receiver = firstString(tx?.receiver_account_id, tx?.receiver_id, tx?.receiver, row?.receiver_account_id, row?.receiver_id, row?.receiver);
+  const timestamp = timestampOf(tx) ?? timestampOf(row);
+  const status = transactionStatus(row);
+  const hash = firstString(tx?.transaction_hash, tx?.transaction_hash_base58, tx?.hash, row?.transaction_hash, row?.transaction_hash_base58, row?.hash);
+  const actions = Array.isArray(tx?.actions) ? tx.actions : Array.isArray(row?.actions) ? row.actions : [];
+  return {
+    transaction_hash: hash,
+    signer_account: signer,
+    receiver_account: receiver,
+    direction: signer?.toLowerCase() === accountId ? "OUTGOING_SIGNED" : receiver?.toLowerCase() === accountId ? "INCOMING" : "RELATED",
+    status: status === true ? "SUCCESS" : status === false ? "FAILED" : "UNKNOWN",
+    is_success: status,
+    is_real_signer: signer?.toLowerCase() === accountId,
+    block_timestamp: timestamp,
+    action_count: actions.length,
+    action_kinds: actions.map(action => firstString(action?.action, action?.kind, action?.type)).filter(Boolean)
+  };
+}
+
+function normalizeReceipt(row, accountId) {
+  const receipt = row?.receipt && typeof row.receipt === "object" ? row.receipt : row;
+  const predecessor = firstString(receipt?.predecessor_account_id, receipt?.predecessor_id, receipt?.from_account_id, receipt?.sender_account_id, row?.predecessor_account_id, row?.predecessor_id, row?.from_account_id);
+  const receiver = firstString(receipt?.receiver_account_id, receipt?.receiver_id, receipt?.to_account_id, row?.receiver_account_id, row?.receiver_id, row?.to_account_id);
+  const receiptId = firstString(receipt?.receipt_id, row?.receipt_id);
+  const timestamp = timestampOf(receipt) ?? timestampOf(row);
+  const status = transactionStatus(row);
+  return {
+    receipt_id: receiptId,
+    predecessor_account: predecessor,
+    receiver_account: receiver,
+    direction: receiver?.toLowerCase() === accountId ? "INCOMING" : predecessor?.toLowerCase() === accountId ? "OUTGOING" : "RELATED",
+    status: status === true ? "SUCCESS" : status === false ? "FAILED" : "UNKNOWN",
+    block_timestamp: timestamp,
+    schema_recognized: Boolean(predecessor || receiver || receiptId || timestamp)
+  };
+}
+
+function normalizeFtTransfer(row, accountId) {
+  const block = row?.block && typeof row.block === "object" ? row.block : {};
+  const from = firstString(row?.old_owner_id, row?.sender_account_id, row?.sender_id, row?.from_account_id, row?.from_owner_id, row?.old_owner);
+  const to = firstString(row?.new_owner_id, row?.receiver_account_id, row?.receiver_id, row?.to_account_id, row?.to_owner_id, row?.new_owner);
+  return {
+    from_account: from,
+    to_account: to,
+    amount: firstValue(row?.amount, row?.delta_amount, row?.amount_raw),
+    token_contract: firstString(row?.contract_account_id, row?.contract),
+    token_metadata: row?.meta ?? null,
+    event_type: firstString(row?.event_type, row?.event) || "ft_transfer",
+    transaction_hash: firstString(row?.transaction_hash, row?.transaction_hash_base58, row?.hash),
+    block_timestamp: timestampOf(row) ?? timestampOf(block),
+    receipt_id: firstString(row?.receipt_id),
+    direction: to?.toLowerCase() === accountId ? "IN" : from?.toLowerCase() === accountId ? "OUT" : "UNKNOWN",
+    schema_recognized: Boolean(from && to && firstValue(row?.amount, row?.delta_amount, row?.amount_raw) !== null)
+  };
+}
+
+export async function onRequestPost({ request, env }) {
+  try {
+    const body = await readJson(request);
+    if (!body) return json({ error: "Invalid JSON body." }, 400);
+    const receiver = String(body.receiver_account || "").trim().toLowerCase();
+    const sender = body.sender_account ? String(body.sender_account).trim().toLowerCase() : null;
+    const amount = Number(body.amount_near || 0);
+    if (!validAccountId(receiver)) return json({ error: "Valid receiver_account is required." }, 400);
+    if (sender && !validAccountId(sender)) return json({ error: "Invalid sender_account." }, 400);
+    if (!Number.isFinite(amount) || amount < 0 || amount > 1_000_000_000) return json({ error: "amount_near must be a valid non-negative number." }, 400);
+
+    const network = env.NEAR_NETWORK === "mainnet" ? "mainnet" : "testnet";
+    const rpc = network === "mainnet" ? "https://rpc.mainnet.fastnear.com" : "https://rpc.testnet.fastnear.com";
+    const nearblocksBase = network === "mainnet" ? "https://api.nearblocks.io" : "https://api-testnet.nearblocks.io";
+    const explorer = network === "mainnet" ? "https://nearblocks.io" : "https://testnet.nearblocks.io";
+    let account = null;
+    let rpcError = null;
+
+    try {
+      const response = await fetch(rpc, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: "sentinel", method: "query", params: { request_type: "view_account", finality: "final", account_id: receiver } }),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+      });
+      const data = await response.json();
+      if (data.result) account = data.result;
+      else rpcError = data.error?.message || "Account not found or RPC error";
+    } catch (error) { rpcError = error?.message || "NEAR RPC unavailable"; }
+
+    let txHistory = null;
+    let receiptHistory = null;
+    let ftHistory = null;
+    let txError = null;
+    let receiptError = null;
+    let ftError = null;
+    const headers = env.NEARBLOCKS_API_KEY
+      ? { authorization: `Bearer ${env.NEARBLOCKS_API_KEY}`, accept: "application/json" }
+      : null;
+
+    if (!headers) {
+      txError = receiptError = ftError = "NEARBLOCKS_API_KEY is not configured on the Worker.";
+    } else {
+      const base = `${nearblocksBase}/v3/accounts/${encodeURIComponent(receiver)}`;
+      const results = await Promise.allSettled([
+        fetchAllPages(`${base}/txns`, headers),
+        fetchAllPages(`${base}/receipts`, headers),
+        fetchAllPages(`${base}/ft-txns`, headers)
+      ]);
+      if (results[0].status === "fulfilled") txHistory = results[0].value; else txError = results[0].reason?.message || "Transaction history unavailable";
+      if (results[1].status === "fulfilled") receiptHistory = results[1].value; else receiptError = results[1].reason?.message || "Receipt history unavailable";
+      if (results[2].status === "fulfilled") ftHistory = results[2].value; else ftError = results[2].reason?.message || "Fungible-token history unavailable";
+    }
+
+    const transactions = txHistory ? txHistory.rows.map(row => normalizeTransaction(row, receiver)) : [];
+    const receipts = receiptHistory ? receiptHistory.rows.map(row => normalizeReceipt(row, receiver)) : [];
+    const ftTransfers = ftHistory ? ftHistory.rows.map(row => normalizeFtTransfer(row, receiver)) : [];
+    const txSchemaComplete = transactions.every(row => row.transaction_hash && row.status !== "UNKNOWN" && row.block_timestamp !== null);
+    const receiptSchemaRecognized = receipts.every(row => row.schema_recognized);
+    const ftSchemaRecognized = ftTransfers.every(row => row.schema_recognized);
+
+    let behavior = null;
+    if (txHistory) {
+      const behaviorRows = transactions.map(row => ({
+        is_success: row.is_success,
+        is_real_signer: row.is_real_signer,
+        tx_block_timestamp: row.block_timestamp
+      }));
+      behavior = analyzeTransactionBehavior(behaviorRows);
+      behavior.total_indexed = transactions.length;
+      behavior.source = "NearBlocks v3";
+      behavior.provider = "NearBlocks";
+      behavior.pages_fetched = txHistory.pages;
+      behavior.history_complete = txHistory.complete && txSchemaComplete;
+      behavior.schema_complete = txSchemaComplete;
+      behavior.incoming_transactions_observed = transactions.filter(row => row.direction === "INCOMING").length;
+      behavior.outgoing_transactions_observed = transactions.filter(row => row.direction === "OUTGOING_SIGNED").length;
+      behavior.explorer_url = `${explorer}/address/${encodeURIComponent(receiver)}`;
+    }
+
+    let threat = null;
+    try {
+      threat = await env.DB.prepare("SELECT id, category, evidence, status FROM threat_reports WHERE account_id = ? AND status = 'verified' ORDER BY created_at DESC LIMIT 1").bind(receiver).first();
+    } catch {
+      return json({ error: "DATABASE_UNAVAILABLE", detail: "Sentinel could not read the threat registry. Check the Worker D1 binding and database logs." }, 503);
+    }
+
+    const verdict = decideRisk(account, threat, amount, behavior);
+    const sourceComplete = Boolean(
+      txHistory?.complete && txSchemaComplete &&
+      receiptHistory?.complete && receiptSchemaRecognized &&
+      ftHistory?.complete && ftSchemaRecognized
+    );
+
+    if (!txHistory || !txSchemaComplete) {
+      verdict.risk_factors.push({ code: "TRANSACTION_HISTORY_INCOMPLETE", severity: "info", detail: txError || "Some native transaction rows lacked verifiable hash, status, or timestamp fields." });
+    }
+    if (!receiptHistory || !receiptSchemaRecognized) {
+      verdict.risk_factors.push({ code: "RECEIPT_HISTORY_INCOMPLETE", severity: "info", detail: receiptError || "Receipt history was returned with fields that could not all be normalized; raw indexed receipt evidence is retained." });
+    }
+    if (!ftHistory || !ftSchemaRecognized) {
+      verdict.risk_factors.push({ code: "FT_HISTORY_INCOMPLETE", severity: "info", detail: ftError || "Some token-transfer rows lacked recognized sender, receiver, or amount fields." });
+    }
+    for (const [code, history] of [["TRANSACTION_HISTORY_PAGE_LIMIT", txHistory], ["RECEIPT_HISTORY_PAGE_LIMIT", receiptHistory], ["FT_HISTORY_PAGE_LIMIT", ftHistory]]) {
+      if (history?.next_page_available) verdict.risk_factors.push({ code, severity: "info", detail: `The safety cap of ${MAX_PAGES_PER_SOURCE} pages was reached. More Explorer history exists and was not silently treated as fully scanned.` });
+    }
+
+    const assessment_status = sourceComplete ? "COMPLETE" : "INCOMPLETE";
+    if (!sourceComplete && !threat && verdict.risk_score === 0) verdict.decision = "INCOMPLETE";
+
+    const evidence = {
+      network,
+      source: rpc,
+      transaction_history_provider: "NearBlocks v3",
+      checked_at: new Date().toISOString(),
+      account: account ? { account_exists: true, balance_yocto: account.amount, locked_yocto: account.locked, code_hash: account.code_hash, storage_usage: account.storage_usage, contract_present: account.code_hash !== "11111111111111111111111111111111" } : { account_exists: false, rpc_error: rpcError },
+      wallet_activity: {
+        wallet: receiver,
+        explorer_url: `${explorer}/address/${encodeURIComponent(receiver)}`,
+        native_transactions: { available: Boolean(txHistory), count: transactions.length, pages_fetched: txHistory?.pages || 0, complete: Boolean(txHistory?.complete && txSchemaComplete), endpoint: `${nearblocksBase}/v3/accounts/${encodeURIComponent(receiver)}/txns`, records: transactions, error: txError },
+        receipts: { available: Boolean(receiptHistory), count: receipts.length, pages_fetched: receiptHistory?.pages || 0, complete: Boolean(receiptHistory?.complete && receiptSchemaRecognized), endpoint: `${nearblocksBase}/v3/accounts/${encodeURIComponent(receiver)}/receipts`, records: receipts, error: receiptError },
+        fungible_token_transfers: { available: Boolean(ftHistory), count: ftTransfers.length, pages_fetched: ftHistory?.pages || 0, complete: Boolean(ftHistory?.complete && ftSchemaRecognized), endpoint: `${nearblocksBase}/v3/accounts/${encodeURIComponent(receiver)}/ft-txns`, records: ftTransfers, error: ftError }
+      },
+      transaction_history: behavior || { available: false, source: "NearBlocks v3", error: txError },
+      verified_threat: threat || null,
+      assessment_status,
+      limitations: [
+        `Each Explorer source is paginated up to ${MAX_PAGES_PER_SOURCE} pages of ${PAGE_SIZE}; if a next-page cursor remains, the result is INCOMPLETE.`,
+        "Native transaction activity is retained for incoming and outgoing directions; spam frequency counts only successful transactions signed by the inspected wallet.",
+        "Receipts and token transfers are separately indexed sources; unknown row schemas are not guessed and keep the assessment INCOMPLETE.",
+        "Transaction frequency is an anomaly signal, not proof of fraud; it produces WARN, not an automatic BLOCK.",
+        "NO_CONTRACT_CODE is informational and is not treated as suspicious.",
+        "A provider outage or incomplete indexer response is not evidence that a wallet is safe or malicious.",
+        "This is a risk screening result, not a guarantee that a transaction is safe."
+      ]
+    };
+
+    const id = crypto.randomUUID();
+    const createdAt = new Date().toISOString();
+    try {
+      await env.DB.prepare("INSERT INTO investigations (id, sender_account, receiver_account, amount_near, network, decision, risk_score, risk_factors, evidence, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        .bind(id, sender, receiver, amount, network, verdict.decision, verdict.risk_score, JSON.stringify(verdict.risk_factors), JSON.stringify(evidence), createdAt).run();
+    } catch {
+      return json({ error: "DATABASE_WRITE_FAILED", detail: "Explorer data was retrieved, but Sentinel could not save this investigation to D1. Check the Worker D1 binding and database logs." }, 503);
+    }
+
+    return json({
+      id,
+      created_at: createdAt,
+      receiver_account: receiver,
+      amount_near: amount,
+      ...verdict,
+      assessment_status,
+      evidence
+    });
+  } catch (error) {
+    console.error("Sentinel investigation failed:", error);
+    return json({ error: "INVESTIGATION_FAILED", detail: "Sentinel could not complete the wallet investigation. Check Worker logs for the internal exception." }, 500);
+  }
 }
