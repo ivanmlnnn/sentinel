@@ -61,10 +61,6 @@ async function initWallet() {
       syncWalletUI(account?.accountId, event.wallet?.manifest?.name || 'NEAR wallet');
     });
     connector.on('wallet:signOut', () => syncWalletUI(null, null));
-    connector.on('wallet:signIn', event => {
-      const account = event.accounts && event.accounts[0];
-      syncWalletUI(account?.accountId, event.wallet?.manifest?.name || 'NEAR wallet');
-    });
 
     try {
       const current = await connector.getConnectedWallet();
@@ -73,9 +69,21 @@ async function initWallet() {
     } catch {
       syncWalletUI(null, null);
     }
+    connector.on('selector:walletsChanged', () => {
+      const count = connector.availableWallets.length;
+      if (!connectedAccount) {
+        $('walletConnectionState').textContent = count
+          ? 'Not connected — ' + count + ' compatible Testnet wallet(s) found.'
+          : 'No compatible Testnet wallet is currently available. You can still check any public account.';
+      }
+    });
     connectorReady = true;
     button.disabled = false;
-    console.info('NEAR Connect ready. Network: testnet. Available wallets:', connector.availableWallets.length);
+    const walletCount = connector.availableWallets.length;
+    $('walletConnectionState').textContent = walletCount
+      ? 'Not connected — ' + walletCount + ' compatible Testnet wallet(s) found. Connect to autofill your account.'
+      : 'No compatible Testnet wallet is currently available. You can still check any public account.';
+    console.info('NEAR Connect ready. Network: testnet. Available wallets:', walletCount);
   } catch (error) {
     console.error('NEAR Connect initialization failed:', error);
     button.disabled = false;
