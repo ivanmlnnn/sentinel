@@ -931,3 +931,19 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
     opacity:1!important;transform:none!important;animation:none!important;transition:none!important
   }
 }
+
+
+/* Explicit decision label in every wallet result */
+.plain-status-row{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-bottom:11px}
+.plain-status-row .plain-status{margin:0}
+.plain-verdict{
+ display:inline-flex;align-items:center;justify-content:center;
+ min-width:76px;padding:6px 10px;border:1px solid #53636b;
+ color:#e8eef1;background:#18242b;
+ font:700 11px/1 var(--mono);letter-spacing:.08em
+}
+.plain-verdict-allow{color:#a9d8c5;border-color:#52866f;background:#142b24}
+.plain-verdict-warn{color:#f0cc7b;border-color:#9a7940;background:#302719}
+.plain-verdict-block{color:#f09b9b;border-color:#a75e65;background:#321d22}
+.plain-verdict-incomplete{color:#a9d8e9;border-color:#5d8493;background:#172a32}
+@media(prefers-reduced-motion:reduce){.plain-verdict{transition:none}}
