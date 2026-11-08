@@ -15,8 +15,8 @@ AI can explain evidence; it cannot choose or override the verdict.
 ## What works in this prototype
 
 - NEAR Testnet account-state lookup through FastNear JSON-RPC.
-- Indexed NEAR transaction-history ingestion through FastNear Transactions API, with successful real-signer frequency analysis against wall-clock 5-minute and 1-hour windows. Timestamp parsing supports ISO timestamps and Unix seconds, milliseconds, microseconds, and nanoseconds.
-- Explainable spam/automation anomaly signals: 10+ successful signed transactions in the last 5 minutes or 40+ in the last hour trigger WARN; 30+ in 5 minutes raises the review score. Evidence includes newest transaction time, age, timestamp coverage, and invalid timestamp count. Observed transaction anomalies trigger WARN. If the history provider is unavailable or rate-limits a request (HTTP 429), the API returns INCOMPLETE without inflating the receiver's risk score; retry before relying on the assessment. Frequency alone never labels an account as a scam or triggers BLOCK.
+- Indexed NEAR transaction-history ingestion through the NearBlocks v3 account transactions endpoint (`GET /v3/accounts/{account}/txns`) using `NEARBLOCKS_API_KEY` as a Worker secret. The request filters by the inspected account as signer and normalizes v3 `data` envelopes before successful real-signer frequency analysis against wall-clock 5-minute and 1-hour windows. Timestamp parsing supports ISO timestamps and Unix seconds, milliseconds, microseconds, and nanoseconds, including numeric timestamp strings.
+- Explainable spam/automation anomaly signals: 10+ successful signed transactions in the last 5 minutes or 40+ in the last hour trigger WARN; 30+ in 5 minutes raises the review score. Evidence includes newest transaction time, age, timestamp coverage, and invalid timestamp count. Observed transaction anomalies trigger WARN. If NearBlocks is unavailable, rate-limits a request (HTTP 429), or returns an unrecognized transaction schema, the API returns INCOMPLETE without inflating the receiver's risk score; retry before relying on the assessment. Frequency alone never labels an account as a scam or triggers BLOCK.
 - Deterministic risk engine and structured evidence.
 - D1 persistence for investigations and threat reports.
 - Verified threat matches trigger BLOCK; community reports remain unverified by default.
@@ -26,6 +26,10 @@ AI can explain evidence; it cannot choose or override the verdict.
 - Agent-side pre-sign guard in `src/agent-guard.mjs`: BLOCK denies, WARN requires explicit human approval, ALLOW proceeds to a caller-supplied signer.
 - Fail-closed behavior for preflight outage, invalid verdict, or receiver mismatch.
 - Offline prompt-injection attack demo and automated policy tests.
+
+## Worker secrets and data attribution
+
+Configure `NEARBLOCKS_API_KEY` as a Cloudflare Worker secret. Do not commit API keys to the repository or expose them in browser code. `NEAR_NETWORK` selects `testnet` (default) or `mainnet`; the API host switches accordingly. The public dashboard includes the required NearBlocks attribution: Powered by NearBlocks.io APIs.
 
 ## Run locally
 
