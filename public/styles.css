@@ -451,3 +451,14 @@ body{background-image:radial-gradient(ellipse at 82% 8%,rgba(139,212,239,.10),tr
 .topbar{background:rgba(20,54,56,.96);border-color:#426466}
 .panel{background:rgba(32,72,73,.42);border-color:#426466}
 .sentinel-auth-screen{background-image:radial-gradient(ellipse at 75% 20%,rgba(139,212,239,.10),transparent 38%),linear-gradient(145deg,#1a3c3d,#102f31)}
+
+
+/* Supplied WayangTech logo: login, navbar and protocol signature */
+.sentinel-auth-mark{width:168px;height:168px;margin:0 auto 24px;border-radius:22px;overflow:hidden;background:#1a3c3d;box-shadow:0 18px 48px rgba(0,0,0,.28)}
+.sentinel-auth-mark img,.brand-logo img,.protocol-logo img{display:block;width:100%;height:100%;object-fit:cover}
+.brand-logo{width:46px;height:46px;display:inline-flex;overflow:hidden;border-radius:10px;background:#1a3c3d;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+.brand-logo img{object-fit:cover}
+.protocol-logo{width:112px;height:112px;overflow:hidden;border-radius:16px;background:#1a3c3d}
+.protocol-logo img{object-fit:cover}
+.sentinel-auth-card{max-width:620px}
+@media(max-width:640px){.sentinel-auth-mark{width:136px;height:136px}.brand-logo{width:38px;height:38px}.protocol-logo{width:84px;height:84px}}
