@@ -1,4 +1,4 @@
-import { json, readJson, validAccountId, decideRisk } from "./_shared.js";
+import { json, readJson, validAccountId, decideRisk, analyzeTransactionBehavior } from "./_shared.js";
 
 export async function onRequestPost({ request, env }) {
   const body = await readJson(request);
@@ -12,6 +12,7 @@ export async function onRequestPost({ request, env }) {
 
   const network = env.NEAR_NETWORK === "mainnet" ? "mainnet" : "testnet";
   const rpc = network === "mainnet" ? "https://rpc.mainnet.fastnear.com" : "https://rpc.testnet.fastnear.com";
+  const txApi = network === "mainnet" ? "https://tx.main.fastnear.com/v0/account" : "https://tx.test.fastnear.com/v0/account";
   let account = null;
   let rpcError = null;
   try {
@@ -26,14 +27,38 @@ export async function onRequestPost({ request, env }) {
     else rpcError = data.error?.message || "Account not found or RPC error";
   } catch (error) { rpcError = error?.message || "NEAR RPC unavailable"; }
 
+  // FastNear's indexed account-history endpoint returns signer/receiver activity.
+  // Restrict to successful real-signer transactions for reproducible spam analysis.
+  let behavior = null;
+  let historyError = null;
+  try {
+    const headers = { "content-type": "application/json" };
+    if (env.FASTNEAR_API_KEY) headers.authorization = `Bearer ${env.FASTNEAR_API_KEY}`;
+    const historyResponse = await fetch(txApi, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ account_id: receiver, desc: true, is_real_signer: true, is_success: true, limit: 100 }),
+      signal: AbortSignal.timeout(12000)
+    });
+    if (!historyResponse.ok) throw new Error(`Transaction history service returned HTTP ${historyResponse.status}`);
+    const history = await historyResponse.json();
+    if (!Array.isArray(history.account_txs)) throw new Error("Transaction history response was missing account_txs.");
+    behavior = analyzeTransactionBehavior(history.account_txs);
+    behavior.total_indexed = Number(history.txs_count || history.account_txs.length);
+    behavior.source = txApi;
+  } catch (error) {
+    historyError = error?.message || "Transaction history unavailable";
+  }
+
   const threat = await env.DB.prepare("SELECT id, category, evidence, status FROM threat_reports WHERE account_id = ? AND status = 'verified' ORDER BY created_at DESC LIMIT 1").bind(receiver).first();
-  const verdict = decideRisk(account, threat, amount);
+  const verdict = decideRisk(account, threat, amount, behavior);
   if (!account && !threat) verdict.decision = "WARN";
   const evidence = {
     network, source: rpc, checked_at: new Date().toISOString(),
     account: account ? { account_exists: true, balance_yocto: account.amount, locked_yocto: account.locked, code_hash: account.code_hash, storage_usage: account.storage_usage, contract_present: account.code_hash !== "11111111111111111111111111111111" } : { account_exists: false, rpc_error: rpcError },
+    transaction_history: behavior || { available: false, source: txApi, error: historyError },
     verified_threat: threat || null,
-    limitations: ["Account age is not inferred from the current account-state RPC response.", "Contract code hash is a current snapshot; historical code changes are not claimed.", "This is a risk screening result, not a guarantee that a transaction is safe."]
+    limitations: ["Transaction frequency is an anomaly signal, not proof of fraud; it produces WARN, not an automatic BLOCK.", "History analysis currently evaluates up to 100 recent successful real-signer transactions.", "Account age and historical contract code changes are not inferred from this response.", "This is a risk screening result, not a guarantee that a transaction is safe."]
   };
   const id = crypto.randomUUID();
   const createdAt = new Date().toISOString();
