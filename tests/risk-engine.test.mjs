@@ -40,11 +40,24 @@ test('eleven recent successful outgoing transactions trigger WARN', () => {
   assert.equal(decideRisk(account, null, 0, behavior).decision, 'WARN');
 });
 
-test('two distinct recipients within five minutes trigger WARN', () => {
-  const rows = [
-    { direction: 'OUTGOING_SIGNED', is_success: true, is_real_signer: true, receiver_account: 'wallet-a.testnet', tx_block_timestamp: new Date(NOW - 60000).toISOString() },
-    { direction: 'OUTGOING_SIGNED', is_success: true, is_real_signer: true, receiver_account: 'wallet-b.testnet', tx_block_timestamp: new Date(NOW - 30000).toISOString() }
-  ];
+test('29 distinct recipients within five minutes do not trigger the multiple-recipient rule', () => {
+  const rows = Array.from({ length: 29 }, (_, i) => ({
+    direction: 'OUTGOING_SIGNED', is_success: true, is_real_signer: true,
+    receiver_account: 'wallet-' + i + '.testnet',
+    tx_block_timestamp: new Date(NOW - i * 5000).toISOString()
+  }));
+  const behavior = analyzeTransactionBehavior(rows, NOW);
+  assert.equal(behavior.multiple_recipients_5m, false);
+  assert.equal(behavior.distinct_recipients_5m, 0);
+  assert.equal(behavior.factors.some(f => f.code === 'MULTIPLE_RECIPIENTS_DETECTED'), false);
+});
+
+test('30 distinct recipients within five minutes trigger WARN', () => {
+  const rows = Array.from({ length: 30 }, (_, i) => ({
+    direction: 'OUTGOING_SIGNED', is_success: true, is_real_signer: true,
+    receiver_account: 'wallet-' + i + '.testnet',
+    tx_block_timestamp: new Date(NOW - i * 5000).toISOString()
+  }));
   const behavior = analyzeTransactionBehavior(rows, NOW);
   assert.equal(behavior.multiple_recipients_5m, true);
   assert.ok(behavior.factors.some(f => f.code === 'MULTIPLE_RECIPIENTS_DETECTED'));
