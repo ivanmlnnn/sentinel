@@ -17,6 +17,7 @@ AI can explain evidence; it cannot choose or override the verdict.
 - Deterministic risk engine and structured evidence.
 - D1 persistence for investigations and threat reports.
 - Verified threat matches trigger BLOCK; community reports remain unverified by default.
+- Privy email authentication gate before dashboard access, with sign-out controls.
 - Browser dashboard with HOT Labs NEAR Connect, the current recommended NEAR connector. Wallet availability depends on the device and whether a wallet supports Testnet.
 - Evidence-grounded AI explanation endpoint (requires `ANTHROPIC_API_KEY`).
 - Agent-side pre-sign guard in `src/agent-guard.mjs`: BLOCK denies, WARN requires explicit human approval, ALLOW proceeds to a caller-supplied signer.
@@ -39,11 +40,12 @@ The attack demo is a deterministic offline simulation. It does not connect to RP
 ## Try the demo
 
 1. Open the dashboard: https://sentinel.ivmaladin.workers.dev
-2. Optional: select **Connect NEAR Wallet** and choose one of the wallets shown for NEAR Testnet. Not every wallet supports Testnet, and the available list depends on your device. A MetaMask EVM address alone is not a native NEAR account.
-3. Paste a destination account ending in `.testnet` (or another valid NEAR account ID) into the address field.
-4. Select **Check address**. Read the ALLOW / WARN / BLOCK explanation and expand technical evidence if needed. A wallet connection is optional; it only fills your sender account. No transaction is signed or sent.
+2. Sign in with email through Privy's authentication modal. Email login must be enabled for the Privy app and the deployed origin must be allowlisted.
+3. Optional: select **Connect NEAR Wallet** and choose one of the wallets shown for NEAR Testnet. Not every wallet supports Testnet, and the available list depends on your device. A MetaMask EVM address alone is not a native NEAR account.
+4. Paste a destination account ending in `.testnet` (or another valid NEAR account ID) into the address field.
+5. Select **Check address**. Read the ALLOW / WARN / BLOCK explanation and expand technical evidence if needed. A wallet connection is optional; it only fills your sender account. No transaction is signed or sent.
 
-Wallet connection only identifies the account for the optional sender field. The dashboard is read-only: it does not request signatures or send funds. It uses HOT Labs NEAR Connect (0.11.4), with Testnet-only wallet filtering. Wallet support depends on each wallet manifest and the device. You can run a public address check without connecting a wallet.
+Privy controls the dashboard sign-in session. The current gate is a client-side dashboard access gate; API endpoints still require server-side Privy token verification before this should be treated as production-grade access control. Wallet connection only identifies the account for the optional sender field. The dashboard is read-only: it does not request signatures or send funds. It uses HOT Labs NEAR Connect (0.12.0), with Testnet-only wallet filtering. Wallet support depends on each wallet manifest and the device. You can run a public address check without connecting a wallet.
 
 - Dashboard: https://sentinel.ivmaladin.workers.dev
 - Repository: https://github.com/ivanmlnnn/sentinel
