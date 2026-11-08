@@ -84,6 +84,10 @@ async function initWallet() {
       toast('Wallet connector is not ready. Refresh the page and try again.');
       return;
     }
+    if (!connectedAccount && connector.availableWallets.length === 0) {
+      toast('No wallet supporting NEAR Testnet is available in this browser. Try another NEAR wallet.');
+      return;
+    }
     button.disabled = true;
     try {
       if (connectedAccount) {
