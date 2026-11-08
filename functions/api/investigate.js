@@ -52,7 +52,16 @@ export async function onRequestPost({ request, env }) {
 
   const threat = await env.DB.prepare("SELECT id, category, evidence, status FROM threat_reports WHERE account_id = ? AND status = 'verified' ORDER BY created_at DESC LIMIT 1").bind(receiver).first();
   const verdict = decideRisk(account, threat, amount, behavior);
-  if (!account && !threat) verdict.decision = "WARN";
+  // Missing history is uncertainty, not evidence that the account is clean.
+  if ((!account || !behavior) && !threat) {
+    verdict.risk_score = Math.max(verdict.risk_score, 35);
+    verdict.decision = "WARN";
+    if (!behavior) verdict.risk_factors.push({
+      code: "TRANSACTION_HISTORY_UNAVAILABLE",
+      severity: "medium",
+      detail: historyError || "Transaction history could not be verified; activity review is incomplete."
+    });
+  }
   const evidence = {
     network, source: rpc, checked_at: new Date().toISOString(),
     account: account ? { account_exists: true, balance_yocto: account.amount, locked_yocto: account.locked, code_hash: account.code_hash, storage_usage: account.storage_usage, contract_present: account.code_hash !== "11111111111111111111111111111111" } : { account_exists: false, rpc_error: rpcError },
