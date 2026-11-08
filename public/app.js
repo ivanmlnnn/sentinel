@@ -1,77 +1,186 @@
 import { setupWalletSelector } from 'https://esm.sh/@near-wallet-selector/core@10';
 import { setupModal } from 'https://esm.sh/@near-wallet-selector/modal-ui-js@10';
 
-const $ = (id) => document.getElementById(id);
-const API = window.__HATCHABLE__?.api || '/api';
-let walletSelector, walletModal, connectedAccount = null, walletReady = false;
-function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800)}
-function short(value){return value&&value.length>28?value.slice(0,13)+'…'+value.slice(-9):value}
-async function request(path,options={}){const r=await fetch(API+path,{...options,headers:{'content-type':'application/json',...(options.headers||{})}});const data=await r.json().catch(()=>({error:'Invalid server response'}));if(!r.ok)throw new Error(data.error||'Request failed');return data}
-async function initWallet(){
- const button=$('walletBtn');
- button.disabled=true;button.textContent='Loading NEAR wallets…';
- try{
-  const walletPackages=['near-snap','hot-wallet','meteor-wallet','here-wallet','sender','nightly'];
-  const loaded=await Promise.allSettled(walletPackages.map(async name=>{
-   const mod=await import('https://esm.sh/@near-wallet-selector/'+name+'@10');
-   const factory=Object.entries(mod).find(([key,value])=>key.startsWith('setup')&&typeof value==='function')?.[1];
-   if(!factory)throw new Error('No wallet factory: '+name);
-   return factory();
-  }));
-  const modules=loaded.filter(x=>x.status==='fulfilled').map(x=>x.value);
-  if(!modules.length)throw new Error('No NEAR wallet providers could be loaded');
-  walletSelector=await setupWalletSelector({network:'testnet',modules,optimizeWalletOrder:true});
-  walletModal=setupModal(walletSelector);
-  const update=()=>{
-   const state=walletSelector.store.getState();
-   connectedAccount=state.accounts?.find(a=>a.active)?.accountId||state.accounts?.[0]?.accountId||null;
-   button.disabled=false;
-   button.textContent=connectedAccount?short(connectedAccount)+' · Connected':'Connect NEAR wallet ↗';
-   button.classList.toggle('wallet-connected',!!connectedAccount);
-   const sender=$('sender');
-   if(connectedAccount){sender.value=connectedAccount;sender.placeholder='Connected NEAR account'}
-   else if(sender.dataset.walletAutofill==='1'){sender.value='';sender.placeholder='Connect wallet'}
-   sender.dataset.walletAutofill=connectedAccount?'1':'0';
-  };
-  walletSelector.store.observable.subscribe(update);
-  update();
-  button.addEventListener('click',async()=>{
-   if(!walletReady){toast('Wallet selector is still initializing');return}
-   if(connectedAccount){
-    button.disabled=true;
-    try{await walletSelector.signOut();toast('Wallet disconnected')}
-    catch(e){toast('Disconnect failed: '+(e.message||'Please retry'))}
-    finally{button.disabled=false}
-   }else{
-    try{walletModal.show()}
-    catch(e){toast('Could not open wallet picker: '+(e.message||'Please retry'))}
-   }
+const $ = id => document.getElementById(id);
+const API = '/api';
+let selector = null, modal = null, connectedAccount = null, activeWalletId = null, walletReady = false;
+
+function toast(message) {
+  const el = $('toast'); el.textContent = message; el.classList.add('show');
+  window.setTimeout(() => el.classList.remove('show'), 3200);
+}
+function short(value) {
+  return value && value.length > 26 ? value.slice(0, 10) + '…' + value.slice(-8) : value;
+}
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+async function request(path, options = {}) {
+  const response = await fetch(API + path, {
+    ...options, headers: {'content-type':'application/json', ...(options.headers || {})}
   });
-  walletReady=true;
- }catch(e){
-  console.error('NEAR wallet initialization failed',e);
-  button.disabled=false;button.textContent='Wallet unavailable · Retry';
-  button.addEventListener('click',()=>initWallet(),{once:true});
-  toast('NEAR wallet providers failed to load. Check connection and retry.');
- }
+  const data = await response.json().catch(() => ({error:'Invalid server response.'}));
+  if (!response.ok) throw new Error(data.error || 'Request failed. Please retry.');
+  return data;
 }
-function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function renderResult(data){
- const el=$('result');el.classList.remove('hidden');
- const color={ALLOW:'var(--green)',WARN:'var(--amber)',BLOCK:'var(--red)'}[data.decision]||'var(--muted)';
- el.innerHTML='<div class="result-top"><b class="result-verdict" style="color:'+color+'">'+escapeHtml(data.decision)+' · '+Number(data.risk_score)+'/100 RISK</b><span class="result-score">ID '+escapeHtml(String(data.id||'').slice(0,8))+'</span></div><ul>'+(data.risk_factors||[]).map(f=>'<li><b>'+escapeHtml(f.code)+'</b> — '+escapeHtml(f.detail)+'</li>').join('')+'</ul><div class="result-actions"><button class="secondary-btn" id="aiExplain">Explain evidence</button><button class="secondary-btn" id="viewEvidence">Evidence JSON</button></div><div id="aiExplanation"></div><pre id="evidenceJson" class="ai-text hidden"></pre>';
- $('aiExplain').addEventListener('click',async()=>{const b=$('aiExplain');b.disabled=true;b.textContent='Loading…';try{const r=await request('/ai-review',{method:'POST',body:JSON.stringify({investigation_id:data.id})});$('aiExplanation').innerHTML='<p class="ai-text">'+escapeHtml(r.explanation)+'</p>'}catch(e){$('aiExplanation').innerHTML='<p class="ai-text">AI explanation is unavailable. The deterministic verdict and evidence remain available.</p>';toast(e.message)}finally{b.disabled=false;b.textContent='Explain evidence'}});
- $('viewEvidence').addEventListener('click',()=>{$('evidenceJson').textContent=JSON.stringify(data.evidence,null,2);$('evidenceJson').classList.toggle('hidden')});
+
+async function initWallet() {
+  const button = $('walletBtn');
+  button.disabled = true; button.textContent = 'Loading NEAR wallets…';
+  const adapters = [
+    ['hot-wallet','setupHotWallet'], ['meteor-wallet','setupMeteorWallet'],
+    ['here-wallet','setupHereWallet'], ['my-near-wallet','setupMyNearWallet'],
+    ['near-mobile-wallet','setupNearMobileWallet'], ['near-snap','setupNearSnap'],
+    ['sender','setupSender'], ['nightly','setupNightly']
+  ];
+  try {
+    const results = await Promise.allSettled(adapters.map(async pair => {
+      const module = await import('https://esm.sh/@near-wallet-selector/' + pair[0] + '@10');
+      if (typeof module[pair[1]] !== 'function') throw new Error(pair[1] + ' unavailable');
+      return module[pair[1]]();
+    }));
+    const modules = results.filter(x => x.status === 'fulfilled').map(x => x.value);
+    if (!modules.length) throw new Error('No NEAR wallet provider could be loaded.');
+    selector = await setupWalletSelector({
+      network:'testnet', modules, optimizeWalletOrder:true, languageCode:'en'
+    });
+    modal = setupModal(selector);
+
+    const sync = () => {
+      const state = selector.store.getState();
+      const accounts = state.accounts || [];
+      const active = accounts.find(x => x.active) || accounts[0] || null;
+      connectedAccount = active?.accountId || null;
+      activeWalletId = state.selectedWalletId || null;
+      button.disabled = false;
+      button.classList.toggle('wallet-connected', Boolean(connectedAccount));
+      button.innerHTML = connectedAccount
+        ? '<span class="wallet-dot"></span>' + escapeHtml(short(connectedAccount)) + ' <span>Disconnect</span>'
+        : 'Connect NEAR Wallet <span>↗</span>';
+      const sender = $('sender');
+      if (connectedAccount) {
+        sender.value = connectedAccount; sender.placeholder = 'Connected NEAR account';
+        sender.dataset.walletAutofill = '1';
+      } else if (sender.dataset.walletAutofill === '1') {
+        sender.value = ''; sender.placeholder = 'Connect a NEAR wallet';
+        sender.dataset.walletAutofill = '0';
+      }
+      $('walletConnectionState').textContent = connectedAccount
+        ? 'Connected: ' + connectedAccount
+        : 'Not connected — you can still check any public NEAR account.';
+    };
+    selector.store.observable.subscribe(sync);
+    sync(); walletReady = true;
+    console.info('NEAR wallet selector ready. Optional adapters failed:', results.filter(x => x.status === 'rejected').length);
+  } catch (error) {
+    console.error('NEAR wallet setup failed:', error);
+    button.disabled = false; button.textContent = 'Wallets unavailable · Retry';
+    button.onclick = () => { button.onclick = null; initWallet(); };
+    $('walletConnectionState').textContent = 'Wallet connection unavailable. Public address checks still work.';
+    toast('Wallets could not load. Check your connection and retry.');
+    return;
+  }
+  button.addEventListener('click', async () => {
+    if (!walletReady) return;
+    if (!connectedAccount) {
+      try { modal.show(); } catch (error) { console.error(error); toast('Could not open the NEAR wallet picker.'); }
+      return;
+    }
+    button.disabled = true;
+    try {
+      const wallet = await selector.wallet(activeWalletId || undefined);
+      await wallet.signOut();
+      toast('NEAR wallet disconnected.');
+    } catch (error) {
+      console.error('Wallet sign-out failed:', error); toast('Could not disconnect. Please retry.');
+    } finally { button.disabled = false; }
+  });
 }
-async function loadMetrics(){
- try{const d=await request('/metrics');$('mTotal').textContent=d.totals.total??0;$('mAllowed').textContent=d.totals.allowed??0;$('mWarned').textContent=d.totals.warned??0;$('mBlocked').textContent=d.totals.blocked??0;$('threatTotal').textContent=d.threats.total??0;$('threatVerified').textContent=d.threats.verified??0;
- $('recentList').innerHTML=d.recent.length?d.recent.map(x=>'<div class="recent-item"><div><div class="recent-address">'+escapeHtml(x.receiver_account)+'</div><div class="recent-meta">'+new Date(x.created_at).toLocaleString()+' · '+Number(x.amount_near).toLocaleString()+' NEAR</div></div><span class="pill '+escapeHtml(x.decision)+'">'+escapeHtml(x.decision)+'</span><span class="recent-score">'+Number(x.risk_score)+'/100</span></div>').join(''):'<div class="empty-state">No inspection records.</div>';
- }catch(e){$('recentList').innerHTML='<div class="empty-state">Metrics unavailable: '+escapeHtml(e.message)+'</div>'}
+
+function renderResult(data) {
+  const el = $('result'); el.classList.remove('hidden');
+  const verdict = ['ALLOW','WARN','BLOCK'].includes(data.decision) ? data.decision : 'WARN';
+  const color = {ALLOW:'var(--green)',WARN:'var(--amber)',BLOCK:'var(--red)'}[verdict];
+  const explanation = {
+    ALLOW:'No matching verified threat was found in the available checks. This is not a safety guarantee.',
+    WARN:'Evidence is incomplete or indicates caution. Verify independently before proceeding.',
+    BLOCK:'This account matched a verified threat report. Do not proceed unless that report is proven incorrect.'
+  }[verdict];
+  const factors = Array.isArray(data.risk_factors) ? data.risk_factors : [];
+  el.innerHTML = '<div class="result-top"><b class="result-verdict" style="color:'+color+'">'+verdict+'</b><span class="result-score">Risk score: '+(Number(data.risk_score)||0)+'/100</span></div>'
+    + '<p class="result-explanation">'+explanation+'</p><ul>'
+    + factors.map(x => '<li><b>'+escapeHtml(x.code)+'</b> — '+escapeHtml(x.detail)+'</li>').join('')
+    + '</ul><div class="result-actions"><button class="secondary-btn" id="aiExplain" type="button">Explain this result</button><button class="secondary-btn" id="viewEvidence" type="button">Technical evidence</button></div><div id="aiExplanation"></div><pre id="evidenceJson" class="ai-text hidden"></pre>';
+  $('aiExplain').addEventListener('click', async () => {
+    const button = $('aiExplain'); button.disabled = true; button.textContent = 'Preparing…';
+    try {
+      const answer = await request('/ai-review',{method:'POST',body:JSON.stringify({investigation_id:data.id})});
+      $('aiExplanation').innerHTML = '<p class="ai-text">'+escapeHtml(answer.explanation)+'</p>';
+    } catch (error) {
+      $('aiExplanation').innerHTML = '<p class="ai-text">AI explanation unavailable. The result above still comes from the security rules and evidence.</p>';
+      toast(error.message);
+    } finally { button.disabled = false; button.textContent = 'Explain this result'; }
+  });
+  $('viewEvidence').addEventListener('click', () => {
+    $('evidenceJson').textContent = JSON.stringify(data.evidence || {},null,2);
+    $('evidenceJson').classList.toggle('hidden');
+  });
 }
-async function loadThreats(){try{const d=await request('/threats');$('threatList').innerHTML=d.reports.slice(0,5).map(x=>'<div class="threat-item"><div><b>'+escapeHtml(x.account_id)+'</b><small>'+escapeHtml(x.category)+'</small></div><span class="threat-status">'+escapeHtml(x.status.toUpperCase())+'</span></div>').join('')||'<div class="empty-state">No reports submitted.</div>'}catch(e){console.warn(e)}}
-$('investigateForm').addEventListener('submit',async e=>{e.preventDefault();const b=$('scanBtn');b.disabled=true;b.textContent='Reading NEAR RPC…';$('result').classList.add('hidden');try{const data=await request('/investigate',{method:'POST',body:JSON.stringify({receiver_account:$('receiver').value.trim(),sender_account:$('sender').value.trim()||connectedAccount,amount_near:Number($('amount').value||0)})});renderResult(data);await loadMetrics();toast('Inspection complete: '+data.decision)}catch(err){toast(err.message)}finally{b.disabled=false;b.innerHTML='Run inspection <b>↗</b>'}});
-$('pasteReceiver').addEventListener('click',async()=>{try{$('receiver').value=await navigator.clipboard.readText()}catch(e){toast('Clipboard permission unavailable')}});
-$('refreshBtn').addEventListener('click',()=>{loadMetrics();loadThreats();toast('Data refreshed')});
-$('reportBtn').addEventListener('click',()=>$('reportForm').classList.toggle('hidden'));
-$('sendReport').addEventListener('click',async()=>{const b=$('sendReport');b.disabled=true;try{await request('/threats',{method:'POST',body:JSON.stringify({account_id:$('reportAccount').value,category:$('reportCategory').value,evidence:$('reportEvidence').value,reporter:connectedAccount||'anonymous'})});toast('Report submitted for verification');$('reportForm').classList.add('hidden');$('reportAccount').value='';$('reportCategory').value='';$('reportEvidence').value='';await loadMetrics();await loadThreats()}catch(e){toast(e.message)}finally{b.disabled=false}});
-initWallet();loadMetrics();loadThreats();
+
+async function loadMetrics() {
+  try {
+    const data = await request('/metrics'), totals = data.totals || {}, threats = data.threats || {};
+    $('mTotal').textContent = totals.total ?? 0; $('mAllowed').textContent = totals.allowed ?? 0;
+    $('mWarned').textContent = totals.warned ?? 0; $('mBlocked').textContent = totals.blocked ?? 0;
+    $('threatTotal').textContent = threats.total ?? 0; $('threatVerified').textContent = threats.verified ?? 0;
+    const recent = Array.isArray(data.recent) ? data.recent : [];
+    $('recentList').innerHTML = recent.length ? recent.map(x =>
+      '<div class="recent-item"><div><div class="recent-address">'+escapeHtml(x.receiver_account)+'</div><div class="recent-meta">'+new Date(x.created_at).toLocaleString()+' · '+Number(x.amount_near||0).toLocaleString()+' NEAR</div></div><span class="pill '+escapeHtml(x.decision)+'">'+escapeHtml(x.decision)+'</span><span class="recent-score">'+(Number(x.risk_score)||0)+'/100</span></div>'
+    ).join('') : '<div class="empty-state">No checks yet. Try your first address above.</div>';
+  } catch (error) { $('recentList').innerHTML = '<div class="empty-state">Activity is temporarily unavailable.</div>'; }
+}
+async function loadThreats() {
+  try {
+    const data = await request('/threats'), reports = Array.isArray(data.reports) ? data.reports : [];
+    $('threatList').innerHTML = reports.slice(0,5).map(x =>
+      '<div class="threat-item"><div><b>'+escapeHtml(x.account_id)+'</b><small>'+escapeHtml(x.category)+'</small></div><span class="threat-status">'+escapeHtml(String(x.status||'pending').toUpperCase())+'</span></div>'
+    ).join('') || '<div class="empty-state">No community reports yet.</div>';
+  } catch (error) { $('threatList').innerHTML = '<div class="empty-state">Reports are temporarily unavailable.</div>'; }
+}
+
+$('investigateForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  const button = $('scanBtn'); button.disabled = true; button.textContent = 'Checking public data…';
+  $('result').classList.add('hidden');
+  try {
+    const data = await request('/investigate',{method:'POST',body:JSON.stringify({
+      receiver_account:$('receiver').value.trim(),
+      sender_account:$('sender').value.trim() || connectedAccount,
+      amount_near:Number($('amount').value||0)
+    })});
+    renderResult(data); await loadMetrics(); toast('Address check complete: '+data.decision);
+  } catch (error) { toast(error.message); }
+  finally { button.disabled = false; button.innerHTML = 'Check address <b>↗</b>'; }
+});
+$('pasteReceiver').addEventListener('click', async () => {
+  try { $('receiver').value = await navigator.clipboard.readText(); }
+  catch { toast('Clipboard unavailable. Paste the account ID manually.'); }
+});
+$('refreshBtn').addEventListener('click',() => {loadMetrics();loadThreats();toast('Activity refreshed.');});
+$('reportBtn').addEventListener('click',() => $('reportForm').classList.toggle('hidden'));
+$('sendReport').addEventListener('click',async () => {
+  const button = $('sendReport'); button.disabled = true;
+  try {
+    await request('/threats',{method:'POST',body:JSON.stringify({
+      account_id:$('reportAccount').value.trim(),category:$('reportCategory').value.trim(),
+      evidence:$('reportEvidence').value.trim(),reporter:connectedAccount||'anonymous'
+    })});
+    toast('Report submitted for review. It is not automatically trusted.');
+    $('reportForm').classList.add('hidden'); $('reportAccount').value='';
+    $('reportCategory').value=''; $('reportEvidence').value='';
+    await loadMetrics(); await loadThreats();
+  } catch (error) { toast(error.message); }
+  finally { button.disabled = false; }
+});
+
+initWallet(); loadMetrics(); loadThreats();
