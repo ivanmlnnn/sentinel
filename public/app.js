@@ -32,19 +32,19 @@ function syncWalletUI(accountId, walletName) {
   button.innerHTML = connectedAccount
     ? '<span class="wallet-dot"></span>' + escapeHtml(short(connectedAccount)) + ' <span>Disconnect</span>'
     : 'Connect NEAR Wallet <span>↗</span>';
-  const sender = $('sender');
+  const trackedWallet = $('receiver');
   if (connectedAccount) {
-    sender.value = connectedAccount;
-    sender.placeholder = 'Connected NEAR account';
-    sender.dataset.walletAutofill = '1';
-  } else if (sender.dataset.walletAutofill === '1') {
-    sender.value = '';
-    sender.placeholder = 'Connect a NEAR wallet';
-    sender.dataset.walletAutofill = '0';
+    if (!trackedWallet.value || trackedWallet.dataset.walletAutofill === '1') {
+      trackedWallet.value = connectedAccount;
+      trackedWallet.dataset.walletAutofill = '1';
+    }
+  } else if (trackedWallet.dataset.walletAutofill === '1') {
+    trackedWallet.value = '';
+    trackedWallet.dataset.walletAutofill = '0';
   }
   $('walletConnectionState').textContent = connectedAccount
-    ? 'Connected to ' + (connectedWalletName || 'NEAR wallet') + ': ' + connectedAccount
-    : 'Not connected — you can still check any public NEAR account.';
+    ? 'Connected to ' + (connectedWalletName || 'NEAR wallet') + ': ' + connectedAccount + ' — wallet account autofilled.'
+    : 'Not connected — enter any public NEAR Testnet account to track it.';
 }
 async function initWallet() {
   const button = $('walletBtn');
@@ -130,7 +130,7 @@ function renderResult(data) {
     ALLOW:'No matching verified threat was found in the available checks. This is not a safety guarantee.',
     WARN:'A wallet-risk signal requires review. Verify independently before proceeding.',
     BLOCK:'This account matched a verified threat report. Do not proceed unless that report is proven incorrect.',
-    INCOMPLETE:'The receiver is not flagged as risky. The history provider did not return enough data, so the assessment is incomplete. Retry later; do not treat this as an ALLOW.'
+    INCOMPLETE:'This wallet is not flagged as risky. The history provider did not return enough data, so the assessment is incomplete. Retry later; do not treat this as an ALLOW.'
   }[verdict];
   const factors = Array.isArray(data.risk_factors) ? data.risk_factors : [];
   const simulationNote = data.simulation ? '<p class="result-explanation"><b>SIMULATION ONLY</b> — This is a local policy demo, not a live finding about this account. It is not saved to audit metrics.</p>' : '<p class="result-explanation">'+explanation+'</p>';
@@ -180,17 +180,17 @@ async function loadThreats() {
 
 $('investigateForm').addEventListener('submit', async event => {
   event.preventDefault();
-  const button = $('scanBtn'); button.disabled = true; button.textContent = 'Checking public data…';
+  const button = $('scanBtn'); button.disabled = true; button.textContent = 'Tracking wallet activity…';
   $('result').classList.add('hidden');
   try {
     const data = await request('/investigate',{method:'POST',body:JSON.stringify({
       receiver_account:$('receiver').value.trim(),
-      sender_account:$('sender').value.trim() || connectedAccount,
-      amount_near:Number($('amount').value||0)
+      sender_account:null,
+      amount_near:0
     })});
-    renderResult(data); await loadMetrics(); toast('Address check complete: '+data.decision);
+    renderResult(data); await loadMetrics(); toast('Wallet tracking complete: '+data.decision);
   } catch (error) { toast(error.message); }
-  finally { button.disabled = false; button.innerHTML = 'Check address <b>↗</b>'; }
+  finally { button.disabled = false; button.innerHTML = 'Track wallet <b>↗</b>'; }
 });
 $('pasteReceiver').addEventListener('click', async () => {
   try { $('receiver').value = await navigator.clipboard.readText(); }
