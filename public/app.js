@@ -159,7 +159,11 @@ function renderResult(data) {
   })() : '';
   const factorMarkup = factors.length ? factors.map(item => {
     const code = String(item.code || 'INFO');
-    const detail = descriptions[code] || String(item.detail || 'Sinyal ini tercatat dalam hasil pemeriksaan.');
+    let detail = descriptions[code] || String(item.detail || 'Sinyal ini tercatat dalam hasil pemeriksaan.');
+    if (code === 'TRANSACTION_HISTORY_ANALYZED' && item.detail) {
+      const match = String(item.detail).match(/Analyzed (\\d+) successful signed transactions; (\\d+) in the last five minutes and (\\d+) in the last hour\\. (\\d+) timestamps validated; newest transaction age: (.+)\\./i);
+      if (match) detail = 'Diperiksa: '+match[1]+' transaksi berhasil; '+match[2]+' dalam 5 menit terakhir; '+match[3]+' dalam 1 jam terakhir. Waktu transaksi yang tervalidasi: '+match[4]+'. Usia transaksi terbaru: '+match[5]+'.';
+    }
     return '<li class="readable-factor"><b>'+escapeHtml(code.replaceAll('_',' '))+'</b><span>'+escapeHtml(detail)+'</span></li>';
   }).join('') : '<li class="readable-factor"><b>Tidak ada sinyal tambahan</b><span>Tidak ada faktor risiko lain yang dilaporkan oleh pemeriksaan ini.</span></li>';
   const score = Number.isFinite(Number(data.risk_score)) ? Number(data.risk_score) : 0;
