@@ -35,7 +35,7 @@ function parseTransactionTimestamp(value) {
 
 export function analyzeTransactionBehavior(rows = [], now = Date.now()) {
   const successful = rows.filter(row => row && row.is_success === true &&
-    (row.is_real_signer === true || row.is_signer === true || row.is_any_signer === true));
+    row.direction === "OUTGOING_SIGNED" && row.is_real_signer === true);
   const parsed = successful.map(row => parseTransactionTimestamp(row.tx_block_timestamp));
   const dated = parsed.filter(t => Number.isFinite(t) && t > 0 && t <= now + 60000).sort((x,y) => y-x);
   const invalid = successful.length - dated.length;
