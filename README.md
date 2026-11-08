@@ -41,9 +41,9 @@ The attack demo is a deterministic offline simulation. It does not connect to RP
 1. Open the dashboard: https://sentinel.ivmaladin.workers.dev
 2. Optional: select **Connect NEAR Wallet** and choose one of the wallets shown for NEAR Testnet. Not every wallet supports Testnet, and the available list depends on your device. A MetaMask EVM address alone is not a native NEAR account.
 3. Paste a destination account ending in `.testnet` (or another valid NEAR account ID) into the address field.
-4. Select **Check address**. Read the ALLOW / WARN / BLOCK explanation and expand technical evidence if needed.
+4. Select **Check address**. Read the ALLOW / WARN / BLOCK explanation and expand technical evidence if needed. A wallet connection is optional; it only fills your sender account. No transaction is signed or sent.
 
-Wallet connection only identifies the account for the optional sender field. The dashboard is read-only: it does not request signatures or send funds. You can run a public address check without connecting a wallet.
+Wallet connection only identifies the account for the optional sender field. The dashboard is read-only: it does not request signatures or send funds. It uses HOT Labs NEAR Connect (0.11.4), with Testnet-only wallet filtering. Wallet support depends on each wallet manifest and the device. You can run a public address check without connecting a wallet.
 
 - Dashboard: https://sentinel.ivmaladin.workers.dev
 - Repository: https://github.com/ivanmlnnn/sentinel
