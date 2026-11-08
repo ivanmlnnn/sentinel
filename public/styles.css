@@ -947,3 +947,37 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
 .plain-verdict-block{color:#f09b9b;border-color:#a75e65;background:#321d22}
 .plain-verdict-incomplete{color:#a9d8e9;border-color:#5d8493;background:#172a32}
 @media(prefers-reduced-motion:reduce){.plain-verdict{transition:none}}
+
+
+/* Scroll typography: bring key copy into focus as it enters view */
+.scroll-copy{
+ opacity:0;
+ transform:translate3d(0,11px,0);
+ filter:blur(2px);
+ transition:opacity .55s ease var(--copy-delay,0ms),
+            transform .65s cubic-bezier(.2,.75,.25,1) var(--copy-delay,0ms),
+            filter .55s ease var(--copy-delay,0ms);
+ will-change:opacity,transform;
+}
+.scroll-copy.scroll-copy-visible{
+ opacity:1;
+ transform:translate3d(0,0,0);
+ filter:blur(0);
+}
+.hero-sub.scroll-copy-visible,
+.section-heading h2.scroll-copy-visible,
+.security-method-heading h2.scroll-copy-visible{
+ letter-spacing:inherit;
+}
+.wallet-guide-grid strong.scroll-copy-visible,
+.verdict strong.scroll-copy-visible,
+.security-step b.scroll-copy-visible,
+.security-guardrails b.scroll-copy-visible{
+ text-shadow:0 0 18px rgba(139,212,239,.12);
+}
+@media(prefers-reduced-motion:reduce){
+ .scroll-copy,.scroll-copy.scroll-copy-visible{
+  opacity:1!important;transform:none!important;filter:none!important;
+  transition:none!important;will-change:auto
+ }
+}
