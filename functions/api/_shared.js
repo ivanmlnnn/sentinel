@@ -29,7 +29,7 @@ function parseTransactionTimestamp(value) {
   }
   if (typeof value !== "string" || !value.trim()) return NaN;
   const v = value.trim();
-  if (/^\\d+(\\.\\d+)?$/.test(v)) return parseTransactionTimestamp(Number(v));
+  if (/^\d+(\.\d+)?$/.test(v)) return parseTransactionTimestamp(Number(v));
   return Date.parse(v);
 }
 
