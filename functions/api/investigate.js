@@ -32,7 +32,11 @@ export async function onRequestPost({ request, env }) {
   let behavior = null;
   let historyError = null;
   let historyStatus = null;
-  const historyUrl = `${nearblocksBase}/v3/accounts/${encodeURIComponent(receiver)}/txns?limit=100&signer=${encodeURIComponent(receiver)}`;
+  let ftTransfers = null;
+  let ftHistoryError = null;
+  let ftHistoryStatus = null;
+  const historyUrl = `${nearblocksBase}/v3/accounts/${encodeURIComponent(receiver)}/txns?limit=100`;
+  const ftHistoryUrl = `${nearblocksBase}/v3/accounts/${encodeURIComponent(receiver)}/ft-txns?limit=100`;
   try {
     if (!env.NEARBLOCKS_API_KEY) throw new Error("NEARBLOCKS_API_KEY is not configured on the Worker.");
     const historyResponse = await fetch(historyUrl, {
@@ -79,13 +83,53 @@ export async function onRequestPost({ request, env }) {
     historyError = error?.message || "NearBlocks transaction history unavailable";
   }
 
+  // NearBlocks v3 exposes fungible-token transfers separately from account transactions.
+  // Keep this source independent: a successful empty array is valid; an HTTP/schema error is not.
+  try {
+    if (!env.NEARBLOCKS_API_KEY) throw new Error("NEARBLOCKS_API_KEY is not configured on the Worker.");
+    const ftResponse = await fetch(ftHistoryUrl, {
+      method: "GET",
+      headers: { authorization: `Bearer ${env.NEARBLOCKS_API_KEY}`, accept: "application/json" },
+      signal: AbortSignal.timeout(12000)
+    });
+    ftHistoryStatus = ftResponse.status;
+    if (!ftResponse.ok) throw new Error(`NearBlocks FT history returned HTTP ${ftResponse.status}`);
+    const ftPayload = await ftResponse.json();
+    if (!Array.isArray(ftPayload.data)) throw new Error("NearBlocks v3 FT response did not contain a data array; token activity cannot be verified.");
+    ftTransfers = ftPayload.data.map(row => {
+      const block = row?.block && typeof row.block === "object" ? row.block : {};
+      const from = row?.old_owner_id ?? row?.sender_account_id ?? row?.sender_id ?? row?.from_account_id ?? null;
+      const to = row?.new_owner_id ?? row?.receiver_account_id ?? row?.receiver_id ?? row?.to_account_id ?? null;
+      const amount = row?.amount ?? row?.delta_amount ?? null;
+      const timestamp = row?.block_timestamp ?? row?.block_timestamp_nanosec ?? row?.timestamp ?? block?.block_timestamp ?? block?.timestamp ?? null;
+      const hash = row?.transaction_hash ?? row?.transaction_hash_base58 ?? row?.hash ?? null;
+      if (typeof from !== "string" || typeof to !== "string" || amount == null) {
+        throw new Error("NearBlocks FT rows did not contain recognized sender, receiver, and amount fields; token activity is incomplete.");
+      }
+      return {
+        from_account: from,
+        to_account: to,
+        amount: String(amount),
+        token_contract: row?.contract_account_id ?? row?.contract ?? null,
+        token_metadata: row?.meta ?? null,
+        event_type: row?.event_type ?? "ft_transfer",
+        transaction_hash: hash,
+        block_timestamp: timestamp,
+        receipt_id: row?.receipt_id ?? null,
+        direction: to.toLowerCase() === receiver ? "IN" : from.toLowerCase() === receiver ? "OUT" : "RELATED"
+      };
+    });
+  } catch (error) {
+    ftHistoryError = error?.message || "NearBlocks fungible-token history unavailable";
+  }
+
   const threat = await env.DB.prepare("SELECT id, category, evidence, status FROM threat_reports WHERE account_id = ? AND status = 'verified' ORDER BY created_at DESC LIMIT 1").bind(receiver).first();
   const verdict = decideRisk(account, threat, amount, behavior);
   // Provider outages are assessment-quality problems, not evidence against the receiver.
   // Keep independent wallet signals (e.g. missing account, large transfer, verified threat)
   // intact; otherwise return INCOMPLETE rather than inflating the wallet risk score.
-  const historyUnavailable = !behavior;
-  if (historyUnavailable) {
+  const historyUnavailable = !behavior || !Array.isArray(ftTransfers);
+  if (!behavior) {
     const rateLimited = historyStatus === 429 || /HTTP 429/.test(historyError || "");
     verdict.risk_factors.push({
       code: rateLimited ? "TRANSACTION_HISTORY_RATE_LIMITED" : "TRANSACTION_HISTORY_UNAVAILABLE",
@@ -96,14 +140,25 @@ export async function onRequestPost({ request, env }) {
     });
     if (!threat && verdict.risk_score === 0) verdict.decision = "INCOMPLETE";
   }
+  if (!Array.isArray(ftTransfers)) {
+    const rateLimited = ftHistoryStatus === 429 || /HTTP 429/.test(ftHistoryError || "");
+    verdict.risk_factors.push({
+      code: rateLimited ? "FT_HISTORY_RATE_LIMITED" : "FT_HISTORY_UNAVAILABLE",
+      severity: "info",
+      detail: ftHistoryError || "Fungible-token transfer history could not be verified."
+    });
+    if (!threat && verdict.risk_score === 0) verdict.decision = "INCOMPLETE";
+  }
   const assessment_status = historyUnavailable ? "INCOMPLETE" : "COMPLETE";
   const evidence = {
     network, source: rpc, transaction_history_provider: "NearBlocks v3", transaction_history_endpoint: historyUrl, checked_at: new Date().toISOString(),
     account: account ? { account_exists: true, balance_yocto: account.amount, locked_yocto: account.locked, code_hash: account.code_hash, storage_usage: account.storage_usage, contract_present: account.code_hash !== "11111111111111111111111111111111" } : { account_exists: false, rpc_error: rpcError },
     transaction_history: behavior || { available: false, source: "NearBlocks v3", error: historyError },
+    transaction_history_endpoint: historyUrl,
+    fungible_token_history: Array.isArray(ftTransfers) ? { available: true, source: "NearBlocks v3", endpoint: ftHistoryUrl, observed_transfers: ftTransfers.length, transfers: ftTransfers, next_page_available: false } : { available: false, source: "NearBlocks v3", endpoint: ftHistoryUrl, error: ftHistoryError },
     verified_threat: threat || null,
     assessment_status,
-    limitations: ["A provider outage or HTTP 429 makes the assessment INCOMPLETE; it is not a receiver-risk signal and must not be treated as ALLOW.", "Transaction frequency is an anomaly signal, not proof of fraud; it produces WARN, not an automatic BLOCK.", "History analysis currently evaluates up to 100 recent successful real-signer transactions.", "Account age and historical contract code changes are not inferred from this response.", "This is a risk screening result, not a guarantee that a transaction is safe."]
+    limitations: ["A provider outage or HTTP 429 makes the assessment INCOMPLETE; it is not a receiver-risk signal and must not be treated as ALLOW.", "Transaction frequency is an anomaly signal, not proof of fraud; it produces WARN, not an automatic BLOCK.", ""Native transaction history currently requests up to 100 recent account transactions; token transfers are retrieved separately from the NearBlocks v3 FT endpoint.", "Account age and historical contract code changes are not inferred from this response.", "This is a risk screening result, not a guarantee that a transaction is safe."]
   };
   const id = crypto.randomUUID();
   const createdAt = new Date().toISOString();
