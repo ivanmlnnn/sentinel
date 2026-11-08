@@ -825,22 +825,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
 }
 
 
-/* Technical evidence panel: bounded, readable, and scrollable */
-#evidenceJson.ai-text{
-  display:block;
-  max-height:420px;
-  overflow:auto;
-  margin:0 24px 20px;
-  padding:16px;
-  border:1px solid #293640;
-  background:#080e13;
-  color:#c3d0d6;
-  font:11px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace;
-  white-space:pre;
-  overflow-wrap:normal;
-  word-break:normal;
-  overscroll-behavior:contain;
-  -webkit-overflow-scrolling:touch;
-}
-#evidenceJson.ai-text.hidden{display:none!important}
-@media(max-width:560px){#evidenceJson.ai-text{max-height:55vh;margin:0 15px 16px;padding:12px;font-size:10px}}
+
+/* Native disclosure for technical evidence; no dashboard-level click handler */
+.technical-details{margin:0 24px 20px;border:1px solid #293640;background:#080e13}
+.technical-details>summary{padding:12px 14px;cursor:pointer;list-style:none;color:#c2cdd3;font:10px var(--mono);letter-spacing:.04em}
+.technical-details>summary::-webkit-details-marker{display:none}
+.technical-details>summary::after{content:"+";float:right;color:#9cabb4}
+.technical-details[open]>summary::after{content:"−"}
+.technical-details[open]>summary{border-bottom:1px solid #293640}
+.technical-json.ai-text{display:block;max-height:420px;overflow:auto;margin:0;padding:14px;color:#c3d0d6;font:11px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre;overflow-wrap:normal;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+@media(max-width:560px){.technical-details{margin:0 15px 16px}.technical-json.ai-text{max-height:55vh;padding:12px;font-size:10px}}
