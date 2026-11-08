@@ -1,0 +1,61 @@
+name: Live Sentinel preflight
+
+on:
+  workflow_dispatch:
+    inputs:
+      receiver:
+        description: NEAR Testnet receiver account to inspect
+        required: true
+        default: guest-book.testnet
+        type: string
+      amount_near:
+        description: Proposed amount in NEAR (inspection only)
+        required: true
+        default: "0.1"
+        type: string
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect through deployed Sentinel API
+        env:
+          RECEIVER: ${{ inputs.receiver }}
+          AMOUNT: ${{ inputs.amount_near }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const receiver = process.env.RECEIVER.trim().toLowerCase();
+          const amount = Number(process.env.AMOUNT);
+          if (!receiver || !Number.isFinite(amount) || amount <= 0) {
+            throw new Error("Receiver and positive amount are required");
+          }
+          const response = await fetch("https://sentinel.ivmaladin.workers.dev/api/investigate", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              receiver_account: receiver,
+              amount_near: amount
+            })
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(`Sentinel API returned HTTP ${response.status}: ${JSON.stringify(data)}`);
+          if (!["ALLOW", "WARN", "BLOCK"].includes(data.decision)) {
+            throw new Error("Sentinel returned an invalid decision");
+          }
+          if (data.receiver_account !== receiver || !data.evidence || !data.evidence.network) {
+            throw new Error("Sentinel response is missing receiver or network evidence");
+          }
+          console.log(JSON.stringify({
+            live_api: true,
+            receiver_account: data.receiver_account,
+            decision: data.decision,
+            risk_score: data.risk_score,
+            network: data.evidence.network,
+            account: data.evidence.account,
+            verified_threat: data.evidence.verified_threat,
+            investigation_id: data.id,
+            transaction_created: false,
+            transaction_signed: false
+          }, null, 2));
+          NODE
