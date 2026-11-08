@@ -76,9 +76,6 @@ body:not(.sentinel-authenticated) .topbar,
 body:not(.sentinel-authenticated) .main,
 body:not(.sentinel-authenticated) .scroll-progress,
 body:not(.sentinel-authenticated) #toast { display: none !important; }
-body.sentinel-authenticated .topbar,
-body.sentinel-authenticated .main { display: block; }
-body.sentinel-authenticated .scroll-progress { display: block; }
 #auth-root { position: relative; z-index: 10000; }
 .sentinel-auth-screen {
   position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center;
