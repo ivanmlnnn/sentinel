@@ -158,7 +158,7 @@ export async function onRequestPost({ request, env }) {
     fungible_token_history: Array.isArray(ftTransfers) ? { available: true, source: "NearBlocks v3", endpoint: ftHistoryUrl, observed_transfers: ftTransfers.length, transfers: ftTransfers, next_page_available: false } : { available: false, source: "NearBlocks v3", endpoint: ftHistoryUrl, error: ftHistoryError },
     verified_threat: threat || null,
     assessment_status,
-    limitations: ["A provider outage or HTTP 429 makes the assessment INCOMPLETE; it is not a receiver-risk signal and must not be treated as ALLOW.", "Transaction frequency is an anomaly signal, not proof of fraud; it produces WARN, not an automatic BLOCK.", ""Native transaction history currently requests up to 100 recent account transactions; token transfers are retrieved separately from the NearBlocks v3 FT endpoint.", "Account age and historical contract code changes are not inferred from this response.", "This is a risk screening result, not a guarantee that a transaction is safe."]
+    limitations: ["A provider outage or HTTP 429 makes the assessment INCOMPLETE; it is not a receiver-risk signal and must not be treated as ALLOW.", "Transaction frequency is an anomaly signal, not proof of fraud; it produces WARN, not an automatic BLOCK.", "Native transaction history currently requests up to 100 recent account transactions; token transfers are retrieved separately from the NearBlocks v3 FT endpoint.", "Account age and historical contract code changes are not inferred from this response.", "This is a risk screening result, not a guarantee that a transaction is safe."]
   };
   const id = crypto.randomUUID();
   const createdAt = new Date().toISOString();
