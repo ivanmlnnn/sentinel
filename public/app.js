@@ -123,37 +123,72 @@ async function initWallet() {
 }
 
 function renderResult(data) {
-  const el = $('result'); el.classList.remove('hidden');
+  const el = $('result');
+  el.classList.remove('hidden');
   const verdict = ['ALLOW','WARN','BLOCK','INCOMPLETE'].includes(data.decision) ? data.decision : 'WARN';
-  const color = {ALLOW:'var(--green)',WARN:'var(--amber)',BLOCK:'var(--red)',INCOMPLETE:'#82919a'}[verdict];
-  const explanation = {
-    ALLOW:'No matching verified threat was found in the available checks. This is not a safety guarantee.',
-    WARN:'A wallet-risk signal requires review. Verify independently before proceeding.',
-    BLOCK:'This account matched a verified threat report. Do not proceed unless that report is proven incorrect.',
-    INCOMPLETE:'This wallet is not flagged as risky. The history provider did not return enough data, so the assessment is incomplete. Retry later; do not treat this as an ALLOW.'
+  const config = {
+    ALLOW: { title:'Tidak ada ancaman terverifikasi yang ditemukan', label:'Tidak ditemukan ancaman', color:'var(--green)', note:'Pemeriksaan yang tersedia tidak menemukan kecocokan dengan daftar ancaman terverifikasi. Ini bukan jaminan bahwa wallet sepenuhnya aman.' },
+    WARN: { title:'Perlu diperiksa lebih lanjut', label:'Perlu perhatian', color:'var(--amber)', note:'Ada sinyal risiko atau bukti yang perlu ditinjau. Periksa aktivitas dan sumber terkait sebelum berinteraksi.' },
+    BLOCK: { title:'Ancaman terverifikasi ditemukan', label:'Jangan lanjutkan', color:'var(--red)', note:'Wallet cocok dengan laporan ancaman yang telah diverifikasi. Jangan bertransaksi kecuali kecocokan tersebut terbukti keliru.' },
+    INCOMPLETE: { title:'Belum dapat disimpulkan', label:'Data belum lengkap', color:'#a9d8e9', note:'Belum ada ancaman terverifikasi yang ditemukan, tetapi data riwayat transaksi belum cukup untuk menilai wallet. Hasil ini bukan status aman.' }
   }[verdict];
   const factors = Array.isArray(data.risk_factors) ? data.risk_factors : [];
-  const simulationNote = data.simulation ? '<p class="result-explanation"><b>SIMULATION ONLY</b> — This is a local policy demo, not a live finding about this account. It is not saved to audit metrics.</p>' : '<p class="result-explanation">'+explanation+'</p>';
+  const descriptions = {
+    ACCOUNT_EXISTS:'Akun NEAR ditemukan di jaringan.',
+    NO_CONTRACT_CODE:'Akun tidak memiliki kode smart contract. Ini umum untuk wallet biasa dan bukan bukti penipuan.',
+    TRANSACTION_HISTORY_ANALYZED:'Riwayat transaksi berhasil diperiksa.',
+    TRANSACTION_HISTORY_INCOMPLETE:'Sebagian data transaksi tidak memiliki informasi yang cukup untuk diverifikasi.',
+    TRANSACTION_HISTORY_UNAVAILABLE:'Penyedia riwayat transaksi sedang tidak dapat diakses.',
+    VERIFIED_THREAT_MATCH:'Wallet cocok dengan entri ancaman yang sudah diverifikasi.',
+    SPAM_ACTIVITY:'Aktivitas transaksi menunjukkan pola berulang yang perlu ditinjau.'
+  };
   const activity = data.evidence?.wallet_activity;
-  const activitySummary = !data.simulation && activity ? '<section class="wallet-activity-summary"><b>Explorer wallet tracking</b><div class="recent-meta">Native transactions: '+Number(activity.native_transactions?.count||0)+' · Receipts: '+Number(activity.receipts?.count||0)+' · FT transfers: '+Number(activity.fungible_token_transfers?.count||0)+'</div><div class="recent-meta">Native: '+(activity.native_transactions?.complete?'complete':'incomplete')+' · Receipts: '+(activity.receipts?.complete?'complete':'incomplete')+' · Tokens: '+(activity.fungible_token_transfers?.complete?'complete':'incomplete')+'</div><a href="'+escapeHtml(activity.explorer_url||'#')+'" target="_blank" rel="noopener noreferrer">Open wallet in NEAR Explorer ↗</a></section>' : '';
-  const aiButton = data.simulation ? '' : '<button class="secondary-btn" id="aiExplain" type="button">Explain this result</button>';
-  el.innerHTML = '<div class="result-top"><b class="result-verdict" style="color:'+color+'">'+verdict+'</b><span class="result-score">Risk score: '+(Number(data.risk_score)||0)+'/100</span></div>'
-    + simulationNote + activitySummary + '<ul>'
-    + factors.map(x => '<li><b>'+escapeHtml(x.code)+'</b> — '+escapeHtml(x.detail)+'</li>').join('')
-    + '</ul><div class="result-actions">'+aiButton+'<button class="secondary-btn" id="viewEvidence" type="button">Technical evidence</button></div><div id="aiExplanation"></div><pre id="evidenceJson" class="ai-text hidden"></pre>';
+  const sourceState = complete => complete ? 'Data tersedia' : 'Belum lengkap';
+  const activitySummary = !data.simulation && activity ? (() => {
+    const native = activity.native_transactions || {};
+    const receipts = activity.receipts || {};
+    const tokens = activity.fungible_token_transfers || {};
+    const rows = [
+      ['Transaksi NEAR', native.count || 0, sourceState(native.complete)],
+      ['Receipts jaringan', receipts.count || 0, sourceState(receipts.complete)],
+      ['Transfer token', tokens.count || 0, sourceState(tokens.complete)]
+    ];
+    return '<section class="wallet-activity-summary readable-activity"><div class="readable-section-title">Aktivitas wallet</div><div class="activity-count-grid">' +
+      rows.map(row => '<div class="activity-count"><span>'+row[0]+'</span><b>'+Number(row[1]).toLocaleString()+'</b><small>'+row[2]+'</small></div>').join('') +
+      '</div><a class="explorer-link" href="'+escapeHtml(activity.explorer_url || '#')+'" target="_blank" rel="noopener noreferrer">Lihat wallet di NEAR Explorer ↗</a></section>';
+  })() : '';
+  const factorMarkup = factors.length ? factors.map(item => {
+    const code = String(item.code || 'INFO');
+    const detail = descriptions[code] || String(item.detail || 'Sinyal ini tercatat dalam hasil pemeriksaan.');
+    return '<li class="readable-factor"><b>'+escapeHtml(code.replaceAll('_',' '))+'</b><span>'+escapeHtml(detail)+'</span></li>';
+  }).join('') : '<li class="readable-factor"><b>Tidak ada sinyal tambahan</b><span>Tidak ada faktor risiko lain yang dilaporkan oleh pemeriksaan ini.</span></li>';
+  const score = Number.isFinite(Number(data.risk_score)) ? Number(data.risk_score) : 0;
+  const scoreNote = verdict === 'INCOMPLETE' ? 'Skor belum dapat menggambarkan risiko karena data belum lengkap.' : 'Skor mengikuti aturan penilaian Sentinel; baca juga bukti dan status pemeriksaan.';
+  const simulationNote = data.simulation
+    ? '<p class="result-explanation"><b>SIMULASI</b> — Contoh lokal untuk menguji aturan, bukan temuan langsung dari jaringan.</p>'
+    : '<p class="result-explanation">'+escapeHtml(config.note)+'</p>';
+  const aiButton = data.simulation ? '' : '<button class="secondary-btn" id="aiExplain" type="button">Jelaskan hasil</button>';
+  el.innerHTML = '<section class="result-overview result-'+verdict.toLowerCase()+'"><div class="result-status-line"><span class="result-status-dot"></span><span>'+escapeHtml(config.label)+'</span></div><h3>'+escapeHtml(config.title)+'</h3>'+simulationNote+
+    '<div class="result-score-row"><div><span>Skor risiko</span><b>'+score+'/100</b></div><small>'+escapeHtml(scoreNote)+'</small></div></section>' +
+    activitySummary +
+    '<section class="result-factors"><div class="readable-section-title">Apa yang ditemukan?</div><ul class="readable-factor-list">'+factorMarkup+'</ul></section>' +
+    '<div class="result-actions">'+aiButton+'<button class="secondary-btn" id="viewEvidence" type="button">Detail teknis</button></div><div id="aiExplanation"></div><pre id="evidenceJson" class="ai-text hidden"></pre>';
   if (!data.simulation) $('aiExplain').addEventListener('click', async () => {
-    const button = $('aiExplain'); button.disabled = true; button.textContent = 'Preparing…';
+    const button = $('aiExplain'); button.disabled = true; button.textContent = 'Menyiapkan…';
     try {
       const answer = await request('/ai-review',{method:'POST',body:JSON.stringify({investigation_id:data.id})});
       $('aiExplanation').innerHTML = '<p class="ai-text">'+escapeHtml(answer.explanation)+'</p>';
     } catch (error) {
-      $('aiExplanation').innerHTML = '<p class="ai-text">AI explanation unavailable. The result above still comes from the security rules and evidence.</p>';
+      $('aiExplanation').innerHTML = '<p class="ai-text">Penjelasan AI sedang tidak tersedia. Hasil utama tetap berasal dari aturan keamanan dan data pemeriksaan.</p>';
       toast(error.message);
-    } finally { button.disabled = false; button.textContent = 'Explain this result'; }
+    } finally { button.disabled = false; button.textContent = 'Jelaskan hasil'; }
   });
   $('viewEvidence').addEventListener('click', () => {
-    $('evidenceJson').textContent = JSON.stringify(data.evidence || {},null,2);
-    $('evidenceJson').classList.toggle('hidden');
+    const evidence = $('evidenceJson');
+    const opening = evidence.classList.contains('hidden');
+    evidence.textContent = JSON.stringify(data.evidence || {},null,2);
+    evidence.classList.toggle('hidden');
+    $('viewEvidence').textContent = opening ? 'Tutup detail teknis' : 'Detail teknis';
   });
 }
 async function loadMetrics() {
