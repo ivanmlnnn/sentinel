@@ -230,7 +230,7 @@ export async function onRequestPost({ request, env }) {
     }
 
     const assessment_status = sourceComplete ? "COMPLETE" : "INCOMPLETE";
-    if (!sourceComplete && !threat && verdict.risk_score === 0) verdict.decision = "INCOMPLETE";
+    const shouldReturnIncomplete = !sourceComplete && !threat && verdict.risk_score === 0;
 
     const evidence = {
       network,
@@ -262,11 +262,16 @@ export async function onRequestPost({ request, env }) {
     const id = crypto.randomUUID();
     const createdAt = new Date().toISOString();
     try {
+      // D1 decision CHECK constraint permits only ALLOW, WARN, or BLOCK.
+      // Keep INCOMPLETE as an assessment status in the response/evidence, not as a persisted decision value.
       await env.DB.prepare("INSERT INTO investigations (id, sender_account, receiver_account, amount_near, network, decision, risk_score, risk_factors, evidence, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
         .bind(id, sender, receiver, amount, network, verdict.decision, verdict.risk_score, JSON.stringify(verdict.risk_factors), JSON.stringify(evidence), createdAt).run();
-    } catch {
-      return json({ error: "DATABASE_WRITE_FAILED", detail: "Explorer data was retrieved, but Sentinel could not save this investigation to D1. Check the Worker D1 binding and database logs." }, 503);
+    } catch (error) {
+      console.error("Sentinel D1 investigation insert failed:", error);
+      return json({ error: "DATABASE_WRITE_FAILED", detail: "Sentinel could not save the investigation to D1. Check Worker logs for the D1 constraint or binding error." }, 503);
     }
+
+    if (shouldReturnIncomplete) verdict.decision = "INCOMPLETE";
 
     return json({
       id,
