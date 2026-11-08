@@ -1,0 +1,22 @@
+name = "IVTECH Sentinel"
+[ai]
+required = true
+description = "AI-assisted security explanations for NEAR transaction investigations. Connect a supported AI provider in project Setup."
+
+[[config]]
+name = "near_network"
+type = "select"
+label = "NEAR network"
+options = [{ value = "testnet", label = "Testnet" }, { value = "mainnet", label = "Mainnet (read-only MVP)" }]
+default = "testnet"
+
+[[config]]
+name = "ai_model"
+type = "select"
+label = "AI explanation model"
+options = [{ value = "haiku", label = "Claude Haiku" }, { value = "gpt-mini", label = "OpenAI GPT mini" }, { value = "gemini", label = "Google Gemini" }]
+default = "haiku"
+
+[[secret]]
+name = "privy_webhook_secret"
+label = "Privy webhook signing secret"
