@@ -14,7 +14,7 @@
 <header class="topbar">
  <a class="brand" href="#overview"><span class="brand-icon brand-logo"><img src="/IMG_20260629_220728_136.jpg?v=1" alt="Wayang Tech and Kitchen Needs"></span><span class="brand-name">NEAR <b>SENTINEL</b></span></a>
  <nav class="main-nav" aria-label="Main navigation">
-  <a class="nav-item active" href="#overview">Overview</a><a class="nav-item" href="#investigate">Account scan</a><a class="nav-item" href="#threats">Threat registry</a><a class="nav-item" href="#activity">Audit log</a><a class="nav-item" href="#protocol">Protocol</a>
+  <a class="nav-item active" href="#overview">Overview</a><a class="nav-item" href="#investigate">Wallet tracker</a><a class="nav-item" href="#threats">Threat registry</a><a class="nav-item" href="#activity">Audit log</a><a class="nav-item" href="#protocol">Protocol</a>
  </nav>
  <div class="top-actions"><span class="network-pill"><i></i> NEAR TESTNET</span><button id="walletBtn" class="wallet-btn" type="button">Connect NEAR Wallet <span>↗</span></button><a class="wallet-help-link" href="#wallet-guide">Wallet help</a></div>
 </header>
@@ -26,7 +26,7 @@
  <div class="hero-actions"><a class="cta" href="#investigate">Check an address <span>↘</span></a><span class="hero-note">READ-ONLY · NO TRANSACTION SIGNING</span></div></div>
  <div class="chain-visual" aria-hidden="true"><div class="chain-grid"></div><div class="chain-node node-a">NEAR<span>RPC</span></div><div class="chain-node node-b">IV<span>SECURITY</span></div><div class="chain-node node-c">◆<span>RISK</span></div><div class="chain-line line-a"></div><div class="chain-line line-b"></div><div class="chain-line line-c"></div><div class="chain-label">SENTINEL API <b id="apiStatus">CHECKING</b></div></div>
 </section>
-<section class="wallet-guide reveal" id="wallet-guide"><div class="wallet-guide-head"><span class="section-index">QUICK START</span><b>Start in three steps</b></div><div class="wallet-guide-grid"><div><strong>01 · Connect a wallet</strong><p>Connect a wallet that supports NEAR Testnet. MetaMask EVM accounts are not NEAR accounts.</p></div><div><strong>02 · Check the account</strong><p>Your NEAR account ID fills in automatically.</p></div><div><strong>03 · Inspect safely</strong><p>Enter an account and run a read-only check. No keys or signatures are requested.</p></div></div><p class="wallet-guide-note">TESTNET · READ-ONLY · NO TRANSACTIONS</p></section>
+<section class="wallet-guide reveal" id="wallet-guide"><div class="wallet-guide-head"><span class="section-index">QUICK START</span><b>Start in three steps</b></div><div class="wallet-guide-grid"><div><strong>01 · Connect a wallet</strong><p>Connect a wallet that supports NEAR Testnet. MetaMask EVM accounts are not NEAR accounts.</p></div><div><strong>02 · Select a wallet</strong><p>Connect to autofill your wallet, or enter any public NEAR Testnet account.</p></div><div><strong>03 · Track wallet activity</strong><p>Review indexed transactions, receipts, token transfers, and risk signals. No keys or signatures are requested.</p></div></div><p class="wallet-guide-note">TESTNET · READ-ONLY · NO TRANSACTIONS</p></section>
 <section class="metrics reveal" aria-label="Security metrics">
  <div class="metric"><span>SCANS</span><b id="mTotal">—</b><small>ALL ASSESSMENTS</small></div>
  <div class="metric"><span class="green">ALLOW</span><b id="mAllowed">—</b><small>NO MATCH FOUND</small></div>
@@ -34,16 +34,15 @@
  <div class="metric"><span class="red">BLOCK</span><b id="mBlocked">—</b><small>VERIFIED MATCH</small></div>
  <div class="metric network-metric"><span>NETWORK</span><b>TESTNET</b><small><i class="live-pulse"></i> CHECKED ON DEMAND</small></div>
 </section>
-<div class="section-heading reveal" id="investigate"><div><span class="section-index">01 / CHECK AN ACCOUNT</span><h2>Check a NEAR address</h2></div><span class="section-meta">NEAR TESTNET · LIVE READ WHEN CHECKED</span></div>
+<div class="section-heading reveal" id="investigate"><div><span class="section-index">01 / WALLET INTELLIGENCE</span><h2>Wallet tracker</h2></div><span class="section-meta">NEAR TESTNET · LIVE READ WHEN CHECKED</span></div>
 <section class="scan-layout reveal">
  <div class="panel scan-panel">
-  <div class="panel-top"><span>ADDRESS TO CHECK</span><span class="panel-status"><i></i> READ-ONLY</span></div>
+  <div class="panel-top"><span>WALLET TO TRACK</span><span class="panel-status"><i></i> READ-ONLY</span></div>
   <form id="investigateForm">
-   <label for="receiver">ACCOUNT TO CHECK</label>
-   <div class="account-input"><span>near://</span><input id="receiver" placeholder="receiver.near" autocomplete="off" required maxlength="64"><button type="button" id="pasteReceiver">PASTE</button></div>
-   <div class="form-row"><div><label for="sender">YOUR ACCOUNT <small>OPTIONAL</small></label><input id="sender" placeholder="Connect wallet"></div><div><label for="amount">PLANNED AMOUNT <small>NEAR · OPTIONAL</small></label><input id="amount" type="number" min="0" step="0.0001" value="0"></div></div>
+   <label for="receiver">NEAR WALLET ACCOUNT</label>
+   <div class="account-input"><span>near://</span><input id="receiver" placeholder="wallet.testnet" autocomplete="off" required maxlength="64"><button type="button" id="pasteReceiver">PASTE</button></div>
    <p id="walletConnectionState" class="wallet-connection-state" aria-live="polite">Wallet not connected. Public account checks are still available.</p>
-   <div class="scan-submit"><span>◈ Public blockchain data only</span><button class="primary-btn" id="scanBtn" type="submit">Check address <b>↗</b></button></div>
+   <div class="scan-submit"><span>◈ Explorer-indexed wallet activity · read-only</span><button class="primary-btn" id="scanBtn" type="submit">Track wallet <b>↗</b></button></div>
   </form>
   <div id="result" class="result hidden" aria-live="polite"></div>
  </div>
