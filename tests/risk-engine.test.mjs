@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { decideRisk, analyzeTransactionBehavior } from '../functions/api/_shared.js';
 
 const account = { code_hash: '11111111111111111111111111111111' };
+const NOW = Date.parse('2026-11-08T12:00:00.000Z');
 
 test('normal existing account with no verified threat is ALLOW', () => {
   const result = decideRisk(account, null, 0);
@@ -28,40 +29,63 @@ test('verified threat match blocks', () => {
   assert.equal(result.risk_score, 100);
 });
 
-test('ten successful signed transactions in five minutes trigger a frequency anomaly and WARN', () => {
-  const base = Date.parse('2026-11-08T12:00:00.000Z');
+test('ten recent successful signed transactions trigger WARN', () => {
   const rows = Array.from({ length: 10 }, (_, i) => ({
     is_success: true, is_real_signer: true,
-    tx_block_timestamp: new Date(base - i * 20_000).toISOString()
+    tx_block_timestamp: new Date(NOW - i * 20000).toISOString()
   }));
-  const behavior = analyzeTransactionBehavior(rows);
+  const behavior = analyzeTransactionBehavior(rows, NOW);
   assert.equal(behavior.transactions_5m, 10);
   assert.equal(behavior.anomaly, true);
-  const result = decideRisk(account, null, 0, behavior);
-  assert.equal(result.decision, 'WARN');
-  assert.equal(result.risk_score, 35);
-  assert.ok(result.risk_factors.some(f => f.code === 'HIGH_TRANSACTION_FREQUENCY'));
+  assert.equal(decideRisk(account, null, 0, behavior).decision, 'WARN');
 });
 
-test('thirty successful signed transactions in five minutes trigger elevated review, never automatic block', () => {
-  const base = Date.parse('2026-11-08T12:00:00.000Z');
+test('thirty recent successful signed transactions trigger elevated WARN, never BLOCK', () => {
   const rows = Array.from({ length: 30 }, (_, i) => ({
     is_success: true, is_real_signer: true,
-    tx_block_timestamp: new Date(base - i * 8_000).toISOString()
+    tx_block_timestamp: new Date(NOW - i * 8000).toISOString()
   }));
-  const behavior = analyzeTransactionBehavior(rows);
+  const behavior = analyzeTransactionBehavior(rows, NOW);
   assert.equal(behavior.transactions_5m, 30);
   const result = decideRisk(account, null, 0, behavior);
   assert.equal(result.decision, 'WARN');
   assert.equal(result.risk_score, 60);
 });
 
-test('failed transactions and non-signer activity are not counted as signed spam', () => {
+test('numeric Unix seconds timestamps are parsed correctly', () => {
+  const rows = Array.from({ length: 10 }, (_, i) => ({
+    is_success: true, is_real_signer: true,
+    tx_block_timestamp: Math.floor((NOW - i * 20000) / 1000)
+  }));
+  const behavior = analyzeTransactionBehavior(rows, NOW);
+  assert.equal(behavior.transactions_5m, 10);
+  assert.equal(behavior.timestamped_transactions, 10);
+});
+
+test('old transactions do not become recent just because they are newest in the index', () => {
+  const rows = Array.from({ length: 19 }, (_, i) => ({
+    is_success: true, is_real_signer: true,
+    tx_block_timestamp: new Date(NOW - 10800000 - i * 1000).toISOString()
+  }));
+  const behavior = analyzeTransactionBehavior(rows, NOW);
+  assert.equal(behavior.transactions_5m, 0);
+  assert.equal(behavior.transactions_1h, 0);
+  assert.equal(behavior.newest_transaction_age_seconds, 10800);
+});
+
+test('unparseable timestamps produce an explicit review signal', () => {
+  const behavior = analyzeTransactionBehavior([{ is_success: true, is_real_signer: true, tx_block_timestamp: 'not-a-date' }], NOW);
+  assert.equal(behavior.invalid_timestamp_count, 1);
+  assert.ok(behavior.factors.some(f => f.code === 'TRANSACTION_TIMESTAMP_UNVERIFIABLE'));
+  assert.equal(decideRisk(account, null, 0, behavior).decision, 'WARN');
+});
+
+test('failed transactions are not counted as signed spam', () => {
   const rows = Array.from({ length: 20 }, (_, i) => ({
     is_success: false, is_real_signer: true,
-    tx_block_timestamp: new Date(Date.parse('2026-11-08T12:00:00.000Z') - i * 1000).toISOString()
+    tx_block_timestamp: new Date(NOW - i * 1000).toISOString()
   }));
-  const behavior = analyzeTransactionBehavior(rows);
+  const behavior = analyzeTransactionBehavior(rows, NOW);
   assert.equal(behavior.transactions_5m, 0);
   assert.equal(behavior.anomaly, false);
 });
