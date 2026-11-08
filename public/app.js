@@ -128,8 +128,10 @@ function renderResult(data) {
   void el.offsetWidth;
   el.classList.add('result-enter');
 
-  const verdict = ['ALLOW','WARN','BLOCK','INCOMPLETE'].includes(data.decision) ? data.decision : 'WARN';
-  const riskLabel = verdict === 'ALLOW' ? 'LOW RISK' : verdict === 'INCOMPLETE' ? 'INCOMPLETE' : verdict;
+  const sourceVerdict = ['ALLOW','WARN','BLOCK','INCOMPLETE'].includes(data.decision) ? data.decision : 'WARN';
+  const isIncomplete = sourceVerdict === 'INCOMPLETE';
+  const verdict = isIncomplete ? 'WARN' : sourceVerdict;
+  const riskLabel = verdict === 'ALLOW' ? 'LOW RISK' : verdict;
   const factors = Array.isArray(data.risk_factors) ? data.risk_factors : [];
   const codes = factors.map(item => String(item.code || ''));
   const hasThreatMatch = codes.some(code => ['VERIFIED_THREAT_MATCH','VERIFIED_THREAT_REPORT'].includes(code));
@@ -145,9 +147,9 @@ function renderResult(data) {
     },
     WARN: {
       title: 'Check this wallet before using it',
-      summary: 'The scan found activity that may need a closer look.',
-      action: 'Review the findings below. Avoid sending funds until you understand the activity.',
-      status: 'REVIEW RECOMMENDED'
+      summary: isIncomplete ? 'The transaction history could not be fully verified. This wallet needs another check before use.' : 'The scan found activity that may need a closer look.',
+      action: isIncomplete ? 'Do not treat this wallet as low risk. Retry the scan when complete transaction history is available.' : 'Review the findings below. Avoid sending funds until you understand the activity.',
+      status: isIncomplete ? 'HISTORY CHECK INCOMPLETE · REVIEW REQUIRED' : 'REVIEW RECOMMENDED'
     },
     BLOCK: {
       title: 'This wallet matches a verified threat',
@@ -203,10 +205,8 @@ function renderResult(data) {
     : '<li><b>No additional warning signs</b><span>The checks completed did not report other known warning signs.</span></li>';
 
   const score = Number.isFinite(Number(data.risk_score)) ? Number(data.risk_score) : 0;
-  const scoreLabel = verdict === 'INCOMPLETE' ? 'Signals in checked data' : 'Risk score';
-  const scoreValue = verdict === 'INCOMPLETE'
-    ? (score > 0 ? score + '/100' : '0 found')
-    : score + '/100';
+  const scoreLabel = isIncomplete ? 'Risk score' : 'Risk score';
+  const scoreValue = isIncomplete ? 'Unconfirmed' : score + '/100';
   const simulation = data.simulation
     ? '<p class="plain-simulation">TEST RESULT — This uses local sample data, not a live wallet scan.</p>'
     : '';
