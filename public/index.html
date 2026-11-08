@@ -62,7 +62,23 @@
  <div id="reportForm" class="report-form hidden"><input id="reportAccount" placeholder="Account ID"><input id="reportCategory" placeholder="Category"><textarea id="reportEvidence" placeholder="Evidence / transaction hash / source URL"></textarea><button class="primary-btn" id="sendReport">Submit unverified report ↗</button></div></div>
  <aside class="panel fingerprint-panel"><span class="section-index">SIGNAL SOURCES</span><div class="signal-line"><b>01</b><span>Account state</span><i>RPC</i></div><div class="signal-line"><b>02</b><span>Contract code hash</span><i>RPC</i></div><div class="signal-line"><b>03</b><span>Verified reports</span><i>DB</i></div><div class="signal-line"><b>04</b><span>Risk policy</span><i>RULES</i></div></aside>
 </section>
-<section class="protocol reveal" id="protocol"><div><span class="section-index">04 / PROTOCOL NOTES</span><h2>Evidence first. Your decision.</h2><p>A code hash is a fingerprint, not proof of malicious code. ALLOW is not a guarantee. AI explains; rules decide.</p></div><div class="protocol-mark protocol-logo"><img src="/IMG_20260629_220728_136.jpg?v=1" alt="Wayang Tech and Kitchen Needs"></div></section>
+<section class="security-method reveal" id="protocol">
+ <div class="security-method-heading"><span class="section-index">04 / SECURITY PROCEDURE</span><h2>How Sentinel checks a wallet</h2><p>Every result follows the same read-only checks. No private keys, approvals, or transactions are requested.</p></div>
+ <div class="security-steps">
+  <article class="security-step"><span>01</span><div><b>Verify the account</b><p>Check whether the NEAR account exists and read its on-chain account state.</p><small>SOURCE · NEAR RPC</small></div></article>
+  <article class="security-step"><span>02</span><div><b>Collect wallet activity</b><p>Retrieve indexed native transactions, receipts, and fungible-token transfers, including available pages.</p><small>SOURCE · NEARBLOCKS EXPLORER DATA</small></div></article>
+  <article class="security-step"><span>03</span><div><b>Validate the evidence</b><p>Check transaction identifiers, signer, status, and timestamps before counting activity. Missing or unavailable data is marked incomplete.</p><small>CHECK · DATA COMPLETENESS</small></div></article>
+  <article class="security-step"><span>04</span><div><b>Apply fixed risk rules</b><p>Compare against verified threat records and review unusual transaction patterns. Community reports alone cannot trigger a block.</p><small>CHECK · DETERMINISTIC RULES</small></div></article>
+  <article class="security-step"><span>05</span><div><b>Return a clear verdict</b><p>Show the decision, risk score where valid, activity totals, and the evidence behind the result.</p><small>OUTPUT · AUDITABLE RESULT</small></div></article>
+ </div>
+ <div class="security-guardrails">
+  <div><b>BLOCK</b><span>Only a verified threat match.</span></div>
+  <div><b>WARN</b><span>Suspicious patterns or signals need review.</span></div>
+  <div><b>INCOMPLETE</b><span>Evidence is missing. Never treated as safe.</span></div>
+  <div><b>ALLOW</b><span>Checks completed with no verified threat match. Not a guarantee.</span></div>
+ </div>
+ <p class="security-footnote">A missing contract code is normal for a standard wallet. A code hash is an identifier, not proof of malicious code. Sentinel is a read-only risk signal, not a security guarantee.</p>
+</section>
 <footer><span>NEAR SENTINEL <b>·</b> NEAR SECURITY</span><span>TESTNET / READ-ONLY MVP / 2026 · <a href="https://testnet.nearblocks.io/" target="_blank" rel="noopener noreferrer">Powered by NearBlocks.io APIs</a></span></footer>
 </main>
 <div id="toast" class="toast"></div>
