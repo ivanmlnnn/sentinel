@@ -6,7 +6,8 @@ Built by Ivan Maulana Alaudin · IVTECH · NEAR Protocol
 NEAR Sentinel screens a proposed receiver before an agent reaches its signing step. It combines live NEAR account-state evidence with a verified threat registry and returns an explainable deterministic decision:
 
 - **ALLOW** — no configured blocking signal was found.
-- **WARN** — uncertainty or a review threshold requires a human decision.
+- **WARN** — an observed wallet-risk signal or review threshold requires a human decision.
+- **INCOMPLETE** — a required data provider did not return evidence; this is not a wallet-risk verdict and must not be treated as ALLOW.
 - **BLOCK** — a verified threat match requires denial.
 
 AI can explain evidence; it cannot choose or override the verdict.
@@ -15,7 +16,7 @@ AI can explain evidence; it cannot choose or override the verdict.
 
 - NEAR Testnet account-state lookup through FastNear JSON-RPC.
 - Indexed NEAR transaction-history ingestion through FastNear Transactions API, with successful real-signer frequency analysis against wall-clock 5-minute and 1-hour windows. Timestamp parsing supports ISO timestamps and Unix seconds, milliseconds, microseconds, and nanoseconds.
-- Explainable spam/automation anomaly signals: 10+ successful signed transactions in the last 5 minutes or 40+ in the last hour trigger WARN; 30+ in 5 minutes raises the review score. Evidence includes newest transaction time, age, timestamp coverage, and invalid timestamp count. Missing or unparseable history triggers WARN rather than silently appearing clean. Frequency alone never labels an account as a scam or triggers BLOCK.
+- Explainable spam/automation anomaly signals: 10+ successful signed transactions in the last 5 minutes or 40+ in the last hour trigger WARN; 30+ in 5 minutes raises the review score. Evidence includes newest transaction time, age, timestamp coverage, and invalid timestamp count. Observed transaction anomalies trigger WARN. If the history provider is unavailable or rate-limits a request (HTTP 429), the API returns INCOMPLETE without inflating the receiver's risk score; retry before relying on the assessment. Frequency alone never labels an account as a scam or triggers BLOCK.
 - Deterministic risk engine and structured evidence.
 - D1 persistence for investigations and threat reports.
 - Verified threat matches trigger BLOCK; community reports remain unverified by default.
@@ -82,7 +83,7 @@ Creates an unverified community report. An unverified report cannot trigger BLOC
 
 See [docs/AGENT_GUARD.md](docs/AGENT_GUARD.md).
 
-The guard is a pre-sign integration layer: it calls the Sentinel assessment API, denies BLOCK, asks a human about WARN, and invokes the supplied signer only for ALLOW or explicitly approved WARN. Integrators must route every signing path through the guard.
+The guard is a pre-sign integration layer: it calls the Sentinel assessment API, denies BLOCK, asks a human about WARN, and invokes the supplied signer only for ALLOW or explicitly approved WARN. INCOMPLETE and unknown verdicts fail closed and must be retried or reviewed; they are never silently converted to ALLOW. Integrators must route every signing path through the guard.
 
 ## Security model and limitations
 
