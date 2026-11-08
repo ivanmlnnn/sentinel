@@ -9,7 +9,7 @@ window.addEventListener('unhandledrejection', (event) => { console.error('Authen
 function showAuthError(message) {
   const root = document.getElementById('auth-root');
   if (!root || document.body.classList.contains('sentinel-authenticated')) return;
-  root.innerHTML = '<main class="sentinel-auth-screen"><section class="sentinel-auth-card"><div class="sentinel-auth-mark">N</div><p class="sentinel-auth-kicker">NEAR PROTOCOL · SECURITY GATE</p><h1>NEAR SENTINEL</h1><p class="sentinel-auth-copy">'+message+'</p><button class="sentinel-auth-button" onclick="location.reload()">Retry ↻</button><p class="sentinel-auth-security">Check your connection if this keeps happening.</p></section></main>';
+  root.innerHTML = '<main class="sentinel-auth-screen"><section class="sentinel-auth-card"><div class="sentinel-auth-mark">N</div><p class="sentinel-auth-kicker">NEAR PROTOCOL / ACCOUNT INTELLIGENCE</p><h1>NEAR SENTINEL</h1><p class="sentinel-auth-copy">'+message+'</p><button class="sentinel-auth-button" onclick="location.reload()">Retry ↻</button><p class="sentinel-auth-security">Check your connection if this keeps happening.</p></section></main>';
 }
 let dashboardStarted = false;
 
@@ -21,7 +21,7 @@ function AuthGate() {
     document.body.classList.toggle('sentinel-authenticated', Boolean(ready && authenticated));
     if (ready && authenticated && !dashboardStarted) {
       dashboardStarted = true;
-      import('./app.js?v=20261108-03').catch((error) => {
+      import('./app.js?v=20261108-04').catch((error) => {
         console.error('Dashboard failed to initialize:', error);
         dashboardStarted = false;
       });
@@ -36,9 +36,9 @@ function AuthGate() {
     return React.createElement('main', { className: 'sentinel-auth-screen' },
       React.createElement('section', { className: 'sentinel-auth-card' },
         React.createElement('div', { className: 'sentinel-auth-mark' }, 'N'),
-        React.createElement('p', { className: 'sentinel-auth-kicker' }, 'NEAR PROTOCOL · SECURITY GATE'),
+        React.createElement('p', { className: 'sentinel-auth-kicker' }, 'NEAR PROTOCOL / ACCOUNT INTELLIGENCE'),
         React.createElement('h1', null, 'NEAR SENTINEL'),
-        React.createElement('p', { className: 'sentinel-auth-copy' }, 'Securely preparing your sign-in…'),
+        React.createElement('p', { className: 'sentinel-auth-copy' }, 'Preparing your secure session…'),
         React.createElement('div', { className: 'sentinel-auth-loader' })
       )
     );
@@ -48,9 +48,9 @@ function AuthGate() {
     return React.createElement('main', { className: 'sentinel-auth-screen' },
       React.createElement('section', { className: 'sentinel-auth-card' },
         React.createElement('div', { className: 'sentinel-auth-mark' }, 'N'),
-        React.createElement('p', { className: 'sentinel-auth-kicker' }, 'NEAR PROTOCOL · SECURITY GATE'),
+        React.createElement('p', { className: 'sentinel-auth-kicker' }, 'NEAR PROTOCOL / ACCOUNT INTELLIGENCE'),
         React.createElement('h1', null, 'NEAR SENTINEL'),
-        React.createElement('p', { className: 'sentinel-auth-copy' }, 'Sign in to access the security dashboard. Your account is authenticated securely by Privy.'),
+        React.createElement('p', { className: 'sentinel-auth-copy' }, 'A clearer view of account risk before you interact with the NEAR network.'),
         React.createElement('button', {
           className: 'sentinel-auth-button',
           type: 'button',
@@ -61,9 +61,9 @@ function AuthGate() {
             catch (error) { console.error('Privy login failed:', error); }
             finally { loginStarted.current = false; }
           }
-        }, 'Continue with email  ↗'),
-        React.createElement('p', { className: 'sentinel-auth-footnote' }, 'Email verification · Privy authentication'),
-        React.createElement('p', { className: 'sentinel-auth-security' }, 'Never share your password, OTP, seed phrase, or private key.')
+        }, 'Continue with email'),
+        React.createElement('p', { className: 'sentinel-auth-footnote' }, 'PRIVATE EMAIL SIGN-IN  ·  POWERED BY PRIVY'),
+        React.createElement('p', { className: 'sentinel-auth-security' }, 'Your wallet keys are never requested. Sentinel checks public testnet data only.')
       )
     );
   }
@@ -92,7 +92,7 @@ function Root() {
       loginMethods: ['email'],
       appearance: {
         theme: 'dark',
-        accentColor: '#00e0a4',
+        accentColor: '#b4c9b4',
         showWalletLoginFirst: false,
         landingHeader: 'Sign in to NEAR Sentinel',
         loginMessage: 'Access the NEAR Sentinel security dashboard'
