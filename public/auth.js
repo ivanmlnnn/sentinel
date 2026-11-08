@@ -4,6 +4,13 @@ import { createPortal } from 'react-dom';
 import { PrivyProvider, usePrivy } from 'https://esm.sh/@privy-io/react-auth@3.51.3?external=react,react-dom';
 
 const APP_ID = 'cmw78k7rd00ix0ilgf5ubvn5y';
+window.addEventListener('error', (event) => { if (event.target?.tagName === 'SCRIPT') showAuthError('A required sign-in module could not load. Please refresh or try another network.'); }, true);
+window.addEventListener('unhandledrejection', (event) => { console.error('Authentication module error:', event.reason); showAuthError('Secure sign-in could not start. Please refresh and retry.'); });
+function showAuthError(message) {
+  const root = document.getElementById('auth-root');
+  if (!root || document.body.classList.contains('sentinel-authenticated')) return;
+  root.innerHTML = '<main class="sentinel-auth-screen"><section class="sentinel-auth-card"><div class="sentinel-auth-mark">N</div><p class="sentinel-auth-kicker">NEAR PROTOCOL · SECURITY GATE</p><h1>NEAR SENTINEL</h1><p class="sentinel-auth-copy">'+message+'</p><button class="sentinel-auth-button" onclick="location.reload()">Retry ↻</button><p class="sentinel-auth-security">Check your connection if this keeps happening.</p></section></main>';
+}
 let dashboardStarted = false;
 
 function AuthGate() {
