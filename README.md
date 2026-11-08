@@ -39,7 +39,7 @@ The attack demo is a deterministic offline simulation. It does not connect to RP
 ## Try the demo
 
 1. Open the dashboard: https://sentinel.ivmaladin.workers.dev
-2. Optional: select **Connect NEAR Wallet** and choose a wallet in the NEAR wallet picker. Use a Testnet NEAR account. On mobile, choose a mobile-compatible wallet listed by NEAR Connect, such as HOT Wallet, Meteor, or NEAR Mobile Wallet when available. On desktop, use an installed NEAR wallet; Use a native NEAR wallet listed in the connector; an EVM MetaMask address alone cannot identify a native NEAR account.
+2. Optional: select **Connect NEAR Wallet** and choose one of the wallets shown for NEAR Testnet. Not every wallet supports Testnet, and the available list depends on your device. A MetaMask EVM address alone is not a native NEAR account.
 3. Paste a destination account ending in `.testnet` (or another valid NEAR account ID) into the address field.
 4. Select **Check address**. Read the ALLOW / WARN / BLOCK explanation and expand technical evidence if needed.
 
