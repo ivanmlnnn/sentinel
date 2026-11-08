@@ -52,26 +52,33 @@ export async function onRequestPost({ request, env }) {
 
   const threat = await env.DB.prepare("SELECT id, category, evidence, status FROM threat_reports WHERE account_id = ? AND status = 'verified' ORDER BY created_at DESC LIMIT 1").bind(receiver).first();
   const verdict = decideRisk(account, threat, amount, behavior);
-  // Missing history is uncertainty, not evidence that the account is clean.
-  if ((!account || !behavior) && !threat) {
-    verdict.risk_score = Math.max(verdict.risk_score, 35);
-    verdict.decision = "WARN";
-    if (!behavior) verdict.risk_factors.push({
-      code: "TRANSACTION_HISTORY_UNAVAILABLE",
-      severity: "medium",
-      detail: historyError || "Transaction history could not be verified; activity review is incomplete."
+  // Provider outages are assessment-quality problems, not evidence against the receiver.
+  // Keep independent wallet signals (e.g. missing account, large transfer, verified threat)
+  // intact; otherwise return INCOMPLETE rather than inflating the wallet risk score.
+  const historyUnavailable = !behavior;
+  if (historyUnavailable) {
+    const rateLimited = /HTTP 429/.test(historyError || "");
+    verdict.risk_factors.push({
+      code: rateLimited ? "TRANSACTION_HISTORY_RATE_LIMITED" : "TRANSACTION_HISTORY_UNAVAILABLE",
+      severity: "info",
+      detail: rateLimited
+        ? "The history provider rate-limited this request (HTTP 429). No conclusion about receiver activity can be made."
+        : (historyError || "Transaction history could not be verified; activity review is incomplete.")
     });
+    if (!threat && verdict.risk_score === 0) verdict.decision = "INCOMPLETE";
   }
+  const assessment_status = historyUnavailable ? "INCOMPLETE" : "COMPLETE";
   const evidence = {
     network, source: rpc, checked_at: new Date().toISOString(),
     account: account ? { account_exists: true, balance_yocto: account.amount, locked_yocto: account.locked, code_hash: account.code_hash, storage_usage: account.storage_usage, contract_present: account.code_hash !== "11111111111111111111111111111111" } : { account_exists: false, rpc_error: rpcError },
     transaction_history: behavior || { available: false, source: txApi, error: historyError },
     verified_threat: threat || null,
-    limitations: ["Transaction frequency is an anomaly signal, not proof of fraud; it produces WARN, not an automatic BLOCK.", "History analysis currently evaluates up to 100 recent successful real-signer transactions.", "Account age and historical contract code changes are not inferred from this response.", "This is a risk screening result, not a guarantee that a transaction is safe."]
+    assessment_status,
+    limitations: ["A provider outage or HTTP 429 makes the assessment INCOMPLETE; it is not a receiver-risk signal and must not be treated as ALLOW.", "Transaction frequency is an anomaly signal, not proof of fraud; it produces WARN, not an automatic BLOCK.", "History analysis currently evaluates up to 100 recent successful real-signer transactions.", "Account age and historical contract code changes are not inferred from this response.", "This is a risk screening result, not a guarantee that a transaction is safe."]
   };
   const id = crypto.randomUUID();
   const createdAt = new Date().toISOString();
   await env.DB.prepare("INSERT INTO investigations (id, sender_account, receiver_account, amount_near, network, decision, risk_score, risk_factors, evidence, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
     .bind(id, sender, receiver, amount, network, verdict.decision, verdict.risk_score, JSON.stringify(verdict.risk_factors), JSON.stringify(evidence), createdAt).run();
-  return json({ id, created_at: createdAt, receiver_account: receiver, amount_near: amount, ...verdict, evidence });
+  return json({ id, created_at: createdAt, receiver_account: receiver, amount_near: amount, ...verdict, assessment_status, evidence });
 }
