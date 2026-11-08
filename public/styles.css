@@ -340,3 +340,97 @@ p{line-height:1.65}
  .nav-item,.nav-item:after,.topbar{transition:none}
  .nav-arrival{animation:none}
 }
+
+
+/* WayangTech-inspired palette: deep teal, ivory, sky blue and warm yellow */
+:root{
+ --bg:#123d3b;
+ --surface:#174744;
+ --surface2:#1d514d;
+ --line:#35635d;
+ --text:#f4f0d9;
+ --muted:#c0c9b4;
+ --dim:#8fa69a;
+ --mint:#e8df78;
+ --green:#a9d8c5;
+ --amber:#e8df78;
+ --red:#e58d83;
+ --sans:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+ --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+body,.sentinel-auth-screen{background:#123d3b;color:#f4f0d9}
+body{background-image:radial-gradient(ellipse at 82% 8%,rgba(104,190,190,.12),transparent 34%),linear-gradient(145deg,#123d3b,#103432 70%)}
+.topbar{background:rgba(15,51,49,.94);border-bottom:1px solid #35635d}
+.brand-icon{background:#1c514d;border-color:#e8df78;color:#f4f0d9}
+.brand-icon span,.brand-cube{color:#e8df78}
+.brand-name,.brand-name b{color:#f4f0d9}
+.nav-item{color:#c0c9b4}
+.nav-item.active,.nav-item:hover{color:#f4f0d9}
+.nav-item:after{background:#e8df78}
+.network-pill,.wallet-help-link{color:#b9d6d0}
+.wallet-btn{background:#e8df78;border-color:#e8df78;color:#173b37}
+.wallet-btn:hover{background:#f2eaa0}
+.hero{border-color:#35635d}
+.hero h1,.hero h1 em{color:#f4f0d9}
+.hero h1 em{ text-decoration:underline;text-decoration-color:#e8df78;text-decoration-thickness:3px;text-underline-offset:7px}
+.hero-sub{color:#c0d4c9}
+.eyebrow,.section-index,.section-meta{color:#a9d8e9}
+.live-pulse,.network-pill i,.panel-status i{background:#8bd4ef;box-shadow:0 0 9px #8bd4ef55}
+.cta,.primary-btn{background:#8bd4ef;border-color:#8bd4ef;color:#123d3b}
+.cta:hover,.primary-btn:hover{background:#a4e0f3;filter:none}
+.chain-grid{background-image:linear-gradient(#8bd4ef1a 1px,transparent 1px),linear-gradient(90deg,#8bd4ef1a 1px,transparent 1px)}
+.chain-node{background:#174744;border-color:#8bd4ef;color:#f4f0d9}
+.chain-node span{color:#e8df78}
+.chain-line{background:linear-gradient(90deg,transparent,#8bd4ef,transparent)}
+.chain-label{color:#b9d6d0}
+.metrics{border-color:#35635d}
+.metric span,.metric small{color:#b9c9bd}
+.metric .green,.v-allow,.pill.ALLOW{color:#a9d8c5!important}
+.metric .amber,.v-warn,.pill.WARN{color:#e8df78!important}
+.metric .red,.v-block,.pill.BLOCK{color:#f09a8d!important}
+.panel{background:rgba(20,67,63,.55);border-color:#35635d}
+.panel-top{color:#f4f0d9}
+.account-input,.form-row input,input,textarea{background:#103633;border-color:#47736c;color:#f4f0d9}
+.account-input>span{color:#8bd4ef}
+input::placeholder,textarea::placeholder{color:#8fa69a}
+input:focus,textarea:focus{border-color:#8bd4ef;box-shadow:0 0 0 2px #8bd4ef22}
+form label{color:#c0c9b4}
+.wallet-connection-state{border-color:#8bd4ef;color:#c0d4c9}
+.verdict,.threat-item,.signal-line,.recent-item{border-color:#35635d}
+.verdict strong,.recent-address{color:#f4f0d9}
+.verdict small,.decision-foot,.registry-panel>p,.protocol p{color:#c0c9b4}
+.result{background:#174744;border-color:#52786d}
+.result-explanation,.result ul{color:#e0e6d6}
+.result-score{color:#a9d8e9}
+.pill{background:transparent!important}
+.plain-btn,.secondary-btn,.sentinel-signout-button{border-color:#8bd4ef;color:#bde8f3;background:transparent}
+.plain-btn:hover,.secondary-btn:hover{background:#205a55}
+.wallet-guide{border-color:#35635d}
+.wallet-guide-grid>div{border-color:#47736c}
+.wallet-guide-grid strong{color:#e8df78}
+.wallet-guide-grid p,.wallet-guide-note{color:#c0c9b4}
+.fingerprint-panel{border-color:#47736c}
+.protocol{border-color:#35635d}
+.protocol h2{color:#f4f0d9}
+.protocol-mark{color:#8bd4ef}
+.protocol-mark span{color:#e8df78}
+footer{color:#b0c2b5}
+footer b{color:#e8df78}
+.scroll-progress{background:#e8df78;box-shadow:none}
+.toast{background:#174744;border-color:#8bd4ef;color:#f4f0d9}
+.sentinel-auth-card{border-color:#47736c}
+.sentinel-auth-mark{background:#1c514d;border-color:#e8df78;color:#e8df78}
+.sentinel-auth-kicker{color:#a9d8e9}
+.sentinel-auth-card h1{color:#f4f0d9}
+.sentinel-auth-copy{color:#c0d4c9}
+.sentinel-auth-button{background:#e8df78;border-color:#e8df78;color:#173b37}
+.sentinel-auth-button:hover{background:#f2eaa0}
+.sentinel-auth-footnote{color:#c0c9b4}
+.sentinel-auth-security{color:#9fb9ad}
+.sentinel-auth-loader{border-color:#35635d;border-top-color:#8bd4ef}
+.sentinel-session-email{color:#c0d4c9}
+.sentinel-signout-button:hover{background:#205a55}
+@media(max-width:760px){
+ body{background-image:linear-gradient(145deg,#123d3b,#103432)}
+ .panel{background:transparent}
+}
