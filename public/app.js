@@ -154,6 +154,7 @@ function renderResult(data) {
 async function loadMetrics() {
   try {
     const data = await request('/metrics'), totals = data.totals || {}, threats = data.threats || {};
+    const apiStatus = $('apiStatus'); if (apiStatus) apiStatus.textContent = 'ONLINE';
     $('mTotal').textContent = totals.total ?? 0; $('mAllowed').textContent = totals.allowed ?? 0;
     $('mWarned').textContent = totals.warned ?? 0; $('mBlocked').textContent = totals.blocked ?? 0;
     $('threatTotal').textContent = threats.total ?? 0; $('threatVerified').textContent = threats.verified ?? 0;
@@ -161,7 +162,7 @@ async function loadMetrics() {
     $('recentList').innerHTML = recent.length ? recent.map(x =>
       '<div class="recent-item"><div><div class="recent-address">'+escapeHtml(x.receiver_account)+'</div><div class="recent-meta">'+new Date(x.created_at).toLocaleString()+' · '+Number(x.amount_near||0).toLocaleString()+' NEAR</div></div><span class="pill '+escapeHtml(x.decision)+'">'+escapeHtml(x.decision)+'</span><span class="recent-score">'+(Number(x.risk_score)||0)+'/100</span></div>'
     ).join('') : '<div class="empty-state">No checks yet. Try your first address above.</div>';
-  } catch (error) { $('recentList').innerHTML = '<div class="empty-state">Activity is temporarily unavailable.</div>'; }
+  } catch (error) { const apiStatus = $('apiStatus'); if (apiStatus) apiStatus.textContent = 'OFFLINE'; $('recentList').innerHTML = '<div class="empty-state">Activity is temporarily unavailable.</div>'; }
 }
 async function loadThreats() {
   try {
