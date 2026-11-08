@@ -14,6 +14,8 @@ AI can explain evidence; it cannot choose or override the verdict.
 ## What works in this prototype
 
 - NEAR Testnet account-state lookup through FastNear JSON-RPC.
+- Indexed NEAR transaction-history ingestion through FastNear Transactions API, with successful real-signer frequency analysis (5-minute and 1-hour windows).
+- Explainable spam/automation anomaly signals: 10+ successful signed transactions in 5 minutes or 40+ in one hour trigger WARN; 30+ in 5 minutes raises the review score. Frequency alone never labels an account as a scam or triggers BLOCK.
 - Deterministic risk engine and structured evidence.
 - D1 persistence for investigations and threat reports.
 - Verified threat matches trigger BLOCK; community reports remain unverified by default.
@@ -88,7 +90,8 @@ The guard is a pre-sign integration layer: it calls the Sentinel assessment API,
 - The generic signer in the guard is an integration callback, not a built-in NEAR signer.
 - This repository does **not yet provision or cryptographically enforce a NEAR function-call access key**. A function-call key is scoped to contract calls and cannot directly transfer NEAR; native payments require a deliberately designed payment/escrow contract.
 - The offline attack demo validates guard behavior, not a live NEAR wallet integration.
-- Account age, transaction history, prior interactions, and historical contract code changes are not currently inferred from current account-state RPC data.
+- Transaction history is fetched separately from FastNear Transactions API (`tx.test.fastnear.com` for Testnet, `tx.main.fastnear.com` for Mainnet); the current scan evaluates up to 100 recent successful real-signer transactions. Set `FASTNEAR_API_KEY` as a server-side secret if your FastNear plan requires it. If the history service is unavailable, the response exposes that limitation in `evidence.transaction_history` rather than pretending history was checked.
+- Account age, prior interactions, and historical contract code changes are not currently inferred.
 - A code hash is a point-in-time fingerprint, not proof of malicious code.
 - ALLOW is not a guarantee of safety.
 
