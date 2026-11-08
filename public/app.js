@@ -134,9 +134,11 @@ function renderResult(data) {
   }[verdict];
   const factors = Array.isArray(data.risk_factors) ? data.risk_factors : [];
   const simulationNote = data.simulation ? '<p class="result-explanation"><b>SIMULATION ONLY</b> — This is a local policy demo, not a live finding about this account. It is not saved to audit metrics.</p>' : '<p class="result-explanation">'+explanation+'</p>';
+  const activity = data.evidence?.wallet_activity;
+  const activitySummary = !data.simulation && activity ? '<section class="wallet-activity-summary"><b>Explorer wallet tracking</b><div class="recent-meta">Native transactions: '+Number(activity.native_transactions?.count||0)+' · Receipts: '+Number(activity.receipts?.count||0)+' · FT transfers: '+Number(activity.fungible_token_transfers?.count||0)+'</div><div class="recent-meta">Native: '+(activity.native_transactions?.complete?'complete':'incomplete')+' · Receipts: '+(activity.receipts?.complete?'complete':'incomplete')+' · Tokens: '+(activity.fungible_token_transfers?.complete?'complete':'incomplete')+'</div><a href="'+escapeHtml(activity.explorer_url||'#')+'" target="_blank" rel="noopener noreferrer">Open wallet in NEAR Explorer ↗</a></section>' : '';
   const aiButton = data.simulation ? '' : '<button class="secondary-btn" id="aiExplain" type="button">Explain this result</button>';
   el.innerHTML = '<div class="result-top"><b class="result-verdict" style="color:'+color+'">'+verdict+'</b><span class="result-score">Risk score: '+(Number(data.risk_score)||0)+'/100</span></div>'
-    + simulationNote + '<ul>'
+    + simulationNote + activitySummary + '<ul>'
     + factors.map(x => '<li><b>'+escapeHtml(x.code)+'</b> — '+escapeHtml(x.detail)+'</li>').join('')
     + '</ul><div class="result-actions">'+aiButton+'<button class="secondary-btn" id="viewEvidence" type="button">Technical evidence</button></div><div id="aiExplanation"></div><pre id="evidenceJson" class="ai-text hidden"></pre>';
   if (!data.simulation) $('aiExplain').addEventListener('click', async () => {
