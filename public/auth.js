@@ -68,9 +68,8 @@ function AuthGate() {
     );
   }
 
-  const email = user?.email?.address || user?.phone?.number || 'Authenticated user';
   const sessionControl = React.createElement('div', { className: 'sentinel-session-control' },
-    React.createElement('span', { className: 'sentinel-session-email', title: email }, email),
+    React.createElement('span', { className: 'sentinel-session-email', 'aria-label': 'Signed-in profile' }, 'Profile'),
     React.createElement('button', {
       type: 'button',
       className: 'sentinel-signout-button',
