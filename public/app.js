@@ -177,24 +177,13 @@ function renderResult(data) {
   const simulationNote = data.simulation
     ? '<p class="result-explanation"><b>SIMULATION</b> — Local test data, not a live network finding.</p>'
     : '<p class="result-explanation">'+escapeHtml(config.note)+'</p>';
-  const aiButton = data.simulation ? '' : '<button class="secondary-btn" id="aiExplain" type="button">Explain result</button>';
-
   el.innerHTML =
     '<section class="result-overview result-'+verdict.toLowerCase()+'"><div class="result-status-line"><span class="result-status-dot"></span><span>'+escapeHtml(config.label)+'</span></div><h3>'+escapeHtml(config.title)+'</h3>'+simulationNote+scoreMarkup+'</section>' +
     activitySummary +
     '<section class="result-factors"><div class="readable-section-title">Key findings</div><ul class="readable-factor-list">'+findingMarkup+'</ul></section>' +
-    '<div class="result-actions">'+aiButton+'<button class="secondary-btn" id="viewEvidence" type="button">Technical details</button></div><div id="aiExplanation"></div><pre id="evidenceJson" class="ai-text hidden"></pre>';
+    '<div class="result-actions"><button class="secondary-btn" id="viewEvidence" type="button">Technical details</button></div><pre id="evidenceJson" class="ai-text hidden"></pre>';
 
-  if (!data.simulation) $('aiExplain').addEventListener('click', async () => {
-    const button = $('aiExplain'); button.disabled = true; button.textContent = 'Loading…';
-    try {
-      const answer = await request('/ai-review',{method:'POST',body:JSON.stringify({investigation_id:data.id})});
-      $('aiExplanation').innerHTML = '<p class="ai-text">'+escapeHtml(answer.explanation)+'</p>';
-    } catch (error) {
-      $('aiExplanation').innerHTML = '<p class="ai-text">Explanation is unavailable right now. The verdict is based on Sentinel checks and available evidence.</p>';
-      toast(error.message);
-    } finally { button.disabled = false; button.textContent = 'Explain result'; }
-  });
+
   $('viewEvidence').addEventListener('click', () => {
     const evidence = $('evidenceJson');
     const opening = evidence.classList.contains('hidden');
