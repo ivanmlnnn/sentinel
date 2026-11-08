@@ -13,6 +13,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - run: node --check public/auth.js
       - run: node --check public/app.js
       - run: npm test
       - run: npm run demo:attack
