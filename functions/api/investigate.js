@@ -142,15 +142,15 @@ export async function onRequestPost({ request, env }) {
   // Provider outages are assessment-quality problems, not evidence against the receiver.
   // Keep independent wallet signals (e.g. missing account, large transfer, verified threat)
   // intact; otherwise return INCOMPLETE rather than inflating the wallet risk score.
-  const historyUnavailable = !behavior || behavior.available === false;
+  const historyUnavailable = !behavior || behavior.available === false || Boolean(sender && !pairHistory);
   if (historyUnavailable) {
-    const rateLimited = historyStatus === 429 || /HTTP 429/.test(historyError || "");
+    const rateLimited = historyStatus === 429 || /HTTP 429/.test(historyError || "") || /HTTP 429/.test(pairHistoryError || "");
     verdict.risk_factors.push({
       code: rateLimited ? "TRANSACTION_HISTORY_RATE_LIMITED" : "TRANSACTION_HISTORY_UNAVAILABLE",
       severity: "info",
       detail: rateLimited
         ? "NearBlocks rate-limited this request (HTTP 429). No conclusion about receiver activity can be made."
-        : (historyError || "Transaction history could not be verified; activity review is incomplete.")
+        : (pairHistoryError || historyError || "Transaction history could not be verified; activity review is incomplete.")
     });
     if (!threat && verdict.risk_score === 0) verdict.decision = "INCOMPLETE";
   }
