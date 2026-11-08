@@ -158,11 +158,22 @@ export async function onRequestPost({ request, env }) {
       for (const item of ftPayloads) {
         for (const raw of item.payload.data) {
           const row = raw?.transaction && typeof raw.transaction === "object" ? { ...raw, ...raw.transaction } : raw;
-          const from = row?.sender_account_id ?? row?.sender_id ?? row?.old_owner_id ?? row?.from_account_id ?? row?.from;
-          const to = row?.receiver_account_id ?? row?.receiver_id ?? row?.new_owner_id ?? row?.to_account_id ?? row?.to;
+          const affected = row?.affected_account_id ?? null;
+          const involved = row?.involved_account_id ?? null;
+          let from = row?.sender_account_id ?? row?.sender_id ?? row?.old_owner_id ?? row?.from_account_id ?? row?.from ?? null;
+          let to = row?.receiver_account_id ?? row?.receiver_id ?? row?.new_owner_id ?? row?.to_account_id ?? row?.to ?? null;
+          // NearBlocks account ft-txns uses affected/involved + signed delta_amount:
+          // negative means the affected account sent tokens; positive means it received.
+          if ((!from || !to) && affected && involved) {
+            if (affected.toLowerCase() === item.account.toLowerCase()) {
+              const delta = Number(row?.delta_amount ?? 0);
+              if (delta < 0) { from = affected; to = involved; }
+              else if (delta > 0) { from = involved; to = affected; }
+            }
+          }
           const hash = row?.transaction_hash ?? row?.transaction_hash_base58 ?? row?.hash ?? null;
           const timestamp = row?.block_timestamp ?? row?.block_timestamp_nanosec ?? row?.block_timestamp_ms ?? row?.timestamp ?? null;
-          const ft = row?.ft ?? row?.token ?? row?.fungible_token ?? {};
+          const ft = row?.ft_meta ?? row?.ft ?? row?.token ?? row?.fungible_token ?? {};
           const contract = row?.contract_account_id ?? row?.contract ?? row?.token_account_id ?? ft?.contract ?? ft?.contract_account_id ?? null;
           const amountRaw = row?.amount ?? row?.delta_amount ?? row?.transfer_amount ?? null;
           const key = hash ? `${hash}:${from || ""}:${to || ""}:${amountRaw || ""}` : JSON.stringify(raw);
@@ -172,7 +183,7 @@ export async function onRequestPost({ request, env }) {
             transaction_hash: hash,
             sender_account_id: typeof from === "string" ? from.toLowerCase() : null,
             receiver_account_id: typeof to === "string" ? to.toLowerCase() : null,
-            amount: amountRaw == null ? null : String(amountRaw),
+            amount: amountRaw == null ? null : String(amountRaw).replace(/^-/, ""),
             token_contract: typeof contract === "string" ? contract : null,
             token_symbol: ft?.symbol ?? row?.symbol ?? null,
             token_name: ft?.name ?? row?.name ?? null,
