@@ -221,15 +221,25 @@ function renderResult(data) {
     '</section>' +
     activityMarkup +
     '<section class="plain-findings"><h4>Why this result?</h4><ul>' + findingsMarkup + '</ul></section>' +
-    '<details class="technical-details"><summary>Technical data</summary><pre class="ai-text technical-json"></pre></details>';
+    '<details class="technical-details"><summary>Technical data</summary><pre class="ai-text technical-json">Open to load the evidence.</pre></details>';
 
+  const technicalDetails = el.querySelector('.technical-details');
   const technicalJson = el.querySelector('.technical-json');
-  if (technicalJson) {
-    try {
-      technicalJson.textContent = JSON.stringify(data.evidence ?? {}, null, 2);
-    } catch (error) {
-      technicalJson.textContent = 'Technical data could not be displayed.';
-    }
+  let technicalDataLoaded = false;
+  if (technicalDetails && technicalJson) {
+    technicalDetails.addEventListener('toggle', () => {
+      if (!technicalDetails.open || technicalDataLoaded) return;
+      technicalDataLoaded = true;
+      try {
+        const serialized = JSON.stringify(data.evidence ?? {}, null, 2);
+        const limit = 80000;
+        technicalJson.textContent = serialized.length > limit
+          ? serialized.slice(0, limit) + '\\n\\n[Display limited to 80,000 characters. The full evidence remains in the scan response.]'
+          : serialized;
+      } catch (error) {
+        technicalJson.textContent = 'Technical data could not be displayed.';
+      }
+    });
   }
 }
 
