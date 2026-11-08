@@ -1,9 +1,9 @@
-import { setupWalletSelector } from 'https://esm.sh/@near-wallet-selector/core@10';
-import { setupModal } from 'https://esm.sh/@near-wallet-selector/modal-ui-js@10';
-
 const $ = id => document.getElementById(id);
 const API = '/api';
-let selector = null, modal = null, connectedAccount = null, activeWalletId = null, walletReady = false;
+let connector = null;
+let connectedAccount = null;
+let connectedWalletName = null;
+let connectorReady = false;
 
 function toast(message) {
   const el = $('toast'); el.textContent = message; el.classList.add('show');
@@ -23,77 +23,86 @@ async function request(path, options = {}) {
   if (!response.ok) throw new Error(data.error || 'Request failed. Please retry.');
   return data;
 }
-
+function syncWalletUI(accountId, walletName) {
+  connectedAccount = accountId || null;
+  connectedWalletName = walletName || null;
+  const button = $('walletBtn');
+  button.disabled = false;
+  button.classList.toggle('wallet-connected', Boolean(connectedAccount));
+  button.innerHTML = connectedAccount
+    ? '<span class="wallet-dot"></span>' + escapeHtml(short(connectedAccount)) + ' <span>Disconnect</span>'
+    : 'Connect NEAR Wallet <span>↗</span>';
+  const sender = $('sender');
+  if (connectedAccount) {
+    sender.value = connectedAccount;
+    sender.placeholder = 'Connected NEAR account';
+    sender.dataset.walletAutofill = '1';
+  } else if (sender.dataset.walletAutofill === '1') {
+    sender.value = '';
+    sender.placeholder = 'Connect a NEAR wallet';
+    sender.dataset.walletAutofill = '0';
+  }
+  $('walletConnectionState').textContent = connectedAccount
+    ? 'Connected to ' + (connectedWalletName || 'NEAR wallet') + ': ' + connectedAccount
+    : 'Not connected — you can still check any public NEAR account.';
+}
 async function initWallet() {
   const button = $('walletBtn');
-  button.disabled = true; button.textContent = 'Loading NEAR wallets…';
-  const adapters = [
-    ['hot-wallet','setupHotWallet'], ['meteor-wallet','setupMeteorWallet'],
-    ['here-wallet','setupHereWallet'], ['my-near-wallet','setupMyNearWallet'],
-    ['near-mobile-wallet','setupNearMobileWallet'], ['near-snap','setupNearSnap'],
-    ['sender','setupSender'], ['nightly','setupNightly']
-  ];
+  button.disabled = true;
+  button.textContent = 'Loading NEAR wallet options…';
   try {
-    const results = await Promise.allSettled(adapters.map(async pair => {
-      const module = await import('https://esm.sh/@near-wallet-selector/' + pair[0] + '@10');
-      if (typeof module[pair[1]] !== 'function') throw new Error(pair[1] + ' unavailable');
-      return module[pair[1]]();
-    }));
-    const modules = results.filter(x => x.status === 'fulfilled').map(x => x.value);
-    if (!modules.length) throw new Error('No NEAR wallet provider could be loaded.');
-    selector = await setupWalletSelector({
-      network:'testnet', modules, optimizeWalletOrder:true, languageCode:'en'
-    });
-    modal = setupModal(selector);
+    // NEAR Connect is the current recommended connector in the NEAR Wallet Selector transition.
+    const { NearConnector } = await import('https://esm.sh/@hot-labs/near-connect@0.11.4');
+    connector = new NearConnector({ network:'testnet', autoConnect:false });
+    await connector.whenManifestLoaded;
 
-    const sync = () => {
-      const state = selector.store.getState();
-      const accounts = state.accounts || [];
-      const active = accounts.find(x => x.active) || accounts[0] || null;
-      connectedAccount = active?.accountId || null;
-      activeWalletId = state.selectedWalletId || null;
-      button.disabled = false;
-      button.classList.toggle('wallet-connected', Boolean(connectedAccount));
-      button.innerHTML = connectedAccount
-        ? '<span class="wallet-dot"></span>' + escapeHtml(short(connectedAccount)) + ' <span>Disconnect</span>'
-        : 'Connect NEAR Wallet <span>↗</span>';
-      const sender = $('sender');
-      if (connectedAccount) {
-        sender.value = connectedAccount; sender.placeholder = 'Connected NEAR account';
-        sender.dataset.walletAutofill = '1';
-      } else if (sender.dataset.walletAutofill === '1') {
-        sender.value = ''; sender.placeholder = 'Connect a NEAR wallet';
-        sender.dataset.walletAutofill = '0';
-      }
-      $('walletConnectionState').textContent = connectedAccount
-        ? 'Connected: ' + connectedAccount
-        : 'Not connected — you can still check any public NEAR account.';
-    };
-    selector.store.observable.subscribe(sync);
-    sync(); walletReady = true;
-    console.info('NEAR wallet selector ready. Optional adapters failed:', results.filter(x => x.status === 'rejected').length);
+    connector.on('wallet:signIn', event => {
+      const account = event.accounts && event.accounts[0];
+      syncWalletUI(account?.accountId, event.wallet?.manifest?.name || 'NEAR wallet');
+    });
+    connector.on('wallet:signOut', () => syncWalletUI(null, null));
+
+    try {
+      const current = await connector.getConnectedWallet();
+      const account = current.accounts && current.accounts[0];
+      syncWalletUI(account?.accountId, current.wallet?.manifest?.name || 'NEAR wallet');
+    } catch {
+      syncWalletUI(null, null);
+    }
+    connectorReady = true;
+    button.disabled = false;
+    console.info('NEAR Connect ready. Network: testnet. Available wallets:', connector.availableWallets.length);
   } catch (error) {
-    console.error('NEAR wallet setup failed:', error);
-    button.disabled = false; button.textContent = 'Wallets unavailable · Retry';
-    button.onclick = () => { button.onclick = null; initWallet(); };
-    $('walletConnectionState').textContent = 'Wallet connection unavailable. Public address checks still work.';
-    toast('Wallets could not load. Check your connection and retry.');
-    return;
+    console.error('NEAR Connect initialization failed:', error);
+    button.disabled = false;
+    button.textContent = 'Wallet connection unavailable';
+    $('walletConnectionState').textContent = 'Wallet options could not load. Refresh the page or continue with a public address check.';
+    toast('NEAR wallet service could not load. Please refresh and retry.');
   }
   button.addEventListener('click', async () => {
-    if (!walletReady) return;
-    if (!connectedAccount) {
-      try { modal.show(); } catch (error) { console.error(error); toast('Could not open the NEAR wallet picker.'); }
+    if (!connectorReady) {
+      toast('Wallet connector is not ready. Refresh the page and try again.');
       return;
     }
     button.disabled = true;
     try {
-      const wallet = await selector.wallet(activeWalletId || undefined);
-      await wallet.signOut();
-      toast('NEAR wallet disconnected.');
+      if (connectedAccount) {
+        await connector.disconnect();
+        syncWalletUI(null, null);
+        toast('NEAR wallet disconnected.');
+      } else {
+        await connector.connect();
+        const current = await connector.getConnectedWallet();
+        const account = current.accounts && current.accounts[0];
+        syncWalletUI(account?.accountId, current.wallet?.manifest?.name || 'NEAR wallet');
+        toast('NEAR wallet connected.');
+      }
     } catch (error) {
-      console.error('Wallet sign-out failed:', error); toast('Could not disconnect. Please retry.');
-    } finally { button.disabled = false; }
+      console.error('NEAR wallet connection error:', error);
+      toast('Connection cancelled or unavailable. Choose a wallet that supports NEAR Testnet.');
+    } finally {
+      button.disabled = false;
+    }
   });
 }
 
@@ -126,7 +135,6 @@ function renderResult(data) {
     $('evidenceJson').classList.toggle('hidden');
   });
 }
-
 async function loadMetrics() {
   try {
     const data = await request('/metrics'), totals = data.totals || {}, threats = data.threats || {};
