@@ -193,17 +193,6 @@ $('pasteReceiver').addEventListener('click', async () => {
   try { $('receiver').value = await navigator.clipboard.readText(); }
   catch { toast('Clipboard unavailable. Paste the account ID manually.'); }
 });
-document.querySelectorAll('[data-demo]').forEach(button => button.addEventListener('click', () => {
-  const scenario = button.dataset.demo;
-  const scenarios = {
-    allow: { receiver_account:'ordinary-demo.testnet', decision:'ALLOW', risk_score:0, risk_factors:[{code:'ACCOUNT_EXISTS',detail:'Demo account exists on-chain.'},{code:'NO_VERIFIED_THREAT',detail:'No verified threat match in this example.'}] },
-    warn: { receiver_account:'unverified-demo.testnet', decision:'WARN', risk_score:55, risk_factors:[{code:'ACCOUNT_NOT_FOUND',detail:'The receiver could not be verified in this example.'},{code:'INSUFFICIENT_EVIDENCE',detail:'A human review is required before proceeding.'}] },
-    block: { receiver_account:'sentinel-block-demo.testnet', decision:'BLOCK', risk_score:100, risk_factors:[{code:'VERIFIED_THREAT_REPORT',detail:'Simulated verified threat match. This is a demo fixture, not a real accusation.'}] }
-  };
-  const sample = scenarios[scenario];
-  renderResult({ ...sample, id:null, simulation:true, evidence:{simulation:true,network:'testnet',source:'Local policy simulator',checked_at:new Date().toISOString(),note:'Synthetic scenario. No RPC query, D1 write, wallet action, or transaction was performed.'} });
-  $('result').scrollIntoView({behavior:'smooth',block:'nearest'});
-}));
 $('refreshBtn').addEventListener('click',() => {loadMetrics();loadThreats();toast('Activity refreshed.');});
 $('reportBtn').addEventListener('click',() => $('reportForm').classList.toggle('hidden'));
 $('sendReport').addEventListener('click',async () => {
