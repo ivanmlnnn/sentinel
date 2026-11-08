@@ -1,4 +1,5 @@
 const progress=document.getElementById('scrollProgress');
+const tagline=document.querySelector('.hero h1 em');
 const links=[...document.querySelectorAll('.main-nav .nav-item')];
 const sections=links.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
 const revealNodes=document.querySelectorAll('.reveal');
@@ -37,70 +38,16 @@ links.forEach(link=>{
   });
 });
 
-function updateProgress(){
+function updateScrollEffects(){
   const max=document.documentElement.scrollHeight-window.innerHeight;
   if(progress)progress.style.width=(max>0?window.scrollY/max*100:0)+'%';
+  if(tagline){
+    const hero=document.querySelector('.hero');
+    const travel=hero?Math.max(180,hero.offsetHeight*.7):260;
+    const amount=Math.max(0,Math.min(1,window.scrollY/travel));
+    tagline.style.setProperty('--tagline-progress',String(.12+amount*.88));
+  }
 }
-window.addEventListener('scroll',updateProgress,{passive:true});
-updateProgress();
-
-
-/* Reveal key copy as the reader moves through the page. */
-const readingTargets = document.querySelectorAll([
-  '.hero-sub',
-  '.wallet-guide-head b',
-  '.wallet-guide-grid strong',
-  '.wallet-guide-grid p',
-  '.metric span',
-  '.metric b',
-  '.metric small',
-  '.section-heading h2',
-  '.section-meta',
-  '.panel-top',
-  '.verdict strong',
-  '.verdict small',
-  '.decision-foot',
-  '.table-head span',
-  '.registry-numbers b',
-  '.registry-numbers span',
-  '.registry-panel > p',
-  '.signal-line span',
-  '.security-method-heading h2',
-  '.security-method-heading p',
-  '.security-step b',
-  '.security-step p',
-  '.security-step small',
-  '.security-guardrails b',
-  '.security-guardrails span',
-  '.security-footnote',
-  'footer span'
-].join(','));
-
-if(reducedMotion){
-  readingTargets.forEach(node=>node.classList.add('scroll-copy-visible'));
-}else if('IntersectionObserver' in window){
-  const copyObserver=new IntersectionObserver(entries=>{
-    entries.forEach(entry=>{
-      if(!entry.isIntersecting)return;
-      entry.target.classList.add('scroll-copy-visible');
-      copyObserver.unobserve(entry.target);
-    });
-  },{threshold:0,rootMargin:'0px 0px -7% 0px'});
-  readingTargets.forEach(node=>{
-    const siblings=[...node.parentElement.children].filter(item=>item.matches([
-      '.hero-sub','.wallet-guide-head b','.wallet-guide-grid strong','.wallet-guide-grid p',
-      '.metric span','.metric b','.metric small','.section-heading h2','.section-meta',
-      '.panel-top','.verdict strong','.verdict small','.decision-foot','.table-head span',
-      '.registry-numbers b','.registry-numbers span','.registry-panel > p','.signal-line span',
-      '.security-method-heading h2','.security-method-heading p','.security-step b',
-      '.security-step p','.security-step small','.security-guardrails b',
-      '.security-guardrails span','.security-footnote','footer span'
-    ].join(',')));
-    const order=Math.max(0,siblings.indexOf(node));
-    node.style.setProperty('--copy-delay',Math.min(order,4)*65+'ms');
-    node.classList.add('scroll-copy');
-    copyObserver.observe(node);
-  });
-}else{
-  readingTargets.forEach(node=>node.classList.add('scroll-copy-visible'));
-}
+window.addEventListener('scroll',updateScrollEffects,{passive:true});
+window.addEventListener('resize',updateScrollEffects,{passive:true});
+updateScrollEffects();
