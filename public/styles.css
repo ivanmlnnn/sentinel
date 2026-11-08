@@ -67,3 +67,5 @@ input,textarea{border-radius:8px;font:12px var(--sans)}
  .scan-panel,.decision-panel,.audit-panel,.registry-panel,.fingerprint-panel{padding:17px}
  .hero h1{letter-spacing:-2px}
 }
+.wallet-connection-state{font:10px/1.6 var(--sans);color:#9eb4a9;margin:10px 0 0;padding:9px 11px;background:#0a1711;border:1px solid #254c38;border-radius:7px;overflow-wrap:anywhere}
+.wallet-connection-state:empty{display:none}
