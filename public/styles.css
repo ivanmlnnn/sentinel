@@ -835,3 +835,99 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
 .technical-details[open]>summary{border-bottom:1px solid #293640}
 .technical-json.ai-text{display:block;max-height:420px;overflow:auto;margin:0;padding:14px;color:#c3d0d6;font:11px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre;overflow-wrap:normal;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 @media(max-width:560px){.technical-details{margin:0 15px 16px}.technical-json.ai-text{max-height:55vh;padding:12px;font-size:10px}}
+
+
+/* Refined scroll rhythm for section markers and hero headline */
+.section-heading .section-index,
+.security-method-heading .section-index{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  opacity:.78;
+  transform:translateY(5px);
+  transition:opacity .45s ease,transform .55s cubic-bezier(.2,.75,.25,1);
+}
+.section-heading .section-index:after,
+.security-method-heading .section-index:after{
+  content:"";
+  display:inline-block;
+  width:28px;
+  height:1px;
+  background:currentColor;
+  opacity:.7;
+  transform:scaleX(0);
+  transform-origin:left center;
+  transition:transform .55s cubic-bezier(.2,.75,.25,1);
+}
+.section-heading.visible .section-index,
+.security-method.visible .security-method-heading .section-index{
+  opacity:1;
+  transform:translateY(0);
+}
+.section-heading.visible .section-index:after,
+.security-method.visible .security-method-heading .section-index:after{
+  transform:scaleX(1);
+}
+.section-heading h2{
+  opacity:.82;
+  transform:translateY(7px);
+  transition:opacity .5s ease .08s,transform .6s cubic-bezier(.2,.75,.25,1) .08s;
+}
+.section-heading.visible h2{opacity:1;transform:translateY(0)}
+.scan-layout>.panel,
+.audit-panel>.table-head,
+.audit-panel>.recent-list,
+.threat-layout>.panel,
+.security-method-heading,
+.security-steps>.security-step,
+.security-guardrails>div{
+  opacity:0;
+  transform:translateY(12px);
+  transition:opacity .5s ease,transform .6s cubic-bezier(.2,.75,.25,1);
+}
+.scan-layout.visible>.panel:nth-child(2),
+.threat-layout.visible>.panel:nth-child(2){transition-delay:.1s}
+.audit-panel.visible>.recent-list{transition-delay:.08s}
+.security-method.visible .security-method-heading{transition-delay:.02s}
+.security-method.visible .security-steps>.security-step:nth-child(2){transition-delay:.06s}
+.security-method.visible .security-steps>.security-step:nth-child(3){transition-delay:.12s}
+.security-method.visible .security-steps>.security-step:nth-child(4){transition-delay:.18s}
+.security-method.visible .security-steps>.security-step:nth-child(5){transition-delay:.24s}
+.security-method.visible .security-guardrails>div:nth-child(2){transition-delay:.06s}
+.security-method.visible .security-guardrails>div:nth-child(3){transition-delay:.12s}
+.security-method.visible .security-guardrails>div:nth-child(4){transition-delay:.18s}
+.scan-layout.visible>.panel,
+.audit-panel.visible>.table-head,
+.audit-panel.visible>.recent-list,
+.threat-layout.visible>.panel,
+.security-method.visible .security-method-heading,
+.security-method.visible .security-steps>.security-step,
+.security-method.visible .security-guardrails>div{
+  opacity:1;
+  transform:translateY(0);
+}
+.hero h1{perspective:700px}
+.hero h1 em{
+  display:inline-block;
+  opacity:0;
+  transform:translate3d(0,13px,0);
+  animation:sentinel-tagline-in .75s cubic-bezier(.2,.75,.25,1) .28s both;
+}
+.hero h1{animation:sentinel-title-in .65s cubic-bezier(.2,.75,.25,1) .08s both}
+@keyframes sentinel-title-in{
+  from{opacity:0;transform:translateY(12px)}
+  to{opacity:1;transform:translateY(0)}
+}
+@keyframes sentinel-tagline-in{
+  from{opacity:0;transform:translate3d(0,13px,0)}
+  to{opacity:1;transform:translate3d(0,0,0)}
+}
+@media(prefers-reduced-motion:reduce){
+  .section-heading .section-index,.security-method-heading .section-index,
+  .section-heading .section-index:after,.security-method-heading .section-index:after,
+  .section-heading h2,.scan-layout>.panel,.audit-panel>.table-head,
+  .audit-panel>.recent-list,.threat-layout>.panel,.security-method-heading,
+  .security-steps>.security-step,.security-guardrails>div,.hero h1,.hero h1 em{
+    opacity:1!important;transform:none!important;animation:none!important;transition:none!important
+  }
+}
