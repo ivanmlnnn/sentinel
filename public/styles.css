@@ -462,3 +462,12 @@ body{background-image:radial-gradient(ellipse at 82% 8%,rgba(139,212,239,.10),tr
 .protocol-logo img{object-fit:cover}
 .sentinel-auth-card{max-width:620px}
 @media(max-width:640px){.sentinel-auth-mark{width:136px;height:136px}.brand-logo{width:38px;height:38px}.protocol-logo{width:84px;height:84px}}
+
+/* Preserve complete supplied WayangTech artwork without cropping */
+.sentinel-auth-mark{width:180px;height:180px;margin:0 auto 24px;border-radius:0;overflow:hidden;background:transparent;box-shadow:none}
+.sentinel-auth-mark img{display:block;width:100%;height:100%;object-fit:contain}
+.brand-logo{width:52px;height:52px;display:inline-flex;overflow:hidden;border-radius:0;background:transparent;box-shadow:none}
+.brand-logo img{width:100%;height:100%;object-fit:contain}
+.protocol-logo{width:120px;height:120px;overflow:hidden;border-radius:0;background:transparent}
+.protocol-logo img{width:100%;height:100%;object-fit:contain}
+@media(max-width:640px){.sentinel-auth-mark{width:150px;height:150px}.brand-logo{width:42px;height:42px}.protocol-logo{width:90px;height:90px}}
