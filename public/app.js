@@ -129,6 +129,7 @@ function renderResult(data) {
   el.classList.add('result-enter');
 
   const verdict = ['ALLOW','WARN','BLOCK','INCOMPLETE'].includes(data.decision) ? data.decision : 'WARN';
+  const riskLabel = verdict === 'ALLOW' ? 'LOW RISK' : verdict === 'INCOMPLETE' ? 'INCOMPLETE' : verdict;
   const factors = Array.isArray(data.risk_factors) ? data.risk_factors : [];
   const codes = factors.map(item => String(item.code || ''));
   const hasThreatMatch = codes.some(code => ['VERIFIED_THREAT_MATCH','VERIFIED_THREAT_REPORT'].includes(code));
@@ -212,7 +213,7 @@ function renderResult(data) {
 
   el.innerHTML =
     '<section class="plain-result-head result-' + verdict.toLowerCase() + '">' +
-      '<div class="plain-status-row"><span class="plain-verdict plain-verdict-' + verdict.toLowerCase() + '">' + verdict + '</span><span class="plain-status">' + escapeHtml(copy.status) + '</span></div>' +
+      '<div class="plain-status-row"><span class="plain-verdict plain-verdict-' + verdict.toLowerCase() + '">' + riskLabel + '</span><span class="plain-status">' + (verdict === 'ALLOW' ? 'ALLOW · ' : '') + escapeHtml(copy.status) + '</span></div>' +
       '<h3>' + escapeHtml(copy.title) + '</h3>' +
       '<p class="plain-summary">' + escapeHtml(copy.summary) + '</p>' +
       '<div class="plain-score"><span>' + scoreLabel + '</span><b>' + scoreValue + '</b></div>' +
