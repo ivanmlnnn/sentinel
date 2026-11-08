@@ -125,6 +125,9 @@ async function initWallet() {
 function renderResult(data) {
   const el = $('result');
   el.classList.remove('hidden');
+  el.classList.remove('result-enter');
+  void el.offsetWidth;
+  el.classList.add('result-enter');
   const verdict = ['ALLOW','WARN','BLOCK','INCOMPLETE'].includes(data.decision) ? data.decision : 'WARN';
   const config = {
     ALLOW: { title:'Tidak ada ancaman terverifikasi yang ditemukan', label:'Tidak ditemukan ancaman', color:'var(--green)', note:'Pemeriksaan yang tersedia tidak menemukan kecocokan dengan daftar ancaman terverifikasi. Ini bukan jaminan bahwa wallet sepenuhnya aman.' },
