@@ -823,3 +823,24 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
  .plain-findings li{grid-template-columns:1fr;gap:4px}
  .result-actions{padding:0 15px 15px}
 }
+
+
+/* Technical evidence panel: bounded, readable, and scrollable */
+#evidenceJson.ai-text{
+  display:block;
+  max-height:420px;
+  overflow:auto;
+  margin:0 24px 20px;
+  padding:16px;
+  border:1px solid #293640;
+  background:#080e13;
+  color:#c3d0d6;
+  font:11px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace;
+  white-space:pre;
+  overflow-wrap:normal;
+  word-break:normal;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+}
+#evidenceJson.ai-text.hidden{display:none!important}
+@media(max-width:560px){#evidenceJson.ai-text{max-height:55vh;margin:0 15px 16px;padding:12px;font-size:10px}}
