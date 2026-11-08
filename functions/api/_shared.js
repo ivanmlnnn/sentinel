@@ -43,13 +43,31 @@ export function analyzeTransactionBehavior(rows = [], now = Date.now()) {
   const oldest = dated.length ? dated[dated.length - 1] : null;
   const five = dated.filter(t => now - t <= 300000 && now >= t).length;
   const hour = dated.filter(t => now - t <= 3600000 && now >= t).length;
+
+  // Detect at least two distinct recipients in any rolling five-minute window.
+  const recipientEvents = successful
+    .map(row => ({ time: parseTransactionTimestamp(row.tx_block_timestamp), recipient: typeof row.receiver_account === "string" ? row.receiver_account.toLowerCase() : null }))
+    .filter(row => Number.isFinite(row.time) && row.time > 0 && row.time <= now + 60000 && row.recipient);
+  recipientEvents.sort((a, b) => a.time - b.time);
+  let multipleRecipients5m = false;
+  let multipleRecipientsCount = 0;
+  for (let left = 0, right = 0; right < recipientEvents.length; right++) {
+    while (recipientEvents[right].time - recipientEvents[left].time > 300000) left++;
+    const distinct = new Set(recipientEvents.slice(left, right + 1).map(event => event.recipient)).size;
+    if (distinct >= 2) {
+      multipleRecipients5m = true;
+      multipleRecipientsCount = Math.max(multipleRecipientsCount, distinct);
+    }
+  }
+
   const factors = [];
+  if (multipleRecipients5m) factors.push({ code: "MULTIPLE_RECIPIENTS_DETECTED", severity: "medium", detail: multipleRecipientsCount + " distinct recipient wallets received successful signed transactions within a five-minute window; review for suspicious distribution activity." });
   if (successful.length && !dated.length) factors.push({ code: "TRANSACTION_TIMESTAMP_UNVERIFIABLE", severity: "medium", detail: "Successful signed transactions were returned, but timestamps could not be validated." });
   else if (invalid) factors.push({ code: "PARTIAL_TRANSACTION_TIMESTAMP_DATA", severity: "medium", detail: invalid + " of " + successful.length + " successful signed transactions have invalid or missing timestamps." });
   if (five >= 30) factors.push({ code: "EXTREME_TRANSACTION_FREQUENCY", severity: "high", detail: five + " successful signed transactions in the last five minutes; automation anomaly, not proof of fraud." });
   else if (five > 10) factors.push({ code: "HIGH_TRANSACTION_FREQUENCY", severity: "medium", detail: five + " successful signed transactions in the last five minutes; review for automation or spam." });
   else if (hour >= 40) factors.push({ code: "ELEVATED_TRANSACTION_FREQUENCY", severity: "medium", detail: hour + " successful signed transactions in the last hour; review for unusual automation." });
-  return { available: true, observed_transactions: successful.length, timestamped_transactions: dated.length, invalid_timestamp_count: invalid, timestamp_coverage: successful.length ? Number((dated.length / successful.length).toFixed(2)) : 1, transactions_5m: five, transactions_1h: hour, newest_transaction_timestamp: newest === null ? null : new Date(newest).toISOString(), newest_transaction_age_seconds: newest === null ? null : Math.max(0, Math.floor((now-newest)/1000)), oldest_transaction_timestamp: oldest === null ? null : new Date(oldest).toISOString(), analysis_time: new Date(now).toISOString(), anomaly: factors.length > 0, factors };
+  return { available: true, observed_transactions: successful.length, timestamped_transactions: dated.length, invalid_timestamp_count: invalid, timestamp_coverage: successful.length ? Number((dated.length / successful.length).toFixed(2)) : 1, transactions_5m: five, transactions_1h: hour, multiple_recipients_5m: multipleRecipients5m, distinct_recipients_5m: multipleRecipientsCount, newest_transaction_timestamp: newest === null ? null : new Date(newest).toISOString(), newest_transaction_age_seconds: newest === null ? null : Math.max(0, Math.floor((now-newest)/1000)), oldest_transaction_timestamp: oldest === null ? null : new Date(oldest).toISOString(), analysis_time: new Date(now).toISOString(), anomaly: factors.length > 0, factors };
 }
 export function decideRisk(account, verifiedThreat, amount, behavior = null) {
   const factors = [];
