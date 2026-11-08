@@ -62,6 +62,16 @@ test('numeric Unix seconds timestamps are parsed correctly', () => {
   assert.equal(behavior.timestamped_transactions, 10);
 });
 
+test('numeric string nanosecond timestamps from indexers are parsed correctly', () => {
+  const rows = Array.from({ length: 10 }, (_, i) => ({
+    is_success: true, is_real_signer: true,
+    tx_block_timestamp: String((NOW - i * 20000) * 1_000_000)
+  }));
+  const behavior = analyzeTransactionBehavior(rows, NOW);
+  assert.equal(behavior.transactions_5m, 10);
+  assert.equal(behavior.timestamped_transactions, 10);
+});
+
 test('old transactions do not become recent just because they are newest in the index', () => {
   const rows = Array.from({ length: 19 }, (_, i) => ({
     is_success: true, is_real_signer: true,
