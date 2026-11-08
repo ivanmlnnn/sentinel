@@ -29,20 +29,20 @@ test('verified threat match blocks', () => {
   assert.equal(result.risk_score, 100);
 });
 
-test('ten recent successful signed transactions trigger WARN', () => {
-  const rows = Array.from({ length: 10 }, (_, i) => ({
-    is_success: true, is_real_signer: true,
+test('eleven recent successful outgoing transactions trigger WARN', () => {
+  const rows = Array.from({ length: 11 }, (_, i) => ({
+    direction: 'OUTGOING_SIGNED', is_success: true, is_real_signer: true,
     tx_block_timestamp: new Date(NOW - i * 20000).toISOString()
   }));
   const behavior = analyzeTransactionBehavior(rows, NOW);
-  assert.equal(behavior.transactions_5m, 10);
+  assert.equal(behavior.transactions_5m, 11);
   assert.equal(behavior.anomaly, true);
   assert.equal(decideRisk(account, null, 0, behavior).decision, 'WARN');
 });
 
 test('thirty recent successful signed transactions trigger elevated WARN, never BLOCK', () => {
   const rows = Array.from({ length: 30 }, (_, i) => ({
-    is_success: true, is_real_signer: true,
+    direction: 'OUTGOING_SIGNED', is_success: true, is_real_signer: true,
     tx_block_timestamp: new Date(NOW - i * 8000).toISOString()
   }));
   const behavior = analyzeTransactionBehavior(rows, NOW);
@@ -84,7 +84,7 @@ test('old transactions do not become recent just because they are newest in the 
 });
 
 test('unparseable timestamps produce an explicit review signal', () => {
-  const behavior = analyzeTransactionBehavior([{ is_success: true, is_real_signer: true, tx_block_timestamp: 'not-a-date' }], NOW);
+  const behavior = analyzeTransactionBehavior([{ direction: 'OUTGOING_SIGNED', is_success: true, is_real_signer: true, tx_block_timestamp: 'not-a-date' }], NOW);
   assert.equal(behavior.invalid_timestamp_count, 1);
   assert.ok(behavior.factors.some(f => f.code === 'TRANSACTION_TIMESTAMP_UNVERIFIABLE'));
   assert.equal(decideRisk(account, null, 0, behavior).decision, 'WARN');
@@ -92,7 +92,7 @@ test('unparseable timestamps produce an explicit review signal', () => {
 
 test('failed transactions are not counted as signed spam', () => {
   const rows = Array.from({ length: 20 }, (_, i) => ({
-    is_success: false, is_real_signer: true,
+    direction: 'OUTGOING_SIGNED', is_success: false, is_real_signer: true,
     tx_block_timestamp: new Date(NOW - i * 1000).toISOString()
   }));
   const behavior = analyzeTransactionBehavior(rows, NOW);
