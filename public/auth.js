@@ -21,7 +21,7 @@ function AuthGate() {
     document.body.classList.toggle('sentinel-authenticated', Boolean(ready && authenticated));
     if (ready && authenticated && !dashboardStarted) {
       dashboardStarted = true;
-      import('./app.js?v=20261108-23').catch((error) => {
+      import('./app.js?v=20261108-24').catch((error) => {
         console.error('Dashboard failed to initialize:', error);
         dashboardStarted = false;
       });
