@@ -185,11 +185,14 @@ export async function onRequestPost({ request, env }) {
 
     let behavior = null;
     if (txHistory) {
-      const behaviorRows = transactions.map(row => ({
-        is_success: row.is_success,
-        is_real_signer: row.is_real_signer,
-        tx_block_timestamp: row.block_timestamp
-      }));
+      const behaviorRows = transactions
+        .filter(row => row.direction === "OUTGOING_SIGNED" && row.is_real_signer === true)
+        .map(row => ({
+          direction: row.direction,
+          is_success: row.is_success,
+          is_real_signer: row.is_real_signer,
+          tx_block_timestamp: row.block_timestamp
+        }));
       behavior = analyzeTransactionBehavior(behaviorRows);
       behavior.total_indexed = transactions.length;
       behavior.source = "NearBlocks v3";
