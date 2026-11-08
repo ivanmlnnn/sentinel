@@ -221,27 +221,15 @@ function renderResult(data) {
     '</section>' +
     activityMarkup +
     '<section class="plain-findings"><h4>Why this result?</h4><ul>' + findingsMarkup + '</ul></section>' +
-    '<div class="result-actions"><button class="secondary-btn" id="viewEvidence" type="button">Show technical data</button></div>' +
-    '<pre id="evidenceJson" class="ai-text hidden"></pre>';
+    '<details class="technical-details"><summary>Technical data</summary><pre class="ai-text technical-json"></pre></details>';
 
-  const evidenceButton = $('viewEvidence');
-  const evidencePanel = $('evidenceJson');
-  if (evidenceButton && evidencePanel) {
-    evidenceButton.addEventListener('click', () => {
-      const opening = evidencePanel.classList.contains('hidden');
-      if (opening) {
-        try {
-          evidencePanel.textContent = JSON.stringify(data.evidence ?? {}, null, 2);
-        } catch (error) {
-          evidencePanel.textContent = 'Technical data could not be displayed. Please run the scan again.';
-        }
-      }
-      evidencePanel.classList.toggle('hidden', !opening);
-      evidenceButton.textContent = opening ? 'Hide technical data' : 'Show technical data';
-      evidenceButton.setAttribute('aria-expanded', String(opening));
-    });
-    evidenceButton.setAttribute('aria-controls', 'evidenceJson');
-    evidenceButton.setAttribute('aria-expanded', 'false');
+  const technicalJson = el.querySelector('.technical-json');
+  if (technicalJson) {
+    try {
+      technicalJson.textContent = JSON.stringify(data.evidence ?? {}, null, 2);
+    } catch (error) {
+      technicalJson.textContent = 'Technical data could not be displayed.';
+    }
   }
 }
 
