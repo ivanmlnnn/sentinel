@@ -9,7 +9,7 @@ window.addEventListener('unhandledrejection', (event) => { console.error('Authen
 function showAuthError(message) {
   const root = document.getElementById('auth-root');
   if (!root || document.body.classList.contains('sentinel-authenticated')) return;
-  root.innerHTML = '<main class="sentinel-auth-screen"><section class="sentinel-auth-card"><div class="sentinel-auth-mark">N</div><p class="sentinel-auth-kicker">NEAR PROTOCOL / ACCOUNT INTELLIGENCE</p><h1>NEAR SENTINEL</h1><p class="sentinel-auth-copy">'+message+'</p><button class="sentinel-auth-button" onclick="location.reload()">Retry ↻</button><p class="sentinel-auth-security">Check your connection if this keeps happening.</p></section></main>';
+  root.innerHTML = '<main class="sentinel-auth-screen"><section class="sentinel-auth-card"><div class="sentinel-auth-mark"><img src="/wayang-logo.jpg?v=1" alt="Wayang Tech and Kitchen Needs"></div><p class="sentinel-auth-kicker">NEAR PROTOCOL / ACCOUNT INTELLIGENCE</p><h1>NEAR SENTINEL</h1><p class="sentinel-auth-copy">'+message+'</p><button class="sentinel-auth-button" onclick="location.reload()">Retry ↻</button><p class="sentinel-auth-security">Check your connection if this keeps happening.</p></section></main>';
 }
 let dashboardStarted = false;
 
@@ -21,7 +21,7 @@ function AuthGate() {
     document.body.classList.toggle('sentinel-authenticated', Boolean(ready && authenticated));
     if (ready && authenticated && !dashboardStarted) {
       dashboardStarted = true;
-      import('./app.js?v=20261108-04').catch((error) => {
+      import('./app.js?v=20261108-05').catch((error) => {
         console.error('Dashboard failed to initialize:', error);
         dashboardStarted = false;
       });
@@ -35,7 +35,7 @@ function AuthGate() {
   if (!ready) {
     return React.createElement('main', { className: 'sentinel-auth-screen' },
       React.createElement('section', { className: 'sentinel-auth-card' },
-        React.createElement('div', { className: 'sentinel-auth-mark' }, 'N'),
+        React.createElement('div', { className: 'sentinel-auth-mark' }, React.createElement('img', { src: '/wayang-logo.jpg?v=1', alt: 'Wayang Tech and Kitchen Needs' })),
         React.createElement('p', { className: 'sentinel-auth-kicker' }, 'NEAR PROTOCOL / ACCOUNT INTELLIGENCE'),
         React.createElement('h1', null, 'NEAR SENTINEL'),
         React.createElement('p', { className: 'sentinel-auth-copy' }, 'Preparing your secure session…'),
