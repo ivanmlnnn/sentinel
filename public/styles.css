@@ -69,3 +69,50 @@ input,textarea{border-radius:8px;font:12px var(--sans)}
 }
 .wallet-connection-state{font:10px/1.6 var(--sans);color:#9eb4a9;margin:10px 0 0;padding:9px 11px;background:#0a1711;border:1px solid #254c38;border-radius:7px;overflow-wrap:anywhere}
 .wallet-connection-state:empty{display:none}
+
+
+/* Privy authentication gate */
+body:not(.sentinel-authenticated) .topbar,
+body:not(.sentinel-authenticated) .main,
+body:not(.sentinel-authenticated) .scroll-progress,
+body:not(.sentinel-authenticated) #toast { display: none !important; }
+body.sentinel-authenticated .topbar,
+body.sentinel-authenticated .main { display: block; }
+body.sentinel-authenticated .scroll-progress { display: block; }
+#auth-root { position: relative; z-index: 10000; }
+.sentinel-auth-screen {
+  position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center;
+  padding: 24px; background: radial-gradient(ellipse at 50% 20%, rgba(0,224,164,.12), transparent 42%), #080b10;
+  color: #f3f7f6; font-family: Inter, system-ui, sans-serif;
+}
+.sentinel-auth-card {
+  width: min(100%, 430px); padding: 38px 32px; border: 1px solid rgba(0,224,164,.24);
+  border-radius: 18px; background: linear-gradient(145deg, rgba(18,27,31,.98), rgba(9,14,19,.98));
+  box-shadow: 0 28px 90px rgba(0,0,0,.42); text-align: center;
+}
+.sentinel-auth-mark {
+  width: 58px; height: 58px; margin: 0 auto 24px; display: grid; place-items: center;
+  border: 1px solid rgba(0,224,164,.6); border-radius: 16px; color: #00e0a4;
+  font: 800 27px/1 Inter, sans-serif; box-shadow: 0 0 32px rgba(0,224,164,.12);
+}
+.sentinel-auth-kicker { margin: 0 0 12px; color: #00e0a4; font: 600 10px/1.5 'IBM Plex Mono', monospace; letter-spacing: .16em; }
+.sentinel-auth-card h1 { margin: 0; color: #f5fbf9; font-size: 27px; letter-spacing: .08em; }
+.sentinel-auth-copy { margin: 14px auto 26px; max-width: 320px; color: #9aa9a8; font-size: 14px; line-height: 1.7; }
+.sentinel-auth-button {
+  width: 100%; min-height: 52px; border: 0; border-radius: 9px; background: #00e0a4;
+  color: #04110d; font: 750 14px Inter, sans-serif; cursor: pointer; transition: transform .18s, filter .18s;
+}
+.sentinel-auth-button:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.sentinel-auth-footnote { margin: 17px 0 0; color: #c2d0cd; font-size: 11px; }
+.sentinel-auth-security { margin: 22px 0 0; color: #667775; font-size: 10px; line-height: 1.6; }
+.sentinel-auth-loader { width: 22px; height: 22px; margin: 24px auto 0; border: 2px solid #26423b; border-top-color: #00e0a4; border-radius: 50%; animation: sentinel-spin .8s linear infinite; }
+@keyframes sentinel-spin { to { transform: rotate(360deg); } }
+.sentinel-session-control { display: flex; align-items: center; gap: 9px; margin-right: 12px; min-width: 0; }
+.sentinel-session-email { max-width: 145px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #a9bbb6; font-size: 11px; }
+.sentinel-signout-button { padding: 8px 10px; border: 1px solid rgba(0,224,164,.32); border-radius: 7px; background: rgba(0,224,164,.06); color: #00e0a4; font: 600 10px Inter, sans-serif; cursor: pointer; }
+@media (max-width: 720px) {
+  .sentinel-auth-card { padding: 32px 22px; }
+  .sentinel-session-control { margin-right: 5px; gap: 5px; }
+  .sentinel-session-email { max-width: 90px; font-size: 9px; }
+  .sentinel-signout-button { padding: 7px 8px; font-size: 9px; }
+}
