@@ -17,7 +17,7 @@ AI can explain evidence; it cannot choose or override the verdict.
 - Deterministic risk engine and structured evidence.
 - D1 persistence for investigations and threat reports.
 - Verified threat matches trigger BLOCK; community reports remain unverified by default.
-- Browser dashboard and NEAR Wallet Selector.
+- Browser dashboard with NEAR Wallet Selector v10 adapters for HERE, Meteor, HOT, My NEAR Wallet, Sender, Nightly, NEAR Mobile Wallet, and MetaMask NEAR Snap (wallet availability depends on device/browser).
 - Evidence-grounded AI explanation endpoint (requires `ANTHROPIC_API_KEY`).
 - Agent-side pre-sign guard in `src/agent-guard.mjs`: BLOCK denies, WARN requires explicit human approval, ALLOW proceeds to a caller-supplied signer.
 - Fail-closed behavior for preflight outage, invalid verdict, or receiver mismatch.
@@ -36,7 +36,14 @@ Expected attack-demo result: `DENIED - SENTINEL_BLOCK`, `Signer invoked: NO`, an
 
 The attack demo is a deterministic offline simulation. It does not connect to RPC, use a wallet, sign, or transfer funds.
 
-## Live application
+## Try the demo
+
+1. Open the dashboard: https://sentinel.ivmaladin.workers.dev
+2. Optional: select **Connect NEAR Wallet** and choose a wallet in the NEAR wallet picker. Use a Testnet NEAR account. On mobile, choose a mobile-compatible wallet such as HERE or Meteor if it appears in the picker. On desktop, use an installed NEAR wallet; MetaMask requires the NEAR Snap where supported.
+3. Paste a destination account ending in `.testnet` (or another valid NEAR account ID) into the address field.
+4. Select **Check address**. Read the ALLOW / WARN / BLOCK explanation and expand technical evidence if needed.
+
+Wallet connection only identifies the account for the optional sender field. The dashboard is read-only: it does not request signatures or send funds. You can run a public address check without connecting a wallet.
 
 - Dashboard: https://sentinel.ivmaladin.workers.dev
 - Repository: https://github.com/ivanmlnnn/sentinel
