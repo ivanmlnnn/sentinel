@@ -239,7 +239,8 @@ export async function onRequestPost({ request, env }) {
           direction: row.direction,
           is_success: row.is_success,
           is_real_signer: row.is_real_signer,
-          tx_block_timestamp: row.block_timestamp
+          tx_block_timestamp: row.block_timestamp,
+          receiver_account: row.receiver_account
         }));
       behavior = analyzeTransactionBehavior(behaviorRows);
       behavior.total_indexed = transactions.length;
