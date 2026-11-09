@@ -286,7 +286,63 @@ export async function onRequestPost({ request, env }) {
       return json({ error: "DATABASE_UNAVAILABLE", detail: "Sentinel could not read the threat registry. Check the Worker D1 binding and database logs." }, 503);
     }
 
+    const transactionTimes = transactions
+      .map(row => timestampMs(row.block_timestamp))
+      .filter(value => Number.isFinite(value) && value > 0);
+    const earliestObservedActivity = transactionTimes.length ? Math.min(...transactionTimes) : null;
+    const firstSeenActivity = {
+      available: earliestObservedActivity !== null,
+      earliest_observed_transaction_at: earliestObservedActivity === null ? null : new Date(earliestObservedActivity).toISOString(),
+      estimated_days_since_first_observed_activity: earliestObservedActivity === null ? null : Math.max(0, Math.floor((Date.now() - earliestObservedActivity) / 86400000)),
+      complete: Boolean(txHistory?.complete && txSchemaComplete),
+      method: "Earliest timestamp in the currently indexed transaction history; this is an activity-age proxy, not an account-creation timestamp."
+    };
+
+    let contractCodeHistory = {
+      available: Boolean(account?.code_hash),
+      current_code_hash: account?.code_hash || null,
+      prior_observations: 0,
+      previous_code_hash: null,
+      changed_since_previous_scan: false,
+      first_observed_at: null,
+      note: "Compares this scan with earlier Sentinel investigation snapshots. It cannot see code changes that happened before Sentinel's first observation."
+    };
+    if (account?.code_hash && account.code_hash !== "11111111111111111111111111111111") {
+      try {
+        const previous = await env.DB.prepare(
+          "SELECT id, created_at, evidence FROM investigations WHERE receiver_account = ? AND network = ? ORDER BY created_at DESC LIMIT 20"
+        ).bind(receiver, network).all();
+        const observations = (previous.results || []).map(row => {
+          try {
+            const evidence = typeof row.evidence === "string" ? JSON.parse(row.evidence) : row.evidence;
+            return { id: row.id, created_at: row.created_at, code_hash: evidence?.account?.code_hash || null };
+          } catch { return null; }
+        }).filter(row => row?.code_hash);
+        const previousObservation = observations[0] || null;
+        contractCodeHistory = {
+          ...contractCodeHistory,
+          prior_observations: observations.length,
+          previous_code_hash: previousObservation?.code_hash || null,
+          changed_since_previous_scan: Boolean(previousObservation && previousObservation.code_hash !== account.code_hash),
+          first_observed_at: observations.length ? observations[observations.length - 1].created_at : null
+        };
+      } catch (error) {
+        contractCodeHistory.history_error = "Historical code-hash comparison is unavailable for this scan.";
+      }
+    }
+
     const verdict = decideRisk(account, threat, amount, behavior);
+    if (contractCodeHistory.changed_since_previous_scan) {
+      verdict.risk_factors.push({
+        code: "CONTRACT_CODE_HASH_CHANGED",
+        severity: "medium",
+        detail: "The current contract code hash differs from the most recent earlier Sentinel observation. This may be a legitimate upgrade; review the contract change before interacting."
+      });
+      if (verdict.decision !== "BLOCK") {
+        verdict.risk_score = Math.max(verdict.risk_score, 35);
+        verdict.decision = "WARN";
+      }
+    }
     const sourceComplete = Boolean(
       txHistory?.complete && txSchemaComplete &&
       receiptHistory?.complete && receiptSchemaRecognized &&
@@ -330,6 +386,8 @@ export async function onRequestPost({ request, env }) {
         fungible_token_transfers: { available: Boolean(ftHistory), count: ftTransfers.length, pages_fetched: ftHistory?.pages || 0, complete: Boolean(ftHistory?.complete && ftSchemaRecognized), endpoint: `${nearblocksBase}/v3/accounts/${encodeURIComponent(receiver)}/ft-txns`, records: ftTransfers, error: ftError }
       },
       transaction_history: behavior || { available: false, source: "NearBlocks v3", error: txError },
+      first_seen_activity: firstSeenActivity,
+      contract_code_history: contractCodeHistory,
       agent_receiver_interaction: agentInteractionEvidence,
       verified_threat: threat || null,
       assessment_status,
@@ -339,6 +397,8 @@ export async function onRequestPost({ request, env }) {
         "Receipts and token transfers are separately indexed sources; unknown row schemas are not guessed and keep the assessment INCOMPLETE.",
         "Transaction frequency is an anomaly signal, not proof of fraud; it produces WARN, not an automatic BLOCK.",
         "NO_CONTRACT_CODE is informational and is not treated as suspicious.",
+        "First-seen activity age is based on the earliest timestamp currently indexed by the Explorer and is not the account's creation time.",
+        "Contract code changes are detected only by comparing a current code hash with prior Sentinel investigation snapshots; changes before the first Sentinel observation are not known.",
         "When a sender/agent account is supplied, Sentinel checks that account's indexed successful outgoing transactions for prior interactions with this receiver. This is contextual evidence, not proof of trust or fraud.",
         "A provider outage or incomplete indexer response is not evidence that a wallet is safe or malicious.",
         "This is a risk screening result, not a guarantee that a transaction is safe."
