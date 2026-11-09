@@ -1812,3 +1812,46 @@ footer{font-size:10px;line-height:1.7}
     opacity:1;transform:none;filter:none;transition:none;
   }
 }
+
+
+/* Wallet Tracker: shift the section identity to Sentinel amber and add a moving underline. */
+#investigate.section-heading .section-index,
+#investigate.section-heading .section-meta{color:#e8cf72!important}
+#investigate.section-heading .section-index::before,
+#investigate.section-heading .section-meta::before{
+  background:#f0d45e!important;
+  box-shadow:0 0 7px #f0d45e,0 0 16px #f0d45e88!important;
+}
+#investigate.section-heading h2{
+  position:relative;
+  display:inline-block;
+  width:max-content;
+  max-width:100%;
+  padding-bottom:13px;
+  color:#f5f3e9!important;
+  text-shadow:0 0 18px #f0d45e18;
+}
+#investigate.section-heading h2::after{
+  content:"";
+  position:absolute;
+  left:0;
+  bottom:0;
+  width:100%;
+  height:2px;
+  border-radius:3px;
+  background:linear-gradient(90deg,transparent 0%,#8d762c 12%,#f0d45e 42%,#fff1a8 50%,#f0d45e 60%,#8d762c 88%,transparent 100%);
+  background-size:220% 100%;
+  box-shadow:0 0 7px #f0d45e88,0 0 16px #f0d45e38;
+  transform-origin:left center;
+  animation:tracker-amber-orbit 3.2s linear infinite;
+}
+#investigate.section-heading.tracker-in-view h2::after,
+#investigate.section-heading.visible h2::after{animation-duration:2.2s}
+@keyframes tracker-amber-orbit{
+  0%{background-position:100% 0;filter:brightness(.8)}
+  50%{filter:brightness(1.35)}
+  100%{background-position:-120% 0;filter:brightness(.8)}
+}
+@media(prefers-reduced-motion:reduce){
+  #investigate.section-heading h2::after{animation:none;background-position:50% 0}
+}
