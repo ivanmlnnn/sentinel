@@ -43,6 +43,7 @@ function syncWalletUI(accountId, walletName) {
   const button = $('walletBtn');
   button.disabled = false;
   button.classList.toggle('wallet-connected', Boolean(connectedAccount));
+  document.querySelector('.brand')?.classList.toggle('wallet-linked', Boolean(connectedAccount));
   button.innerHTML = connectedAccount
     ? '<span class="wallet-dot"></span>' + escapeHtml(short(connectedAccount)) + ' <span>Disconnect</span>'
     : 'Connect NEAR Wallet <span>↗</span>';
