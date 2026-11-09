@@ -43,6 +43,17 @@ Sentinel aims to provide that checkpoint with explainable evidence and conservat
 
 An AI-generated explanation cannot override the deterministic verdict. `INCOMPLETE` means insufficient evidence, not proof of fraud.
 
+## What makes Sentinel different
+
+| Typical AI-agent flow | Sentinel-assisted flow |
+|---|---|
+| Trust the model's destination choice | Independently inspect the destination before signing |
+| Treat missing data as a quiet pass | Surface missing or partial evidence as `INCOMPLETE` |
+| Hide why a decision was made | Show transaction, receipt, token-transfer, and threat-registry evidence |
+| Let a prompt-injected instruction reach the signer | Route the decision through a reusable guard with fail-closed behavior |
+
+**The differentiator is not another AI risk score.** It is a deterministic policy checkpoint with evidence transparency, explicit uncertainty, and a reusable guard that can be placed before an application's signer. The current guard is application-level—not a cryptographic boundary—and the limitations are documented rather than hidden.
+
 ## 3. Current detection coverage
 
 The current implementation uses:
@@ -50,8 +61,8 @@ The current implementation uses:
 - NEAR account-state lookup through FastNear JSON-RPC.
 - Indexed native transaction, receipt, and fungible-token transfer history through NearBlocks v3.
 - First-seen activity-age evidence based on the earliest indexed transaction timestamp (explicitly not represented as the account creation date).
-- Contract code-hash change detection by comparing the current hash with previous Sentinel investigation snapshots.
-- Direct agent-to-receiver interaction history when an optional sender account is supplied.
+- Contract code-hash change detection against prior Sentinel snapshots, plus a best-effort NearBlocks contract-deployment history lookup when the Explorer endpoint returns usable records. These are distinct evidence sources; neither proves the full lifetime history of a contract.
+- Direct agent-to-receiver interaction history when an optional sender account is supplied, plus observed counterparty discovery from the inspected account's own indexed transactions. Counterparties are not automatically labelled as agents.
 - Direction and signer attribution to distinguish outgoing activity from incoming spam.
 - A Cloudflare D1 threat registry with evidence attached to each report. Verified entries can be exported through `GET /api/threats?status=verified` and only verified records can trigger `BLOCK`. The feed is shared within this Sentinel deployment, not yet federated across independent projects.
 - Outgoing transaction frequency and recipient-diversity rules.
@@ -83,7 +94,7 @@ The current risk model does **not** yet include:
 
 These are known coverage gaps, not hidden capabilities.
 
-## 4. Try it without dashboard login
+## 4. Quick start — try it without dashboard login
 
 You do **not** need Privy OTP to inspect the live dashboard in Guest mode, run repository tests, or execute the offline attack simulation. Guest mode is a public, read-only preview and is not an authenticated Privy session.
 
@@ -130,7 +141,7 @@ curl -i -X POST "https://sentinel.ivmaladin.workers.dev/api/investigate" \
 
 The response should contain the investigation decision and supporting assessment fields. Results depend on the live API, network selection, and upstream data availability.
 
-**Important authentication disclosure:** the current Privy OTP gate is enforced in the dashboard client. The API does not yet independently verify a Privy access token server-side. Therefore, this `curl` example demonstrates endpoint reachability and investigation behavior; it must not be interpreted as authenticated API access or production-grade access control. Do not send secrets or treat this endpoint as a protected user-only API.
+**Authentication boundary:** public read-only investigation is intentionally available without a dashboard session so Guest users can try the product. Protected write and AI-review routes use server-side Privy token verification. This public `curl` example demonstrates investigation behavior; it is not an authenticated user-only endpoint.
 
 ## 5. Live dashboard walkthrough
 
