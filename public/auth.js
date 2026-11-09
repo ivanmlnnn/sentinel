@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createPortal } from 'react-dom';
-import { PrivyProvider, usePrivy } from 'https://esm.sh/@privy-io/react-auth@3.51.3?external=react,react-dom';
+import { PrivyProvider, usePrivy, useLoginWithEmail } from 'https://esm.sh/@privy-io/react-auth@3.51.3?external=react,react-dom';
 
 const APP_ID = 'cmw78k7rd00ix0ilgf5ubvn5y';
 window.addEventListener('error', (event) => { if (event.target?.tagName === 'SCRIPT') showAuthError('A required sign-in module could not load. Please refresh or try another network.'); }, true);
@@ -15,9 +15,15 @@ let dashboardStarted = false;
 
 function AuthGate() {
   const { ready, authenticated, user, login, logout, getAccessToken } = usePrivy();
+  const { sendCode, loginWithCode } = useLoginWithEmail();
   const loginStarted = useRef(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [loginPanelOpen, setLoginPanelOpen] = useState(false);
+  const [emailAddress, setEmailAddress] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [emailStep, setEmailStep] = useState('choose');
+  const [otpLoading, setOtpLoading] = useState(false);
 
   useEffect(() => {
     window.getSentinelAccessToken = getAccessToken;
@@ -51,36 +57,88 @@ function AuthGate() {
   }
 
   if (!authenticated) {
+    const openLogin = () => {
+      setLoginError('');
+      setLoginPanelOpen(true);
+      setEmailStep('choose');
+    };
+    const closeLogin = () => {
+      setLoginPanelOpen(false);
+      setLoginError('');
+      setEmailStep('choose');
+      setOtpCode('');
+    };
+    const sendEmailCode = async () => {
+      if (!emailAddress.trim()) { setLoginError('Masukkan alamat email terlebih dahulu.'); return; }
+      setOtpLoading(true);
+      setLoginError('');
+      try {
+        await sendCode({ email: emailAddress.trim() });
+        setEmailStep('code');
+      } catch (error) {
+        console.error('Privy email OTP request failed:', error);
+        setLoginError('Privy gagal mengirim kode. Periksa email dan coba lagi.');
+      } finally { setOtpLoading(false); }
+    };
+    const verifyEmailCode = async () => {
+      if (!otpCode.trim()) { setLoginError('Masukkan kode OTP dari email.'); return; }
+      setOtpLoading(true);
+      setLoginError('');
+      try {
+        await loginWithCode({ code: otpCode.trim() });
+      } catch (error) {
+        console.error('Privy email OTP verification failed:', error);
+        setLoginError('Kode tidak valid atau kedaluwarsa. Periksa kembali dan coba lagi.');
+      } finally { setOtpLoading(false); }
+    };
     return React.createElement('main', { className: 'sentinel-auth-screen' },
       React.createElement('section', { className: 'sentinel-auth-card' },
-        React.createElement('div', { className: 'sentinel-auth-mark' }, React.createElement('img', { src: '/IMG_20260629_220728_136.jpg?v=1', alt: 'Wayang Tech and Kitchen Needs' })),
+        React.createElement('div', { className: 'sentinel-auth-mark' }, React.createElement('img', { src: '/IMG_20260629_220728_136.jpg?v=1', alt: 'NEAR Sentinel' })),
         React.createElement('p', { className: 'sentinel-auth-kicker' }, 'NEAR PROTOCOL / ACCOUNT INTELLIGENCE'),
         React.createElement('h1', null, 'NEAR SENTINEL'),
-        React.createElement('p', { className: 'sentinel-auth-copy' }, 'Sign in through Privy with your email and verify using the one-time code Privy sends to your inbox.'),
+        React.createElement('p', { className: 'sentinel-auth-copy' }, 'Secure access to the NEAR Sentinel dashboard.'),
         React.createElement('button', {
           className: 'sentinel-auth-button',
           type: 'button',
-          disabled: loginLoading,
-          'aria-busy': loginLoading,
-          onClick: async () => {
-            if (loginStarted.current) return;
-            loginStarted.current = true;
-            setLoginError('');
-            setLoginLoading(true);
-            try { await login(); }
-            catch (error) {
-              console.error('Privy login failed:', error);
-              setLoginError('Privy sign-in could not open. Please retry or check your connection.');
-            }
-            finally { loginStarted.current = false; setLoginLoading(false); }
-          }
-        }, loginLoading ? 'Opening Privy…' : 'Login with Privy'),
-        loginError ? React.createElement('p', { className: 'sentinel-auth-error', role: 'alert' }, loginError) : null,
-        React.createElement('div', { className: 'sentinel-auth-or', 'aria-hidden': 'true' }, React.createElement('span'), React.createElement('b', null, 'OR'), React.createElement('span')),
-        React.createElement('button', { className: 'sentinel-auth-guest-button', type: 'button', onClick: () => window.startSentinelGuest?.() }, 'Continue as Guest · Read-only'),
-        React.createElement('p', { className: 'sentinel-auth-footnote' }, 'EMAIL OTP · PRIVY AUTHENTICATION'),
-        React.createElement('p', { className: 'sentinel-auth-security' }, 'Your wallet keys are never requested. Sentinel checks public testnet data only.')
-      )
+          onClick: openLogin
+        }, 'Login'),
+        React.createElement('p', { className: 'sentinel-auth-footnote' }, 'SECURE AUTHENTICATION · PRIVY'),
+        React.createElement('p', { className: 'sentinel-auth-security' }, 'Guest access is read-only. No wallet keys or transaction permissions are requested.')
+      ),
+      loginPanelOpen ? React.createElement('div', {
+        className: 'sentinel-login-overlay',
+        role: 'presentation',
+        onMouseDown: (event) => { if (event.target === event.currentTarget) closeLogin(); }
+      },
+        React.createElement('section', { className: 'sentinel-login-modal', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'sentinel-login-title' },
+          React.createElement('div', { className: 'sentinel-login-modal-top' },
+            React.createElement('span', { className: 'sentinel-privy-mark' }, 'P'),
+            React.createElement('button', { className: 'sentinel-login-close', type: 'button', onClick: closeLogin, 'aria-label': 'Close login' }, '×')
+          ),
+          React.createElement('p', { className: 'sentinel-auth-kicker' }, 'POWERED BY PRIVY'),
+          React.createElement('h2', { id: 'sentinel-login-title' }, emailStep === 'choose' ? 'Log in to Sentinel' : emailStep === 'email' ? 'Continue with email' : 'Verify your email'),
+          emailStep === 'choose' ? React.createElement(React.Fragment, null,
+            React.createElement('p', { className: 'sentinel-auth-copy' }, 'Choose how you want to access the dashboard.'),
+            React.createElement('button', { className: 'sentinel-auth-button', type: 'button', onClick: () => { setEmailStep('email'); setLoginError(''); } }, 'Continue with email'),
+            React.createElement('div', { className: 'sentinel-auth-or', 'aria-hidden': 'true' }, React.createElement('span'), React.createElement('b', null, 'OR'), React.createElement('span')),
+            React.createElement('button', { className: 'sentinel-auth-guest-button', type: 'button', onClick: () => window.startSentinelGuest?.() }, 'Continue as Guest · Read-only')
+          ) : emailStep === 'email' ? React.createElement(React.Fragment, null,
+            React.createElement('p', { className: 'sentinel-auth-copy' }, 'Privy will send a one-time verification code to your email address.'),
+            React.createElement('label', { className: 'sentinel-login-label', htmlFor: 'sentinel-email-input' }, 'Email address'),
+            React.createElement('input', { id: 'sentinel-email-input', className: 'sentinel-login-input', type: 'email', autoComplete: 'email', placeholder: 'you@example.com', value: emailAddress, onChange: (event) => setEmailAddress(event.target.value) }),
+            React.createElement('button', { className: 'sentinel-auth-button', type: 'button', disabled: otpLoading, onClick: sendEmailCode }, otpLoading ? 'Sending code…' : 'Send code'),
+            React.createElement('button', { className: 'sentinel-login-back', type: 'button', onClick: () => { setEmailStep('choose'); setLoginError(''); } }, '← Back to sign-in options')
+          ) : React.createElement(React.Fragment, null,
+            React.createElement('p', { className: 'sentinel-auth-copy' }, 'Enter the one-time code Privy sent to ', React.createElement('strong', null, emailAddress), '.'),
+            React.createElement('label', { className: 'sentinel-login-label', htmlFor: 'sentinel-otp-input' }, 'Verification code'),
+            React.createElement('input', { id: 'sentinel-otp-input', className: 'sentinel-login-input sentinel-otp-input', type: 'text', inputMode: 'numeric', autoComplete: 'one-time-code', maxLength: 8, placeholder: 'Enter code', value: otpCode, onChange: (event) => setOtpCode(event.target.value.replace(/\\D/g, '')) }),
+            React.createElement('button', { className: 'sentinel-auth-button', type: 'button', disabled: otpLoading, onClick: verifyEmailCode }, otpLoading ? 'Verifying…' : 'Verify and login'),
+            React.createElement('button', { className: 'sentinel-login-back', type: 'button', onClick: () => { setEmailStep('email'); setOtpCode(''); setLoginError(''); } }, '← Change email')
+          ),
+          loginError ? React.createElement('p', { className: 'sentinel-auth-error', role: 'alert' }, loginError) : null,
+          React.createElement('p', { className: 'sentinel-auth-footnote' }, 'EMAIL OTP SECURELY PROCESSED BY PRIVY')
+        )
+      ) : null
     );
   }
 
