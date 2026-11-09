@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "demo:attack": "node examples/prompt-injection-attack-demo.mjs"
+    "demo:attack": "node examples/prompt-injection-attack-demo.mjs",
+    "smoke:test": "node scripts/smoke-test.mjs"
   }
 }
