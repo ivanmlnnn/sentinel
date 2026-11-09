@@ -1,4 +1,4 @@
-# <img src="https://raw.githubusercontent.com/near/near-logo/master/near_logo.svg" width="30" alt="NEAR" /> NEAR SENTINEL
+# 🛡️ NEAR SENTINEL
 
 ### The pre-sign security checkpoint for AI agents on NEAR.
 
