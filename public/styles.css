@@ -1985,3 +1985,108 @@ footer{font-size:10px;line-height:1.7}
 @media(prefers-reduced-motion:reduce){
   .scan-layout.tracker-in-view .scan-submit .primary-btn{animation:none!important}
 }
+
+
+/* FINAL OVERRIDE: white NEAR identity and a clearly clickable Track Wallet CTA. */
+.hero h1,
+.hero h1 em,
+#investigate.section-heading h2{
+  color:#f5f3e9!important;
+  font-family:var(--sans)!important;
+  font-size:clamp(36px,4vw,46px)!important;
+  font-weight:750!important;
+  font-style:normal!important;
+  letter-spacing:-1.6px!important;
+  line-height:1.05!important;
+}
+.hero h1 em{color:#f5f3e9!important}
+#investigate .section-index,
+#investigate .section-meta{color:#f5f3e9!important}
+.scan-layout .account-input>span{
+  color:#f5f3e9!important;
+  border-right-color:#f5f3e9!important;
+  transition:color .4s ease,text-shadow .4s ease;
+}
+.scan-layout.tracker-in-view .account-input>span{
+  color:#ffffff!important;
+  text-shadow:0 0 12px #ffffff70;
+}
+.scan-layout .scan-submit #scanBtn,
+.scan-layout #scanBtn.primary-btn{
+  position:relative!important;
+  isolation:isolate!important;
+  overflow:hidden!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:12px!important;
+  min-width:154px!important;
+  min-height:48px!important;
+  padding:13px 22px!important;
+  background:#f5f3e9!important;
+  color:#080d12!important;
+  border:1px solid #ffffff!important;
+  border-left:4px solid #ffffff!important;
+  border-radius:5px!important;
+  font-family:var(--mono)!important;
+  font-size:12px!important;
+  font-weight:800!important;
+  letter-spacing:.06em!important;
+  box-shadow:0 0 0 1px #ffffff25,0 5px 20px #ffffff24!important;
+  cursor:pointer!important;
+  opacity:1!important;
+  transform:none;
+  transition:background .25s ease,color .25s ease,box-shadow .25s ease,transform .25s ease!important;
+}
+.scan-layout #scanBtn::before{
+  content:""!important;
+  position:absolute!important;
+  z-index:-1!important;
+  top:-20%!important;
+  bottom:-20%!important;
+  left:-70%!important;
+  width:48%!important;
+  background:linear-gradient(90deg,transparent,#ffffffd9,transparent)!important;
+  transform:skewX(-22deg)!important;
+  transition:left .65s ease!important;
+}
+.scan-layout #scanBtn b{
+  color:#080d12!important;
+  font-size:17px!important;
+  transition:transform .25s ease!important;
+}
+.scan-layout #scanBtn:hover{
+  background:#ffffff!important;
+  color:#05090d!important;
+  box-shadow:0 0 0 4px #ffffff20,0 8px 30px #ffffff55!important;
+  transform:translateY(-3px)!important;
+}
+.scan-layout #scanBtn:hover::before{left:130%!important}
+.scan-layout #scanBtn:hover b{transform:translate(3px,-1px)!important}
+.scan-layout #scanBtn:active{transform:scale(.97)!important}
+.scan-layout.tracker-in-view #scanBtn{
+  animation:near-track-arrive .75s cubic-bezier(.16,1,.3,1) both,
+            near-track-glow 2.6s ease-in-out .8s infinite!important;
+}
+@keyframes near-track-arrive{
+  from{opacity:.35;transform:translateY(15px) scale(.96);filter:brightness(.75)}
+  to{opacity:1;transform:translateY(0) scale(1);filter:brightness(1)}
+}
+@keyframes near-track-glow{
+  0%,100%{box-shadow:0 0 0 1px #ffffff25,0 5px 20px #ffffff24}
+  50%{box-shadow:0 0 0 4px #ffffff18,0 7px 28px #ffffff65}
+}
+@media(max-width:760px){
+  .hero h1,.hero h1 em,#investigate.section-heading h2{
+    font-size:clamp(34px,9vw,40px)!important;
+    letter-spacing:-1.3px!important;
+    line-height:1.08!important;
+  }
+  .scan-layout #scanBtn{width:100%!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .scan-layout #scanBtn,.scan-layout #scanBtn::before,
+  .scan-layout #scanBtn b,.scan-layout .account-input>span{
+    animation:none!important;transition:none!important;
+  }
+}
