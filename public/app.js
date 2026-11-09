@@ -234,65 +234,65 @@ function renderResult(data) {
   const agentHistory = data.evidence?.agent_receiver_interaction;
   const nativeHistory = data.evidence?.wallet_activity?.native_transactions;
   const firstSeenDate = firstSeen?.available && firstSeen.earliest_observed_transaction_at
-    ? new Date(firstSeen.earliest_observed_transaction_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
+    ? new Date(firstSeen.earliest_observed_transaction_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
     : null;
   const signalCards = [
     {
-      title: 'Aktivitas pertama terindeks',
-      state: firstSeen?.available ? (firstSeen.complete ? 'DATA TERVERIFIKASI' : 'DATA SEBAGIAN') : firstSeen?.complete ? 'TIDAK ADA DATA TERINDEKS' : 'BELUM DAPAT DIVERIFIKASI',
+      title: 'Earliest indexed activity',
+      state: firstSeen?.available ? (firstSeen.complete ? 'VERIFIED DATA' : 'PARTIAL DATA') : firstSeen?.complete ? 'NO INDEXED ACTIVITY' : 'NOT YET VERIFIABLE',
       stateClass: firstSeen?.available ? (firstSeen.complete ? 'ok' : 'review') : 'muted',
       value: firstSeenDate
-        ? firstSeenDate + ' · sekitar ' + Number(firstSeen.estimated_days_since_first_observed_activity || 0).toLocaleString('id-ID') + ' hari sejak aktivitas tertua yang ditemukan'
+        ? firstSeenDate + ' · about ' + Number(firstSeen.estimated_days_since_first_observed_activity || 0).toLocaleString('id-ID') + ' days since the earliest activity found'
         : firstSeen?.complete
-          ? 'Tidak ada transaksi bertanggal yang ditemukan dalam riwayat Explorer yang berhasil diperiksa.'
-          : 'Waktu aktivitas pertama tidak dapat ditentukan karena riwayat transaksi kosong atau belum lengkap.',
-      note: 'Sumber: NearBlocks Explorer. Ini adalah transaksi tertua yang ditemukan pada riwayat terindeks, bukan tanggal pembuatan akun. ' + (nativeHistory ? Number(nativeHistory.count || 0).toLocaleString('id-ID') + ' transaksi diperiksa.' : 'Data transaksi tidak tersedia.')
+          ? 'No timestamped transactions were found in the Explorer history successfully checked.'
+          : 'The earliest activity time cannot be determined because the transaction history is empty or incomplete.',
+      note: 'Source: NearBlocks Explorer. This is the oldest transaction found in indexed history, not the account creation date. ' + (nativeHistory ? Number(nativeHistory.count || 0).toLocaleString('id-ID') + ' transactions checked.' : 'Transaction data unavailable.')
     },
     {
-      title: 'Riwayat kode kontrak',
-      state: !codeHistory?.available ? 'TIDAK ADA KODE KONTRAK' : codeHistory.history_error ? 'RIWAYAT GAGAL DIBACA' : codeHistory.changed_since_previous_scan ? 'HASH BERUBAH' : Number(codeHistory.prior_observations || 0) > 0 ? 'HASH COCOK DENGAN SNAPSHOT' : 'BASELINE PERTAMA',
+      title: 'Contract code history',
+      state: !codeHistory?.available ? 'NO CONTRACT CODE' : codeHistory.history_error ? 'HISTORY READ FAILED' : codeHistory.changed_since_previous_scan ? 'HASH CHANGED' : Number(codeHistory.prior_observations || 0) > 0 ? 'HASH MATCHES SNAPSHOT' : 'FIRST BASELINE',
       stateClass: !codeHistory?.available ? 'muted' : codeHistory.history_error || codeHistory.changed_since_previous_scan || !Number(codeHistory.prior_observations || 0) ? 'review' : 'ok',
       value: !codeHistory?.available
-        ? 'Tidak ada kode kontrak aktif pada akun ini. Kondisi ini umum untuk wallet biasa.'
+        ? 'No active contract code is deployed on this account. This is common for a standard wallet.'
         : codeHistory.history_error
-          ? 'Hash kode saat ini tersedia, tetapi snapshot pembanding sebelumnya gagal dibaca.'
+          ? 'The current code hash is available, but the previous comparison snapshot could not be read.'
           : codeHistory.changed_since_previous_scan
-            ? 'Hash kode saat ini berbeda dari snapshot Sentinel sebelumnya.'
+            ? 'The current code hash differs from Sentinel’s previous snapshot.'
             : Number(codeHistory.prior_observations || 0) > 0
-              ? 'Hash saat ini cocok dengan ' + Number(codeHistory.prior_observations).toLocaleString('id-ID') + ' snapshot sebelumnya.'
-              : 'Hash saat ini dicatat sebagai baseline pertama. Belum ada snapshot lama untuk dibandingkan.',
+              ? 'The current hash matches ' + Number(codeHistory.prior_observations).toLocaleString('id-ID') + ' previous snapshot(s).'
+              : 'The current hash has been recorded as the first baseline. No earlier snapshot is available for comparison.',
       note: !codeHistory?.available
-        ? 'Tidak adanya kode kontrak bukan indikasi ancaman dan tidak diberi penalti.'
+        ? 'The absence of contract code is not a threat indicator and does not incur a penalty.'
         : codeHistory.history_error
-          ? 'Status perubahan tidak dapat dipastikan. Sentinel tidak menganggap riwayat yang gagal dibaca sebagai bukti aman.'
+          ? 'A change cannot be confirmed. Sentinel does not treat unreadable history as evidence of safety.'
           : codeHistory.changed_since_previous_scan
-            ? 'Perubahan hash dapat disebabkan upgrade sah atau perubahan lain. Periksa kode dan transaksi upgrade sebelum berinteraksi.'
+            ? 'A hash change may result from a legitimate upgrade or another change. Review the code and upgrade transactions before interacting.'
             : Number(codeHistory.prior_observations || 0) > 0
-              ? 'Perbandingan hanya mencakup snapshot Sentinel yang tersimpan sejak pemantauan dimulai; perubahan sebelum snapshot tertua tidak diketahui.'
-              : 'Ini hanya titik awal pemantauan, bukan bukti bahwa kode tidak pernah berubah sebelumnya.'
+              ? 'This comparison covers only Sentinel snapshots saved since monitoring began; changes before the oldest snapshot are unknown.'
+              : 'This is only the monitoring starting point, not proof that the code never changed before.'
     },
     {
-      title: 'Interaksi agent → penerima',
-      state: !agentHistory ? 'BELUM DIPERIKSA' : !agentHistory.available ? 'RIWAYAT TIDAK TERSEDIA' : agentHistory.complete ? 'RIWAYAT TERVERIFIKASI' : 'RIWAYAT TIDAK LENGKAP',
+      title: 'Agent → recipient interactions',
+      state: !agentHistory ? 'NOT CHECKED' : !agentHistory.available ? 'HISTORY UNAVAILABLE' : agentHistory.complete ? 'VERIFIED HISTORY' : 'INCOMPLETE HISTORY',
       stateClass: !agentHistory ? 'muted' : !agentHistory.available || !agentHistory.complete ? 'review' : 'ok',
       value: !agentHistory
-        ? 'Pemeriksaan relasi belum dijalankan karena akun agent/sender tidak diberikan.'
+        ? 'This relationship check was not run because no agent/sender account was provided.'
         : !agentHistory.available
-          ? 'Riwayat transaksi akun agent tidak berhasil diperoleh.'
+          ? 'The agent account transaction history could not be retrieved.'
           : agentHistory.complete
-            ? Number(agentHistory.successful_outgoing_interactions || 0).toLocaleString('id-ID') + ' transaksi keluar berhasil dan terverifikasi dari agent ke penerima pada data yang diperiksa.'
-            : Number(agentHistory.successful_outgoing_interactions || 0).toLocaleString('id-ID') + ' transaksi cocok ditemukan, tetapi cakupan riwayat belum lengkap; jumlah akhir belum dapat dipastikan.',
+            ? Number(agentHistory.successful_outgoing_interactions || 0).toLocaleString('id-ID') + ' successful outgoing transactions from the agent to the recipient were verified in the checked data.'
+            : Number(agentHistory.successful_outgoing_interactions || 0).toLocaleString('id-ID') + ' matching transactions were found, but history coverage is incomplete; the final count cannot yet be confirmed.',
       note: !agentHistory
-        ? 'Isi Agent / Sender Account saat memindai. Tanpa akun agent, hubungan langsung tidak dapat dinilai.'
+        ? 'Enter an Agent / Sender Account when scanning. Direct interactions cannot be assessed without an agent account.'
         : !agentHistory.available
-          ? 'Kegagalan mengambil riwayat bukan bukti bahwa interaksi tidak pernah terjadi.'
+          ? 'Failure to retrieve history is not proof that no interaction occurred.'
           : agentHistory.complete
-            ? 'Sumber: riwayat transaksi NearBlocks untuk akun agent. Nol transaksi berarti tidak ditemukan pada riwayat terindeks yang diperiksa, bukan bukti mutlak tidak pernah berinteraksi.'
-            : 'Hasil sementara saja. Data yang hilang atau batas halaman Explorer dapat menyembunyikan transaksi lain.'
+            ? 'Source: NearBlocks transaction history for the agent account. Zero means no interaction was found in the indexed history checked, not definitive proof that no interaction ever occurred.'
+            : 'Preliminary result only. Missing data or Explorer pagination limits may hide additional transactions.'
     }
   ];
   const extraEvidenceMarkup = '<section class="plain-evidence signal-section">' +
-    '<div class="signal-section-heading"><div><h4>Sinyal tambahan</h4><p>Hasil pendukung berdasarkan data yang berhasil diambil. Status kosong atau tidak lengkap tidak dianggap aman.</p></div><span class="signal-section-tag">BUKTI / EVIDENCE</span></div>' +
+    '<div class="signal-section-heading"><div><h4>Additional evidence</h4><p>Supporting signals based on retrieved data. Missing or incomplete evidence is never treated as safe.</p></div><span class="signal-section-tag">EVIDENCE</span></div>' +
     '<div class="signal-grid">' + signalCards.map(card =>
       '<article class="signal-card">' +
         '<div class="signal-card-top"><h5>' + escapeHtml(card.title) + '</h5><span class="signal-state signal-state-' + card.stateClass + '">' + escapeHtml(card.state) + '</span></div>' +
