@@ -200,6 +200,8 @@ export async function onRequestPost({ request, env }) {
     } catch (error) { rpcError = error?.message || "NEAR RPC unavailable"; }
 
     let txHistory = null;
+    let senderHistory = null;
+    let senderHistoryError = null;
     let receiptHistory = null;
     let ftHistory = null;
     let txError = null;
@@ -221,9 +223,34 @@ export async function onRequestPost({ request, env }) {
       if (results[0].status === "fulfilled") txHistory = results[0].value; else txError = results[0].reason?.message || "Transaction history unavailable";
       if (results[1].status === "fulfilled") receiptHistory = results[1].value; else receiptError = results[1].reason?.message || "Receipt history unavailable";
       if (results[2].status === "fulfilled") ftHistory = results[2].value; else ftError = results[2].reason?.message || "Fungible-token history unavailable";
+      if (sender && sender !== receiver) {
+        try { senderHistory = await fetchAllPages(`${nearblocksBase}/v3/accounts/${encodeURIComponent(sender)}/txns`, headers); }
+        catch (error) { senderHistoryError = error?.message || "Agent transaction history unavailable"; }
+      }
     }
 
     const transactions = txHistory ? txHistory.rows.map(row => normalizeTransaction(row, receiver)) : [];
+    const senderTransactions = senderHistory ? senderHistory.rows.map(row => normalizeTransaction(row, sender)) : [];
+    const agentReceiverInteractions = senderTransactions.filter(row =>
+      row.direction === "OUTGOING_SIGNED" && row.is_success === true &&
+      row.receiver_account?.toLowerCase() === receiver
+    );
+    const agentInteractionEvidence = sender && sender !== receiver ? {
+      available: Boolean(senderHistory),
+      sender_account: sender,
+      receiver_account: receiver,
+      successful_outgoing_interactions: agentReceiverInteractions.length,
+      recent_interactions: agentReceiverInteractions.slice(0, 10).map(row => ({
+        transaction_hash: row.transaction_hash,
+        block_timestamp: row.block_timestamp,
+        status: row.status
+      })),
+      pages_fetched: senderHistory?.pages || 0,
+      complete: Boolean(senderHistory?.complete && senderTransactions.every(row => row.transaction_hash && row.signer_account && row.status !== "UNKNOWN" && row.block_timestamp !== null)),
+      error: senderHistoryError
+    } : null;
+    if (agentInteractionEvidence?.available) {
+    }
     const receipts = receiptHistory ? receiptHistory.rows.map(row => normalizeReceipt(row, receiver)) : [];
     const ftTransfers = ftHistory ? ftHistory.rows.map(row => normalizeFtTransfer(row, receiver)) : [];
     const incomingSpamSources = findIncomingSpamSources(transactions);
@@ -265,7 +292,8 @@ export async function onRequestPost({ request, env }) {
     const sourceComplete = Boolean(
       txHistory?.complete && txSchemaComplete &&
       receiptHistory?.complete && receiptSchemaRecognized &&
-      ftHistory?.complete && ftSchemaRecognized
+      ftHistory?.complete && ftSchemaRecognized &&
+      (!sender || sender === receiver || agentInteractionEvidence?.complete)
     );
 
     if (!txHistory || !txSchemaComplete) {
@@ -273,6 +301,12 @@ export async function onRequestPost({ request, env }) {
     }
     if (!receiptHistory || !receiptSchemaRecognized) {
       verdict.risk_factors.push({ code: "RECEIPT_HISTORY_INCOMPLETE", severity: "info", detail: receiptError || "Receipt history was returned with fields that could not all be normalized; raw indexed receipt evidence is retained." });
+    }
+    if (sender && sender !== receiver && !agentInteractionEvidence?.complete) {
+      verdict.risk_factors.push({ code: "AGENT_RECEIVER_HISTORY_INCOMPLETE", severity: "info", detail: senderHistoryError || "The supplied agent account history could not be fully verified." });
+    }
+    if (agentInteractionEvidence?.available) {
+      verdict.risk_factors.push({ code: "AGENT_RECEIVER_INTERACTION_HISTORY", severity: "info", detail: `${agentInteractionEvidence.successful_outgoing_interactions} successful outgoing interaction(s) from ${sender} to ${receiver} were found in indexed history.` });
     }
     if (!ftHistory || !ftSchemaRecognized) {
       verdict.risk_factors.push({ code: "FT_HISTORY_INCOMPLETE", severity: "info", detail: ftError || "Some token-transfer rows lacked recognized sender, receiver, or amount fields." });
@@ -298,6 +332,7 @@ export async function onRequestPost({ request, env }) {
         fungible_token_transfers: { available: Boolean(ftHistory), count: ftTransfers.length, pages_fetched: ftHistory?.pages || 0, complete: Boolean(ftHistory?.complete && ftSchemaRecognized), endpoint: `${nearblocksBase}/v3/accounts/${encodeURIComponent(receiver)}/ft-txns`, records: ftTransfers, error: ftError }
       },
       transaction_history: behavior || { available: false, source: "NearBlocks v3", error: txError },
+      agent_receiver_interaction: agentInteractionEvidence,
       verified_threat: threat || null,
       assessment_status,
       limitations: [
@@ -306,6 +341,7 @@ export async function onRequestPost({ request, env }) {
         "Receipts and token transfers are separately indexed sources; unknown row schemas are not guessed and keep the assessment INCOMPLETE.",
         "Transaction frequency is an anomaly signal, not proof of fraud; it produces WARN, not an automatic BLOCK.",
         "NO_CONTRACT_CODE is informational and is not treated as suspicious.",
+        "When a sender/agent account is supplied, Sentinel checks that account's indexed successful outgoing transactions for prior interactions with this receiver. This is contextual evidence, not proof of trust or fraud.",
         "A provider outage or incomplete indexer response is not evidence that a wallet is safe or malicious.",
         "This is a risk screening result, not a guarantee that a transaction is safe."
       ]
