@@ -232,39 +232,65 @@ function renderResult(data) {
   const firstSeen = data.evidence?.first_seen_activity;
   const codeHistory = data.evidence?.contract_code_history;
   const agentHistory = data.evidence?.agent_receiver_interaction;
-  const extraEvidenceRows = [
-    [
-      'Earliest indexed activity',
-      firstSeen?.available
-        ? new Date(firstSeen.earliest_observed_transaction_at).toLocaleString() + ' · approximately ' + Number(firstSeen.estimated_days_since_first_observed_activity || 0) + ' days ago'
-        : 'Not available from indexed transaction history',
-      'This is an activity-age proxy, not the account creation date.'
-    ],
-    [
-      'Contract code history',
-      !codeHistory?.available
-        ? 'No deployed contract code observed'
-        : codeHistory.changed_since_previous_scan
-          ? 'Code hash changed since the previous Sentinel scan'
-          : codeHistory.prior_observations
-            ? 'No code hash change across ' + codeHistory.prior_observations + ' prior observation(s)'
-            : 'Baseline captured; no earlier Sentinel snapshot exists',
-      'Only changes between Sentinel scans are detectable; earlier changes may be unknown.'
-    ],
-    [
-      'Agent → receiver interactions',
-      !agentHistory
-        ? 'No agent account supplied'
-        : agentHistory.available
-          ? Number(agentHistory.successful_outgoing_interactions || 0) + ' successful outgoing interaction(s)'
-          : 'History unavailable / incomplete',
-      'Direct indexed history only; not a multi-hop relationship graph.'
-    ]
+  const firstSeenDate = firstSeen?.available && firstSeen.earliest_observed_transaction_at
+    ? new Date(firstSeen.earliest_observed_transaction_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
+    : null;
+  const signalCards = [
+    {
+      title: 'Aktivitas pertama terindeks',
+      state: !firstSeen?.available ? 'Belum tersedia' : firstSeen.complete ? 'Riwayat tersedia' : 'Data sebagian',
+      stateClass: !firstSeen?.available ? 'muted' : firstSeen.complete ? 'ok' : 'review',
+      value: firstSeenDate
+        ? firstSeenDate + ' · sekitar ' + Number(firstSeen.estimated_days_since_first_observed_activity || 0).toLocaleString('id-ID') + ' hari lalu'
+        : 'Belum ada aktivitas yang dapat dipastikan',
+      note: 'Mengacu pada transaksi tertua yang ditemukan Explorer. Ini bukan tanggal pembuatan akun.'
+    },
+    {
+      title: 'Riwayat kode kontrak',
+      state: !codeHistory?.available ? 'Tidak terdeteksi' : codeHistory.history_error ? 'Perlu pemeriksaan' : codeHistory.changed_since_previous_scan ? 'Kode berubah' : codeHistory.prior_observations ? 'Tidak ada perubahan' : 'Baseline tersimpan',
+      stateClass: !codeHistory?.available ? 'muted' : codeHistory.history_error || codeHistory.changed_since_previous_scan ? 'review' : 'ok',
+      value: !codeHistory?.available
+        ? 'Tidak ada kode kontrak aktif yang terdeteksi'
+        : codeHistory.history_error
+          ? 'Snapshot sebelumnya tidak dapat dibaca'
+          : codeHistory.changed_since_previous_scan
+            ? 'Hash kode berbeda dari pemeriksaan sebelumnya'
+            : codeHistory.prior_observations
+              ? 'Hash cocok pada ' + Number(codeHistory.prior_observations).toLocaleString('id-ID') + ' pemeriksaan sebelumnya'
+              : 'Pemeriksaan pertama — baseline baru dicatat',
+      note: !codeHistory?.available
+        ? 'Umumnya normal untuk akun wallet biasa dan bukan indikasi ancaman.'
+        : codeHistory.history_error
+          ? 'Kode saat ini terbaca, tetapi riwayat pembanding belum dapat diverifikasi.'
+          : codeHistory.changed_since_previous_scan
+            ? 'Perubahan bisa merupakan upgrade yang sah. Periksa sebelum berinteraksi.'
+            : 'Sentinel hanya dapat membandingkan sejak pertama kali menyimpan snapshot; perubahan sebelumnya tidak diketahui.'
+    },
+    {
+      title: 'Interaksi agent → penerima',
+      state: !agentHistory ? 'Belum diisi' : !agentHistory.available ? 'Tidak tersedia' : agentHistory.complete ? 'Riwayat diperiksa' : 'Data sebagian',
+      stateClass: !agentHistory ? 'muted' : !agentHistory.available || !agentHistory.complete ? 'review' : 'ok',
+      value: !agentHistory
+        ? 'Akun agent belum diberikan'
+        : !agentHistory.available
+          ? 'Riwayat akun agent tidak dapat diambil'
+          : Number(agentHistory.successful_outgoing_interactions || 0).toLocaleString('id-ID') + ' transaksi berhasil dari agent ke penerima',
+      note: !agentHistory
+        ? 'Isi kolom Agent / Sender Account saat memindai untuk memeriksa interaksi langsung.'
+        : !agentHistory.available
+          ? 'Hasil kosong tidak boleh dianggap bukti bahwa tidak pernah ada interaksi.'
+          : 'Hanya transaksi keluar yang berhasil dan ditandatangani agent. Ini konteks, bukan jaminan kepercayaan.'
+    }
   ];
-  const extraEvidenceMarkup = '<section class="plain-evidence"><h4>Additional screening signals</h4>' +
-    extraEvidenceRows.map(([label, value, note]) =>
-      '<div class="plain-evidence-row"><span>' + escapeHtml(label) + '</span><b>' + escapeHtml(value) + '</b><small>' + escapeHtml(note) + '</small></div>'
-    ).join('') + '</section>';
+  const extraEvidenceMarkup = '<section class="plain-evidence signal-section">' +
+    '<div class="signal-section-heading"><div><h4>Sinyal tambahan</h4><p>Informasi pendukung untuk membantu membaca hasil pemeriksaan.</p></div><span class="signal-section-tag">EVIDENCE</span></div>' +
+    '<div class="signal-grid">' + signalCards.map(card =>
+      '<article class="signal-card">' +
+        '<div class="signal-card-top"><h5>' + escapeHtml(card.title) + '</h5><span class="signal-state signal-state-' + card.stateClass + '">' + escapeHtml(card.state) + '</span></div>' +
+        '<p class="signal-value">' + escapeHtml(card.value) + '</p>' +
+        '<p class="signal-note">' + escapeHtml(card.note) + '</p>' +
+      '</article>'
+    ).join('') + '</div></section>';
 
   const findings = {
     VERIFIED_THREAT_MATCH: ['Verified threat record', 'This account matches an entry that has been verified by Sentinel.'],
