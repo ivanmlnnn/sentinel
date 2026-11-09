@@ -35,6 +35,10 @@ const result = await guardedNearPayment({
 
 The example signer is intentionally an integration point, not a bundled wallet implementation.
 
+## Authentication boundary
+
+The dashboard's Privy email OTP flow is working: users receive a one-time code by email (including Gmail) and verify it in the Privy modal. This is client sign-in, not proof that the API independently authenticates each request. Protected API handlers must verify the Privy access token server-side before trusting the caller. Never authorize a request based only on client state, an email string, or a user ID supplied in the request body.
+
 ## Important key limitation
 
 This repository does not yet provision or enforce a NEAR function-call access key. A function-call key is scoped to a contract and methods and cannot directly transfer NEAR. Do not claim that this wrapper alone provides cryptographic enforcement: an agent that bypasses the wrapper can still attempt another signing path. Production deployment needs an audited restricted-key architecture and, for native NEAR transfers, a purpose-built payment/escrow contract with explicit limits.
@@ -46,3 +50,10 @@ Run `node examples/prompt-injection-attack-demo.mjs`. It is an offline determini
 ## Tests
 
 Run `npm test`. Tests verify BLOCK denial, WARN approval, ALLOW pass-through, fail-closed API errors, receiver mismatch, and prompt-injection resistance.
+
+
+## Current enforcement status
+
+The guard is an application-level policy check. It is not a cryptographic boundary: code that can access the underlying signer through another path can bypass it. Keep the signer private to a trusted service, route every signing operation through one authorization boundary, and use a restricted NEAR function-call key scoped to the required contract and methods where the contract architecture supports it. Native NEAR transfers require a purpose-built payment/escrow contract; a function-call key alone does not provide native-transfer spending limits.
+
+A public demo should be read-only and use mock/sample data or rate-limited public investigation endpoints. It must not expose a signer, private key, privileged API credentials, or an authentication bypass for write operations.
