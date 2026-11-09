@@ -23,6 +23,7 @@ Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verifi
 3. Enter a public NEAR account and run **Check address**.
 4. Inspect the verdict and evidence: account state, indexed activity, transfer history and threat-registry match.
 5. Run the local guard test: `npm install && npm test && npm run demo:attack`.
+6. After deploying, run the HTTP checks: `npm run smoke:test`.
 
 **Expected guard-test result:** a blocked assessment does not invoke the signer callback. The current attack demo is an offline guard test—not a live autonomous agent or a real Testnet transfer.
 
