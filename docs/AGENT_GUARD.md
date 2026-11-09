@@ -37,7 +37,7 @@ The example signer is intentionally an integration point, not a bundled wallet i
 
 ## Authentication boundary
 
-The dashboard's Privy email OTP flow is working: users receive a one-time code by email (including Gmail) and verify it in the Privy modal. This is client sign-in, not proof that the API independently authenticates each request. Protected API handlers must verify the Privy access token server-side before trusting the caller. Never authorize a request based only on client state, an email string, or a user ID supplied in the request body.
+The dashboard supports Privy email OTP and a no-login Guest preview. Guest mode is read-only and cannot submit reports or request AI review. The Worker verifies Privy ES256 bearer tokens against the app JWKS for `POST /api/threats` and `POST /api/ai-review`, checking signature, issuer, audience, subject, issued-at, and expiry. Public account investigation and GET routes remain open to support Guest screening. Never authorize a request based only on client state, an email string, or a user ID supplied in the request body. Run `npm test` for verifier tests; the live Worker still needs an end-to-end smoke test with a real Privy session.
 
 ## Important key limitation
 
