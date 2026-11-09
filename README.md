@@ -120,7 +120,7 @@ The response should contain the investigation decision and supporting assessment
 4. Enter a NEAR account ID and run **Check address**.
 5. Inspect the verdict, risk factors, and technical evidence.
 
-The dashboard is read-only and does not sign or broadcast transactions. To enter without OTP, choose **Continue as Guest** on the login screen. Guest mode hides wallet connection and report-submission controls while leaving public address investigation and evidence viewing available. Choose the Privy email option when you need the signed-in dashboard experience. Guest mode is a UI access path, not server-side authentication; API token verification remains a separate hardening requirement.
+The dashboard is read-only and does not sign or broadcast transactions. To enter without OTP, choose **Continue as Guest** on the login screen. Guest mode hides wallet connection and report-submission controls while leaving public address investigation and evidence viewing available. Choose the Privy email option when you need the signed-in dashboard experience. Guest mode is a UI access path, not server-side authentication; it cannot submit reports or request AI review. Those routes require a verified Privy token.
 
 ## 6. Agent guard: what is implemented vs. what is not
 
@@ -148,7 +148,7 @@ A production design needs a trusted signing service that checks the exact receiv
 
 **Working:** Privy email OTP is used by the dashboard. The user receives a one-time code by email and completes verification in the client sign-in flow.
 
-**Not implemented:** the API does not yet validate the Privy access token on the server. A successful client sign-in does not prove that an API request belongs to that authenticated user.
+**Implemented for protected routes:** the Worker verifies the Privy ES256 bearer token signature against the app JWKS and checks issuer, audience, subject, issued-at, and expiry before accepting threat-report writes or AI-review requests. The browser obtains the access token from Privy and attaches it to those API calls. Unit tests cover valid signature, missing token, expiry, wrong audience, and tampering. Public read-only investigation and public GET endpoints remain open by design for Guest mode.
 
 Before protected API operations can be considered authenticated, the server must verify the bearer token using Privy's supported verification mechanism, validate its signature and relevant issuer, audience/app, expiry, and claims, derive the user identity from the verified token, and reject missing or invalid tokens. Client-side state, email strings, and user IDs supplied in request JSON must not be trusted as authorization.
 
@@ -250,7 +250,7 @@ The following are examples of work explicitly recorded in the Git history during
 | 10 Nov 2026 | Removed the `utm_source=chatgpt.com` tracking parameter from browser navigation | [`bd59112`](https://github.com/ivanmlnnn/sentinel/commit/bd59112dc4dd22a0765dd485a9996bd7e9c74c7c) |
 | 10 Nov 2026 | Configured the Worker to run before static assets so URL cleanup applies across paths | [`4f9811f`](https://github.com/ivanmlnnn/sentinel/commit/4f9811f6e4cbc4fdbdca326062c3a9fb7f5e20f9) |
 
-These links are examples of timestamped November changes, not a claim that every existing asset or every line of the codebase was authored in this period. The 1–14 November window is still in progress as of 10 November 2026; later work should be added to this timeline only after it is committed.
+Additional 10 November commits implement the no-login Guest preview, server-side Privy token verification for protected API routes, and automated JWT verification tests; see the [main branch history](https://github.com/ivanmlnnn/sentinel/commits/main) for the complete dated record. These links are examples of timestamped November changes, not a claim that every existing asset or every line of the codebase was authored in this period. The 1–14 November window is still in progress as of 10 November 2026; later work should be added to this timeline only after it is committed.
 
 ## 13. Scope and honest status
 
