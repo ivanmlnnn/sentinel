@@ -327,4 +327,6 @@ $('sendReport').addEventListener('click',async () => {
   finally { button.disabled = false; }
 });
 
-initWallet(); loadMetrics(); loadThreats();
+if (!GUEST_MODE) initWallet();
+loadMetrics();
+loadThreats();
