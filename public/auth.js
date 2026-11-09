@@ -9,7 +9,7 @@ window.addEventListener('unhandledrejection', (event) => { console.error('Authen
 function showAuthError(message) {
   const root = document.getElementById('auth-root');
   if (!root || document.body.classList.contains('sentinel-authenticated')) return;
-  root.innerHTML = '<main class="sentinel-auth-screen"><section class="sentinel-auth-card"><div class="sentinel-auth-mark"><img src="/IMG_20260629_220728_136.jpg?v=1" alt="NEAR Sentinel"></div><p class="sentinel-auth-kicker">NEAR PROTOCOL / ACCOUNT INTELLIGENCE</p><h1>NEAR SENTINEL</h1><p class="sentinel-auth-copy">'+message+'</p><button class="sentinel-auth-button" onclick="location.reload()">Retry ↻</button><button class="sentinel-auth-guest-button" onclick="window.startSentinelGuest && window.startSentinelGuest()">Continue as Guest ↗</button><p class="sentinel-auth-security">Guest preview is read-only and does not create a Privy session.</p></section></main>';
+  root.innerHTML = '<main class="sentinel-auth-screen"><section class="sentinel-auth-card"><div class="sentinel-auth-mark"><img src="/IMG_20260629_220728_136.jpg?v=1" alt="NEAR Sentinel"></div><p class="sentinel-auth-kicker">NEAR PROTOCOL / ACCOUNT INTELLIGENCE</p><h1>NEAR SENTINEL</h1><p class="sentinel-auth-copy">'+message+'</p><button class="sentinel-auth-button" onclick="location.reload()">Retry ↻</button></section></main>';
 }
 let dashboardStarted = false;
 
@@ -28,7 +28,22 @@ function AuthGate() {
 
   useEffect(() => {
     window.getSentinelAccessToken = getAccessToken;
-    if (window.SENTINEL_GUEST) return;
+    if (window.SENTINEL_GUEST) {
+      if (ready && authenticated) {
+        document.body.classList.add('sentinel-authenticated', 'sentinel-guest');
+        if (!dashboardStarted) {
+          dashboardStarted = true;
+          import('./app.js?v=20261110-signal-cards1').catch((error) => {
+            console.error('Privy Guest dashboard failed to initialize:', error);
+            dashboardStarted = false;
+          });
+        }
+      } else if (ready && !authenticated) {
+        window.SENTINEL_GUEST = false;
+        try { sessionStorage.removeItem('sentinel_privy_guest'); } catch {}
+      }
+      return;
+    }
     document.body.classList.toggle('sentinel-authenticated', Boolean(ready && authenticated));
     if (ready && authenticated && !dashboardStarted) {
       dashboardStarted = true;
@@ -37,7 +52,7 @@ function AuthGate() {
         dashboardStarted = false;
       });
     }
-    if (!authenticated && !window.SENTINEL_GUEST) {
+    if (!authenticated) {
       document.body.classList.remove('sentinel-authenticated');
       dashboardStarted = false;
     }
