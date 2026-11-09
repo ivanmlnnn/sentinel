@@ -1603,3 +1603,52 @@ footer{font-size:10px;line-height:1.7}
 }
 .topbar #walletBtn.wallet-connected:hover{border-color:#78bdff!important}
 .topbar #walletBtn .wallet-account-network{color:#55aaff!important}
+
+
+/* Wallet Intelligence — illuminated section marker and high-clarity scan action. */
+#investigate.section-heading .section-index{display:inline-flex;align-items:center;gap:8px;color:#a8e8c5}
+#investigate.section-heading .section-index::before{
+  content:"";display:inline-block;width:7px;height:7px;flex:0 0 7px;border-radius:50%;
+  background:#55f0a8;box-shadow:0 0 6px #55f0a8,0 0 14px #55f0a888;
+  animation:sentinel-index-pulse 1.8s ease-in-out infinite;
+}
+#investigate.section-heading .section-meta{display:inline-flex;align-items:center;gap:7px;color:#a9c7b5}
+#investigate.section-heading .section-meta::before{
+  content:"";width:6px;height:6px;flex:0 0 6px;border-radius:50%;
+  background:#55f0a8;box-shadow:0 0 8px #55f0a8;animation:sentinel-index-pulse 1.8s ease-in-out infinite;
+}
+#investigate .scan-submit .primary-btn{
+  position:relative;isolation:isolate;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;gap:13px;
+  min-height:44px;padding:0 21px;border:1px solid #55f0a8;border-radius:7px;
+  background:linear-gradient(110deg,#b9f8d7 0%,#69eeb0 48%,#a5f5cf 100%);
+  color:#092117;font-weight:800;letter-spacing:.035em;
+  box-shadow:0 0 0 1px #55f0a822,0 5px 18px #38d98b26,0 0 22px #55f0a81c;
+  transition:transform .22s ease,box-shadow .22s ease,filter .22s ease;
+}
+#investigate .scan-submit .primary-btn::before{
+  content:"";position:absolute;z-index:-1;inset:0;transform:translateX(-130%) skewX(-20deg);
+  width:55%;background:linear-gradient(90deg,transparent,#ffffff99,transparent);transition:transform .65s ease;
+}
+#investigate .scan-submit .primary-btn:hover{
+  transform:translateY(-2px);filter:brightness(1.06);
+  box-shadow:0 0 0 1px #55f0a855,0 8px 25px #38d98b40,0 0 28px #55f0a844;
+}
+#investigate .scan-submit .primary-btn:hover::before{transform:translateX(260%) skewX(-20deg)}
+#investigate .scan-submit .primary-btn:active{transform:translateY(0) scale(.985)}
+#investigate .scan-submit .primary-btn:focus-visible{outline:2px solid #b9f8d7;outline-offset:4px}
+#investigate .scan-submit .primary-btn:disabled{animation:none;filter:grayscale(.35);box-shadow:none;cursor:wait}
+#investigate .scan-submit .primary-btn b{display:inline-block;margin-left:0;font-size:15px;transition:transform .2s ease}
+#investigate .scan-submit .primary-btn:hover b{transform:translate(3px,-2px)}
+@keyframes sentinel-index-pulse{
+  0%,100%{opacity:1;box-shadow:0 0 5px #55f0a8,0 0 12px #55f0a866}
+  50%{opacity:.55;box-shadow:0 0 2px #55f0a8,0 0 5px #55f0a833}
+}
+@media(max-width:560px){
+  #investigate.section-heading{align-items:flex-start;gap:10px}
+  #investigate.section-heading .section-meta{max-width:46%;line-height:1.5;text-align:right}
+  #investigate .scan-submit .primary-btn{width:100%;min-height:48px}
+}
+@media(prefers-reduced-motion:reduce){
+  #investigate.section-heading .section-index::before,#investigate.section-heading .section-meta::before{animation:none}
+  #investigate .scan-submit .primary-btn,#investigate .scan-submit .primary-btn::before,#investigate .scan-submit .primary-btn b{transition:none}
+}
