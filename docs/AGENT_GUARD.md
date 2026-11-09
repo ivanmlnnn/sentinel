@@ -9,9 +9,9 @@ NEAR Sentinel provides an agent-side pre-sign guard in `src/agent-guard.mjs`.
 3. `BLOCK`: deny; never invoke the signer.
 4. `WARN`: require an explicit human approval callback; otherwise deny.
 5. `ALLOW`: permit the supplied signer callback.
-6. API outage, invalid verdict, or receiver mismatch: fail closed and do not sign.
+6. API outage, incomplete evidence, invalid verdict/risk score, receiver mismatch, or assessed-amount mismatch: fail closed and do not sign.
 
-AI-generated text and prompt instructions are not policy inputs. The verdict comes from Sentinel's deterministic API.
+AI-generated text and prompt instructions are not policy inputs. The verdict comes from Sentinel's deterministic API. Before signing, the guard binds the assessment to the exact normalized receiver and exact NEAR amount, requires `assessment_status: COMPLETE`, and validates that `risk_score` is a finite value from 0 to 100.
 
 ## Integrate with an agent
 
@@ -51,7 +51,7 @@ Run `node examples/prompt-injection-attack-demo.mjs`. It is an offline determini
 
 ## Tests
 
-Run `npm test`. Tests verify BLOCK denial, WARN approval, ALLOW pass-through, fail-closed API errors, receiver mismatch, and prompt-injection resistance.
+Run `npm test`. Tests verify BLOCK denial, WARN approval, ALLOW pass-through, fail-closed API errors, receiver and amount binding, incomplete-evidence denial, risk-score validation, and prompt-injection resistance.
 
 
 ## Current enforcement status
