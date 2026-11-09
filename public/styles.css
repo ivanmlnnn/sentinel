@@ -1313,3 +1313,60 @@ footer{font-size:10px;line-height:1.7}
 @media(max-width:760px){.brand{min-height:38px}.brand-logo{width:34px!important;height:34px!important}}
 @media(max-width:520px){.topbar{align-items:start!important}.brand{grid-column:1!important;grid-row:1!important;align-self:center!important}.top-actions{grid-column:1!important;grid-row:2!important;align-self:center!important}.main-nav{grid-row:3!important}}
 @media(prefers-reduced-motion:reduce){.brand-logo:before,.brand-logo:after{transition:none!important;animation:none!important}}
+
+
+/* Header alignment correction: brand and wallet controls share one horizontal row. */
+.topbar{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  grid-template-rows:auto auto!important;
+  align-items:center!important;
+  column-gap:14px!important;
+  row-gap:8px!important;
+}
+.topbar>.brand{
+  grid-column:1!important;
+  grid-row:1!important;
+  justify-self:start!important;
+  align-self:center!important;
+  min-width:0!important;
+}
+.topbar>.top-actions{
+  grid-column:2!important;
+  grid-row:1!important;
+  justify-self:end!important;
+  align-self:center!important;
+  display:flex!important;
+  flex-direction:row!important;
+  flex-wrap:nowrap!important;
+  align-items:center!important;
+  gap:10px!important;
+  min-width:0!important;
+}
+.topbar>.main-nav{
+  grid-column:1/-1!important;
+  grid-row:2!important;
+  min-width:0!important;
+}
+@media(max-width:760px){
+  .topbar{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    grid-template-rows:auto auto!important;
+    align-items:center!important;
+    column-gap:8px!important;
+    row-gap:7px!important;
+  }
+  .topbar>.brand{grid-column:1!important;grid-row:1!important}
+  .topbar>.top-actions{grid-column:2!important;grid-row:1!important;gap:7px!important}
+  .topbar>.main-nav{grid-column:1/-1!important;grid-row:2!important}
+  .brand-logo{width:34px!important;height:34px!important}
+}
+@media(max-width:390px){
+  .topbar{padding-inline:9px!important;column-gap:5px!important}
+  .topbar>.brand{gap:6px!important}
+  .brand-name{font-size:8px!important;letter-spacing:.5px!important}
+  .topbar>.top-actions{gap:5px!important}
+  .wallet-help-link{display:none!important}
+  .wallet-btn{padding:8px 7px!important;font-size:8px!important}
+}
