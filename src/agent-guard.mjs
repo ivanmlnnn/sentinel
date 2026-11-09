@@ -54,10 +54,10 @@ export async function guardedNearPayment({
 
   // Bind the policy verdict to the exact payment intent. A clean receiver
   // assessment for a different amount must never authorize this payment.
-  if (!assessment ||
-      String(assessment.receiver_account || "").toLowerCase() !== receiver ||
-      !Number.isFinite(Number(assessment.amount_near)) ||
-      Number(assessment.amount_near) !== amount) {
+  if (!assessment || String(assessment.receiver_account || "").toLowerCase() !== receiver) {
+    return { status: "DENIED", reason: "INVALID_ASSESSMENT", signed: false };
+  }
+  if (!Number.isFinite(Number(assessment.amount_near)) || Number(assessment.amount_near) !== amount) {
     return { status: "DENIED", reason: "ASSESSMENT_INTENT_MISMATCH", signed: false };
   }
 
