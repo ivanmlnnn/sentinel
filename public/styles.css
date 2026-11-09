@@ -1493,3 +1493,17 @@ footer{font-size:10px;line-height:1.7}
 @media(max-width:390px){
   .topbar .wallet-btn{padding:4px 6px!important;font-size:7px!important}
 }
+
+/* Keep the brand logo full-size in every wallet state. */
+.topbar .brand.wallet-linked .brand-logo,
+.topbar .brand.wallet-logged-out .brand-logo{
+  width:52px!important;
+  height:52px!important;
+}
+@media(max-width:760px){
+  .topbar .brand.wallet-linked .brand-logo,
+  .topbar .brand.wallet-logged-out .brand-logo{
+    width:34px!important;
+    height:34px!important;
+  }
+}
