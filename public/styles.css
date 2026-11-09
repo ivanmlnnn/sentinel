@@ -1026,3 +1026,23 @@ body.sentinel-guest .wallet-guide-note::after{content:' · GUEST PREVIEW';color:
 .guest-login-button:hover{background:#a7c4a91a;border-color:#d3e3d3}
 body.sentinel-guest .guest-login-button{display:inline-flex;align-items:center;justify-content:center}
 @media(max-width:720px){.guest-login-button{min-height:32px;padding:7px 10px;font-size:10px}.guest-mode-badge{letter-spacing:.35px}}
+
+
+/* Additional screening signals — compact, readable evidence cards. */
+.signal-section{padding:22px 24px!important}
+.signal-section-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:15px}
+.signal-section-heading h4{margin:0 0 5px!important}
+.signal-section-heading p{margin:0;color:#87958d;font:11px/1.55 var(--sans)}
+.signal-section-tag{flex:0 0 auto;padding:6px 8px;border:1px solid #34443a;color:#a7c4a9;font:9px var(--mono);letter-spacing:.08em}
+.signal-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.signal-card{min-width:0;padding:15px 15px 14px;border:1px solid #303d34;border-radius:8px;background:linear-gradient(145deg,#172019,#121914)}
+.signal-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:9px;flex-wrap:wrap}
+.signal-card-top h5{margin:0;color:#dbe4dc;font:600 11px/1.5 var(--sans)}
+.signal-state{display:inline-flex;align-items:center;max-width:100%;padding:4px 7px;border:1px solid #455347;border-radius:4px;color:#b9c8b8;font:9px/1.35 var(--mono);white-space:normal}
+.signal-state-ok{border-color:#45634e;background:#1a2a1e;color:#b9d6b8}
+.signal-state-review{border-color:#705c3c;background:#2a2419;color:#e1c58e}
+.signal-state-muted{border-color:#414b43;background:#202722;color:#aab4aa}
+.signal-value{margin:14px 0 7px;color:#f0f4ef;font:600 13px/1.55 var(--sans);overflow-wrap:anywhere}
+.signal-note{margin:0;color:#93a096;font:10px/1.65 var(--sans);overflow-wrap:anywhere}
+@media(max-width:900px){.signal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.signal-section{padding:17px 15px!important}.signal-section-heading{gap:10px}.signal-section-heading p{max-width:250px}.signal-grid{grid-template-columns:1fr;gap:9px}.signal-card{padding:13px}.signal-value{margin-top:10px;font-size:12px}}
