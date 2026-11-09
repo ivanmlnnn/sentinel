@@ -65,3 +65,17 @@ if(trackerHeading && 'IntersectionObserver' in window && !reducedMotion){
 }else if(trackerHeading){
   trackerHeading.classList.add('tracker-in-view');
 }
+
+
+/* Keep the CTA's scroll state on its own sibling section. */
+const trackerForm=document.querySelector('.scan-layout');
+if(trackerForm && trackerHeading){
+  const syncTrackerAction=()=>{
+    const rect=trackerHeading.getBoundingClientRect();
+    const visible=rect.top<window.innerHeight*.78 && rect.bottom>window.innerHeight*.08;
+    trackerForm.classList.toggle('tracker-in-view',visible);
+  };
+  window.addEventListener('scroll',syncTrackerAction,{passive:true});
+  window.addEventListener('resize',syncTrackerAction);
+  syncTrackerAction();
+}
