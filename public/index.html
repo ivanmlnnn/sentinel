@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#123d3b"><meta name="description" content="NEAR Sentinel — on-chain security for NEAR Protocol.">
 <title>NEAR Sentinel — Account Risk Intelligence</title>
-<link rel="stylesheet" href="/styles.css?v=20261110-login-guest-fix3">
+<link rel="stylesheet" href="/styles.css?v=20261110-signal-cards1">
 <script type="importmap">{"imports":{"react":"https://esm.sh/react@18.3.1","react/":"https://esm.sh/react@18.3.1/","react-dom":"https://esm.sh/react-dom@18.3.1","react-dom/client":"https://esm.sh/react-dom@18.3.1/client"}}</script>
 </head>
 <body>
@@ -19,7 +19,7 @@ window.startSentinelGuest = async function(){
   if(window.__SENTINEL_APP_STARTED) return;
   window.__SENTINEL_GUEST_STARTING = true;
   try {
-    await import('/app.js?v=20261110-login-guest-fix3');
+    await import('/app.js?v=20261110-signal-cards1');
     window.__SENTINEL_GUEST_STARTING = false;
   } catch(error) {
     console.error('Guest dashboard failed to start:',error);
