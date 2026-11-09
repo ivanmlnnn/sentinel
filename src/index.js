@@ -16,6 +16,17 @@ const routes = {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+
+    // Remove only ChatGPT's tracking parameter from browser navigation.
+    // Preserve all other query parameters and avoid redirecting API mutations.
+    if (
+      (request.method === "GET" || request.method === "HEAD") &&
+      url.searchParams.get("utm_source") === "chatgpt.com"
+    ) {
+      url.searchParams.delete("utm_source");
+      return Response.redirect(url.toString(), 302);
+    }
+
     const handler = routes[`${request.method} ${url.pathname}`];
     if (handler) {
       try {
