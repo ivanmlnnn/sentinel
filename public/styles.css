@@ -1652,3 +1652,9 @@ footer{font-size:10px;line-height:1.7}
   #investigate.section-heading .section-index::before,#investigate.section-heading .section-meta::before{animation:none}
   #investigate .scan-submit .primary-btn,#investigate .scan-submit .primary-btn::before,#investigate .scan-submit .primary-btn b{transition:none}
 }
+
+
+/* Match the near:// prefix tile to the page/protocol background. */
+#investigate .account-input>span{
+  background:var(--bg)!important;
+}
