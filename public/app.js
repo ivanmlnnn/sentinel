@@ -229,6 +229,7 @@ function renderResult(data) {
     TRANSACTION_HISTORY_UNAVAILABLE: ['Transaction history unavailable', 'The history provider did not return enough information to assess activity.'],
     AGENT_RECEIVER_INTERACTION_HISTORY: ['Agent-to-recipient history', 'The supplied agent account has prior successful outgoing interactions with this receiver. This is context, not a trust guarantee.'],
     AGENT_RECEIVER_HISTORY_INCOMPLETE: ['Agent history incomplete', 'The supplied agent account history could not be fully verified. Do not infer that no prior interaction exists.'],
+    CONTRACT_CODE_HASH_CHANGED: ['Contract code changed since prior scan', 'The current contract code hash differs from Sentinel’s previous observation. This may be a legitimate upgrade; review the change before interacting.'],
     ACCOUNT_NOT_FOUND: ['Account not found', 'The account could not be confirmed on NEAR Testnet.']
   };
   const visible = factors.filter(item => findings[String(item.code || '')]);
