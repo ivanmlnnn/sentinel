@@ -1594,3 +1594,12 @@ footer{font-size:10px;line-height:1.7}
   .topbar #walletBtn .wallet-account-name{max-width:115px!important;font-size:8px!important}
   .topbar #walletBtn svg.wallet-power{width:13px!important;height:13px!important;min-width:13px!important}
 }
+
+
+/* Match connected wallet frame and .testnet label to the Sentinel logout blue. */
+.topbar #walletBtn.wallet-connected{
+  border-color:#55aaff!important;
+  box-shadow:0 0 0 1px rgba(85,170,255,.12),0 0 9px rgba(85,170,255,.12)!important;
+}
+.topbar #walletBtn.wallet-connected:hover{border-color:#78bdff!important}
+.topbar #walletBtn .wallet-account-network{color:#55aaff!important}
