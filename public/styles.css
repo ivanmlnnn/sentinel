@@ -1291,3 +1291,25 @@ footer{font-size:10px;line-height:1.7}
 @media(prefers-reduced-motion:reduce){
   .brand-logo,.brand-logo:before{transition:none!important;animation:none!important}
 }
+
+
+/* Sentinel logo frame — animated corner strokes, with explicit wallet states. */
+.topbar{align-items:center!important}
+.brand{display:flex!important;align-items:center!important;align-self:center!important;min-height:52px}
+.brand-logo{position:relative!important;display:inline-flex!important;flex:0 0 auto!important;align-items:center!important;justify-content:center!important;width:52px!important;height:52px!important;overflow:visible!important;border:0!important;outline:0!important;border-radius:0!important;box-shadow:none!important;background:transparent!important;isolation:isolate}
+.brand-logo img{position:relative;z-index:1;display:block;width:100%;height:100%;object-fit:contain!important}
+.brand-logo:before,.brand-logo:after{content:"";position:absolute;z-index:2;inset:-5px;pointer-events:none;border:0;opacity:1;transition:color .3s ease,transform .45s cubic-bezier(.2,.75,.25,1),opacity .3s ease}
+.brand-logo:before{border-top:2px solid #e8df78;border-left:2px solid #e8df78;clip-path:polygon(0 0,100% 0,100% 9%,9% 9%,9% 100%,0 100%)}
+.brand-logo:after{border-right:2px solid #e8df78;border-bottom:2px solid #e8df78;clip-path:polygon(91% 0,100% 0,100% 100%,0 100%,0 91%,91% 91%)}
+.brand-name{display:flex;flex-direction:column;justify-content:center;line-height:1.15!important;white-space:nowrap}
+.brand-name b{line-height:1.15!important;margin-top:3px!important}
+.top-actions{align-self:center!important;align-items:center!important}
+.brand.wallet-linked .brand-logo:before,.brand.wallet-linked .brand-logo:after{border-color:#55f0a8;animation:sentinel-frame-connect .55s cubic-bezier(.2,.75,.25,1) both}
+.brand.wallet-logged-out .brand-logo:before,.brand.wallet-logged-out .brand-logo:after{border-color:#55aaff;animation:sentinel-frame-logout .55s cubic-bezier(.2,.75,.25,1) both}
+.brand.wallet-linked .brand-logo img{filter:drop-shadow(0 0 5px rgba(85,240,168,.25))}
+.brand.wallet-logged-out .brand-logo img{filter:drop-shadow(0 0 5px rgba(85,170,255,.25))}
+@keyframes sentinel-frame-connect{0%{transform:scale(.82);opacity:.2}65%{transform:scale(1.08);opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes sentinel-frame-logout{0%{transform:scale(.82);opacity:.2}65%{transform:scale(1.08);opacity:1}100%{transform:scale(1);opacity:1}}
+@media(max-width:760px){.brand{min-height:38px}.brand-logo{width:34px!important;height:34px!important}}
+@media(max-width:520px){.topbar{align-items:start!important}.brand{grid-column:1!important;grid-row:1!important;align-self:center!important}.top-actions{grid-column:1!important;grid-row:2!important;align-self:center!important}.main-nav{grid-row:3!important}}
+@media(prefers-reduced-motion:reduce){.brand-logo:before,.brand-logo:after{transition:none!important;animation:none!important}}
