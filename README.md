@@ -40,7 +40,7 @@ The current implementation uses:
 - Contract code-hash change detection by comparing the current hash with previous Sentinel investigation snapshots.
 - Direct agent-to-receiver interaction history when an optional sender account is supplied.
 - Direction and signer attribution to distinguish outgoing activity from incoming spam.
-- A project-local Cloudflare D1 threat registry. Only records marked verified can trigger `BLOCK`.
+- A Cloudflare D1 threat registry with evidence attached to each report. Verified entries can be exported through `GET /api/threats?status=verified` and only verified records can trigger `BLOCK`. The feed is shared within this Sentinel deployment, not yet federated across independent projects.
 - Outgoing transaction frequency and recipient-diversity rules.
 
 ### Agent-to-receiver context
@@ -66,7 +66,7 @@ The current risk model does **not** yet include:
 - Exact account creation age as a scored signal. Sentinel reports earliest indexed activity as a clearly labeled proxy; it is not a reliable creation timestamp.
 - Contract code changes that occurred before Sentinel's first observation. Current comparison only detects hash changes between stored Sentinel scans.
 - Multi-hop interaction graphs and behavioral relationship scoring. The direct sender-to-receiver lookup is informational and does not independently alter the risk score.
-- A shared, externally synchronized blocklist with standardized evidence, provenance, and review history. The current D1 registry is shared only within this Sentinel deployment; it is not yet federated with external projects.
+- A federated, externally synchronized blocklist shared across independent projects, with signed provenance and a cross-project review protocol. The current D1 registry is exportable and shared within this Sentinel deployment only.
 
 These are known coverage gaps, not hidden capabilities.
 
@@ -226,9 +226,11 @@ Other routes currently documented by the project:
 | `POST /api/ai-review` | Evidence-grounded explanation; requires `ANTHROPIC_API_KEY` |
 | `GET /api/metrics` | Aggregate investigation metrics |
 | `GET /api/threats` | Recent threat reports |
-| `POST /api/threats` | Submit an unverified community threat report |
+| `POST /api/threats` | Submit an unverified community threat report (Privy-authenticated) |
+| `POST /api/threats/verify` | Admin-only report moderation using `THREAT_REVIEW_TOKEN` |
+| `GET /api/threats?status=verified` | Export the deployment's verified threat feed with evidence |
 
-A submitted community report is not automatically trusted and must not trigger `BLOCK` until verified.
+A submitted community report is not automatically trusted and must not trigger `BLOCK` until verified. A reviewer can moderate an unverified report through `POST /api/threats/verify` using the server-only `THREAT_REVIEW_TOKEN` Worker secret. Configure it with `npx wrangler secret put THREAT_REVIEW_TOKEN`; never place this token in the browser or repository.
 
 ## 11. Configuration and data limitations
 
