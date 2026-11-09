@@ -93,7 +93,14 @@ function AuthGate() {
         React.createElement('button', {
           className: 'sentinel-auth-button',
           type: 'button',
-          onClick: () => { setAuthError(''); login(); }
+          onClick: () => {
+            setAuthError('');
+            // A user choosing Privy email login must never inherit a previous Guest preview flag.
+            window.SENTINEL_GUEST = false;
+            try { sessionStorage.removeItem('sentinel_privy_guest'); } catch {}
+            document.body.classList.remove('sentinel-guest');
+            login();
+          }
         }, 'Login'),
         React.createElement('p', { className: 'sentinel-auth-footnote' }, 'SECURE AUTHENTICATION · PRIVY'),
         React.createElement('button', {
