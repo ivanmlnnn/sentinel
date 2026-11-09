@@ -1658,3 +1658,34 @@ footer{font-size:10px;line-height:1.7}
 #investigate .account-input>span{
   background:transparent!important;
 }
+
+
+/* Wallet tracker heading: larger type with an arrival motion on scroll. */
+#investigate.section-heading h2{
+  font-size:clamp(29px,3vw,36px)!important;
+  line-height:1.12;
+  letter-spacing:-1.15px;
+  font-weight:650;
+  opacity:0;
+  transform:translate3d(0,20px,0) scale(.94);
+  filter:blur(3px);
+  transform-origin:left center;
+  transition:opacity .65s ease .08s,
+             transform .75s cubic-bezier(.18,.8,.22,1) .08s,
+             filter .6s ease .08s;
+  will-change:opacity,transform,filter;
+}
+#investigate.section-heading.visible h2{
+  opacity:1;
+  transform:translate3d(0,0,0) scale(1);
+  filter:blur(0);
+}
+@media(max-width:760px){
+  #investigate.section-heading h2{font-size:clamp(27px,7vw,32px)!important}
+}
+@media(prefers-reduced-motion:reduce){
+  #investigate.section-heading h2,
+  #investigate.section-heading.visible h2{
+    opacity:1;transform:none;filter:none;transition:none;will-change:auto;
+  }
+}
