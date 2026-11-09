@@ -4,12 +4,22 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#123d3b"><meta name="description" content="NEAR Sentinel — on-chain security for NEAR Protocol.">
 <title>NEAR Sentinel — Account Risk Intelligence</title>
-<link rel="stylesheet" href="/styles.css?v=20261108-22">
+<link rel="stylesheet" href="/styles.css?v=20261110-guest1">
 <script type="importmap">{"imports":{"react":"https://esm.sh/react@18.3.1","react/":"https://esm.sh/react@18.3.1/","react-dom":"https://esm.sh/react-dom@18.3.1","react-dom/client":"https://esm.sh/react-dom@18.3.1/client"}}</script>
 </head>
 <body>
-<div id="auth-root"><main class="sentinel-auth-screen"><section class="sentinel-auth-card"><div class="sentinel-auth-mark"><img src="/IMG_20260629_220728_136.jpg?v=1" alt="Wayang Tech and Kitchen Needs"></div><p class="sentinel-auth-kicker">NEAR PROTOCOL · SECURITY GATE</p><h1>NEAR SENTINEL</h1><p class="sentinel-auth-copy">Loading secure sign-in…</p><div class="sentinel-auth-loader"></div></section></main></div>
-<script>window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r.dataset.authBooted&&!document.body.classList.contains("sentinel-authenticated")){var p=r.querySelector(".sentinel-auth-copy");if(p)p.textContent="Secure sign-in is taking too long to load. Check your connection and reload this page.";var b=r.querySelector(".sentinel-auth-loader");if(b)b.outerHTML="<button class=\"sentinel-auth-button\" onclick=\"location.reload()\">Retry ↻</button>";}},15000);</script>
+<div id="auth-root"><main class="sentinel-auth-screen"><section class="sentinel-auth-card"><div class="sentinel-auth-mark"><img src="/IMG_20260629_220728_136.jpg?v=1" alt="Wayang Tech and Kitchen Needs"></div><p class="sentinel-auth-kicker">NEAR PROTOCOL · SECURITY GATE</p><h1>NEAR SENTINEL</h1><p class="sentinel-auth-copy">Loading secure sign-in…</p><button class="sentinel-auth-guest-button" type="button" onclick="window.startSentinelGuest && window.startSentinelGuest()">Continue as Guest ↗</button><div class="sentinel-auth-loader"></div></section></main></div>
+<script>
+window.startSentinelGuest = async function(){
+  if(window.__SENTINEL_APP_STARTED) return;
+  window.SENTINEL_GUEST = true;
+  document.body.classList.add('sentinel-authenticated','sentinel-guest');
+  var root=document.getElementById('auth-root');
+  if(root){root.hidden=true;root.innerHTML='';}
+  try{await import('/app.js?v=20261110-guest1');}
+  catch(error){console.error('Guest dashboard failed to start:',error);if(root){root.hidden=false;root.innerHTML='<main class="sentinel-auth-screen"><section class="sentinel-auth-card"><h1>GUEST PREVIEW</h1><p class="sentinel-auth-copy">The read-only dashboard could not load. Check your connection and reload.</p><button class="sentinel-auth-button" onclick="location.reload()">Retry ↻</button></section></main>';}}
+};
+window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r.dataset.authBooted&&!document.body.classList.contains("sentinel-authenticated")){var p=r.querySelector(".sentinel-auth-copy");if(p)p.textContent="Secure sign-in is taking too long to load. Check your connection and reload this page.";var b=r.querySelector(".sentinel-auth-loader");if(b)b.outerHTML="<button class=\"sentinel-auth-button\" onclick=\"location.reload()\">Retry ↻</button>";}},15000);</script>
 <div class="scroll-progress" id="scrollProgress"></div>
 <header class="topbar">
  <a class="brand" href="#overview"><span class="brand-icon brand-logo"><img src="/IMG_20260629_220728_136.jpg?v=1" alt="Wayang Tech and Kitchen Needs"></span><span class="brand-name">NEAR <b>SENTINEL</b></span></a>
@@ -82,5 +92,5 @@
 <footer><span>NEAR SENTINEL <b>·</b> NEAR SECURITY</span><span>TESTNET / READ-ONLY MVP / 2026 · <a href="https://testnet.nearblocks.io/" target="_blank" rel="noopener noreferrer">Powered by NearBlocks.io APIs</a></span></footer>
 </main>
 <div id="toast" class="toast"></div>
-<script src="/motion.js?v=20261108-22" defer></script><script type="module" src="/auth.js?v=20261108-17"></script>
+<script src="/motion.js?v=20261108-22" defer></script><script type="module" src="/auth.js?v=20261110-guest1"></script>
 </body></html>
