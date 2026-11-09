@@ -1234,3 +1234,60 @@ footer{font-size:10px;line-height:1.7}
 @media(prefers-reduced-motion:reduce){
   .brand.wallet-linked .brand-logo,.brand.wallet-linked .brand-logo:after{animation:none!important}
 }
+
+
+/* Sentinel logo identity: yellow outline at rest, green on wallet connect, blue on logout. */
+.brand-logo{
+  position:relative!important;
+  isolation:isolate;
+  border:1px solid #e8df78!important;
+  outline:1px solid rgba(232,223,120,.22);
+  outline-offset:3px;
+  transition:border-color .35s ease,outline-color .35s ease,box-shadow .35s ease,filter .35s ease;
+}
+.brand-logo:before{
+  content:"";
+  position:absolute;
+  inset:-5px;
+  border:1px solid #e8df78;
+  clip-path:inset(0 0 0 0);
+  pointer-events:none;
+  opacity:.9;
+  transition:border-color .35s ease,transform .45s ease,opacity .35s ease;
+}
+.brand.wallet-linked .brand-logo{
+  border-color:#55f0a8!important;
+  outline-color:rgba(85,240,168,.38);
+  box-shadow:0 0 0 2px rgba(85,240,168,.13),0 0 16px rgba(85,240,168,.3)!important;
+  filter:none;
+  animation:sentinel-green-connect .55s ease both;
+}
+.brand.wallet-linked .brand-logo:before{
+  border-color:#55f0a8;
+  transform:scale(1.12);
+  opacity:0;
+}
+.brand.wallet-logged-out .brand-logo{
+  border-color:#8bd4ef!important;
+  outline-color:rgba(139,212,239,.42);
+  box-shadow:0 0 0 2px rgba(139,212,239,.14),0 0 16px rgba(139,212,239,.3)!important;
+  animation:sentinel-blue-logout .5s ease both;
+}
+.brand.wallet-logged-out .brand-logo:before{
+  border-color:#8bd4ef;
+  transform:scale(1.14);
+  opacity:0;
+}
+@keyframes sentinel-green-connect{
+  0%{box-shadow:0 0 0 0 rgba(85,240,168,0)}
+  55%{box-shadow:0 0 0 6px rgba(85,240,168,.22),0 0 24px rgba(85,240,168,.45)}
+  100%{box-shadow:0 0 0 2px rgba(85,240,168,.13),0 0 16px rgba(85,240,168,.3)}
+}
+@keyframes sentinel-blue-logout{
+  0%{box-shadow:0 0 0 0 rgba(139,212,239,0)}
+  55%{box-shadow:0 0 0 6px rgba(139,212,239,.22),0 0 24px rgba(139,212,239,.45)}
+  100%{box-shadow:0 0 0 2px rgba(139,212,239,.14),0 0 16px rgba(139,212,239,.3)}
+}
+@media(prefers-reduced-motion:reduce){
+  .brand-logo,.brand-logo:before{transition:none!important;animation:none!important}
+}
