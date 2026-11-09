@@ -30,9 +30,16 @@ function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 async function request(path, options = {}) {
-  const response = await fetch(API + path, {
-    ...options, headers: {'content-type':'application/json', ...(options.headers || {})}
-  });
+  const headers = {'content-type':'application/json', ...(options.headers || {})};
+  if (!GUEST_MODE && typeof window.getSentinelAccessToken === 'function') {
+    try {
+      const token = await window.getSentinelAccessToken();
+      if (token) headers.authorization = 'Bearer ' + token;
+    } catch (error) {
+      console.warn('Could not refresh Privy access token for API request:', error);
+    }
+  }
+  const response = await fetch(API + path, { ...options, headers });
   const data = await response.json().catch(() => ({error:'Invalid server response.'}));
   if (!response.ok) throw new Error(data.error || 'Request failed. Please retry.');
   return data;
