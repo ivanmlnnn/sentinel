@@ -157,9 +157,7 @@ A production design needs a trusted signing service that checks the exact receiv
 
 **Implemented for protected routes:** the Worker verifies the Privy ES256 bearer token signature against the app JWKS and checks issuer, audience, subject, issued-at, and expiry before accepting threat-report writes or AI-review requests. The browser obtains the access token from Privy and attaches it to those API calls. Unit tests cover valid signature, missing token, expiry, wrong audience, and tampering. Public read-only investigation and public GET endpoints remain open by design for Guest mode.
 
-Before protected API operations can be considered authenticated, the server must verify the bearer token using Privy's supported verification mechanism, validate its signature and relevant issuer, audience/app, expiry, and claims, derive the user identity from the verified token, and reject missing or invalid tokens. Client-side state, email strings, and user IDs supplied in request JSON must not be trusted as authorization.
-
-The existing OTP flow is not being removed; server-side token verification is the missing enforcement layer.
+Public account investigation and GET endpoints are deliberately unauthenticated to support Guest screening. Any new write, identity-specific, or cost-bearing endpoint must use the same server-side verifier before it performs work. Never trust client-side state, email strings, or user IDs supplied in request JSON as authorization. The existing Privy OTP flow remains unchanged.
 
 ## 8. Wallet ecosystem: Meteor
 
