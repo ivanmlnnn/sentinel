@@ -1874,3 +1874,85 @@ footer{font-size:10px;line-height:1.7}
 .topbar #walletBtn .wallet-account-network{color:#8bd4ef!important}
 .topbar #walletBtn .wallet-action-divider{background:#527f8c!important}
 .topbar #walletBtn svg.wallet-power{color:#8bd4ef!important}
+
+
+/* Primary Wallet Tracker action: unmistakable ice-blue CTA, animated on scroll. */
+#investigate .scan-submit .primary-btn{
+  position:relative!important;
+  isolation:isolate!important;
+  overflow:hidden!important;
+  min-height:46px!important;
+  padding:13px 22px!important;
+  background:linear-gradient(110deg,#8bd4ef 0%,#b8ecfa 48%,#75c5e5 100%)!important;
+  color:#07131a!important;
+  border:1px solid #c4f1ff!important;
+  border-left:4px solid #d9f7ff!important;
+  border-radius:6px!important;
+  font:800 12px var(--mono)!important;
+  letter-spacing:.06em!important;
+  text-shadow:none!important;
+  box-shadow:0 0 0 1px #8bd4ef38,0 5px 18px #8bd4ef35,inset 0 1px 0 #ffffff99!important;
+  cursor:pointer!important;
+  transform:translateY(0)!important;
+  transition:background .22s ease,box-shadow .22s ease,transform .22s ease,filter .22s ease!important;
+}
+#investigate .scan-submit .primary-btn::before{
+  content:""!important;
+  position:absolute!important;
+  z-index:-1!important;
+  inset:-20% auto -20% -65%!important;
+  width:48%!important;
+  background:linear-gradient(90deg,transparent,#ffffffc9,transparent)!important;
+  transform:skewX(-22deg)!important;
+  transition:left .7s cubic-bezier(.2,.7,.2,1)!important;
+}
+#investigate .scan-submit .primary-btn b{
+  display:inline-block!important;
+  margin-left:12px!important;
+  color:#09212c!important;
+  font-size:17px!important;
+  transition:transform .22s ease!important;
+}
+#investigate .scan-submit .primary-btn:hover{
+  background:linear-gradient(110deg,#b5edff,#e0f8ff 50%,#91d8f1)!important;
+  color:#06131a!important;
+  border-color:#e2f9ff!important;
+  box-shadow:0 0 0 3px #8bd4ef2b,0 8px 28px #8bd4ef70,inset 0 1px 0 #fff!important;
+  transform:translateY(-3px)!important;
+  filter:brightness(1.04)!important;
+}
+#investigate .scan-submit .primary-btn:hover::before{left:125%!important}
+#investigate .scan-submit .primary-btn:hover b{transform:translate(3px,-1px)!important}
+#investigate .scan-submit .primary-btn:focus-visible{
+  outline:3px solid #e9d36b!important;
+  outline-offset:4px!important;
+}
+#investigate .scan-submit .primary-btn:active{
+  transform:translateY(0) scale(.97)!important;
+  box-shadow:0 2px 8px #8bd4ef40!important;
+}
+#investigate .scan-submit .primary-btn:disabled{
+  background:#263b45!important;
+  color:#9bb7c2!important;
+  border-color:#45616d!important;
+  box-shadow:none!important;
+  cursor:wait!important;
+}
+#investigate.tracker-in-view .scan-submit .primary-btn{
+  animation:tracker-cta-arrive .85s cubic-bezier(.16,1,.3,1) both,
+            tracker-cta-pulse 2.8s ease-in-out 1s infinite;
+}
+@keyframes tracker-cta-arrive{
+  0%{opacity:.45;transform:translateY(13px) scale(.96);filter:brightness(.8)}
+  70%{opacity:1;transform:translateY(-3px) scale(1.025);filter:brightness(1.12)}
+  100%{opacity:1;transform:translateY(0) scale(1);filter:brightness(1)}
+}
+@keyframes tracker-cta-pulse{
+  0%,100%{box-shadow:0 0 0 1px #8bd4ef38,0 5px 18px #8bd4ef35,inset 0 1px 0 #ffffff99}
+  50%{box-shadow:0 0 0 4px #8bd4ef17,0 7px 25px #8bd4ef70,inset 0 1px 0 #ffffffbb}
+}
+@media(prefers-reduced-motion:reduce){
+  #investigate .scan-submit .primary-btn,
+  #investigate .scan-submit .primary-btn::before,
+  #investigate .scan-submit .primary-btn b{animation:none!important;transition:none!important}
+}
