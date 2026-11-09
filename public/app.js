@@ -48,7 +48,7 @@ function syncWalletUI(accountId, walletName) {
   brand?.classList.toggle('wallet-logged-out', !connectedAccount && Boolean(brand.dataset.walletWasConnected));
   if (connectedAccount && brand) brand.dataset.walletWasConnected = '1';
   button.innerHTML = connectedAccount
-    ? '<span class="wallet-dot"></span>Disconnect'
+    ? '<span class="wallet-power" aria-label="Disconnect" title="Disconnect">⏻</span>'
     : 'Connect';
   const trackedWallet = $('receiver');
   if (connectedAccount) {
