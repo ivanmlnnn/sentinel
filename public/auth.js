@@ -56,7 +56,7 @@ function AuthGate() {
         React.createElement('div', { className: 'sentinel-auth-mark' }, React.createElement('img', { src: '/IMG_20260629_220728_136.jpg?v=1', alt: 'Wayang Tech and Kitchen Needs' })),
         React.createElement('p', { className: 'sentinel-auth-kicker' }, 'NEAR PROTOCOL / ACCOUNT INTELLIGENCE'),
         React.createElement('h1', null, 'NEAR SENTINEL'),
-        React.createElement('p', { className: 'sentinel-auth-copy' }, 'Choose how to access NEAR Sentinel. Email sign-in and one-time code verification are handled securely by Privy.'),
+        React.createElement('p', { className: 'sentinel-auth-copy' }, 'Sign in through Privy with your email and verify using the one-time code Privy sends to your inbox.'),
         React.createElement('button', {
           className: 'sentinel-auth-button',
           type: 'button',
@@ -74,7 +74,7 @@ function AuthGate() {
             }
             finally { loginStarted.current = false; setLoginLoading(false); }
           }
-        }, loginLoading ? 'Opening Privy…' : 'Continue with email'),
+        }, loginLoading ? 'Opening Privy…' : 'Login with Privy'),
         loginError ? React.createElement('p', { className: 'sentinel-auth-error', role: 'alert' }, loginError) : null,
         React.createElement('div', { className: 'sentinel-auth-or', 'aria-hidden': 'true' }, React.createElement('span'), React.createElement('b', null, 'OR'), React.createElement('span')),
         React.createElement('button', { className: 'sentinel-auth-guest-button', type: 'button', onClick: () => window.startSentinelGuest?.() }, 'Continue as Guest · Read-only'),
