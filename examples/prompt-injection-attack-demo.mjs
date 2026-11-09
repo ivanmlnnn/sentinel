@@ -16,6 +16,8 @@ const result = await guardedNearPayment({
   inspect: async () => ({
     id: "offline-demo-verified-threat",
     receiver_account: receiver,
+    amount_near: 10,
+    assessment_status: "COMPLETE",
     decision: "BLOCK",
     risk_score: 100,
     risk_factors: [{ code: "VERIFIED_THREAT_REPORT", severity: "critical" }]
