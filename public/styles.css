@@ -2090,3 +2090,11 @@ footer{font-size:10px;line-height:1.7}
     animation:none!important;transition:none!important;
   }
 }
+
+
+/* Brand wordmark: white glow to match the hero and wallet tracker headings. */
+.brand-name,
+.brand-name b{
+  color:#f5f3e9!important;
+  text-shadow:0 0 10px #f5f3e955,0 0 22px #ffffff22;
+}
