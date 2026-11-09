@@ -52,16 +52,22 @@ export async function guardedNearPayment({
     return { status: "DENIED", reason: "PREFLIGHT_UNAVAILABLE", signed: false, error: error?.message || "Preflight unavailable" };
   }
 
+  // Bind the policy verdict to the exact payment intent. A clean receiver
+  // assessment for a different amount must never authorize this payment.
   if (!assessment ||
-      String(assessment.receiver_account || "").toLowerCase() !== receiver) {
-    return { status: "DENIED", reason: "INVALID_ASSESSMENT", signed: false };
+      String(assessment.receiver_account || "").toLowerCase() !== receiver ||
+      !Number.isFinite(Number(assessment.amount_near)) ||
+      Number(assessment.amount_near) !== amount) {
+    return { status: "DENIED", reason: "ASSESSMENT_INTENT_MISMATCH", signed: false };
   }
 
-  if (assessment.decision === "INCOMPLETE" || assessment.assessment_status === "INCOMPLETE") {
+  if (assessment.decision === "INCOMPLETE" || assessment.assessment_status !== "COMPLETE") {
     return { status: "DENIED", reason: "ASSESSMENT_INCOMPLETE", decision: "INCOMPLETE", assessment, signed: false };
   }
 
-  if (!DECISIONS.has(assessment.decision)) {
+  if (!DECISIONS.has(assessment.decision) ||
+      !Number.isFinite(assessment.risk_score) ||
+      assessment.risk_score < 0 || assessment.risk_score > 100) {
     return { status: "DENIED", reason: "INVALID_ASSESSMENT", signed: false };
   }
 
