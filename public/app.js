@@ -1,5 +1,19 @@
 const $ = id => document.getElementById(id);
 const API = '/api';
+const GUEST_MODE = Boolean(window.SENTINEL_GUEST);
+if (window.__SENTINEL_APP_STARTED) throw new Error('Sentinel dashboard already started.');
+window.__SENTINEL_APP_STARTED = true;
+if (GUEST_MODE) {
+  document.body.classList.add('sentinel-authenticated', 'sentinel-guest');
+  const actions = document.querySelector('.top-actions');
+  if (actions && !document.getElementById('guestModeBadge')) {
+    const badge = document.createElement('span');
+    badge.id = 'guestModeBadge';
+    badge.className = 'guest-mode-badge';
+    badge.textContent = 'GUEST · READ ONLY';
+    actions.prepend(badge);
+  }
+}
 let connector = null;
 let connectedAccount = null;
 let connectedWalletName = null;
