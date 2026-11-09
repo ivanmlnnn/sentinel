@@ -86,5 +86,17 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
 <footer><span>NEAR SENTINEL <b>·</b> NEAR SECURITY</span><span>TESTNET / READ-ONLY MVP / 2026 · <a href="https://testnet.nearblocks.io/" target="_blank" rel="noopener noreferrer">Powered by NearBlocks.io APIs</a></span></footer>
 </main>
 <div id="toast" class="toast"></div>
-<script src="/motion.js?v=20261108-22" defer></script><script type="module" src="/auth.js?v=20261110-privy-guest7"></script>
+<script src="/motion.js?v=20261108-22" defer></script>
+<script type="module">
+const authRoot = document.getElementById('auth-root');
+import('/auth.js?v=20261110-privy-native1').catch((error) => {
+  console.error('NEAR Sentinel authentication bootstrap failed:', error);
+  if (!authRoot) return;
+  authRoot.dataset.authBooted = '1';
+  const copy = authRoot.querySelector('.sentinel-auth-copy');
+  if (copy) copy.textContent = 'Privy sign-in could not load. Check your connection and retry.';
+  const loader = authRoot.querySelector('.sentinel-auth-loader');
+  if (loader) loader.outerHTML = '<button class="sentinel-auth-button" onclick="location.reload()">Retry ↻</button>';
+});
+</script>
 </body></html>
