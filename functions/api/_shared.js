@@ -135,7 +135,7 @@ export async function verifyPrivyAccessToken(request, env = {}) {
   try {
     const header = JSON.parse(new TextDecoder().decode(decodeBase64Url(parts[0])));
     const claims = JSON.parse(new TextDecoder().decode(decodeBase64Url(parts[1])));
-    if (header.alg !== "ES256" || typeof header.kid !== "string") return null;
+    if (!["ES256", "EdDSA"].includes(header.alg) || typeof header.kid !== "string") return null;
 
     const now = Math.floor(Date.now() / 1000);
     const audience = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
@@ -156,18 +156,21 @@ export async function verifyPrivyAccessToken(request, env = {}) {
     );
     if (!jwksResponse.ok) return null;
     const jwks = await jwksResponse.json();
-    const jwk = Array.isArray(jwks.keys) ? jwks.keys.find(key => key.kid === header.kid && key.kty === "EC" && key.crv === "P-256") : null;
+    const jwk = Array.isArray(jwks.keys) ? jwks.keys.find(key => key.kid === header.kid && (
+      (header.alg === "ES256" && key.kty === "EC" && key.crv === "P-256") ||
+      (header.alg === "EdDSA" && key.kty === "OKP" && key.crv === "Ed25519")
+    )) : null;
     if (!jwk) return null;
 
-    const publicKey = await crypto.subtle.importKey(
-      "jwk",
-      jwk,
-      { name: "ECDSA", namedCurve: "P-256" },
-      false,
-      ["verify"]
-    );
+    const importAlgorithm = header.alg === "ES256"
+      ? { name: "ECDSA", namedCurve: "P-256" }
+      : { name: "Ed25519" };
+    const verifyAlgorithm = header.alg === "ES256"
+      ? { name: "ECDSA", hash: "SHA-256" }
+      : { name: "Ed25519" };
+    const publicKey = await crypto.subtle.importKey("jwk", jwk, importAlgorithm, false, ["verify"]);
     const valid = await crypto.subtle.verify(
-      { name: "ECDSA", hash: "SHA-256" },
+      verifyAlgorithm,
       publicKey,
       decodeBase64Url(parts[2]),
       new TextEncoder().encode(parts[0] + "." + parts[1])
