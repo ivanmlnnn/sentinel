@@ -306,7 +306,7 @@ $('investigateForm').addEventListener('submit', async event => {
   try {
     const data = await request('/investigate',{method:'POST',body:JSON.stringify({
       receiver_account:$('receiver').value.trim(),
-      sender_account:null,
+      sender_account:$('sender').value.trim() || null,
       amount_near:0
     })});
     renderResult(data); await loadMetrics(); toast('Wallet tracking complete: '+data.decision);
