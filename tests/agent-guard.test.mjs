@@ -3,9 +3,11 @@ import assert from "node:assert/strict";
 import { guardedNearPayment } from "../src/agent-guard.mjs";
 
 const target = "known-bad.testnet";
-const assessment = (decision, receiver_account = target) => ({
+const assessment = (decision, receiver_account = target, amount_near = 2) => ({
   id: "demo-investigation",
   receiver_account,
+  amount_near,
+  assessment_status: "COMPLETE",
   decision,
   risk_score: decision === "BLOCK" ? 100 : decision === "WARN" ? 55 : 0,
   risk_factors: []
@@ -15,7 +17,7 @@ test("BLOCK stops a payment before the signer is called", async () => {
   let signerCalls = 0;
   const result = await guardedNearPayment({
     receiver_account: target, amount_near: 2,
-    inspect: async () => assessment("BLOCK"),
+    inspect: async () => assessment("BLOCK", target, 2),
     sign: async () => { signerCalls++; }
   });
   assert.equal(result.status, "DENIED");
@@ -27,7 +29,7 @@ test("WARN requires explicit human approval", async () => {
   let signerCalls = 0;
   const result = await guardedNearPayment({
     receiver_account: target, amount_near: 2,
-    inspect: async () => assessment("WARN"),
+    inspect: async () => assessment("WARN", target, 2),
     confirmWarn: async () => false,
     sign: async () => { signerCalls++; }
   });
@@ -51,7 +53,7 @@ test("ALLOW reaches signer once", async () => {
   let signerCalls = 0;
   const result = await guardedNearPayment({
     receiver_account: target, amount_near: 0.1,
-    inspect: async () => assessment("ALLOW"),
+    inspect: async () => assessment("ALLOW", target, 0.1),
     sign: async () => { signerCalls++; return "demo-tx"; }
   });
   assert.equal(result.status, "AUTHORIZED");
@@ -73,7 +75,7 @@ test("receiver mismatch fails closed", async () => {
   let signerCalls = 0;
   const result = await guardedNearPayment({
     receiver_account: target, amount_near: 1,
-    inspect: async () => assessment("ALLOW", "different.testnet"),
+    inspect: async () => assessment("ALLOW", "different.testnet", 1),
     sign: async () => { signerCalls++; }
   });
   assert.equal(result.reason, "INVALID_ASSESSMENT");
@@ -85,10 +87,33 @@ test("prompt-injected agent cannot override a BLOCK verdict", async () => {
   let signerCalls = 0;
   const result = await guardedNearPayment({
     receiver_account: target, amount_near: 10,
-    inspect: async () => ({ ...assessment("BLOCK"), untrusted_agent_text: hostilePrompt }),
+    inspect: async () => ({ ...assessment("BLOCK", target, 10), untrusted_agent_text: hostilePrompt }),
     sign: async () => { signerCalls++; }
   });
   assert.equal(result.status, "DENIED");
   assert.equal(result.reason, "SENTINEL_BLOCK");
+  assert.equal(signerCalls, 0);
+});
+
+
+test("assessment for a different amount cannot authorize the payment", async () => {
+  let signerCalls = 0;
+  const result = await guardedNearPayment({
+    receiver_account: target, amount_near: 10,
+    inspect: async () => assessment("ALLOW", target, 0.1),
+    sign: async () => { signerCalls++; }
+  });
+  assert.equal(result.reason, "ASSESSMENT_INTENT_MISMATCH");
+  assert.equal(signerCalls, 0);
+});
+
+test("incomplete evidence never reaches the signer", async () => {
+  let signerCalls = 0;
+  const result = await guardedNearPayment({
+    receiver_account: target, amount_near: 2,
+    inspect: async () => ({ ...assessment("ALLOW"), assessment_status: "INCOMPLETE" }),
+    sign: async () => { signerCalls++; }
+  });
+  assert.equal(result.reason, "ASSESSMENT_INCOMPLETE");
   assert.equal(signerCalls, 0);
 });
