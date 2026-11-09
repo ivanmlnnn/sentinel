@@ -1,0 +1,44 @@
+name: Deploy Sentinel to Cloudflare Workers
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sentinel-production
+  cancel-in-progress: true
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run test suite
+        run: npm test
+
+      - name: Deploy Cloudflare Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+
+      - name: Smoke test production
+        run: npm run smoke:test
+        env:
+          SENTINEL_BASE_URL: https://sentinel.ivmaladin.workers.dev
