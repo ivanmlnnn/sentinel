@@ -46,7 +46,7 @@ Prompt injection, poisoned tool output and malicious destinations can trick an A
 - Contract code-hash comparison against prior Sentinel scans.
 - Optional sender-to-receiver interaction context and observed counterparty discovery.
 - Deployment-local Cloudflare D1 threat registry; only verified reports can trigger `BLOCK`.
-- Reusable application-level guard with fail-closed behavior for API errors, invalid assessments and receiver mismatch.
+- Reusable application-level guard with fail-closed behavior for API errors, incomplete evidence, receiver mismatch, invalid risk scores, and payment-intent mismatch (the assessed amount must exactly match the amount passed to the signer).
 - Privy email OTP for protected report submission and AI review; public investigation remains available to Guest users.
 - Optional NEAR wallet identity connection through HOT Labs NEAR Connect. Wallet connection is read-only in this dashboard and does not sign transactions.
 
@@ -66,7 +66,7 @@ For the guard integration and exact expected outputs, see [Agent Guard quickstar
 
 ## Security boundary — read this honestly
 
-**Sentinel is not yet a cryptographic signing boundary.** The current repository has a wallet-agnostic application guard, but no deployed autonomous agent, no restricted function-call access key enforced as the signing authority, and no verified real Testnet transaction passing through a Sentinel-controlled signing service. Other application code with direct signer access could bypass an application-level guard.
+**Sentinel is not yet a cryptographic signing boundary.** The current repository has a wallet-agnostic application guard, but no deployed autonomous agent, no restricted function-call access key enforced as the signing authority, and no verified real Testnet transaction passing through a Sentinel-controlled signing service. The guard now binds each assessment to the exact receiver and amount, requires COMPLETE evidence, and validates the risk score before calling the supplied signer; this hardens the application path but does not make it a cryptographic signing boundary. Other application code with direct signer access could bypass an application-level guard.
 
 That is the next engineering milestone: a minimal agent → Sentinel policy check → restricted Testnet signer pipeline, with a transaction hash on `ALLOW` and proof that the signer was never called on `BLOCK`.
 
