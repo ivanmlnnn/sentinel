@@ -249,8 +249,6 @@ export async function onRequestPost({ request, env }) {
       complete: Boolean(senderHistory?.complete && senderTransactions.every(row => row.transaction_hash && row.signer_account && row.status !== "UNKNOWN" && row.block_timestamp !== null)),
       error: senderHistoryError
     } : null;
-    if (agentInteractionEvidence?.available) {
-    }
     const receipts = receiptHistory ? receiptHistory.rows.map(row => normalizeReceipt(row, receiver)) : [];
     const ftTransfers = ftHistory ? ftHistory.rows.map(row => normalizeFtTransfer(row, receiver)) : [];
     const incomingSpamSources = findIncomingSpamSources(transactions);
