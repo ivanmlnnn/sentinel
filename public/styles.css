@@ -1019,3 +1019,10 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
 body.sentinel-guest #walletBtn,body.sentinel-guest .wallet-help-link,body.sentinel-guest #reportBtn,body.sentinel-guest #reportForm{display:none!important}
 body.sentinel-guest .wallet-guide-note::after{content:' · GUEST PREVIEW';color:var(--mint)}
 @media(max-width:720px){.guest-mode-badge{font-size:8px;padding:7px 8px}.top-actions{gap:8px}}
+
+
+/* Clear return path from guest preview to Privy Gmail sign-in. */
+.guest-login-button{min-height:34px;padding:8px 13px;border:1px solid #a7c4a9;border-radius:7px;background:transparent;color:#e4e9e4;font:650 11px var(--sans);letter-spacing:.04em;cursor:pointer;white-space:nowrap;transition:background .18s,border-color .18s}
+.guest-login-button:hover{background:#a7c4a91a;border-color:#d3e3d3}
+body.sentinel-guest .guest-login-button{display:inline-flex;align-items:center;justify-content:center}
+@media(max-width:720px){.guest-login-button{min-height:32px;padding:7px 10px;font-size:10px}.guest-mode-badge{letter-spacing:.35px}}
