@@ -73,7 +73,7 @@ function timestampMs(value) {
   }
   if (typeof value !== "string" || !value.trim()) return NaN;
   const v = value.trim();
-  return /^\\d+(\\.\\d+)?$/.test(v) ? timestampMs(Number(v)) : Date.parse(v);
+  return /^\d+(\.\d+)?$/.test(v) ? timestampMs(Number(v)) : Date.parse(v);
 }
 
 export function findIncomingSpamSources(rows) {
@@ -290,12 +290,18 @@ export async function onRequestPost({ request, env }) {
       .map(row => timestampMs(row.block_timestamp))
       .filter(value => Number.isFinite(value) && value > 0);
     const earliestObservedActivity = transactionTimes.length ? Math.min(...transactionTimes) : null;
+    const timestampedTransactionCount = transactionTimes.length;
+    const untimestampedTransactionCount = Math.max(0, transactions.length - timestampedTransactionCount);
     const firstSeenActivity = {
       available: earliestObservedActivity !== null,
       earliest_observed_transaction_at: earliestObservedActivity === null ? null : new Date(earliestObservedActivity).toISOString(),
       estimated_days_since_first_observed_activity: earliestObservedActivity === null ? null : Math.max(0, Math.floor((Date.now() - earliestObservedActivity) / 86400000)),
-      complete: Boolean(txHistory?.complete && txSchemaComplete),
-      method: "Earliest timestamp in the currently indexed transaction history; this is an activity-age proxy, not an account-creation timestamp."
+      complete: Boolean(txHistory?.complete && txSchemaComplete && untimestampedTransactionCount === 0),
+      history_complete: Boolean(txHistory?.complete),
+      transactions_checked: transactions.length,
+      timestamped_transactions: timestampedTransactionCount,
+      untimestamped_transactions: untimestampedTransactionCount,
+      method: "Earliest valid timestamp in NearBlocks indexed transaction history; this is an activity-age proxy, not an account-creation timestamp."
     };
 
     let contractCodeHistory = {
@@ -309,6 +315,30 @@ export async function onRequestPost({ request, env }) {
     };
     if (account?.code_hash && account.code_hash !== "11111111111111111111111111111111") {
       try {
+        if (headers) {
+          try {
+            const deployments = await fetchAllPages(
+              `${nearblocksBase}/v3/accounts/${encodeURIComponent(receiver)}/contract/deployments`,
+              headers
+            );
+            const deploymentTimes = deployments.rows.map(row => timestampMs(timestampOf(row))).filter(value => Number.isFinite(value) && value > 0);
+            const deploymentHashes = deployments.rows.map(row => firstString(row?.code_hash, row?.contract_code_hash)).filter(Boolean);
+            contractCodeHistory.explorer_deployments = {
+              available: true,
+              count: deployments.rows.length,
+              pages_fetched: deployments.pages,
+              complete: deployments.complete,
+              earliest_deployment_at: deploymentTimes.length ? new Date(Math.min(...deploymentTimes)).toISOString() : null,
+              observed_code_hashes: [...new Set(deploymentHashes)],
+              endpoint: `${nearblocksBase}/v3/accounts/${encodeURIComponent(receiver)}/contract/deployments`
+            };
+          } catch (error) {
+            contractCodeHistory.explorer_deployments = {
+              available: false,
+              error: error?.message || "Explorer contract deployment history unavailable"
+            };
+          }
+        }
         const previous = await env.DB.prepare(
           "SELECT id, created_at, evidence FROM investigations WHERE receiver_account = ? AND network = ? ORDER BY created_at DESC LIMIT 20"
         ).bind(receiver, network).all();
