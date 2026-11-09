@@ -239,18 +239,20 @@ function renderResult(data) {
   const signalCards = [
     {
       title: 'Earliest indexed activity',
-      state: firstSeen?.available ? (firstSeen.complete ? 'VERIFIED DATA' : 'PARTIAL DATA') : firstSeen?.complete ? 'NO INDEXED ACTIVITY' : 'NOT YET VERIFIABLE',
-      stateClass: firstSeen?.available ? (firstSeen.complete ? 'ok' : 'review') : 'muted',
+      state: firstSeen?.available ? (firstSeen.complete ? 'VERIFIED TIMESTAMP COVERAGE' : 'PARTIAL TIMESTAMP COVERAGE') : Number(firstSeen?.transactions_checked || nativeHistory?.count || 0) > 0 ? 'TIMESTAMPS MISSING' : firstSeen?.history_complete ? 'NO INDEXED ACTIVITY' : 'NOT YET VERIFIABLE',
+      stateClass: firstSeen?.available ? (firstSeen.complete ? 'ok' : 'review') : Number(firstSeen?.transactions_checked || nativeHistory?.count || 0) > 0 ? 'review' : 'muted',
       value: firstSeenDate
-        ? firstSeenDate + ' · about ' + Number(firstSeen.estimated_days_since_first_observed_activity || 0).toLocaleString('en-US') + ' days since the earliest activity found'
-        : firstSeen?.complete
-          ? 'No timestamped transactions were found in the Explorer history successfully checked.'
-          : 'The earliest activity time cannot be determined because the transaction history is empty or incomplete.',
-      note: 'Source: NearBlocks Explorer. This is the oldest transaction found in indexed history, not the account creation date. ' + (nativeHistory ? Number(nativeHistory.count || 0).toLocaleString('en-US') + ' transactions checked.' : 'Transaction data unavailable.')
+        ? firstSeenDate + ' · about ' + Number(firstSeen.estimated_days_since_first_observed_activity || 0).toLocaleString('en-US') + ' days since the earliest timestamped activity found'
+        : Number(firstSeen?.transactions_checked || nativeHistory?.count || 0) > 0
+          ? Number(firstSeen?.transactions_checked || nativeHistory?.count || 0).toLocaleString('en-US') + ' transactions were indexed, but none had a timestamp Sentinel could validate.'
+          : firstSeen?.history_complete
+            ? 'The Explorer query completed and returned zero indexed transactions in the checked history.'
+            : 'The earliest activity time cannot be determined because the transaction history is unavailable or incomplete.',
+      note: 'Source: NearBlocks Explorer. This is the oldest valid timestamp in indexed history, not the account creation date. ' + Number(firstSeen?.timestamped_transactions || 0).toLocaleString('en-US') + ' timestamped; ' + Number(firstSeen?.untimestamped_transactions || 0).toLocaleString('en-US') + ' without a valid timestamp.'
     },
     {
       title: 'Contract code history',
-      state: !codeHistory?.available ? 'NO CONTRACT CODE' : codeHistory.history_error ? 'HISTORY READ FAILED' : codeHistory.changed_since_previous_scan ? 'HASH CHANGED' : Number(codeHistory.prior_observations || 0) > 0 ? 'HASH MATCHES SNAPSHOT' : 'FIRST BASELINE',
+      state: !codeHistory?.available ? 'NO CONTRACT CODE' : codeHistory.history_error ? 'HISTORY READ FAILED' : codeHistory.changed_since_previous_scan ? 'HASH CHANGED' : codeHistory.explorer_deployments?.available && Number(codeHistory.explorer_deployments.count || 0) > 0 ? 'EXPLORER DEPLOYMENT HISTORY FOUND' : Number(codeHistory.prior_observations || 0) > 0 ? 'HASH MATCHES SENTINEL SNAPSHOT' : 'NO PRIOR HASH BASELINE',
       stateClass: !codeHistory?.available ? 'muted' : codeHistory.history_error || codeHistory.changed_since_previous_scan || !Number(codeHistory.prior_observations || 0) ? 'review' : 'ok',
       value: !codeHistory?.available
         ? 'No active contract code is deployed on this account. This is common for a standard wallet.'
@@ -258,9 +260,11 @@ function renderResult(data) {
           ? 'The current code hash is available, but the previous comparison snapshot could not be read.'
           : codeHistory.changed_since_previous_scan
             ? 'The current code hash differs from Sentinel’s previous snapshot.'
-            : Number(codeHistory.prior_observations || 0) > 0
-              ? 'The current hash matches ' + Number(codeHistory.prior_observations).toLocaleString('en-US') + ' previous snapshot(s).'
-              : 'The current hash has been recorded as the first baseline. No earlier snapshot is available for comparison.',
+            : codeHistory.explorer_deployments?.available
+              ? Number(codeHistory.explorer_deployments.count || 0).toLocaleString('en-US') + ' contract deployment record(s) were returned by NearBlocks. ' + (codeHistory.explorer_deployments.earliest_deployment_at ? 'Earliest indexed deployment: ' + new Date(codeHistory.explorer_deployments.earliest_deployment_at).toLocaleString('en-US') + '.' : 'No valid deployment timestamp was exposed.')
+              : Number(codeHistory.prior_observations || 0) > 0
+                ? 'The current hash matches ' + Number(codeHistory.prior_observations).toLocaleString('en-US') + ' previous Sentinel snapshot(s).'
+                : 'No earlier code-hash baseline is available from Sentinel or a readable Explorer deployment record.',
       note: !codeHistory?.available
         ? 'The absence of contract code is not a threat indicator and does not incur a penalty.'
         : codeHistory.history_error
@@ -273,21 +277,23 @@ function renderResult(data) {
     },
     {
       title: 'Agent → recipient interactions',
-      state: !agentHistory ? 'NOT CHECKED' : !agentHistory.available ? 'HISTORY UNAVAILABLE' : agentHistory.complete ? 'VERIFIED HISTORY' : 'INCOMPLETE HISTORY',
-      stateClass: !agentHistory ? 'muted' : !agentHistory.available || !agentHistory.complete ? 'review' : 'ok',
+      state: !agentHistory ? (data.evidence?.counterparty_candidates?.candidates?.length ? 'COUNTERPARTIES DISCOVERED' : 'AGENT NOT IDENTIFIED') : !agentHistory.available ? 'HISTORY UNAVAILABLE' : agentHistory.complete ? 'VERIFIED HISTORY' : 'INCOMPLETE HISTORY',
+      stateClass: !agentHistory ? 'review' : !agentHistory.available || !agentHistory.complete ? 'review' : 'ok',
       value: !agentHistory
-        ? 'This relationship check was not run because no agent/sender account was provided.'
+        ? (data.evidence?.counterparty_candidates?.candidates?.length
+          ? data.evidence.counterparty_candidates.candidates.slice(0, 5).map(item => item.account_id + ' (' + Number(item.observed_transactions || 0) + ' tx)').join(' · ')
+          : 'No attributable counterparty was identified in the indexed transaction rows.')
         : !agentHistory.available
-          ? 'The agent account transaction history could not be retrieved.'
+          ? 'The supplied agent account transaction history could not be retrieved.'
           : agentHistory.complete
-            ? Number(agentHistory.successful_outgoing_interactions || 0).toLocaleString('en-US') + ' successful outgoing transactions from the agent to the recipient were verified in the checked data.'
+            ? Number(agentHistory.successful_outgoing_interactions || 0).toLocaleString('en-US') + ' successful outgoing transactions from the supplied agent to the recipient were verified in the checked data.'
             : Number(agentHistory.successful_outgoing_interactions || 0).toLocaleString('en-US') + ' matching transactions were found, but history coverage is incomplete; the final count cannot yet be confirmed.',
       note: !agentHistory
-        ? 'Enter an Agent / Sender Account when scanning. Direct interactions cannot be assessed without an agent account.'
+        ? 'Source: NearBlocks indexed transactions for this wallet. These are observed counterparties only, not verified agents. Supply an agent account to test a specific agent → recipient relationship.'
         : !agentHistory.available
           ? 'Failure to retrieve history is not proof that no interaction occurred.'
           : agentHistory.complete
-            ? 'Source: NearBlocks transaction history for the agent account. Zero means no interaction was found in the indexed history checked, not definitive proof that no interaction ever occurred.'
+            ? 'Source: NearBlocks transaction history for the supplied agent account. Zero means no interaction was found in the indexed history checked, not definitive proof that no interaction ever occurred.'
             : 'Preliminary result only. Missing data or Explorer pagination limits may hide additional transactions.'
     }
   ];
