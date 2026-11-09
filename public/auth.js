@@ -80,7 +80,8 @@ function AuthGate() {
         ),
         React.createElement('p', { className: 'sentinel-auth-kicker' }, 'NEAR PROTOCOL / WALLET RISK INTELLIGENCE'),
         React.createElement('h1', null, 'NEAR SENTINEL'),
-        React.createElement('p', { className: 'sentinel-auth-copy' }, 'Establishing a secure session…'),
+        React.createElement('p', { className: 'sentinel-auth-copy' }, 'Preparing your NEAR security workspace.'),
+        React.createElement('div', { className: 'sentinel-auth-loading-status' }, React.createElement('span', { className: 'sentinel-auth-status-dot' }), 'INITIALIZING PRIVY SESSION'),
         React.createElement('div', { className: 'sentinel-auth-loader', role: 'status', 'aria-label': 'Preparing secure session' })
       )
     );
