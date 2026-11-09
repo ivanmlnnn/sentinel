@@ -242,11 +242,11 @@ function renderResult(data) {
       state: firstSeen?.available ? (firstSeen.complete ? 'VERIFIED DATA' : 'PARTIAL DATA') : firstSeen?.complete ? 'NO INDEXED ACTIVITY' : 'NOT YET VERIFIABLE',
       stateClass: firstSeen?.available ? (firstSeen.complete ? 'ok' : 'review') : 'muted',
       value: firstSeenDate
-        ? firstSeenDate + ' · about ' + Number(firstSeen.estimated_days_since_first_observed_activity || 0).toLocaleString('id-ID') + ' days since the earliest activity found'
+        ? firstSeenDate + ' · about ' + Number(firstSeen.estimated_days_since_first_observed_activity || 0).toLocaleString('en-US') + ' days since the earliest activity found'
         : firstSeen?.complete
           ? 'No timestamped transactions were found in the Explorer history successfully checked.'
           : 'The earliest activity time cannot be determined because the transaction history is empty or incomplete.',
-      note: 'Source: NearBlocks Explorer. This is the oldest transaction found in indexed history, not the account creation date. ' + (nativeHistory ? Number(nativeHistory.count || 0).toLocaleString('id-ID') + ' transactions checked.' : 'Transaction data unavailable.')
+      note: 'Source: NearBlocks Explorer. This is the oldest transaction found in indexed history, not the account creation date. ' + (nativeHistory ? Number(nativeHistory.count || 0).toLocaleString('en-US') + ' transactions checked.' : 'Transaction data unavailable.')
     },
     {
       title: 'Contract code history',
@@ -259,7 +259,7 @@ function renderResult(data) {
           : codeHistory.changed_since_previous_scan
             ? 'The current code hash differs from Sentinel’s previous snapshot.'
             : Number(codeHistory.prior_observations || 0) > 0
-              ? 'The current hash matches ' + Number(codeHistory.prior_observations).toLocaleString('id-ID') + ' previous snapshot(s).'
+              ? 'The current hash matches ' + Number(codeHistory.prior_observations).toLocaleString('en-US') + ' previous snapshot(s).'
               : 'The current hash has been recorded as the first baseline. No earlier snapshot is available for comparison.',
       note: !codeHistory?.available
         ? 'The absence of contract code is not a threat indicator and does not incur a penalty.'
@@ -280,8 +280,8 @@ function renderResult(data) {
         : !agentHistory.available
           ? 'The agent account transaction history could not be retrieved.'
           : agentHistory.complete
-            ? Number(agentHistory.successful_outgoing_interactions || 0).toLocaleString('id-ID') + ' successful outgoing transactions from the agent to the recipient were verified in the checked data.'
-            : Number(agentHistory.successful_outgoing_interactions || 0).toLocaleString('id-ID') + ' matching transactions were found, but history coverage is incomplete; the final count cannot yet be confirmed.',
+            ? Number(agentHistory.successful_outgoing_interactions || 0).toLocaleString('en-US') + ' successful outgoing transactions from the agent to the recipient were verified in the checked data.'
+            : Number(agentHistory.successful_outgoing_interactions || 0).toLocaleString('en-US') + ' matching transactions were found, but history coverage is incomplete; the final count cannot yet be confirmed.',
       note: !agentHistory
         ? 'Enter an Agent / Sender Account when scanning. Direct interactions cannot be assessed without an agent account.'
         : !agentHistory.available
