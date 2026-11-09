@@ -227,6 +227,8 @@ function renderResult(data) {
     TRANSACTION_TIMESTAMP_UNVERIFIABLE: ['Transaction times could not be checked', 'The source returned transactions without timestamps Sentinel could validate.'],
     TRANSACTION_HISTORY_INCOMPLETE: ['Part of the history could not be checked', 'Some transaction records were missing details needed for verification.'],
     TRANSACTION_HISTORY_UNAVAILABLE: ['Transaction history unavailable', 'The history provider did not return enough information to assess activity.'],
+    AGENT_RECEIVER_INTERACTION_HISTORY: ['Agent-to-recipient history', 'The supplied agent account has prior successful outgoing interactions with this receiver. This is context, not a trust guarantee.'],
+    AGENT_RECEIVER_HISTORY_INCOMPLETE: ['Agent history incomplete', 'The supplied agent account history could not be fully verified. Do not infer that no prior interaction exists.'],
     ACCOUNT_NOT_FOUND: ['Account not found', 'The account could not be confirmed on NEAR Testnet.']
   };
   const visible = factors.filter(item => findings[String(item.code || '')]);
