@@ -1544,3 +1544,16 @@ footer{font-size:10px;line-height:1.7}
   .topbar #walletBtn.wallet-connected{max-width:165px!important;gap:5px!important}
   .topbar #walletBtn .wallet-account-name{max-width:112px!important;font-size:8px!important}
 }
+
+/* Explicitly show both connected-account text and vector power icon. */
+.topbar #walletBtn.wallet-connected span.wallet-account-name{
+  display:inline-block!important;visibility:visible!important;opacity:1!important;
+}
+.topbar #walletBtn.wallet-connected svg.wallet-power{
+  display:block!important;visibility:visible!important;opacity:1!important;
+  width:15px!important;height:15px!important;min-width:15px!important;
+  color:#e8df78!important;overflow:visible!important;
+}
+.topbar #walletBtn.wallet-connected{
+  overflow:visible!important;min-width:max-content!important;
+}
