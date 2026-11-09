@@ -11,6 +11,11 @@ function AuthGate() {
   const { createGuestAccount } = useGuestAccounts();
   const [guestLoading, setGuestLoading] = useState(false);
   const [authError, setAuthError] = useState('');
+  const [logoActive, setLogoActive] = useState(false);
+  const activateLogo = () => {
+    setLogoActive(true);
+    window.setTimeout(() => setLogoActive(false), 1250);
+  }
 
   if (!window.__SENTINEL_GUEST_SESSION_CHECKED) {
     window.__SENTINEL_GUEST_SESSION_CHECKED = true;
@@ -70,8 +75,8 @@ function AuthGate() {
   if (!ready) {
     return React.createElement('main', { className: 'sentinel-auth-screen' },
       React.createElement('section', { className: 'sentinel-auth-card' },
-        React.createElement('div', { className: 'sentinel-auth-mark' },
-          React.createElement('img', { src: '/IMG_20260629_220728_136.jpg?v=1', alt: 'NEAR Sentinel' })
+        React.createElement('button', { className: `sentinel-auth-mark${logoActive ? ' is-activated' : ''}`, type: 'button', onClick: activateLogo, 'aria-label': 'Activate Sentinel wayang emblem' },
+          React.createElement('img', { src: '/IMG_20260629_220728_136.jpg?v=1', alt: 'NEAR Sentinel wayang emblem' })
         ),
         React.createElement('p', { className: 'sentinel-auth-kicker' }, 'NEAR PROTOCOL / ACCOUNT INTELLIGENCE'),
         React.createElement('h1', null, 'NEAR SENTINEL'),
@@ -84,8 +89,8 @@ function AuthGate() {
   if (!authenticated) {
     return React.createElement('main', { className: 'sentinel-auth-screen' },
       React.createElement('section', { className: 'sentinel-auth-card' },
-        React.createElement('div', { className: 'sentinel-auth-mark' },
-          React.createElement('img', { src: '/IMG_20260629_220728_136.jpg?v=1', alt: 'NEAR Sentinel' })
+        React.createElement('button', { className: `sentinel-auth-mark${logoActive ? ' is-activated' : ''}`, type: 'button', onClick: activateLogo, 'aria-label': 'Activate Sentinel wayang emblem' },
+          React.createElement('img', { src: '/IMG_20260629_220728_136.jpg?v=1', alt: 'NEAR Sentinel wayang emblem' })
         ),
         React.createElement('p', { className: 'sentinel-auth-kicker' }, 'NEAR PROTOCOL / ACCOUNT INTELLIGENCE'),
         React.createElement('h1', null, 'NEAR SENTINEL'),
