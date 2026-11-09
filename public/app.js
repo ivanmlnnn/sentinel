@@ -216,6 +216,43 @@ function renderResult(data) {
       '</section>';
   })() : '';
 
+  const firstSeen = data.evidence?.first_seen_activity;
+  const codeHistory = data.evidence?.contract_code_history;
+  const agentHistory = data.evidence?.agent_receiver_interaction;
+  const extraEvidenceRows = [
+    [
+      'Earliest indexed activity',
+      firstSeen?.available
+        ? new Date(firstSeen.earliest_observed_transaction_at).toLocaleString() + ' · approximately ' + Number(firstSeen.estimated_days_since_first_observed_activity || 0) + ' days ago'
+        : 'Not available from indexed transaction history',
+      'This is an activity-age proxy, not the account creation date.'
+    ],
+    [
+      'Contract code history',
+      !codeHistory?.available
+        ? 'No deployed contract code observed'
+        : codeHistory.changed_since_previous_scan
+          ? 'Code hash changed since the previous Sentinel scan'
+          : codeHistory.prior_observations
+            ? 'No code hash change across ' + codeHistory.prior_observations + ' prior observation(s)'
+            : 'Baseline captured; no earlier Sentinel snapshot exists',
+      'Only changes between Sentinel scans are detectable; earlier changes may be unknown.'
+    ],
+    [
+      'Agent → receiver interactions',
+      !agentHistory
+        ? 'No agent account supplied'
+        : agentHistory.available
+          ? Number(agentHistory.successful_outgoing_interactions || 0) + ' successful outgoing interaction(s)'
+          : 'History unavailable / incomplete',
+      'Direct indexed history only; not a multi-hop relationship graph.'
+    ]
+  ];
+  const extraEvidenceMarkup = '<section class="plain-evidence"><h4>Additional screening signals</h4>' +
+    extraEvidenceRows.map(([label, value, note]) =>
+      '<div class="plain-evidence-row"><span>' + escapeHtml(label) + '</span><b>' + escapeHtml(value) + '</b><small>' + escapeHtml(note) + '</small></div>'
+    ).join('') + '</section>';
+
   const findings = {
     VERIFIED_THREAT_MATCH: ['Verified threat record', 'This account matches an entry that has been verified by Sentinel.'],
     VERIFIED_THREAT_REPORT: ['Verified threat record', 'This account matches an entry that has been verified by Sentinel.'],
@@ -257,6 +294,7 @@ function renderResult(data) {
       simulation +
     '</section>' +
     activityMarkup +
+    extraEvidenceMarkup +
     '<section class="plain-findings"><h4>Why this result?</h4><ul>' + findingsMarkup + '</ul></section>' +
     '<details class="technical-details"><summary>Technical data</summary><pre class="ai-text technical-json">Open to load the evidence.</pre></details>';
 
