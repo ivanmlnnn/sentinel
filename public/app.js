@@ -423,6 +423,7 @@ $('sendReport').addEventListener('click',async () => {
   finally { button.disabled = false; }
 });
 
-if (!GUEST_MODE) initWallet();
+// Wallet connection is independent from Privy login; Guest users may connect a NEAR wallet too.
+initWallet();
 loadMetrics();
 loadThreats();
