@@ -1,6 +1,8 @@
-import { json, readJson } from "./_shared.js";
+import { json, readJson, verifyPrivyAccessToken } from "./_shared.js";
 
 export async function onRequestPost({ request, env }) {
+  const identity = await verifyPrivyAccessToken(request, env);
+  if (!identity) return json({ error: "UNAUTHORIZED", detail: "A valid Privy app access token is required for AI review." }, 401);
   const body = await readJson(request);
   const id = String(body?.investigation_id || "");
   if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ error: "Valid investigation_id is required." }, 400);
