@@ -11,14 +11,27 @@
 <div id="auth-root"><main class="sentinel-auth-screen"><section class="sentinel-auth-card"><div class="sentinel-auth-mark"><img src="/IMG_20260629_220728_136.jpg?v=1" alt="Wayang Tech and Kitchen Needs"></div><p class="sentinel-auth-kicker">NEAR PROTOCOL · SECURITY GATE</p><h1>NEAR SENTINEL</h1><p class="sentinel-auth-copy">Loading secure sign-in…</p><button class="sentinel-auth-guest-button" type="button" onclick="window.startSentinelGuest && window.startSentinelGuest()">Continue as Guest ↗</button><div class="sentinel-auth-loader"></div></section></main></div>
 <script>
 window.startSentinelGuest = async function(){
-  if(window.__SENTINEL_APP_STARTED) return;
+  if (window.__SENTINEL_GUEST_STARTING) return;
   window.SENTINEL_GUEST = true;
   document.body.classList.add('sentinel-authenticated','sentinel-guest');
   var root=document.getElementById('auth-root');
-  if(root){root.hidden=true;root.innerHTML='';}
-  try{await import('/app.js?v=20261110-final2');}
-  catch(error){console.error('Guest dashboard failed to start:',error);if(root){root.hidden=false;root.innerHTML='<main class="sentinel-auth-screen"><section class="sentinel-auth-card"><h1>GUEST PREVIEW</h1><p class="sentinel-auth-copy">The read-only dashboard could not load. Check your connection and reload.</p><button class="sentinel-auth-button" onclick="location.reload()">Retry ↻</button></section></main>';}}
-};
+  if(root){root.hidden=true;root.style.display='none';}
+  if(window.__SENTINEL_APP_STARTED) return;
+  window.__SENTINEL_GUEST_STARTING = true;
+  try {
+    await import('/app.js?v=20261110-guest-fix1');
+    window.__SENTINEL_GUEST_STARTING = false;
+  } catch(error) {
+    console.error('Guest dashboard failed to start:',error);
+    window.__SENTINEL_APP_STARTED = false;
+    window.__SENTINEL_GUEST_STARTING = false;
+    if(root){
+      root.hidden=false;
+      root.style.display='';
+      root.innerHTML='<main class="sentinel-auth-screen"><section class="sentinel-auth-card"><h1>GUEST PREVIEW</h1><p class="sentinel-auth-copy">The read-only dashboard could not load. Please retry.</p><button class="sentinel-auth-button" onclick="window.startSentinelGuest()">Retry guest preview ↻</button><button class="sentinel-auth-guest-button" onclick="location.reload()">Return to sign-in</button></section></main>';
+    }
+  }
+}
 window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r.dataset.authBooted&&!document.body.classList.contains("sentinel-authenticated")){var p=r.querySelector(".sentinel-auth-copy");if(p)p.textContent="Secure sign-in is taking too long to load. Check your connection and reload this page.";var b=r.querySelector(".sentinel-auth-loader");if(b)b.outerHTML="<button class=\"sentinel-auth-button\" onclick=\"location.reload()\">Retry ↻</button>";}},15000);</script>
 <div class="scroll-progress" id="scrollProgress"></div>
 <header class="topbar">
