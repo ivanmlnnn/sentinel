@@ -1855,3 +1855,22 @@ footer{font-size:10px;line-height:1.7}
 @media(prefers-reduced-motion:reduce){
   #investigate.section-heading h2::after{animation:none;background-position:50% 0}
 }
+
+
+/* Connected wallet uses Sentinel's existing ice-blue brand accent (#8bd4ef). */
+.topbar #walletBtn.wallet-connected{
+  background:#101d22!important;
+  border:1px solid #527f8c!important;
+  color:#d9f2f8!important;
+  box-shadow:0 0 0 1px rgba(139,212,239,.10),0 0 12px rgba(139,212,239,.12)!important;
+}
+.topbar #walletBtn.wallet-connected:hover{
+  background:#14262d!important;
+  border-color:#8bd4ef!important;
+  box-shadow:0 0 0 1px rgba(139,212,239,.2),0 0 17px rgba(139,212,239,.22)!important;
+}
+.topbar #walletBtn .wallet-account-name,
+.topbar #walletBtn .wallet-account-base{color:#d9f2f8!important}
+.topbar #walletBtn .wallet-account-network{color:#8bd4ef!important}
+.topbar #walletBtn .wallet-action-divider{background:#527f8c!important}
+.topbar #walletBtn svg.wallet-power{color:#8bd4ef!important}
