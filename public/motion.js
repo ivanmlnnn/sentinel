@@ -51,3 +51,17 @@ function updateScrollEffects(){
 window.addEventListener('scroll',updateScrollEffects,{passive:true});
 window.addEventListener('resize',updateScrollEffects,{passive:true});
 updateScrollEffects();
+
+
+/* Wallet tracker gets a dedicated enter/leave state as it crosses the viewport. */
+const trackerHeading=document.getElementById('investigate');
+if(trackerHeading && 'IntersectionObserver' in window && !reducedMotion){
+  const trackerObserver=new IntersectionObserver(entries=>{
+    entries.forEach(entry=>{
+      trackerHeading.classList.toggle('tracker-in-view',entry.isIntersecting);
+    });
+  },{threshold:0.35});
+  trackerObserver.observe(trackerHeading);
+}else if(trackerHeading){
+  trackerHeading.classList.add('tracker-in-view');
+}
