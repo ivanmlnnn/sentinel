@@ -18,6 +18,7 @@ function AuthGate() {
   const loginStarted = useRef(false);
 
   useEffect(() => {
+    if (window.SENTINEL_GUEST) return;
     document.body.classList.toggle('sentinel-authenticated', Boolean(ready && authenticated));
     if (ready && authenticated && !dashboardStarted) {
       dashboardStarted = true;
@@ -26,11 +27,13 @@ function AuthGate() {
         dashboardStarted = false;
       });
     }
-    if (!authenticated) {
+    if (!authenticated && !window.SENTINEL_GUEST) {
       document.body.classList.remove('sentinel-authenticated');
       dashboardStarted = false;
     }
   }, [ready, authenticated]);
+
+  if (window.SENTINEL_GUEST) return null;
 
   if (!ready) {
     return React.createElement('main', { className: 'sentinel-auth-screen' },
@@ -62,6 +65,7 @@ function AuthGate() {
             finally { loginStarted.current = false; }
           }
         }, 'Continue with email'),
+        React.createElement('button', { className: 'sentinel-auth-guest-button', type: 'button', onClick: () => window.startSentinelGuest?.() }, 'Continue as Guest ↗'),
         React.createElement('p', { className: 'sentinel-auth-footnote' }, 'PRIVATE EMAIL SIGN-IN  ·  POWERED BY PRIVY'),
         React.createElement('p', { className: 'sentinel-auth-security' }, 'Your wallet keys are never requested. Sentinel checks public testnet data only.')
       )
