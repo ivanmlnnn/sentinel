@@ -13,6 +13,19 @@ if (GUEST_MODE) {
     badge.textContent = 'GUEST · READ ONLY';
     actions.prepend(badge);
   }
+  if (actions && !document.getElementById('guestLoginBtn')) {
+    const loginButton = document.createElement('button');
+    loginButton.id = 'guestLoginBtn';
+    loginButton.type = 'button';
+    loginButton.className = 'guest-login-button';
+    loginButton.textContent = 'Login';
+    loginButton.setAttribute('aria-label', 'Return to Privy Gmail login');
+    loginButton.addEventListener('click', () => {
+      // Reloading clears the local guest flag and returns to the Privy sign-in screen.
+      window.location.reload();
+    });
+    actions.prepend(loginButton);
+  }
 }
 let connector = null;
 let connectedAccount = null;
