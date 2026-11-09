@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createPortal } from 'react-dom';
 import { PrivyProvider, usePrivy } from 'https://esm.sh/@privy-io/react-auth@3.51.3?external=react,react-dom';
@@ -16,6 +16,8 @@ let dashboardStarted = false;
 function AuthGate() {
   const { ready, authenticated, user, login, logout, getAccessToken } = usePrivy();
   const loginStarted = useRef(false);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState('');
 
   useEffect(() => {
     window.getSentinelAccessToken = getAccessToken;
@@ -54,20 +56,29 @@ function AuthGate() {
         React.createElement('div', { className: 'sentinel-auth-mark' }, React.createElement('img', { src: '/IMG_20260629_220728_136.jpg?v=1', alt: 'Wayang Tech and Kitchen Needs' })),
         React.createElement('p', { className: 'sentinel-auth-kicker' }, 'NEAR PROTOCOL / ACCOUNT INTELLIGENCE'),
         React.createElement('h1', null, 'NEAR SENTINEL'),
-        React.createElement('p', { className: 'sentinel-auth-copy' }, 'Sign in with your Gmail to receive a one-time code, or continue as a read-only guest.'),
+        React.createElement('p', { className: 'sentinel-auth-copy' }, 'Choose how to access NEAR Sentinel. Email sign-in and one-time code verification are handled securely by Privy.'),
         React.createElement('button', {
           className: 'sentinel-auth-button',
           type: 'button',
+          disabled: loginLoading,
+          'aria-busy': loginLoading,
           onClick: async () => {
             if (loginStarted.current) return;
             loginStarted.current = true;
+            setLoginError('');
+            setLoginLoading(true);
             try { await login(); }
-            catch (error) { console.error('Privy login failed:', error); }
-            finally { loginStarted.current = false; }
+            catch (error) {
+              console.error('Privy login failed:', error);
+              setLoginError('Privy sign-in could not open. Please retry or check your connection.');
+            }
+            finally { loginStarted.current = false; setLoginLoading(false); }
           }
-        }, 'Login with Gmail'),
-        React.createElement('button', { className: 'sentinel-auth-guest-button', type: 'button', onClick: () => window.startSentinelGuest?.() }, 'Continue as Guest ↗'),
-        React.createElement('p', { className: 'sentinel-auth-footnote' }, 'GMAIL OTP SIGN-IN  ·  POWERED BY PRIVY'),
+        }, loginLoading ? 'Opening Privy…' : 'Continue with email'),
+        loginError ? React.createElement('p', { className: 'sentinel-auth-error', role: 'alert' }, loginError) : null,
+        React.createElement('div', { className: 'sentinel-auth-or', 'aria-hidden': 'true' }, React.createElement('span'), React.createElement('b', null, 'OR'), React.createElement('span')),
+        React.createElement('button', { className: 'sentinel-auth-guest-button', type: 'button', onClick: () => window.startSentinelGuest?.() }, 'Continue as Guest · Read-only'),
+        React.createElement('p', { className: 'sentinel-auth-footnote' }, 'EMAIL OTP · PRIVY AUTHENTICATION'),
         React.createElement('p', { className: 'sentinel-auth-security' }, 'Your wallet keys are never requested. Sentinel checks public testnet data only.')
       )
     );
