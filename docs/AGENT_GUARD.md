@@ -35,6 +35,8 @@ const result = await guardedNearPayment({
 
 The example signer is intentionally an integration point, not a bundled wallet implementation.
 
+The dashboard can optionally accept an agent/sender account during an investigation. Sentinel then checks indexed successful outgoing transactions from that sender to the target receiver. This direct relationship history is displayed as informational evidence; it is not a multi-hop graph and does not by itself change the risk score.
+
 ## Authentication boundary
 
 The dashboard supports Privy email OTP and a no-login Guest preview. Guest mode is read-only and cannot submit reports or request AI review. The Worker verifies Privy ES256 bearer tokens against the app JWKS for `POST /api/threats` and `POST /api/ai-review`, checking signature, issuer, audience, subject, issued-at, and expiry. Public account investigation and GET routes remain open to support Guest screening. Never authorize a request based only on client state, an email string, or a user ID supplied in the request body. Run `npm test` for verifier tests; the live Worker still needs an end-to-end smoke test with a real Privy session.
