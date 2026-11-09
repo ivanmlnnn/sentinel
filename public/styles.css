@@ -2142,3 +2142,106 @@ footer{font-size:10px;line-height:1.7}
   70%{transform:translateZ(24px) scale(1.03)}100%{transform:translateZ(20px) scale(1)}
 }
 @media(prefers-reduced-motion:reduce){.sentinel-auth-mark,.sentinel-auth-mark img{animation:none!important;transition:none!important}}
+
+
+/* Consistent tactile feedback for every Sentinel action control. */
+button:not(:disabled){
+  -webkit-tap-highlight-color:transparent;
+  transform:translateZ(0);
+  transition:transform .22s cubic-bezier(.2,.75,.25,1),
+    box-shadow .22s ease,background-color .22s ease,
+    border-color .22s ease,color .22s ease,filter .22s ease!important;
+}
+button:not(:disabled):hover{
+  filter:brightness(1.08);
+  transform:translateY(-2px)!important;
+}
+button:not(:disabled):active{
+  filter:brightness(.96);
+  transform:translateY(1px) scale(.975)!important;
+  box-shadow:inset 0 2px 7px #0003!important;
+}
+button:focus-visible,a:focus-visible{
+  outline:2px solid #e8df78!important;
+  outline-offset:3px!important;
+}
+button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
+.primary-btn,.secondary-btn,.wallet-btn,.plain-btn,.sentinel-signout-button,
+.sentinel-auth-button,.sentinel-auth-guest-button,.guest-login-button,
+#pasteReceiver,#refreshBtn,#reportBtn,#sendReport{
+  position:relative;
+}
+.primary-btn::after,.wallet-btn::after,.sentinel-auth-button::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(110deg,transparent 20%,#ffffff22 48%,transparent 76%);
+  transform:translateX(-120%);transition:transform .55s ease;
+}
+.primary-btn:hover::after,.wallet-btn:hover::after,.sentinel-auth-button:hover::after{
+  transform:translateX(120%);
+}
+.cta,.main-nav .nav-item,.wallet-help-link{
+  transition:color .2s ease,background .2s ease,border-color .2s ease,
+    transform .2s ease,opacity .2s ease!important;
+}
+.cta:hover,.main-nav .nav-item:hover,.wallet-help-link:hover{
+  transform:translateY(-2px);
+}
+.sentinel-auth-card{
+  width:min(100%,460px)!important;
+  padding:42px 36px!important;
+  border-color:rgba(232,223,120,.28)!important;
+  background:linear-gradient(150deg,rgba(20,31,30,.98),rgba(8,14,17,.99))!important;
+  box-shadow:0 30px 100px #0009,0 0 55px #e8df7810!important;
+}
+.sentinel-auth-kicker{
+  color:#e8df78!important;font-size:10px!important;letter-spacing:.19em!important;
+}
+.sentinel-auth-card h1{
+  color:#f5f3e9!important;font-size:clamp(27px,5vw,32px)!important;
+  font-weight:800!important;letter-spacing:.045em!important;
+}
+.sentinel-auth-copy{
+  max-width:345px!important;margin:15px auto 27px!important;
+  color:#b7c4bf!important;font-size:14px!important;line-height:1.75!important;
+}
+.sentinel-auth-button{
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  gap:12px!important;min-height:54px!important;padding:0 20px!important;
+  border:1px solid #fff4bd!important;border-left:4px solid #e8df78!important;
+  border-radius:6px!important;background:linear-gradient(110deg,#f5f3e9,#e9e5d3)!important;
+  color:#101816!important;font:750 13px/1 var(--sans)!important;
+  letter-spacing:.035em!important;box-shadow:0 7px 24px #e8df7820!important;
+}
+.sentinel-auth-button:hover{
+  background:#fff!important;box-shadow:0 10px 30px #e8df7845!important;
+  transform:translateY(-3px)!important;
+}
+.sentinel-auth-footnote{
+  margin:13px 0 18px!important;color:#9caaa4!important;
+  font:10px/1.5 var(--mono)!important;letter-spacing:.09em!important;
+}
+.sentinel-auth-guest-button{
+  min-height:48px!important;border:1px solid #586b62!important;
+  border-radius:6px!important;background:#111c1a!important;
+  color:#dce7df!important;font:600 12px/1.3 var(--sans)!important;
+  letter-spacing:.02em!important;
+}
+.sentinel-auth-guest-button:hover{
+  border-color:#e8df78!important;background:#1b2823!important;
+  box-shadow:0 0 0 3px #e8df7818!important;
+}
+.sentinel-auth-security{
+  max-width:340px;margin:18px auto 0!important;
+  color:#84948c!important;font:10px/1.7 var(--sans)!important;
+}
+.sentinel-signout-button:hover{border-color:#f5f3e9!important;color:#f5f3e9!important}
+@media(max-width:520px){
+  .sentinel-auth-card{padding:34px 22px!important}
+  .sentinel-auth-copy{font-size:13px!important}
+}
+@media(prefers-reduced-motion:reduce){
+  button:not(:disabled),.cta,.main-nav .nav-item,.wallet-help-link,
+  .primary-btn::after,.wallet-btn::after,.sentinel-auth-button::after{
+    animation:none!important;transition:none!important;transform:none!important;
+  }
+}
