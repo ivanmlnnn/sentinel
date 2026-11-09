@@ -304,7 +304,7 @@ export async function onRequestPost({ request, env }) {
       prior_observations: 0,
       previous_code_hash: null,
       changed_since_previous_scan: false,
-      first_observed_at: null,
+      oldest_available_observation_at: null,
       note: "Compares this scan with earlier Sentinel investigation snapshots. It cannot see code changes that happened before Sentinel's first observation."
     };
     if (account?.code_hash && account.code_hash !== "11111111111111111111111111111111") {
@@ -324,7 +324,7 @@ export async function onRequestPost({ request, env }) {
           prior_observations: observations.length,
           previous_code_hash: previousObservation?.code_hash || null,
           changed_since_previous_scan: Boolean(previousObservation && previousObservation.code_hash !== account.code_hash),
-          first_observed_at: observations.length ? observations[observations.length - 1].created_at : null
+          oldest_available_observation_at: observations.length ? observations[observations.length - 1].created_at : null
         };
       } catch (error) {
         contractCodeHistory.history_error = "Historical code-hash comparison is unavailable for this scan.";
@@ -347,7 +347,8 @@ export async function onRequestPost({ request, env }) {
       txHistory?.complete && txSchemaComplete &&
       receiptHistory?.complete && receiptSchemaRecognized &&
       ftHistory?.complete && ftSchemaRecognized &&
-      (!sender || sender === receiver || agentInteractionEvidence?.complete)
+      (!sender || sender === receiver || agentInteractionEvidence?.complete) &&
+      (!account?.code_hash || !contractCodeHistory.history_error)
     );
 
     if (!txHistory || !txSchemaComplete) {
