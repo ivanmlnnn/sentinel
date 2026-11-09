@@ -1507,3 +1507,25 @@ footer{font-size:10px;line-height:1.7}
     height:34px!important;
   }
 }
+
+/* Connected wallet action uses a warm power glyph, not the blue logout accent. */
+.topbar #walletBtn.wallet-connected{
+  background:#191b15!important;
+  border-color:#766d3b!important;
+  color:#e8df78!important;
+}
+.topbar #walletBtn.wallet-connected:hover{
+  background:#242419!important;
+  border-color:#a3964b!important;
+  color:#f4eaa0!important;
+}
+.topbar #walletBtn .wallet-power{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:15px!important;height:15px!important;
+  margin:0!important;
+  color:#e8df78!important;
+  font:600 17px/1 Arial,sans-serif!important;
+  text-shadow:0 0 7px rgba(232,223,120,.2)!important;
+}
