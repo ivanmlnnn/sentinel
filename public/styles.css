@@ -1529,3 +1529,18 @@ footer{font-size:10px;line-height:1.7}
   font:600 17px/1 Arial,sans-serif!important;
   text-shadow:0 0 7px rgba(232,223,120,.2)!important;
 }
+
+.topbar #walletBtn.wallet-connected{
+  display:inline-flex!important;align-items:center!important;gap:7px!important;
+  max-width:220px!important;padding:5px 8px!important;
+}
+.topbar #walletBtn .wallet-account-name{
+  display:block!important;min-width:0!important;max-width:165px!important;
+  overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;
+  color:#cbd9c8!important;font:500 9px var(--mono)!important;
+}
+.topbar #walletBtn .wallet-power{flex:0 0 15px!important}
+@media(max-width:760px){
+  .topbar #walletBtn.wallet-connected{max-width:165px!important;gap:5px!important}
+  .topbar #walletBtn .wallet-account-name{max-width:112px!important;font-size:8px!important}
+}
