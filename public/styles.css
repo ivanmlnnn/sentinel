@@ -1656,5 +1656,5 @@ footer{font-size:10px;line-height:1.7}
 
 /* Match the near:// prefix tile to the page/protocol background. */
 #investigate .account-input>span{
-  background:var(--bg)!important;
+  background:transparent!important;
 }
