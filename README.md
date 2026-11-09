@@ -9,7 +9,7 @@ NEAR Sentinel investigates a NEAR account and proposed recipient, evaluates avai
 **Live dashboard:** https://sentinel.ivmaladin.workers.dev  
 **Repository:** https://github.com/ivanmlnnn/sentinel
 
-> **Hackathon demo status:** the dashboard currently requires Privy email OTP. The repository tests and offline attack demo do not require a dashboard login. The investigation API can also be exercised directly with the `curl` example below; this is an API test path, not a guest dashboard mode or proof of server-side authentication.
+> **Hackathon demo status:** the dashboard offers both Privy email OTP and a no-login **Continue as Guest** preview. Guest mode is read-only: it can run public account investigations and view public dashboard data, but it does not connect a wallet, submit threat reports, sign, or broadcast transactions. The repository tests and offline attack demo also run without login.
 
 ---
 
@@ -65,7 +65,7 @@ These are known coverage gaps, not hidden capabilities.
 
 ## 4. Try it without dashboard login
 
-You do **not** need Privy OTP to run the repository tests or the offline attack simulation. A separate guest-mode screen has not yet been implemented in the dashboard.
+You do **not** need Privy OTP to inspect the live dashboard in Guest mode, run repository tests, or execute the offline attack simulation. Guest mode is a public, read-only preview and is not an authenticated Privy session.
 
 ### Option A — Run automated tests
 
@@ -120,7 +120,7 @@ The response should contain the investigation decision and supporting assessment
 4. Enter a NEAR account ID and run **Check address**.
 5. Inspect the verdict, risk factors, and technical evidence.
 
-The dashboard is currently read-only: it does not sign or broadcast transactions. A NEAR wallet connection is optional for the investigation flow. The dashboard does not currently provide a guest/demo UI route, so use the repository commands or direct API example above if you need to test without OTP.
+The dashboard is read-only and does not sign or broadcast transactions. To enter without OTP, choose **Continue as Guest** on the login screen. Guest mode hides wallet connection and report-submission controls while leaving public address investigation and evidence viewing available. Choose the Privy email option when you need the signed-in dashboard experience. Guest mode is a UI access path, not server-side authentication; API token verification remains a separate hardening requirement.
 
 ## 6. Agent guard: what is implemented vs. what is not
 
