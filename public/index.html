@@ -16,7 +16,7 @@ window.startSentinelGuest = async function(){
   document.body.classList.add('sentinel-authenticated','sentinel-guest');
   var root=document.getElementById('auth-root');
   if(root){root.hidden=true;root.innerHTML='';}
-  try{await import('/app.js?v=20261110-guest1');}
+  try{await import('/app.js?v=20261110-agent-history');}
   catch(error){console.error('Guest dashboard failed to start:',error);if(root){root.hidden=false;root.innerHTML='<main class="sentinel-auth-screen"><section class="sentinel-auth-card"><h1>GUEST PREVIEW</h1><p class="sentinel-auth-copy">The read-only dashboard could not load. Check your connection and reload.</p><button class="sentinel-auth-button" onclick="location.reload()">Retry ↻</button></section></main>';}}
 };
 window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r.dataset.authBooted&&!document.body.classList.contains("sentinel-authenticated")){var p=r.querySelector(".sentinel-auth-copy");if(p)p.textContent="Secure sign-in is taking too long to load. Check your connection and reload this page.";var b=r.querySelector(".sentinel-auth-loader");if(b)b.outerHTML="<button class=\"sentinel-auth-button\" onclick=\"location.reload()\">Retry ↻</button>";}},15000);</script>
@@ -51,6 +51,9 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
   <form id="investigateForm">
    <label for="receiver">NEAR WALLET ACCOUNT</label>
    <div class="account-input"><span>near://</span><input id="receiver" placeholder="wallet.testnet" autocomplete="off" required maxlength="64"><button type="button" id="pasteReceiver">PASTE</button></div>
+   <label for="sender">OPTIONAL AGENT / SENDER ACCOUNT</label>
+   <div class="account-input"><span>near://</span><input id="sender" placeholder="agent.testnet (optional)" autocomplete="off" maxlength="64"></div>
+   <p class="wallet-connection-state">Enter the agent account to inspect its prior outgoing interactions with this receiver.</p>
    <p id="walletConnectionState" class="wallet-connection-state" aria-live="polite">Wallet not connected. Public account checks are still available.</p>
    <div class="scan-submit"><span>◈ Explorer-indexed wallet activity · read-only</span><button class="primary-btn" id="scanBtn" type="submit">Track wallet <b>↗</b></button></div>
   </form>
