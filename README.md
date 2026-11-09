@@ -82,7 +82,7 @@ Deterministic risk engine
 ## Try the dashboard
 
 1. Open the [NEAR Sentinel dashboard](https://sentinel.ivmaladin.workers.dev).
-2. Sign in through the Privy email authentication modal.
+2. Sign in with **Privy email OTP**. Enter your email address, receive the one-time code in your inbox (including Gmail), and verify it in the Privy modal.
 3. Enter a NEAR account ID and select **Check address**.
 4. Review the decision and its evidence. Expand the technical details when you want to inspect the underlying activity.
 5. Connecting a NEAR wallet is optional; it can fill the sender field. A check does not sign or broadcast a transaction.
@@ -168,8 +168,10 @@ Sentinel is a hackathon prototype and risk-screening layer, not a guarantee that
 
 - Explorer history is indexed data, not a complete archival-node history. Each source is paginated up to five pages of 100 records; remaining pages or unrecognized required fields make the assessment INCOMPLETE.
 - A provider outage or incomplete response is not evidence that an account is malicious or safe.
-- The dashboard is read-only: it does not sign or broadcast transactions.
-- The Privy gate currently protects dashboard access on the client. API endpoints still need server-side Privy token verification before this can be treated as production-grade access control.
+- The dashboard is currently read-only: it does not sign or broadcast transactions.
+- A judge/demo-friendly read-only preview mode is a recommended usability improvement, but it must be clearly separated from authenticated or privileged actions. Do not present a demo bypass as authentication.
+- **Privy email OTP is operational in the dashboard:** the user requests a one-time code by email (for example, Gmail) and completes verification in the Privy sign-in flow. This confirms the client sign-in flow works; it does **not** by itself prove that API requests are authenticated.
+- **Server-side authentication is still a required hardening task:** API endpoints must verify the Privy access token on the server (including signature, issuer/audience as applicable, expiry, and the expected user/app context) before protected operations. Do not treat a client-side authenticated state or user-supplied identity field as authorization.
 - The agent guard is a policy wrapper, not cryptographic enforcement. This repository does not yet provision or enforce a restricted NEAR function-call access key.
 - A function-call access key is contract-scoped and cannot directly transfer native NEAR. Native payments need a deliberately designed payment or escrow contract.
 - The offline attack demo validates guard behavior, not a live wallet integration.
@@ -181,4 +183,4 @@ Sentinel is a hackathon prototype and risk-screening layer, not a guarantee that
 
 **AI Security & Defense.** Sentinel demonstrates a deterministic pre-sign policy layer for NEAR agents, explainable on-chain evidence, human approval for WARN, fail-closed handling of incomplete assessments, and a prompt-injection denial test.
 
-Restricted-key enforcement, a production-grade server-side authentication boundary, and an audited on-chain payment/escrow design are future work — not claimed as completed features.
+Server-side Privy token verification, cryptographically enforced restricted-key signing, a demo-safe public preview, and an audited on-chain payment/escrow design remain hardening work unless separately implemented and tested. The working email OTP flow is not being removed or replaced.
