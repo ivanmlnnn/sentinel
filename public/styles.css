@@ -1396,3 +1396,56 @@ footer{font-size:10px;line-height:1.7}
 @media(prefers-reduced-motion:reduce){
   .topbar .brand-logo{transition:none!important}
 }
+
+
+/* Compact Sentinel frame after wallet connection, with a smooth state morph. */
+.topbar .brand-logo{
+  box-sizing:border-box!important;
+  transition:
+    width .52s cubic-bezier(.22,.8,.22,1),
+    height .52s cubic-bezier(.22,.8,.22,1),
+    filter .35s ease!important;
+}
+.topbar .brand-logo:before,
+.topbar .brand-logo:after{
+  transition:
+    inset .52s cubic-bezier(.22,.8,.22,1),
+    border-color .42s ease,
+    opacity .35s ease,
+    transform .52s cubic-bezier(.22,.8,.22,1)!important;
+}
+.topbar .brand.wallet-linked .brand-logo{
+  width:30px!important;
+  height:30px!important;
+  filter:drop-shadow(0 0 6px rgba(85,240,168,.28))!important;
+}
+.topbar .brand.wallet-linked .brand-logo:before,
+.topbar .brand.wallet-linked .brand-logo:after{
+  inset:-3px!important;
+  border-color:#55f0a8!important;
+}
+.topbar .brand.wallet-logged-out .brand-logo{
+  width:52px!important;
+  height:52px!important;
+  filter:drop-shadow(0 0 5px rgba(85,170,255,.25))!important;
+}
+.topbar .brand.wallet-logged-out .brand-logo:before,
+.topbar .brand.wallet-logged-out .brand-logo:after{
+  inset:-5px!important;
+  border-color:#55aaff!important;
+}
+@media(max-width:760px){
+  .topbar .brand.wallet-linked .brand-logo{
+    width:24px!important;
+    height:24px!important;
+  }
+  .topbar .brand.wallet-logged-out .brand-logo{
+    width:34px!important;
+    height:34px!important;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  .topbar .brand-logo,
+  .topbar .brand-logo:before,
+  .topbar .brand-logo:after{transition:none!important}
+}
