@@ -1557,3 +1557,40 @@ footer{font-size:10px;line-height:1.7}
 .topbar #walletBtn.wallet-connected{
   overflow:visible!important;min-width:max-content!important;
 }
+
+
+/* Wallet connected state — rebuilt as one compact, readable account control. */
+.topbar #walletBtn.wallet-connected{
+  box-sizing:border-box!important;display:inline-flex!important;align-items:center!important;
+  justify-content:center!important;gap:9px!important;width:auto!important;min-width:0!important;
+  max-width:250px!important;height:32px!important;min-height:32px!important;
+  padding:0 10px 0 12px!important;overflow:hidden!important;
+  border:1px solid #34483c!important;border-radius:6px!important;
+  background:#111a15!important;color:#e4eee5!important;
+  box-shadow:0 2px 8px rgba(0,0,0,.18)!important;white-space:nowrap!important;
+}
+.topbar #walletBtn.wallet-connected:hover{border-color:#71845b!important;background:#17221a!important;color:#f0f5e8!important}
+.topbar #walletBtn .wallet-account-name{
+  display:flex!important;align-items:baseline!important;gap:0!important;min-width:0!important;
+  max-width:185px!important;overflow:hidden!important;white-space:nowrap!important;
+  color:#e5eee4!important;font:500 10px/1 var(--mono)!important;letter-spacing:0!important;
+}
+.topbar #walletBtn .wallet-account-base{
+  min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;color:#e5eee4!important;
+}
+.topbar #walletBtn .wallet-account-network{flex:0 0 auto!important;color:#a6bd91!important;font:500 9px/1 var(--mono)!important}
+.topbar #walletBtn .wallet-action-divider{display:block!important;flex:0 0 1px!important;width:1px!important;height:15px!important;background:#465443!important}
+.topbar #walletBtn svg.wallet-power{
+  display:block!important;flex:0 0 14px!important;width:14px!important;height:14px!important;
+  min-width:14px!important;margin:0!important;color:#c5cf8a!important;filter:none!important;
+}
+@media(max-width:760px){
+  .topbar #walletBtn.wallet-connected{max-width:190px!important;height:29px!important;min-height:29px!important;padding:0 8px 0 9px!important;gap:7px!important}
+  .topbar #walletBtn .wallet-account-name{font-size:9px!important;max-width:145px!important}
+  .topbar #walletBtn .wallet-account-network{font-size:8px!important}
+}
+@media(max-width:390px){
+  .topbar #walletBtn.wallet-connected{max-width:160px!important;padding-inline:7px!important;gap:6px!important}
+  .topbar #walletBtn .wallet-account-name{max-width:115px!important;font-size:8px!important}
+  .topbar #walletBtn svg.wallet-power{width:13px!important;height:13px!important;min-width:13px!important}
+}
