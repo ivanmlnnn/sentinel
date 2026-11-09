@@ -54,7 +54,7 @@ function AuthGate() {
         React.createElement('div', { className: 'sentinel-auth-mark' }, React.createElement('img', { src: '/IMG_20260629_220728_136.jpg?v=1', alt: 'Wayang Tech and Kitchen Needs' })),
         React.createElement('p', { className: 'sentinel-auth-kicker' }, 'NEAR PROTOCOL / ACCOUNT INTELLIGENCE'),
         React.createElement('h1', null, 'NEAR SENTINEL'),
-        React.createElement('p', { className: 'sentinel-auth-copy' }, 'A clearer view of account risk before you interact with the NEAR network.'),
+        React.createElement('p', { className: 'sentinel-auth-copy' }, 'Sign in with your Gmail to receive a one-time code, or continue as a read-only guest.'),
         React.createElement('button', {
           className: 'sentinel-auth-button',
           type: 'button',
@@ -65,9 +65,9 @@ function AuthGate() {
             catch (error) { console.error('Privy login failed:', error); }
             finally { loginStarted.current = false; }
           }
-        }, 'Continue with email'),
+        }, 'Login with Gmail'),
         React.createElement('button', { className: 'sentinel-auth-guest-button', type: 'button', onClick: () => window.startSentinelGuest?.() }, 'Continue as Guest ↗'),
-        React.createElement('p', { className: 'sentinel-auth-footnote' }, 'PRIVATE EMAIL SIGN-IN  ·  POWERED BY PRIVY'),
+        React.createElement('p', { className: 'sentinel-auth-footnote' }, 'GMAIL OTP SIGN-IN  ·  POWERED BY PRIVY'),
         React.createElement('p', { className: 'sentinel-auth-security' }, 'Your wallet keys are never requested. Sentinel checks public testnet data only.')
       )
     );
