@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createPortal } from 'react-dom';
-import { PrivyProvider, usePrivy, useLoginWithEmail } from 'https://esm.sh/@privy-io/react-auth@3.51.3?external=react,react-dom';
+import { PrivyProvider, usePrivy, useLoginWithEmail, useGuestAccounts } from 'https://esm.sh/@privy-io/react-auth@3.51.3?external=react,react-dom';
 
 const APP_ID = 'cmw78k7rd00ix0ilgf5ubvn5y';
 window.addEventListener('error', (event) => { if (event.target?.tagName === 'SCRIPT') showAuthError('A required sign-in module could not load. Please refresh or try another network.'); }, true);
@@ -16,6 +16,7 @@ let dashboardStarted = false;
 function AuthGate() {
   const { ready, authenticated, user, login, logout, getAccessToken } = usePrivy();
   const { sendCode, loginWithCode } = useLoginWithEmail();
+  const { createGuestAccount } = useGuestAccounts();
   const loginStarted = useRef(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
@@ -23,7 +24,7 @@ function AuthGate() {
   const [emailAddress, setEmailAddress] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [emailStep, setEmailStep] = useState('choose');
-  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);\n  const [guestLoading, setGuestLoading] = useState(false);\n  if (!window.__SENTINEL_GUEST_SESSION_CHECKED) {\n    window.__SENTINEL_GUEST_SESSION_CHECKED = true;\n    try { window.SENTINEL_GUEST = sessionStorage.getItem('sentinel_privy_guest') === '1'; } catch {}\n  }
 
   useEffect(() => {
     window.getSentinelAccessToken = getAccessToken;
@@ -121,7 +122,7 @@ function AuthGate() {
             React.createElement('p', { className: 'sentinel-auth-copy' }, 'Choose how you want to access the dashboard.'),
             React.createElement('button', { className: 'sentinel-auth-button', type: 'button', onClick: () => { setEmailStep('email'); setLoginError(''); } }, 'Continue with email'),
             React.createElement('div', { className: 'sentinel-auth-or', 'aria-hidden': 'true' }, React.createElement('span'), React.createElement('b', null, 'OR'), React.createElement('span')),
-            React.createElement('button', { className: 'sentinel-auth-guest-button', type: 'button', onClick: () => window.startSentinelGuest?.() }, 'Continue as Guest · Read-only')
+            React.createElement('button', { className: 'sentinel-auth-guest-button', type: 'button', disabled: guestLoading, onClick: async () => {\n              setGuestLoading(true); setLoginError('');\n              try {\n                window.SENTINEL_GUEST = true;\n                try { sessionStorage.setItem('sentinel_privy_guest', '1'); } catch {}\n                await createGuestAccount();\n              } catch (error) {\n                window.SENTINEL_GUEST = false;\n                try { sessionStorage.removeItem('sentinel_privy_guest'); } catch {}\n                console.error('Privy Guest Account creation failed:', error);\n                setLoginError('Privy Guest Account is unavailable. Enable Guest Accounts in the Privy dashboard and try again.');\n                setGuestLoading(false);\n              }\n            } }, guestLoading ? 'Creating Privy Guest…' : 'Continue as Guest · Read-only')
           ) : emailStep === 'email' ? React.createElement(React.Fragment, null,
             React.createElement('p', { className: 'sentinel-auth-copy' }, 'Privy will send a one-time verification code to your email address.'),
             React.createElement('label', { className: 'sentinel-login-label', htmlFor: 'sentinel-email-input' }, 'Email address'),
