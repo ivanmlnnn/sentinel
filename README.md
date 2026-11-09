@@ -245,6 +245,22 @@ A submitted community report is not automatically trusted and must not trigger `
 
 The dashboard includes the required NearBlocks attribution: **“Powered by NearBlocks.io APIs.”**
 
+### Deploy the latest Worker changes
+
+From a trusted local checkout with Wrangler authenticated to the Cloudflare account:
+
+```bash
+npx wrangler@latest secret put NEARBLOCKS_API_KEY
+npx wrangler@latest secret put THREAT_REVIEW_TOKEN
+# Optional, only if AI explanations are enabled:
+npx wrangler@latest secret put ANTHROPIC_API_KEY
+npx wrangler@latest deploy
+```
+
+Use a long random value for `THREAT_REVIEW_TOKEN`; store it only as a Cloudflare Worker secret. Do not paste it into GitHub, README files, browser code, or chat. The public app ID is not a secret. If overriding the built-in Privy app ID, configure `PRIVY_APP_ID` in the Worker environment to match the Privy app used by the browser.
+
+After deployment, verify all of the following in a fresh browser session: Guest entry works without waiting for Privy; a public `POST /api/investigate` succeeds; `POST /api/threats` and `POST /api/ai-review` reject missing/invalid bearer tokens; a real Privy session can submit a threat report; and `POST /api/threats/verify` rejects requests until the review secret is configured. The repository changes are pushed to `main`, but a live Cloudflare deployment and these production smoke tests have not been verified from this workspace.
+
 ## 12. Development timeline and pre-existing repository history
 
 The repository's earlier snapshot showed **212 commits in its overall history** before the latest November changes. That total is not the number of commits made during the 1–14 November 2026 work window, and older files/assets in the repository (including material dated June) are not being represented as newly created during November.
