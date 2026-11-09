@@ -1192,3 +1192,45 @@ footer{font-size:10px;line-height:1.7}
   }
   .main-nav{grid-column:1!important;grid-row:3!important}
 }
+
+
+/* Keep the Sentinel wordmark and wallet control vertically aligned. */
+.topbar{align-items:center}
+.brand{align-items:center;align-self:center}
+.brand-logo{align-self:center;position:relative;flex:0 0 auto}
+.brand-name{line-height:1.15}
+.brand-name b{line-height:1.1}
+
+/* Wallet-connected identity transition for the Sentinel logo. */
+.brand.wallet-linked .brand-logo{
+  overflow:visible!important;
+  border-color:#8bd4ef!important;
+  box-shadow:0 0 0 3px rgba(139,212,239,.12),0 0 18px rgba(139,212,239,.32)!important;
+  filter:drop-shadow(0 0 5px rgba(139,212,239,.35));
+  animation:sentinel-wallet-arrive .55s cubic-bezier(.2,.7,.2,1) both,sentinel-wallet-glow 2.8s ease-in-out .55s infinite;
+}
+.brand.wallet-linked .brand-logo:after{
+  content:"";
+  position:absolute;
+  inset:-5px;
+  border:1px solid rgba(139,212,239,.65);
+  pointer-events:none;
+  animation:sentinel-wallet-ring 1.1s ease-out both;
+}
+.brand.wallet-linked .brand-logo img{border-radius:inherit}
+@keyframes sentinel-wallet-arrive{
+  0%{transform:scale(.88);opacity:.65}
+  65%{transform:scale(1.07)}
+  100%{transform:scale(1);opacity:1}
+}
+@keyframes sentinel-wallet-glow{
+  0%,100%{box-shadow:0 0 0 3px rgba(139,212,239,.10),0 0 12px rgba(139,212,239,.20)}
+  50%{box-shadow:0 0 0 4px rgba(139,212,239,.18),0 0 22px rgba(139,212,239,.42)}
+}
+@keyframes sentinel-wallet-ring{
+  0%{transform:scale(.82);opacity:.9}
+  100%{transform:scale(1.22);opacity:0}
+}
+@media(prefers-reduced-motion:reduce){
+  .brand.wallet-linked .brand-logo,.brand.wallet-linked .brand-logo:after{animation:none!important}
+}
