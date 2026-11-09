@@ -251,6 +251,19 @@ export async function onRequestPost({ request, env }) {
     } : null;
     const receipts = receiptHistory ? receiptHistory.rows.map(row => normalizeReceipt(row, receiver)) : [];
     const ftTransfers = ftHistory ? ftHistory.rows.map(row => normalizeFtTransfer(row, receiver)) : [];
+    const counterpartyMap = new Map();
+    for (const row of transactions) {
+      const counterparty = row.direction === "OUTGOING_SIGNED" ? row.receiver_account : row.direction === "INCOMING" ? row.signer_account : null;
+      if (!counterparty || counterparty.toLowerCase() === receiver) continue;
+      const key = counterparty.toLowerCase();
+      const current = counterpartyMap.get(key) || { account_id: counterparty, observed_transactions: 0, successful_transactions: 0 };
+      current.observed_transactions += 1;
+      if (row.is_success === true) current.successful_transactions += 1;
+      counterpartyMap.set(key, current);
+    }
+    const counterpartyCandidates = [...counterpartyMap.values()]
+      .sort((a, b) => b.observed_transactions - a.observed_transactions)
+      .slice(0, 10);
     const incomingSpamSources = findIncomingSpamSources(transactions);
     const txSchemaComplete = transactions.every(row => row.transaction_hash && row.signer_account && row.status !== "UNKNOWN" && row.block_timestamp !== null);
     const receiptSchemaRecognized = receipts.every(row => row.schema_recognized);
@@ -420,6 +433,7 @@ export async function onRequestPost({ request, env }) {
       first_seen_activity: firstSeenActivity,
       contract_code_history: contractCodeHistory,
       agent_receiver_interaction: agentInteractionEvidence,
+      counterparty_candidates: { source: "NearBlocks indexed transaction history", candidates: counterpartyCandidates, note: "Observed counterparties are not classified as agents without an independently supplied agent account." },
       verified_threat: threat || null,
       assessment_status,
       limitations: [
