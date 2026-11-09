@@ -1142,38 +1142,53 @@ footer{font-size:10px;line-height:1.7}
 }
 
 
-/* Mobile header repair: keep auth and wallet controls inside the viewport. */
+/* Mobile header: compact two-row layout, with a safe stack on narrow phones. */
 @media(max-width:760px){
   .topbar{
     display:grid!important;
-    grid-template-columns:minmax(0,1fr)!important;
-    gap:8px!important;
-    padding:10px 14px!important;
-    overflow:hidden;
-  }
-  .brand{grid-column:1;grid-row:1;min-width:0}
-  .top-actions{
-    grid-column:1!important;
-    grid-row:2!important;
-    display:flex!important;
-    flex-wrap:wrap!important;
+    grid-template-columns:auto minmax(0,1fr)!important;
+    grid-template-rows:auto auto!important;
     align-items:center;
-    justify-content:flex-start;
-    gap:6px!important;
+    gap:8px 12px!important;
+    min-height:0;
+    padding:10px 14px!important;
+    overflow:visible;
+  }
+  .brand{grid-column:1!important;grid-row:1!important;min-width:0;gap:7px}
+  .brand-logo{width:34px;height:34px}
+  .brand-name{font-size:9px;letter-spacing:.8px}
+  .top-actions{
+    grid-column:2!important;
+    grid-row:1!important;
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    align-items:center;
+    justify-content:flex-end!important;
+    gap:7px!important;
     min-width:0;
     max-width:100%;
   }
-  .top-actions>*{flex:0 0 auto;max-width:100%}
-  .guest-mode-badge{font-size:8px!important;padding:6px 7px!important;letter-spacing:.25px!important}
-  .guest-login-button{min-height:30px!important;padding:6px 9px!important;font-size:9px!important}
+  .top-actions>*{flex:0 1 auto;min-width:0}
   .wallet-btn{min-height:36px!important;padding:7px 9px!important;font-size:10px!important}
   .sentinel-session-avatar{width:30px!important;height:30px!important;min-width:30px!important}
-  .sentinel-signout-button{min-height:30px;padding:6px 8px;font-size:9px}
+  .sentinel-signout-button{min-height:30px;padding:6px 8px;font-size:9px;white-space:nowrap}
   .main-nav{
-    grid-column:1!important;
-    grid-row:3!important;
+    grid-column:1/-1!important;
+    grid-row:2!important;
     min-width:0;
     width:100%;
     margin:0;
+    padding:3px 0 4px!important;
   }
+}
+@media(max-width:520px){
+  .topbar{grid-template-columns:minmax(0,1fr)!important;gap:7px!important}
+  .brand{grid-column:1!important;grid-row:1!important}
+  .top-actions{
+    grid-column:1!important;
+    grid-row:2!important;
+    justify-content:flex-start!important;
+    flex-wrap:wrap!important;
+  }
+  .main-nav{grid-column:1!important;grid-row:3!important}
 }
