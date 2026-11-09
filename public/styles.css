@@ -2360,3 +2360,167 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
 @media(prefers-reduced-motion:reduce){
   .sentinel-auth-status-dot{animation:none!important;opacity:1}
 }
+
+
+/* Unified Sentinel identity for both Privy loading and sign-in states. */
+.sentinel-auth-screen{
+  min-height:100svh!important;width:100%;position:relative;isolation:isolate;
+  overflow:hidden;background:
+    radial-gradient(ellipse at 50% 42%,rgba(167,196,169,.105),transparent 42%),
+    radial-gradient(ellipse at 12% 8%,rgba(213,183,126,.055),transparent 34%),
+    #101512!important;
+}
+.sentinel-auth-screen::before{
+  content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.2;
+  background-image:linear-gradient(rgba(167,196,169,.07) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(167,196,169,.07) 1px,transparent 1px);
+  background-size:48px 48px;
+  mask-image:radial-gradient(ellipse at center,#000 0%,transparent 76%);
+}
+.sentinel-auth-screen::after{
+  content:"NEAR / SENTINEL     WALLET RISK INTELLIGENCE";
+  position:absolute;left:clamp(18px,4vw,54px);bottom:clamp(16px,3vw,28px);
+  color:#718276;font:8px/1.5 var(--mono);letter-spacing:.16em;opacity:.72;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button),
+.sentinel-auth-card:has(.sentinel-auth-loader){
+  width:min(100%,510px)!important;min-height:0!important;
+  padding:clamp(30px,5vw,48px) clamp(23px,5vw,46px)!important;
+  display:flex!important;flex-direction:column!important;align-items:center!important;
+  justify-content:center!important;gap:0!important;text-align:center!important;
+  position:relative!important;overflow:hidden!important;
+  border:1px solid rgba(167,196,169,.27)!important;border-radius:8px!important;
+  background:
+    radial-gradient(ellipse at 50% 0%,rgba(167,196,169,.09),transparent 56%),
+    linear-gradient(155deg,#1a241e 0%,#151d18 56%,#111813 100%)!important;
+  box-shadow:0 32px 100px #050906b8,0 0 0 1px #ffffff08 inset!important;
+  animation:sentinel-auth-enter .72s cubic-bezier(.2,.75,.25,1) both;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button)::before,
+.sentinel-auth-card:has(.sentinel-auth-loader)::before{
+  content:"";position:absolute;top:0;left:10%;right:10%;height:1px;
+  background:linear-gradient(90deg,transparent,#d5b77eaa,#a7c4a9cc,transparent);
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button)::after,
+.sentinel-auth-card:has(.sentinel-auth-loader)::after{
+  content:"";position:absolute;right:0;top:0;width:76px;height:76px;
+  border-top:1px solid #d5b77e35;border-right:1px solid #d5b77e35;
+  pointer-events:none;
+}
+@keyframes sentinel-auth-enter{
+  from{opacity:0;transform:translateY(18px) scale(.985);filter:blur(5px)}
+  to{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-mark,
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-mark{
+  flex:none!important;width:106px!important;height:106px!important;
+  margin:0 auto 25px!important;border:1px solid #a7c4a96b!important;
+  border-radius:7px!important;background:#111a14!important;
+  box-shadow:0 14px 36px #05090680,0 0 28px #a7c4a910!important;
+  transition:transform .55s cubic-bezier(.2,.8,.2,1),box-shadow .35s ease,border-color .35s ease!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-mark img,
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-mark img{
+  width:86%!important;height:86%!important;object-fit:contain!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-mark:hover,
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-mark:hover{
+  transform:perspective(600px) rotateY(-7deg) rotateX(5deg) translateY(-3px)!important;
+  border-color:#d5b77e!important;box-shadow:0 18px 42px #05090699,0 0 24px #d5b77e24!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-kicker,
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-kicker{
+  margin:0 0 11px!important;color:#b8cdb9!important;
+  font:600 9px/1.6 var(--mono)!important;letter-spacing:.2em!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) h1,
+.sentinel-auth-card:has(.sentinel-auth-loader) h1{
+  width:100%;margin:0!important;text-align:center!important;
+  color:#e8eee7!important;font-size:clamp(26px,5vw,33px)!important;
+  line-height:1.12!important;font-weight:700!important;letter-spacing:.075em!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-copy,
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-copy{
+  max-width:350px!important;margin:13px auto 25px!important;
+  color:#aab8ac!important;font:13px/1.75 var(--sans)!important;
+  text-align:center!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button{
+  width:100%!important;min-height:52px!important;margin:0!important;
+  position:relative!important;overflow:hidden!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  border:1px solid #d4dfd0!important;border-left:3px solid #d5b77e!important;
+  border-radius:4px!important;background:linear-gradient(110deg,#c4d5c3,#a7c4a9)!important;
+  color:#111a13!important;font:700 12px/1 var(--sans)!important;letter-spacing:.035em!important;
+  box-shadow:0 8px 24px #05090640!important;
+  transition:transform .28s cubic-bezier(.2,.8,.2,1),box-shadow .28s ease,filter .28s ease!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button:hover{
+  transform:translateY(-3px)!important;filter:brightness(1.07)!important;
+  box-shadow:0 13px 30px #a7c4a92b!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button:active,
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button:active{
+  transform:translateY(0) scale(.985)!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-footnote{
+  width:100%;margin:12px 0 19px!important;color:#829386!important;
+  font:8px/1.5 var(--mono)!important;letter-spacing:.13em!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button{
+  width:100%!important;min-height:48px!important;margin:0!important;
+  border:1px solid #4b5d4e!important;border-radius:4px!important;
+  background:rgba(12,19,14,.48)!important;color:#d3ded3!important;
+  font:600 11px/1.4 var(--sans)!important;letter-spacing:.025em!important;
+  transition:transform .25s ease,border-color .25s ease,background .25s ease,color .25s ease,box-shadow .25s ease!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button:hover:not(:disabled){
+  transform:translateY(-2px)!important;border-color:#a7c4a9!important;
+  background:#202c23!important;color:#f0f4ed!important;box-shadow:0 8px 22px #05090655!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button:disabled{
+  opacity:.62;cursor:wait;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-security{
+  max-width:340px!important;margin:18px auto 0!important;
+  color:#87958a!important;font:10px/1.7 var(--sans)!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-error{
+  width:100%;margin:16px 0 0;padding:11px 13px;text-align:left;
+  border:1px solid #805b55;background:#2a1d1a;color:#e6b7aa;
+  font:10px/1.65 var(--sans);border-radius:3px;
+}
+.sentinel-auth-loading-status{
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  margin:0 auto 12px;color:#b9c9ba;font:600 9px/1.4 var(--mono);letter-spacing:.16em;
+}
+.sentinel-auth-status-dot{
+  width:6px;height:6px;border-radius:50%;background:#a7c4a9;
+  box-shadow:0 0 10px #a7c4a9aa;animation:sentinel-status-breathe 1.8s ease-in-out infinite;
+}
+@keyframes sentinel-status-breathe{
+  0%,100%{opacity:.45;box-shadow:0 0 4px #a7c4a955}
+  50%{opacity:1;box-shadow:0 0 12px #a7c4a9cc}
+}
+/* Preserve the approved moving loading line; unify its width with sign-in content. */
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-loader{
+  width:min(100%,210px)!important;height:3px!important;margin:0 auto!important;
+}
+@media(max-width:560px){
+  .sentinel-auth-screen{padding:22px 17px 54px!important}
+  .sentinel-auth-card:has(.sentinel-auth-guest-button),
+  .sentinel-auth-card:has(.sentinel-auth-loader){padding:32px 22px!important}
+  .sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-mark,
+  .sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-mark{
+    width:92px!important;height:92px!important;margin-bottom:22px!important;
+  }
+  .sentinel-auth-screen::after{font-size:7px;left:17px;bottom:14px}
+}
+@media(prefers-reduced-motion:reduce){
+  .sentinel-auth-card:has(.sentinel-auth-guest-button),
+  .sentinel-auth-card:has(.sentinel-auth-loader){animation:none!important}
+  .sentinel-auth-status-dot{animation:none!important;opacity:1}
+  .sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button,
+  .sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button,
+  .sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-mark{transition:none!important}
+}
