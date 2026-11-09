@@ -1140,3 +1140,6 @@ footer{font-size:10px;line-height:1.7}
  .wallet-btn{font-size:10px}
  .section-meta{font-size:9px}
 }
+
+/* Small connected-wallet status box adjustment only. */
+.wallet-connection-state{margin-top:6px!important;padding:4px 8px!important;font-size:11px!important;line-height:1.45!important;border-left-width:2px!important}
