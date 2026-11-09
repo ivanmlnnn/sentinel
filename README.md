@@ -40,6 +40,10 @@ The current implementation uses:
 - A project-local Cloudflare D1 threat registry. Only records marked verified can trigger `BLOCK`.
 - Outgoing transaction frequency and recipient-diversity rules.
 
+### Agent-to-receiver context
+
+The dashboard now accepts an optional **Agent / Sender Account**. When supplied, Sentinel separately retrieves that account's indexed transaction history and reports successful outgoing transactions previously sent to the receiver. This evidence is informational and does not independently raise or lower the risk score. If the sender history cannot be fully verified, the overall assessment is marked `INCOMPLETE` rather than pretending no prior interaction exists.
+
 ### Implemented behavioral thresholds
 
 | Signal | Current behavior |
@@ -58,7 +62,7 @@ The current risk model does **not** yet include:
 
 - Account age / first-seen age as a scored signal.
 - Historical contract-code changes or code-version-change monitoring.
-- A graph of prior interactions between an agent and the proposed receiver.
+- Multi-hop interaction graphs and behavioral relationship scoring. Sentinel now supports a direct historical sender-to-receiver lookup when an optional agent account is supplied, but it does not yet build a broader interaction graph.
 - A shared, externally synchronized blocklist with standardized evidence, provenance, and review history. The current D1 registry is project-local; it should not be described as a shared community threat-intelligence network.
 
 These are known coverage gaps, not hidden capabilities.
