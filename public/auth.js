@@ -78,7 +78,7 @@ function AuthGate() {
         React.createElement('button', { className: `sentinel-auth-mark${logoActive ? ' is-activated' : ''}`, type: 'button', onClick: activateLogo, 'aria-label': 'Activate Sentinel wayang emblem' },
           React.createElement('img', { src: '/IMG_20260629_220728_136.jpg?v=1', alt: 'NEAR Sentinel wayang emblem' })
         ),
-        React.createElement('p', { className: 'sentinel-auth-kicker' }, 'NEAR PROTOCOL / ACCOUNT INTELLIGENCE'),
+        React.createElement('p', { className: 'sentinel-auth-kicker' }, 'NEAR PROTOCOL / WALLET RISK INTELLIGENCE'),
         React.createElement('h1', null, 'NEAR SENTINEL'),
         React.createElement('p', { className: 'sentinel-auth-copy' }, 'Preparing your secure session…'),
         React.createElement('div', { className: 'sentinel-auth-loader' })
@@ -94,7 +94,7 @@ function AuthGate() {
         ),
         React.createElement('p', { className: 'sentinel-auth-kicker' }, 'NEAR PROTOCOL / ACCOUNT INTELLIGENCE'),
         React.createElement('h1', null, 'NEAR SENTINEL'),
-        React.createElement('p', { className: 'sentinel-auth-copy' }, 'Secure access to the NEAR Sentinel dashboard.'),
+        React.createElement('p', { className: 'sentinel-auth-copy' }, 'Review wallet activity, assess risk signals, and make safer decisions on NEAR.'),
         React.createElement('button', {
           className: 'sentinel-auth-button',
           type: 'button',
@@ -106,16 +106,16 @@ function AuthGate() {
             document.body.classList.remove('sentinel-guest');
             login();
           }
-        }, 'Login'),
-        React.createElement('p', { className: 'sentinel-auth-footnote' }, 'SECURE AUTHENTICATION · PRIVY'),
+        }, 'Continue with email ↗'),
+        React.createElement('p', { className: 'sentinel-auth-footnote' }, 'EMAIL VERIFICATION · POWERED BY PRIVY'),
         React.createElement('button', {
           className: 'sentinel-auth-guest-button',
           type: 'button',
           disabled: guestLoading,
           onClick: startGuestSession
-        }, guestLoading ? 'Creating Guest session…' : 'Continue as Guest · Read-only'),
+        }, guestLoading ? 'Creating Guest session…' : 'Explore read-only demo ↗'),
         authError ? React.createElement('p', { className: 'sentinel-auth-error', role: 'alert' }, authError) : null,
-        React.createElement('p', { className: 'sentinel-auth-security' }, 'Guest access is read-only. No wallet keys or transaction permissions are requested.')
+        React.createElement('p', { className: 'sentinel-auth-security' }, 'Demo access is read-only. No wallet connection or transaction signing is required.')
       )
     );
   }
