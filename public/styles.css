@@ -1141,5 +1141,39 @@ footer{font-size:10px;line-height:1.7}
  .section-meta{font-size:9px}
 }
 
-/* Small connected-wallet status box adjustment only. */
-.wallet-connection-state{margin-top:6px!important;padding:4px 8px!important;font-size:11px!important;line-height:1.45!important;border-left-width:2px!important}
+
+/* Mobile header repair: keep auth and wallet controls inside the viewport. */
+@media(max-width:760px){
+  .topbar{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:8px!important;
+    padding:10px 14px!important;
+    overflow:hidden;
+  }
+  .brand{grid-column:1;grid-row:1;min-width:0}
+  .top-actions{
+    grid-column:1!important;
+    grid-row:2!important;
+    display:flex!important;
+    flex-wrap:wrap!important;
+    align-items:center;
+    justify-content:flex-start;
+    gap:6px!important;
+    min-width:0;
+    max-width:100%;
+  }
+  .top-actions>*{flex:0 0 auto;max-width:100%}
+  .guest-mode-badge{font-size:8px!important;padding:6px 7px!important;letter-spacing:.25px!important}
+  .guest-login-button{min-height:30px!important;padding:6px 9px!important;font-size:9px!important}
+  .wallet-btn{min-height:36px!important;padding:7px 9px!important;font-size:10px!important}
+  .sentinel-session-avatar{width:30px!important;height:30px!important;min-width:30px!important}
+  .sentinel-signout-button{min-height:30px;padding:6px 8px;font-size:9px}
+  .main-nav{
+    grid-column:1!important;
+    grid-row:3!important;
+    min-width:0;
+    width:100%;
+    margin:0;
+  }
+}
