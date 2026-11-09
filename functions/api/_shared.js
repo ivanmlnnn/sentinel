@@ -106,3 +106,74 @@ export function decideRisk(account, verifiedThreat, amount, behavior = null) {
 export async function getInvestigation(env, id) {
   return env.DB.prepare("SELECT * FROM investigations WHERE id = ?").bind(id).first();
 }
+
+
+const DEFAULT_PRIVY_APP_ID = "cmw78k7rd00ix0ilgf5ubvn5y";
+
+function decodeBase64Url(value) {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
+  const binary = atob(padded);
+  return Uint8Array.from(binary, char => char.charCodeAt(0));
+}
+
+/**
+ * Verify a Privy app access token at the API boundary.
+ * Guest/read-only investigation routes intentionally do not call this helper.
+ * Fail closed on missing configuration, network errors, malformed JWTs, or
+ * invalid signature/claims.
+ */
+export async function verifyPrivyAccessToken(request, env = {}) {
+  const authorization = request.headers.get("authorization") || "";
+  const match = authorization.match(/^Bearer ([A-Za-z0-9._~-]+)$/);
+  if (!match) return null;
+
+  const appId = env.PRIVY_APP_ID || DEFAULT_PRIVY_APP_ID;
+  const parts = match[1].split(".");
+  if (parts.length !== 3) return null;
+
+  try {
+    const header = JSON.parse(new TextDecoder().decode(decodeBase64Url(parts[0])));
+    const claims = JSON.parse(new TextDecoder().decode(decodeBase64Url(parts[1])));
+    if (header.alg !== "ES256" || typeof header.kid !== "string") return null;
+
+    const now = Math.floor(Date.now() / 1000);
+    const audience = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
+    if (
+      claims.iss !== "privy.io" ||
+      !audience.includes(appId) ||
+      typeof claims.sub !== "string" ||
+      !claims.sub.startsWith("did:privy:") ||
+      !Number.isFinite(claims.exp) ||
+      claims.exp <= now ||
+      !Number.isFinite(claims.iat) ||
+      claims.iat > now + 60
+    ) return null;
+
+    const jwksResponse = await fetch(
+      `https://auth.privy.io/api/v1/apps/${encodeURIComponent(appId)}/jwks.json`,
+      { headers: { accept: "application/json" }, signal: AbortSignal.timeout(5000) }
+    );
+    if (!jwksResponse.ok) return null;
+    const jwks = await jwksResponse.json();
+    const jwk = Array.isArray(jwks.keys) ? jwks.keys.find(key => key.kid === header.kid && key.kty === "EC" && key.crv === "P-256") : null;
+    if (!jwk) return null;
+
+    const publicKey = await crypto.subtle.importKey(
+      "jwk",
+      jwk,
+      { name: "ECDSA", namedCurve: "P-256" },
+      false,
+      ["verify"]
+    );
+    const valid = await crypto.subtle.verify(
+      { name: "ECDSA", hash: "SHA-256" },
+      publicKey,
+      decodeBase64Url(parts[2]),
+      new TextEncoder().encode(parts[0] + "." + parts[1])
+    );
+    return valid ? claims : null;
+  } catch {
+    return null;
+  }
+}
