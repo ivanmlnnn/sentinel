@@ -232,58 +232,67 @@ function renderResult(data) {
   const firstSeen = data.evidence?.first_seen_activity;
   const codeHistory = data.evidence?.contract_code_history;
   const agentHistory = data.evidence?.agent_receiver_interaction;
+  const nativeHistory = data.evidence?.wallet_activity?.native_transactions;
   const firstSeenDate = firstSeen?.available && firstSeen.earliest_observed_transaction_at
     ? new Date(firstSeen.earliest_observed_transaction_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
     : null;
   const signalCards = [
     {
       title: 'Aktivitas pertama terindeks',
-      state: !firstSeen?.available ? 'Belum tersedia' : firstSeen.complete ? 'Riwayat tersedia' : 'Data sebagian',
-      stateClass: !firstSeen?.available ? 'muted' : firstSeen.complete ? 'ok' : 'review',
+      state: firstSeen?.available ? (firstSeen.complete ? 'DATA TERVERIFIKASI' : 'DATA SEBAGIAN') : firstSeen?.complete ? 'TIDAK ADA DATA TERINDEKS' : 'BELUM DAPAT DIVERIFIKASI',
+      stateClass: firstSeen?.available ? (firstSeen.complete ? 'ok' : 'review') : 'muted',
       value: firstSeenDate
-        ? firstSeenDate + ' · sekitar ' + Number(firstSeen.estimated_days_since_first_observed_activity || 0).toLocaleString('id-ID') + ' hari lalu'
-        : 'Belum ada aktivitas yang dapat dipastikan',
-      note: 'Mengacu pada transaksi tertua yang ditemukan Explorer. Ini bukan tanggal pembuatan akun.'
+        ? firstSeenDate + ' · sekitar ' + Number(firstSeen.estimated_days_since_first_observed_activity || 0).toLocaleString('id-ID') + ' hari sejak aktivitas tertua yang ditemukan'
+        : firstSeen?.complete
+          ? 'Tidak ada transaksi bertanggal yang ditemukan dalam riwayat Explorer yang berhasil diperiksa.'
+          : 'Waktu aktivitas pertama tidak dapat ditentukan karena riwayat transaksi kosong atau belum lengkap.',
+      note: 'Sumber: NearBlocks Explorer. Ini adalah transaksi tertua yang ditemukan pada riwayat terindeks, bukan tanggal pembuatan akun. ' + (nativeHistory ? Number(nativeHistory.count || 0).toLocaleString('id-ID') + ' transaksi diperiksa.' : 'Data transaksi tidak tersedia.')
     },
     {
       title: 'Riwayat kode kontrak',
-      state: !codeHistory?.available ? 'Tidak terdeteksi' : codeHistory.history_error ? 'Perlu pemeriksaan' : codeHistory.changed_since_previous_scan ? 'Kode berubah' : codeHistory.prior_observations ? 'Tidak ada perubahan' : 'Baseline tersimpan',
-      stateClass: !codeHistory?.available ? 'muted' : codeHistory.history_error || codeHistory.changed_since_previous_scan ? 'review' : 'ok',
+      state: !codeHistory?.available ? 'TIDAK ADA KODE KONTRAK' : codeHistory.history_error ? 'RIWAYAT GAGAL DIBACA' : codeHistory.changed_since_previous_scan ? 'HASH BERUBAH' : Number(codeHistory.prior_observations || 0) > 0 ? 'HASH COCOK DENGAN SNAPSHOT' : 'BASELINE PERTAMA',
+      stateClass: !codeHistory?.available ? 'muted' : codeHistory.history_error || codeHistory.changed_since_previous_scan || !Number(codeHistory.prior_observations || 0) ? 'review' : 'ok',
       value: !codeHistory?.available
-        ? 'Tidak ada kode kontrak aktif yang terdeteksi'
+        ? 'Tidak ada kode kontrak aktif pada akun ini. Kondisi ini umum untuk wallet biasa.'
         : codeHistory.history_error
-          ? 'Snapshot sebelumnya tidak dapat dibaca'
+          ? 'Hash kode saat ini tersedia, tetapi snapshot pembanding sebelumnya gagal dibaca.'
           : codeHistory.changed_since_previous_scan
-            ? 'Hash kode berbeda dari pemeriksaan sebelumnya'
-            : codeHistory.prior_observations
-              ? 'Hash cocok pada ' + Number(codeHistory.prior_observations).toLocaleString('id-ID') + ' pemeriksaan sebelumnya'
-              : 'Pemeriksaan pertama — baseline baru dicatat',
+            ? 'Hash kode saat ini berbeda dari snapshot Sentinel sebelumnya.'
+            : Number(codeHistory.prior_observations || 0) > 0
+              ? 'Hash saat ini cocok dengan ' + Number(codeHistory.prior_observations).toLocaleString('id-ID') + ' snapshot sebelumnya.'
+              : 'Hash saat ini dicatat sebagai baseline pertama. Belum ada snapshot lama untuk dibandingkan.',
       note: !codeHistory?.available
-        ? 'Umumnya normal untuk akun wallet biasa dan bukan indikasi ancaman.'
+        ? 'Tidak adanya kode kontrak bukan indikasi ancaman dan tidak diberi penalti.'
         : codeHistory.history_error
-          ? 'Kode saat ini terbaca, tetapi riwayat pembanding belum dapat diverifikasi.'
+          ? 'Status perubahan tidak dapat dipastikan. Sentinel tidak menganggap riwayat yang gagal dibaca sebagai bukti aman.'
           : codeHistory.changed_since_previous_scan
-            ? 'Perubahan bisa merupakan upgrade yang sah. Periksa sebelum berinteraksi.'
-            : 'Sentinel hanya dapat membandingkan sejak pertama kali menyimpan snapshot; perubahan sebelumnya tidak diketahui.'
+            ? 'Perubahan hash dapat disebabkan upgrade sah atau perubahan lain. Periksa kode dan transaksi upgrade sebelum berinteraksi.'
+            : Number(codeHistory.prior_observations || 0) > 0
+              ? 'Perbandingan hanya mencakup snapshot Sentinel yang tersimpan sejak pemantauan dimulai; perubahan sebelum snapshot tertua tidak diketahui.'
+              : 'Ini hanya titik awal pemantauan, bukan bukti bahwa kode tidak pernah berubah sebelumnya.'
     },
     {
       title: 'Interaksi agent → penerima',
-      state: !agentHistory ? 'Belum diisi' : !agentHistory.available ? 'Tidak tersedia' : agentHistory.complete ? 'Riwayat diperiksa' : 'Data sebagian',
+      state: !agentHistory ? 'BELUM DIPERIKSA' : !agentHistory.available ? 'RIWAYAT TIDAK TERSEDIA' : agentHistory.complete ? 'RIWAYAT TERVERIFIKASI' : 'RIWAYAT TIDAK LENGKAP',
       stateClass: !agentHistory ? 'muted' : !agentHistory.available || !agentHistory.complete ? 'review' : 'ok',
       value: !agentHistory
-        ? 'Akun agent belum diberikan'
+        ? 'Pemeriksaan relasi belum dijalankan karena akun agent/sender tidak diberikan.'
         : !agentHistory.available
-          ? 'Riwayat akun agent tidak dapat diambil'
-          : Number(agentHistory.successful_outgoing_interactions || 0).toLocaleString('id-ID') + ' transaksi berhasil dari agent ke penerima',
+          ? 'Riwayat transaksi akun agent tidak berhasil diperoleh.'
+          : agentHistory.complete
+            ? Number(agentHistory.successful_outgoing_interactions || 0).toLocaleString('id-ID') + ' transaksi keluar berhasil dan terverifikasi dari agent ke penerima pada data yang diperiksa.'
+            : Number(agentHistory.successful_outgoing_interactions || 0).toLocaleString('id-ID') + ' transaksi cocok ditemukan, tetapi cakupan riwayat belum lengkap; jumlah akhir belum dapat dipastikan.',
       note: !agentHistory
-        ? 'Isi kolom Agent / Sender Account saat memindai untuk memeriksa interaksi langsung.'
+        ? 'Isi Agent / Sender Account saat memindai. Tanpa akun agent, hubungan langsung tidak dapat dinilai.'
         : !agentHistory.available
-          ? 'Hasil kosong tidak boleh dianggap bukti bahwa tidak pernah ada interaksi.'
-          : 'Hanya transaksi keluar yang berhasil dan ditandatangani agent. Ini konteks, bukan jaminan kepercayaan.'
+          ? 'Kegagalan mengambil riwayat bukan bukti bahwa interaksi tidak pernah terjadi.'
+          : agentHistory.complete
+            ? 'Sumber: riwayat transaksi NearBlocks untuk akun agent. Nol transaksi berarti tidak ditemukan pada riwayat terindeks yang diperiksa, bukan bukti mutlak tidak pernah berinteraksi.'
+            : 'Hasil sementara saja. Data yang hilang atau batas halaman Explorer dapat menyembunyikan transaksi lain.'
     }
   ];
   const extraEvidenceMarkup = '<section class="plain-evidence signal-section">' +
-    '<div class="signal-section-heading"><div><h4>Sinyal tambahan</h4><p>Informasi pendukung untuk membantu membaca hasil pemeriksaan.</p></div><span class="signal-section-tag">EVIDENCE</span></div>' +
+    '<div class="signal-section-heading"><div><h4>Sinyal tambahan</h4><p>Hasil pendukung berdasarkan data yang berhasil diambil. Status kosong atau tidak lengkap tidak dianggap aman.</p></div><span class="signal-section-tag">BUKTI / EVIDENCE</span></div>' +
     '<div class="signal-grid">' + signalCards.map(card =>
       '<article class="signal-card">' +
         '<div class="signal-card-top"><h5>' + escapeHtml(card.title) + '</h5><span class="signal-state signal-state-' + card.stateClass + '">' + escapeHtml(card.state) + '</span></div>' +
