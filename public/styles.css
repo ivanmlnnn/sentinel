@@ -1011,3 +1011,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
 @media(prefers-reduced-motion:reduce){
  .hero h1 em:after{transform:scaleX(1);will-change:auto}
 }
+
+/* Guest access is a public, read-only dashboard mode; it never creates a Privy session. */
+.sentinel-auth-guest-button{width:100%;min-height:48px;margin-top:12px;border:1px solid rgba(104,224,189,.55);border-radius:9px;background:rgba(104,224,189,.08);color:#aaf4dc;font:650 13px Inter,system-ui,sans-serif;cursor:pointer;transition:background .18s,transform .18s}
+.sentinel-auth-guest-button:hover{background:rgba(104,224,189,.15);transform:translateY(-1px)}
+.guest-mode-badge{padding:8px 10px;border:1px solid #4e806e;background:#10251f;color:#aaf4dc;font:9px var(--mono);letter-spacing:.7px;white-space:nowrap}
+body.sentinel-guest #walletBtn,body.sentinel-guest .wallet-help-link,body.sentinel-guest #reportBtn,body.sentinel-guest #reportForm{display:none!important}
+body.sentinel-guest .wallet-guide-note::after{content:' · GUEST PREVIEW';color:var(--mint)}
+@media(max-width:720px){.guest-mode-badge{font-size:8px;padding:7px 8px}.top-actions{gap:8px}}
