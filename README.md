@@ -1,15 +1,28 @@
-# NEAR Sentinel
+# <img src="https://raw.githubusercontent.com/near/near-logo/master/near_logo.svg" width="30" alt="NEAR" /> NEAR SENTINEL
 
-**A pre-sign risk-screening layer for NEAR-powered AI agents.**
+### The pre-sign security checkpoint for AI agents on NEAR.
 
-NEAR Sentinel investigates a NEAR account and proposed recipient, evaluates available on-chain evidence, and returns a deterministic policy result: `ALLOW`, `WARN`, `BLOCK`, or `INCOMPLETE`.
+**An AI agent should never send first and ask questions later.** Sentinel screens the destination, inspects indexed on-chain evidence, and returns a deterministic policy decision before an application calls its signer.
 
-**Builder:** Ivan Maulana Alaudin · IVTECH  
-**Network focus:** NEAR Testnet (default)  
-**Live dashboard:** https://sentinel.ivmaladin.workers.dev  
-**Repository:** https://github.com/ivanmlnnn/sentinel
+<p align="center">
+  <a href="https://sentinel.ivmaladin.workers.dev"><strong>⚡ OPEN LIVE DASHBOARD</strong></a> ·
+  <a href="https://github.com/ivanmlnnn/sentinel">SOURCE CODE</a> ·
+  <a href="#quick-start">RUN THE DEMO</a>
+</p>
 
-> **Hackathon demo status:** the dashboard offers both Privy email OTP and a no-login **Continue as Guest** preview. Guest mode is read-only: it can run public account investigations and view public dashboard data, but it does not connect a wallet, submit threat reports, sign, or broadcast transactions. The repository tests and offline attack demo also run without login.
+| Builder | Network | Core idea | Stack |
+|---|---|---|---|
+| **Ivan Maulana Alaudin · IVTECH** | NEAR Testnet by default | Evidence → Policy → Guard | Cloudflare · NEAR · Privy · NearBlocks |
+
+> **Judge-friendly demo:** open the dashboard as Guest, connect a compatible NEAR wallet (including Meteor through NEAR Connect), scan a public account, inspect the evidence, then run the offline prompt-injection guard demo. Wallet connection is optional and does not sign or broadcast transactions.
+
+---
+
+## Why Sentinel matters
+
+AI agents can be manipulated by prompt injection, poisoned tool output, malicious websites, or user-supplied destinations. A model's confidence is not a security control. Sentinel adds an independent, deterministic checkpoint between an agent's decision and its signing path.
+
+**Core promise:** missing evidence must never be presented as proof of safety. Sentinel distinguishes `ALLOW`, `WARN`, `BLOCK`, and `INCOMPLETE` and exposes the evidence behind the result.
 
 ---
 
@@ -119,15 +132,15 @@ The response should contain the investigation decision and supporting assessment
 
 **Important authentication disclosure:** the current Privy OTP gate is enforced in the dashboard client. The API does not yet independently verify a Privy access token server-side. Therefore, this `curl` example demonstrates endpoint reachability and investigation behavior; it must not be interpreted as authenticated API access or production-grade access control. Do not send secrets or treat this endpoint as a protected user-only API.
 
-## 5. Dashboard walkthrough
+## 5. Live dashboard walkthrough
 
-1. Open https://sentinel.ivmaladin.workers.dev.
-2. Enter your email in the Privy sign-in flow.
-3. Retrieve the one-time password from your inbox (Gmail is supported) and submit it in the Privy modal.
-4. Enter a NEAR account ID and run **Check address**.
-5. Inspect the verdict, risk factors, and technical evidence.
+1. Open the [Sentinel dashboard](https://sentinel.ivmaladin.workers.dev).
+2. Choose **Continue as Guest** for a fast public demo, or sign in with Privy email OTP.
+3. Select **Connect NEAR Wallet** and choose an available wallet from the NEAR Connect picker.
+4. Connect a Testnet account. Sentinel uses the public account ID to autofill the address field.
+5. Run **Check address** and inspect the decision, risk factors, and evidence cards.
 
-The dashboard is read-only and does not sign or broadcast transactions. To enter without OTP, choose **Continue as Guest** on the login screen. Guest mode hides wallet connection and report-submission controls while leaving public address investigation and evidence viewing available. Choose the Privy email option when you need the signed-in dashboard experience. Guest mode is a UI access path, not server-side authentication; it cannot submit reports or request AI review. Those routes require a verified Privy token.
+**Wallet connection is deliberately non-custodial and read-only in this demo:** Sentinel reads the connected account identity for convenience. It does not request a seed phrase, private key, transaction signature, or permission to transfer funds. Guest and Privy users can both connect a compatible wallet. Guest mode remains a public UI preview; protected report and AI-review actions require a valid Privy token.
 
 ## 6. Agent guard: what is implemented vs. what is not
 
@@ -159,11 +172,33 @@ A production design needs a trusted signing service that checks the exact receiv
 
 Public account investigation and GET endpoints are deliberately unauthenticated to support Guest screening. Any new write, identity-specific, or cost-bearing endpoint must use the same server-side verifier before it performs work. Never trust client-side state, email strings, or user IDs supplied in request JSON as authorization. The existing Privy OTP flow remains unchanged.
 
-## 8. Wallet ecosystem: Meteor
+## 8. NEAR wallet ecosystem — one connection layer, multiple wallets
 
-Sentinel's optional NEAR wallet connection uses **HOT Labs NEAR Connect**. Meteor Wallet is listed as one of the wallet integrations in the NEAR Connect ecosystem ([NEAR Connect wallet list](https://hot-labs.org/near-connect), [Meteor Wallet](https://meteorwallet.app/)).
+Sentinel integrates **[HOT Labs NEAR Connect](https://hot-labs.org/near-connect)** (`@hot-labs/near-connect`) rather than hard-coding one wallet. The connector loads wallet integrations through its manifest and presents compatible options available for the selected network and browser.
 
-This documents ecosystem compatibility, **not a claim that a dedicated Meteor end-to-end Testnet sign-in and transaction test has passed for this Sentinel deployment**. Wallet availability can depend on the connector manifest, browser/device, and network support. Wallet connection is not required to run the tests, attack demo, or API `curl` check.
+**Wallet integrations listed by the NEAR Connect ecosystem include:**
+
+| Wallet / connection | Role |
+|---|---|
+| [Meteor Wallet](https://meteorwallet.app/) | NEAR wallet connection |
+| [HOT Wallet](https://hot-labs.org/wallet/) | NEAR wallet connection |
+| [Intear Wallet](https://intear.tech/) | NEAR wallet connection |
+| [MyNearWallet](https://app.mynearwallet.com/) | NEAR wallet connection, where available |
+| Nightly Wallet | NEAR wallet connection |
+| NEAR Mobile | Mobile wallet integration |
+| Unity Wallet | Wallet integration |
+| OKX Wallet | Wallet integration |
+| Hana Wallet | Wallet integration |
+| WalletConnect-compatible wallets | WalletConnect route, where supported |
+| Ethereum wallets | EVM integrations exposed by the connector; not a NEAR account substitute |
+
+The supported ecosystem is documented by [NEAR Connect](https://hot-labs.org/near-connect) and its [npm package](https://www.npmjs.com/package/@hot-labs/near-connect). The actual picker is dynamic: availability depends on the connector manifest, browser/device, wallet installation, and Testnet support. **An ecosystem listing is not a claim that every wallet/device combination has passed Sentinel's end-to-end QA.**
+
+### What happens after connection?
+
+`Connect NEAR Wallet` → NEAR Connect picker → user-approved account connection → account ID shown in Sentinel → account ID can autofill the investigation target.
+
+The current integration uses the connected account as an identity/address convenience only. It does **not** invoke `signAndSendTransaction`, sign messages, or broadcast transactions. Privy remains the dashboard authentication layer; NEAR Connect remains the NEAR wallet connection layer. They are complementary, not interchangeable.
 
 ## 9. Architecture and data sources
 
@@ -196,7 +231,7 @@ Deterministic risk assessment
 | NearBlocks v3 | Indexed activity and transfer history |
 | Cloudflare D1 | Investigations and local threat reports |
 | Privy | Dashboard email OTP sign-in |
-| HOT Labs NEAR Connect | Optional wallet connection; ecosystem includes Meteor Wallet |
+| HOT Labs NEAR Connect | Optional NEAR wallet connection; Meteor and other compatible integrations are available through its dynamic manifest |
 | Anthropic API | Optional evidence-grounded explanation through `POST /api/ai-review` |
 
 Optional AI explanation is informational only and does not change the deterministic verdict.
