@@ -39,7 +39,7 @@ The dashboard can optionally accept an agent/sender account during an investigat
 
 ## Authentication boundary
 
-The dashboard supports Privy email OTP and a no-login Guest preview. Guest mode is read-only and cannot submit reports or request AI review. The Worker verifies Privy ES256 bearer tokens against the app JWKS for `POST /api/threats` and `POST /api/ai-review`, checking signature, issuer, audience, subject, issued-at, and expiry. Public account investigation and GET routes remain open to support Guest screening. Never authorize a request based only on client state, an email string, or a user ID supplied in the request body. Run `npm test` for verifier tests; the live Worker still needs an end-to-end smoke test with a real Privy session.
+The dashboard supports Privy email OTP and a no-login Guest preview. Guest mode is read-only and cannot submit reports or request AI review. The Worker verifies Privy ES256 bearer tokens against the app JWKS for `POST /api/threats` and `POST /api/ai-review`, checking signature, issuer, audience, subject, issued-at, and expiry. Public account investigation and GET routes remain open to support Guest screening. Verified threat records are exportable via `GET /api/threats?status=verified`; report moderation requires the server-only `THREAT_REVIEW_TOKEN` secret. Never authorize a request based only on client state, an email string, or a user ID supplied in the request body. Run `npm test` for verifier tests; the live Worker still needs an end-to-end smoke test with a real Privy session.
 
 ## Important key limitation
 
