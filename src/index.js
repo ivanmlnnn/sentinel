@@ -1,5 +1,5 @@
 import { onRequestGet as metricsGet } from "../functions/api/metrics.js";
-import { onRequestGet as threatsGet, onRequestPost as threatsPost } from "../functions/api/threats.js";
+import { onRequestGet as threatsGet, onRequestPost as threatsPost, onRequestVerifyPost as threatsVerifyPost } from "../functions/api/threats.js";
 import { onRequestPost as investigatePost } from "../functions/api/investigate.js";
 import { onRequestPost as aiReviewPost } from "../functions/api/ai-review.js";
 import { onRequestPost as privyWebhookPost } from "../functions/api/privy-webhook.js";
@@ -8,6 +8,7 @@ const routes = {
   "GET /api/metrics": metricsGet,
   "GET /api/threats": threatsGet,
   "POST /api/threats": threatsPost,
+  "POST /api/threats/verify": threatsVerifyPost,
   "POST /api/investigate": investigatePost,
   "POST /api/ai-review": aiReviewPost,
   "POST /api/privy-webhook": privyWebhookPost
