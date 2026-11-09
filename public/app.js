@@ -6,13 +6,6 @@ window.__SENTINEL_APP_STARTED = true;
 if (GUEST_MODE) {
   document.body.classList.add('sentinel-authenticated', 'sentinel-guest');
   const actions = document.querySelector('.top-actions');
-  if (actions && !document.getElementById('guestModeBadge')) {
-    const badge = document.createElement('span');
-    badge.id = 'guestModeBadge';
-    badge.className = 'guest-mode-badge';
-    badge.textContent = 'GUEST · READ ONLY';
-    actions.prepend(badge);
-  }
   if (actions && !document.getElementById('guestLoginBtn')) {
     const loginButton = document.createElement('button');
     loginButton.id = 'guestLoginBtn';
