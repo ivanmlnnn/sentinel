@@ -48,7 +48,6 @@ jobs:
           command: deploy
 
       - name: Smoke test production
-        if: ${{ env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' }}
         run: npm run smoke:test
         env:
           SENTINEL_BASE_URL: https://sentinel.ivmaladin.workers.dev
