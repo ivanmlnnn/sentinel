@@ -2145,18 +2145,18 @@ footer{font-size:10px;line-height:1.7}
 
 
 /* Consistent tactile feedback for every Sentinel action control. */
-button:not(:disabled){
+button:not(:disabled):not(.sentinel-auth-mark){
   -webkit-tap-highlight-color:transparent;
   transform:translateZ(0);
   transition:transform .22s cubic-bezier(.2,.75,.25,1),
     box-shadow .22s ease,background-color .22s ease,
     border-color .22s ease,color .22s ease,filter .22s ease!important;
 }
-button:not(:disabled):hover{
+button:not(:disabled):not(.sentinel-auth-mark):hover{
   filter:brightness(1.08);
   transform:translateY(-2px)!important;
 }
-button:not(:disabled):active{
+button:not(:disabled):not(.sentinel-auth-mark):active{
   filter:brightness(.96);
   transform:translateY(1px) scale(.975)!important;
   box-shadow:inset 0 2px 7px #0003!important;
@@ -2240,7 +2240,7 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
   .sentinel-auth-copy{font-size:13px!important}
 }
 @media(prefers-reduced-motion:reduce){
-  button:not(:disabled),.cta,.main-nav .nav-item,.wallet-help-link,
+  button:not(:disabled):not(.sentinel-auth-mark),.cta,.main-nav .nav-item,.wallet-help-link,
   .primary-btn::after,.wallet-btn::after,.sentinel-auth-button::after{
     animation:none!important;transition:none!important;transform:none!important;
   }
