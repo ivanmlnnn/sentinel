@@ -1689,3 +1689,73 @@ footer{font-size:10px;line-height:1.7}
     opacity:1;transform:none;filter:none;transition:none;will-change:auto;
   }
 }
+
+
+/* Wallet tracker: stronger title and scroll-arrival motion. */
+#investigate.section-heading h2{
+  font-size:clamp(34px,3.6vw,42px)!important;
+  line-height:1.08;
+  font-weight:700;
+  letter-spacing:-1.4px;
+  opacity:0;
+  transform:translate3d(0,24px,0) scale(.96);
+  filter:blur(4px);
+  transition:opacity .55s ease .04s,
+    transform .72s cubic-bezier(.16,.82,.24,1) .04s,
+    filter .55s ease .04s;
+  will-change:opacity,transform,filter;
+}
+#investigate.section-heading.visible h2{
+  opacity:1;
+  transform:translate3d(0,0,0) scale(1);
+  filter:blur(0);
+}
+/* Black Track Wallet button with the same electric-blue edge accent. */
+#investigate .scan-submit .primary-btn{
+  position:relative;
+  overflow:hidden;
+  isolation:isolate;
+  background:#070d14!important;
+  color:#75bdff!important;
+  border:1px solid #55aaff!important;
+  border-left:4px solid #55aaff!important;
+  border-radius:5px;
+  box-shadow:inset 0 0 0 1px #55aaff20,0 0 14px #55aaff20;
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.035em;
+  padding:13px 19px;
+  transition:background .25s ease,color .25s ease,border-color .25s ease,
+    box-shadow .25s ease,transform .25s ease;
+}
+#investigate .scan-submit .primary-btn::before{
+  content:"";
+  position:absolute;
+  z-index:-1;
+  inset:0;
+  width:45%;
+  background:linear-gradient(90deg,transparent,#55aaff30,transparent);
+  transform:translateX(-150%) skewX(-20deg);
+  transition:transform .65s ease;
+}
+#investigate .scan-submit .primary-btn:hover{
+  background:#0b1928!important;
+  color:#b9ddff!important;
+  border-color:#82c5ff!important;
+  box-shadow:inset 0 0 0 1px #55aaff55,0 0 22px #55aaff55;
+  transform:translateY(-2px);
+}
+#investigate .scan-submit .primary-btn:hover::before{transform:translateX(280%) skewX(-20deg)}
+#investigate .scan-submit .primary-btn b{color:#55aaff}
+#investigate .scan-submit .primary-btn:active{transform:translateY(0) scale(.985)}
+#investigate .scan-submit .primary-btn:disabled{background:#101820!important;color:#7894aa!important;border-color:#42617a!important;box-shadow:none}
+@media(max-width:760px){
+  #investigate.section-heading h2{font-size:clamp(32px,8vw,38px)!important}
+}
+@media(prefers-reduced-motion:reduce){
+  #investigate.section-heading h2,#investigate.section-heading.visible h2{
+    opacity:1;transform:none;filter:none;transition:none;will-change:auto;
+  }
+  #investigate .scan-submit .primary-btn,
+  #investigate .scan-submit .primary-btn::before{transition:none}
+}
