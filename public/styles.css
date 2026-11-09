@@ -1046,3 +1046,13 @@ body.sentinel-guest .guest-login-button{display:inline-flex;align-items:center;j
 .signal-note{margin:0;color:#93a096;font:10px/1.65 var(--sans);overflow-wrap:anywhere}
 @media(max-width:900px){.signal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:620px){.signal-section{padding:17px 15px!important}.signal-section-heading{gap:10px}.signal-section-heading p{max-width:250px}.signal-grid{grid-template-columns:1fr;gap:9px}.signal-card{padding:13px}.signal-value{margin-top:10px;font-size:12px}}
+
+
+/* Clear two-path entry screen: Privy-hosted email OTP or read-only guest. */
+.sentinel-auth-or{display:flex;align-items:center;gap:12px;margin:17px 0 4px;color:#78908a;font:10px/1 var(--mono);letter-spacing:.12em}
+.sentinel-auth-or span{height:1px;flex:1;background:rgba(180,205,194,.22)}
+.sentinel-auth-or b{font:inherit;font-weight:500}
+.sentinel-auth-guest-button{margin-top:8px!important;border-color:rgba(180,205,194,.42)!important;background:rgba(180,205,194,.06)!important;color:#d3e2d8!important;border-radius:3px!important;font:600 12px var(--sans)!important}
+.sentinel-auth-guest-button:hover{background:rgba(180,205,194,.12)!important;border-color:#b4cdbf!important}
+.sentinel-auth-error{margin:12px 0 0;color:#ffb1a9;font:11px/1.5 var(--sans)}
+.sentinel-auth-button:disabled{opacity:.7;cursor:wait;transform:none}
