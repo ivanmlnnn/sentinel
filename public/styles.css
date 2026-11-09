@@ -2245,3 +2245,53 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
     animation:none!important;transition:none!important;transform:none!important;
   }
 }
+
+
+/* Dedicated, centered session-loading state — no misplaced spinner. */
+.sentinel-auth-card:has(.sentinel-auth-loader){
+  width:min(100%,520px)!important;min-height:0!important;
+  display:flex!important;flex-direction:column!important;align-items:center!important;
+  justify-content:center!important;gap:0!important;
+  padding:clamp(34px,6vw,58px)!important;text-align:center!important;
+  border:1px solid rgba(232,223,120,.25)!important;border-radius:14px!important;
+  background:linear-gradient(150deg,rgba(20,31,30,.97),rgba(8,14,17,.99))!important;
+  box-shadow:0 30px 100px #0009,0 0 55px #e8df7810!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-mark{
+  flex:none!important;margin:0 auto 27px!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-kicker{
+  margin:0 0 12px!important;text-align:center!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-loader) h1{
+  width:100%;text-align:center!important;letter-spacing:.06em!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-copy{
+  max-width:100%!important;margin:12px 0 8px!important;
+  text-align:center!important;color:#aebdb5!important;
+}
+.sentinel-auth-loader{
+  position:relative!important;display:block!important;flex:none!important;
+  width:148px!important;height:3px!important;margin:24px auto 0!important;
+  overflow:hidden!important;border:0!important;border-radius:10px!important;
+  background:#ffffff18!important;box-shadow:0 0 0 1px #e8df7810!important;
+  animation:none!important;
+}
+.sentinel-auth-loader::before{
+  content:"";position:absolute;inset:0 auto 0 0;width:38%;border-radius:10px;
+  background:linear-gradient(90deg,#8bd4ef,#f5f3e9,#e8df78);
+  box-shadow:0 0 12px #e8df7880,0 0 22px #8bd4ef55;
+  animation:sentinel-loading-sweep 1.45s cubic-bezier(.65,0,.35,1) infinite;
+}
+.sentinel-auth-loader::after{
+  content:"";position:absolute;inset:-4px 0;border-left:1px solid #fff;
+  opacity:.65;animation:sentinel-loading-sweep 1.45s cubic-bezier(.65,0,.35,1) infinite;
+}
+@keyframes sentinel-loading-sweep{
+  0%{transform:translateX(-110%)}
+  100%{transform:translateX(390%)}
+}
+@media(prefers-reduced-motion:reduce){
+  .sentinel-auth-loader::before,.sentinel-auth-loader::after{animation:none!important}
+  .sentinel-auth-loader::before{width:100%;opacity:.65}
+}
