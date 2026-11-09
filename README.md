@@ -36,6 +36,9 @@ The current implementation uses:
 
 - NEAR account-state lookup through FastNear JSON-RPC.
 - Indexed native transaction, receipt, and fungible-token transfer history through NearBlocks v3.
+- First-seen activity-age evidence based on the earliest indexed transaction timestamp (explicitly not represented as the account creation date).
+- Contract code-hash change detection by comparing the current hash with previous Sentinel investigation snapshots.
+- Direct agent-to-receiver interaction history when an optional sender account is supplied.
 - Direction and signer attribution to distinguish outgoing activity from incoming spam.
 - A project-local Cloudflare D1 threat registry. Only records marked verified can trigger `BLOCK`.
 - Outgoing transaction frequency and recipient-diversity rules.
@@ -60,10 +63,10 @@ Only successful transactions with verified signer attribution count toward outgo
 
 The current risk model does **not** yet include:
 
-- Account age / first-seen age as a scored signal.
-- Historical contract-code changes or code-version-change monitoring.
-- Multi-hop interaction graphs and behavioral relationship scoring. Sentinel now supports a direct historical sender-to-receiver lookup when an optional agent account is supplied, but it does not yet build a broader interaction graph.
-- A shared, externally synchronized blocklist with standardized evidence, provenance, and review history. The current D1 registry is project-local; it should not be described as a shared community threat-intelligence network.
+- Exact account creation age as a scored signal. Sentinel reports earliest indexed activity as a clearly labeled proxy; it is not a reliable creation timestamp.
+- Contract code changes that occurred before Sentinel's first observation. Current comparison only detects hash changes between stored Sentinel scans.
+- Multi-hop interaction graphs and behavioral relationship scoring. The direct sender-to-receiver lookup is informational and does not independently alter the risk score.
+- A shared, externally synchronized blocklist with standardized evidence, provenance, and review history. The current D1 registry is shared only within this Sentinel deployment; it is not yet federated with external projects.
 
 These are known coverage gaps, not hidden capabilities.
 
