@@ -1075,3 +1075,68 @@ body.sentinel-guest .guest-login-button{display:inline-flex;align-items:center;j
 .sentinel-login-back{display:block;margin:14px auto 0;border:0;background:none;color:#b9c9c1;font:12px var(--sans);cursor:pointer}
 .sentinel-login-modal .sentinel-auth-footnote{margin:20px 0 0}
 @media(max-width:480px){.sentinel-login-modal{padding:23px 20px}}
+
+
+/* 2026-11-10 judge-readability pass: prioritize evidence and actions over tiny labels. */
+:root{--readable-body:16px;--readable-muted:#c0cec8}
+body{font-size:16px;line-height:1.65}
+p{font-size:14px;line-height:1.7}
+.main-nav .nav-item{font-size:12px;min-height:42px}
+.network-pill,.wallet-help-link{font-size:11px}
+.wallet-btn{font-size:12px;min-height:42px}
+.eyebrow,.section-index{font-size:11px;letter-spacing:.07em}
+.section-meta,.hero-note,.wallet-guide-note{font-size:10px;line-height:1.5}
+.hero-sub{font-size:16px;line-height:1.7}
+.wallet-guide-head b{font-size:14px}
+.wallet-guide-grid strong{font-size:12px}
+.wallet-guide-grid p{font-size:13px;line-height:1.7}
+.metric>span,.metric span,.metric small{font-size:10px;line-height:1.5}
+.metric b{font-size:28px}
+.panel-top{font-size:12px;letter-spacing:.04em}
+.panel-status,form label{font-size:11px}
+form label{line-height:1.5}
+.account-input{min-height:52px}
+.account-input>span{font-size:12px}
+.account-input input,input,textarea{font-size:14px;line-height:1.5}
+.account-input button{font-size:11px}
+.primary-btn,.secondary-btn,.plain-btn,.cta{font-size:12px;min-height:42px}
+.verdict strong{font-size:14px}
+.verdict small,.decision-foot,.registry-panel>p,.protocol p{font-size:13px;line-height:1.7}
+.verdict>span,.threat-status,.signal-line i{font-size:10px}
+.signal-line span{font-size:13px}
+.table-head{font-size:10px}
+.recent-address,.recent-meta,.recent-score{font-size:12px}
+.result-status-line{font-size:13px}
+.result-explanation,.ai-text{font-size:14px;line-height:1.75}
+.result ul{font-size:13px;line-height:1.8}
+.signal-section-heading p,.signal-note{font-size:12px;line-height:1.7}
+.signal-card-top h5{font-size:13px}
+.signal-state,.signal-section-tag{font-size:10px}
+.signal-value{font-size:14px;line-height:1.65}
+.toast{font-size:13px;line-height:1.5}
+footer{font-size:10px;line-height:1.7}
+@media(max-width:760px){
+ body{font-size:16px}
+ .nav-item{font-size:12px!important;padding:11px 12px;min-height:42px}
+ .wallet-btn{font-size:11px;min-height:40px}
+ .wallet-help-link{font-size:10px}
+ .hero-sub{font-size:15px}
+ .hero-note{font-size:10px}
+ .section-index{font-size:10px}
+ .section-meta{font-size:10px;max-width:145px}
+ .metric>span,.metric span,.metric small{font-size:9px}
+ .panel-top{font-size:11px}
+ form label{font-size:11px}
+ .scan-submit>span{font-size:11px;line-height:1.5}
+ .verdict>span{font-size:9px}
+ .table-head{font-size:9px}
+ .recent-address{font-size:11px}
+ .recent-meta,.recent-score{font-size:10px}
+ .signal-value{font-size:14px}
+ footer{font-size:9px}
+}
+@media(max-width:380px){
+ .metric>span,.metric span,.metric small{font-size:9px}
+ .wallet-btn{font-size:10px}
+ .section-meta{font-size:9px}
+}
