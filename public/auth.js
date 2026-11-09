@@ -9,7 +9,7 @@ window.addEventListener('unhandledrejection', (event) => { console.error('Authen
 function showAuthError(message) {
   const root = document.getElementById('auth-root');
   if (!root || document.body.classList.contains('sentinel-authenticated')) return;
-  root.innerHTML = '<main class="sentinel-auth-screen"><section class="sentinel-auth-card"><div class="sentinel-auth-mark"><img src="/IMG_20260629_220728_136.jpg?v=1" alt="Wayang Tech and Kitchen Needs"></div><p class="sentinel-auth-kicker">NEAR PROTOCOL / ACCOUNT INTELLIGENCE</p><h1>NEAR SENTINEL</h1><p class="sentinel-auth-copy">'+message+'</p><button class="sentinel-auth-button" onclick="location.reload()">Retry ↻</button><p class="sentinel-auth-security">Check your connection if this keeps happening.</p></section></main>';
+  root.innerHTML = '<main class="sentinel-auth-screen"><section class="sentinel-auth-card"><div class="sentinel-auth-mark"><img src="/IMG_20260629_220728_136.jpg?v=1" alt="NEAR Sentinel"></div><p class="sentinel-auth-kicker">NEAR PROTOCOL / ACCOUNT INTELLIGENCE</p><h1>NEAR SENTINEL</h1><p class="sentinel-auth-copy">'+message+'</p><button class="sentinel-auth-button" onclick="location.reload()">Retry ↻</button><button class="sentinel-auth-guest-button" onclick="window.startSentinelGuest && window.startSentinelGuest()">Continue as Guest ↗</button><p class="sentinel-auth-security">Guest preview is read-only and does not create a Privy session.</p></section></main>';
 }
 let dashboardStarted = false;
 
