@@ -9,6 +9,9 @@ use near_sdk::{
     Promise,
 };
 
+const HARD_MAX_PAYMENT_YOCTO: u128 = 100_000_000_000_000_000_000_000;
+const HARD_MAX_DAILY_PAYMENT_YOCTO: u128 = 200_000_000_000_000_000_000_000;
+
 #[near(contract_state)]
 #[derive(PanicOnDefault)]
 pub struct SentinelPayment {
@@ -31,8 +34,9 @@ impl SentinelPayment {
         max_daily_payment_yocto: U128,
     ) -> Self {
         assert!(!env::state_exists(), "ALREADY_INITIALIZED");
-        assert!(max_payment_yocto.0 > 0, "INVALID_MAX_PAYMENT");
-        assert!(max_daily_payment_yocto.0 >= max_payment_yocto.0, "INVALID_DAILY_CAP");
+        assert!(max_payment_yocto.0 > 0 && max_payment_yocto.0 <= HARD_MAX_PAYMENT_YOCTO, "INVALID_MAX_PAYMENT");
+        assert!(max_daily_payment_yocto.0 >= max_payment_yocto.0 &&
+            max_daily_payment_yocto.0 <= HARD_MAX_DAILY_PAYMENT_YOCTO, "INVALID_DAILY_CAP");
         Self {
             owner_id,
             signer_id,
@@ -76,13 +80,16 @@ impl SentinelPayment {
 
     pub fn set_max_payment(&mut self, max_payment_yocto: U128) {
         assert_eq!(env::predecessor_account_id(), self.owner_id, "OWNER_ONLY");
-        assert!(max_payment_yocto.0 > 0 && max_payment_yocto.0 <= self.max_daily_payment_yocto, "INVALID_MAX_PAYMENT");
+        assert!(max_payment_yocto.0 > 0 &&
+            max_payment_yocto.0 <= HARD_MAX_PAYMENT_YOCTO &&
+            max_payment_yocto.0 <= self.max_daily_payment_yocto, "INVALID_MAX_PAYMENT");
         self.max_payment_yocto = max_payment_yocto.0;
     }
 
     pub fn set_max_daily_payment(&mut self, max_daily_payment_yocto: U128) {
         assert_eq!(env::predecessor_account_id(), self.owner_id, "OWNER_ONLY");
-        assert!(max_daily_payment_yocto.0 >= self.max_payment_yocto, "INVALID_DAILY_CAP");
+        assert!(max_daily_payment_yocto.0 >= self.max_payment_yocto &&
+            max_daily_payment_yocto.0 <= HARD_MAX_DAILY_PAYMENT_YOCTO, "INVALID_DAILY_CAP");
         self.max_daily_payment_yocto = max_daily_payment_yocto.0;
     }
 
