@@ -150,51 +150,10 @@ For a strict independent review, keep these statements separate:
 
 Do not mistake a successful Worker deployment for proof of a successful blockchain payout. If a real Sentinel transaction hash is added later, include the exact hash, signer, contract, recipient, amount, final status, payout receipt ID, and an independent Testnet Explorer/API link. Never invent or substitute a hash from an unrelated wallet.
 
-## 7. AI provider availability
+## 7. AI provider integration
 
-The current agent routes use Anthropic's Messages API and tool-call schema. The recorded `AI_PROVIDER_BAD_REQUEST` credit-balance response is an upstream Anthropic billing/credit issue; the code now classifies this condition as `AI_PROVIDER_BILLING_ERROR`.
+The Agent, Guest Agent, and AI Review routes use Google Gemini through a shared server-side adapter. The adapter translates Sentinel's allowlisted tool declarations and multi-turn tool results to Gemini function-calling format. The model remains an untrusted proposer and evidence explainer; deterministic policy and the isolated signer remain the authorization boundary.
 
-This classification improves diagnosis but does not replenish provider credits. Do not replace an Anthropic key with a Qwen key: provider authentication and tool-call protocols are not interchangeable. A different provider requires a tested adapter across the agent, guest-agent and AI-review routes.
+Runtime configuration: set `GEMINI_API_KEY` as a secret on the Cloudflare Main Worker. The default model is `gemini-2.5-flash`. See [Gemini AI Provider Setup](DEPLOYMENT_STATUS_AND_AI_PROVIDER.md#gemini-ai-provider) for deployment and verification steps.
 
-The wallet investigation and security controls are separate from the model provider. During a provider-credit outage, demonstrate the read-only scanner and automated security tests; do not claim a successful live AI conversation unless one is observed.
-
-## 8. Provenance and verification scope
-
-This repository has pre-existing history and project assets. The submission does not claim that the entire repository was created during the hackathon. Use the Git history and [provenance notes](PROVENANCE.md) to assess event-period work.
-
-Sentinel is a risk-screening and authorization control, not a guarantee that an account is safe, a substitute for an independent audit, or a promise that every historical event is indexed. NearBlocks pagination/provider coverage can be incomplete; the correct response is `INCOMPLETE`, not a false assurance.
-
-## 9. Suggested judge review path (5 minutes)
-
-1. Read this page's one-sentence pitch and four verdicts.
-2. Open the [live dashboard](https://sentinel.ivmaladin.workers.dev) and run a read-only Testnet wallet scan.
-3. Read [NEAR Ecosystem Integration](NEAR_ECOSYSTEM_INTEGRATION.md), then inspect [PR #3](https://github.com/ivanmlnnn/sentinel/pull/3) and [merged PR #10](https://github.com/ivanmlnnn/sentinel/pull/10).
-4. Open the [current Main + isolated Signer deployment](https://github.com/ivanmlnnn/sentinel/actions/runs/42900812519); inspect both Worker versions and the production smoke output.
-5. Open the current [Sentinel checks](https://github.com/ivanmlnnn/sentinel/actions/runs/42900812426), [CodeQL](https://github.com/ivanmlnnn/sentinel/actions/runs/42900812267), and [Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42900812261).
-6. Clone and run the reproducible commands above.
-7. Treat any payout as verified only when a real transaction hash and matching successful receipt are available.
-
-## 10. Official submission requirements
-
-The official event page requires a public repository and a public X demo post that says the project was built at NEAR HACKATHON, tags `@NEARProtocol`, uses `#NEARHackathon`, and includes a demo video or screenshots. Submit both links before **14 November 2026, 23:59 UTC**.
-
-- [Official NEAR Hackathon page](https://nearhackathon.com/)
-- [Live dashboard](https://sentinel.ivmaladin.workers.dev)
-- [Repository](https://github.com/ivanmlnnn/sentinel)
-
-A strong repository helps screening, but it does not replace the required public demo post and submission form.
-
-
-## 11. Merged Ed25519 signed-verdict implementation
-
-The Ed25519 signed-verdict implementation was merged into `main` through [PR #10](https://github.com/ivanmlnnn/sentinel/pull/10), merge commit `2351fd39d8e272a721a00d6e7f9f8c82a9b43721`. It adds a signed assessment boundary between the Main Worker and isolated Signer Worker. The canonical verdict binds sender, receiver, exact microNEAR amount, nonce, issue time, expiry, decision, risk score, assessment status, and assessment ID. The signer verifies the signature and exact intent before authorization and payment execution.
-
-### Current main release evidence — 11 November 2026
-
-- [Main + isolated Signer deployment run](https://github.com/ivanmlnnn/sentinel/actions/runs/42900812519) — completed successfully on the merged main commit. Signer version: `b093e1ca-d6c3-423b-b4e7-1b26d377aed2`; Main version: `d37e01df-6907-4b75-9e53-20a0300871ae`.
-- [Sentinel checks](https://github.com/ivanmlnnn/sentinel/actions/runs/42900812426) — 127 tests passed, 0 failed; D1 validation, both Worker bundle checks, prompt-injection regression, and payment-contract WASM build passed.
-- [Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42900812261) — success.
-- [CodeQL](https://github.com/ivanmlnnn/sentinel/actions/runs/42900812267) — success.
-- Production HTTP smoke suite — 8/8 passed in the same deployment run.
-
-The feature-branch dual-Worker release record is also available in [run #221](https://github.com/ivanmlnnn/sentinel/actions/runs/42887069411). The merged-main deployment above is the current release record. Deployment and automated signature tests establish implementation and release evidence; they are not a substitute for a transaction hash and receipt proving a live Sentinel-originated payment.
+The provider migration is covered by `tests/gemini-provider.test.mjs` and the repository's CI workflows. A passing adapter test or build is not, by itself, proof that the production secret is configured or that a live model response has succeeded. Use the linked release workflow and live route smoke test as the evidence for production availability.
