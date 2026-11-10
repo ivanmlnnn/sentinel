@@ -67,7 +67,7 @@ export default {
             return rateLimitResponse();
           }
 
-          if (request.method === "POST" && url.pathname === "/api/agent/run") {
+          if (request.method === "POST" && ["/api/agent/run", "/api/agent/approve"].includes(url.pathname)) {
             const agentAllowed = await enforceRateLimit(env.AGENT_RATE_LIMITER, ip);
             if (!agentAllowed) {
               if (!env.AGENT_RATE_LIMITER) {
