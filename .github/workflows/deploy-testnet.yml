@@ -13,7 +13,7 @@ on:
           - signer
           - payment-contract
       rotate_signer_key:
-        description: "One-time only: install the restricted key and revoke the old runtime FullAccess key"
+        description: "Install a new restricted runtime key; preserve the existing admin FullAccess key"
         required: true
         type: boolean
         default: false
@@ -128,7 +128,7 @@ jobs:
           NEAR_PAYMENT_MAX_PAYMENT_YOCTO: ${{ secrets.NEAR_PAYMENT_MAX_PAYMENT_YOCTO }}
           NEAR_PAYMENT_MAX_DAILY_PAYMENT_YOCTO: ${{ secrets.NEAR_PAYMENT_MAX_DAILY_PAYMENT_YOCTO }}
         run: node scripts/deploy-payment-contract.mjs
-      - name: Install restricted function-call key and revoke old runtime key (one-time)
+      - name: Add restricted function-call key and preserve admin key
         if: ${{ (github.event.inputs.deploy_target == 'signer' || github.event.inputs.deploy_target == 'both') && github.event.inputs.rotate_signer_key == 'true' }}
         env:
           NEAR_AGENT_SIGNER_ACCOUNT_ID: ${{ secrets.NEAR_AGENT_SIGNER_ACCOUNT_ID }}
