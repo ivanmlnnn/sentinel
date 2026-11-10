@@ -15,7 +15,7 @@ This branch implements a two-Worker signing architecture and a mandatory human a
 5. The user sees the exact receiver and amount and must click **Approve this exact payment** and confirm the browser prompt.
 6. The approval endpoint claims the pending approval once, checks the authenticated actor, re-runs Sentinel against the exact intent, and calls the signer only through a private Cloudflare service binding.
 7. Main Worker signs the internal request with HMAC-SHA256 over timestamp, one-time nonce, and exact body. The signer rejects stale signatures, invalid signatures, and replayed nonces.
-8. The signer independently verifies the Privy token, actor binding, Testnet-only account, allowlist, limits, kill switch, and fresh Sentinel verdict. It reserves daily spend in D1 before signing.
+8. The signer independently verifies the Privy token, actor binding, Testnet-only account, allowlist, limits, kill switch, fresh Sentinel verdict, and the exact unexpired approval row. A signer-only unique claim ledger prevents an approval ID from being claimed twice. It reserves daily spend in D1 before signing.
 9. The signer uses only the fixed NEAR Testnet RPC. Ambiguous post-submit outcomes remain `UNKNOWN` and are not automatically retried.
 10. Audit proposals, approvals, reservations, and transaction hashes are stored in D1. Prompts, JWTs, provider payloads, and private keys are not stored.
 
@@ -80,7 +80,7 @@ Generate the HMAC secret locally (never send it in chat or commit it), then set 
 
 ### D1 migration gate
 
-The migrations are additive: `004_agent_security.sql`, `005_agent_execution.sql`, `006_signer_nonces.sql`, and `007_agent_pending_approvals.sql`. Before applying them to the shared database:
+The migrations are additive: `004_agent_security.sql`, `005_agent_execution.sql`, `006_signer_nonces.sql`, `007_agent_pending_approvals.sql`, and `008_signer_approval_claims.sql`. Before applying them to the shared database:
 
 1. Confirm the database ID in `wrangler.jsonc` is the intended Sentinel D1 database.
 2. Export/backup the database.
@@ -99,7 +99,7 @@ Do not apply migrations against a different database or from an unreviewed branc
 - [ ] HMAC secret matches between Workers; private key exists only in signer Worker.
 - [ ] Signer kill switch remains enabled during negative tests.
 - [ ] Unauthenticated, invalid-HMAC, stale-HMAC, and replayed-nonce requests are rejected.
-- [ ] BLOCK, WARN, INCOMPLETE, receiver substitution, expired approval, duplicate approval, and over-limit requests are rejected.
+- [ ] BLOCK, WARN, INCOMPLETE, receiver substitution, expired approval, duplicate approval, replayed signer claim, and over-limit requests are rejected.
 - [ ] Approval UI displays the exact receiver and amount and requires a deliberate click plus confirmation.
 - [ ] Only after all checks pass: fund the dedicated signer with a minimal Testnet balance, temporarily disable the signer kill switch, and make one small transfer to `rawvest6817.testnet`.
 - [ ] Independently verify transaction hash, sender, receiver, amount, final status, and D1 audit; immediately re-enable the kill switch.
@@ -111,3 +111,8 @@ Do not claim a real transaction or isolated deployment until the above evidence 
 The honest demo is: prompt → AI proposal → deterministic Sentinel evidence → exact-intent approval screen → isolated signer boundary → Testnet explorer hash. Show a BLOCK/WARN or incomplete-evidence case being denied as well. If live signing is not deployed, demonstrate the approval and fail-closed behavior and explicitly label the transfer step as gated—not live.
 
 See [Judge demo guide](JUDGE_DEMO.md) for a short walkthrough and submission checklist.
+
+
+## Residual security limitation
+
+The five-minute approval is an authenticated, actor-bound application approval backed by D1 and a one-time signer claim. It is **not yet a cryptographic wallet-signed approval**. The main Worker and signer Worker currently share the Sentinel D1 database and an HMAC secret for the private service call. This isolates the NEAR private key and adds defense in depth, but a fully compromised main Worker with its D1 write access and a valid user token could attempt to forge an application approval within the signer's independent policy limits. A production-grade next step is a user-signed approval challenge (for example, a NEAR wallet message signature bound to the exact receiver, amount, network, expiry, and nonce) or a separately controlled approval service. Do not describe the current web confirmation as protection against a fully compromised application Worker.
