@@ -583,6 +583,9 @@ function renderAgentResult(data) {
     (txHash ? '<p class="agent-result-hash">TX HASH · ' + escapeHtml(txHash) + '</p>' : '') +
     txLink +
     (approvalId ? '<div class="agent-approval"><p>Connect a NEAR Testnet wallet with message-signing support. Your wallet will sign the exact receiver, amount, and expiry (NEP-413); this signature does not itself transfer funds. The proposal expires in five minutes.</p><button type="button" class="primary-btn" id="approveAgentPayment">Sign with NEAR wallet & approve</button></div>' : '');
+  result.classList.remove('agent-result-enter');
+  void result.offsetWidth;
+  result.classList.add('agent-result-enter');
   if (approvalId) {
     $('approveAgentPayment').addEventListener('click', async () => {
       const receiver = String(proposal.receiver_account || '');
@@ -656,7 +659,8 @@ if (agentForm && !GUEST_MODE) {
     const prompt = $('agentPrompt').value.trim();
     if (!prompt) return;
     button.disabled = true;
-    button.textContent = 'Agent running · Sentinel checking…';
+    button.classList.add('agent-running');
+    button.innerHTML = '<span class="agent-button-pulse" aria-hidden="true"></span> Agent running <b>…</b>';
     const result = $('agentResult');
     result.classList.remove('hidden');
     result.textContent = 'Calling the AI provider and evaluating the proposed action…';
@@ -674,6 +678,7 @@ if (agentForm && !GUEST_MODE) {
       toast(error.message || 'Agent request failed.');
     } finally {
       button.disabled = false;
+      button.classList.remove('agent-running');
       button.innerHTML = 'Run secure agent <b>↗</b>';
     }
   });
