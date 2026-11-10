@@ -169,10 +169,46 @@ function normalizeFtTransfer(row, accountId) {
   };
 }
 
-async function runInvestigation({ request, env }) {
+async function verifyTurnstileToken(token, request, env) {
+  const secret = typeof env.TURNSTILE_SECRET === "string" ? env.TURNSTILE_SECRET.trim() : "";
+  if (!secret) return { ok: false, status: 503, error: "TURNSTILE_NOT_CONFIGURED" };
+  if (typeof token !== "string" || token.length < 10 || token.length > 2048) {
+    return { ok: false, status: 403, error: "TURNSTILE_TOKEN_REQUIRED" };
+  }
+  const form = new URLSearchParams({ secret, response: token });
+  const ip = request.headers.get("cf-connecting-ip");
+  if (ip) form.set("remoteip", ip);
+  let response;
   try {
-    const body = await readJson(request);
+    response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: form.toString(),
+      signal: AbortSignal.timeout(5000)
+    });
+  } catch {
+    return { ok: false, status: 503, error: "TURNSTILE_VERIFY_UNAVAILABLE" };
+  }
+  if (!response.ok) return { ok: false, status: 503, error: "TURNSTILE_VERIFY_UNAVAILABLE" };
+  const result = await response.json().catch(() => null);
+  if (!result?.success || result.action !== "track_wallet") {
+    return { ok: false, status: 403, error: "TURNSTILE_VERIFICATION_FAILED" };
+  }
+  const allowed = String(env.TURNSTILE_ALLOWED_HOSTNAMES || "").split(",").map(x => x.trim().toLowerCase()).filter(Boolean);
+  if (allowed.length && !allowed.includes(String(result.hostname || "").toLowerCase())) {
+    return { ok: false, status: 403, error: "TURNSTILE_HOSTNAME_MISMATCH" };
+  }
+  return { ok: true };
+}
+
+async function runInvestigation({ request, env, actor = null, turnstileVerified = false }) {
+  try {
+    const body = await readJson(request, 4096);
     if (!body) return json({ error: "Invalid JSON body." }, 400);
+    if (!turnstileVerified) {
+      const captcha = await verifyTurnstileToken(body.turnstile_token, request, env);
+      if (!captcha.ok) return json({ error: captcha.error }, captcha.status);
+    }
     const receiver = String(body.receiver_account || "").trim().toLowerCase();
     const sender = body.sender_account ? String(body.sender_account).trim().toLowerCase() : null;
     const amount = Number(body.amount_near || 0);
@@ -196,7 +232,7 @@ async function runInvestigation({ request, env }) {
       });
       const data = await response.json();
       if (data.result) account = data.result;
-      else rpcError = data.error?.message || "Account not found or RPC error";
+      else rpcError = "Account not found or RPC error";
     } catch (error) { rpcError = error?.message || "NEAR RPC unavailable"; }
 
     let txHistory = null;
@@ -457,6 +493,10 @@ async function runInvestigation({ request, env }) {
       // Keep INCOMPLETE as an assessment status in the response/evidence, not as a persisted decision value.
       await env.DB.prepare("INSERT INTO investigations (id, sender_account, receiver_account, amount_near, network, decision, risk_score, risk_factors, evidence, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
         .bind(id, sender, receiver, amount, network, verdict.decision, verdict.risk_score, JSON.stringify(verdict.risk_factors), JSON.stringify(evidence), createdAt).run();
+      if (actor) {
+        await env.DB.prepare("INSERT INTO investigation_owners (investigation_id, actor, created_at) VALUES (?, ?, ?)")
+          .bind(id, actor, createdAt).run();
+      }
     } catch (error) {
       console.error("Sentinel D1 investigation insert failed:", error);
       return json({ error: "DATABASE_WRITE_FAILED", detail: "Sentinel could not save the investigation to D1. Check Worker logs for the D1 constraint or binding error." }, 503);
@@ -480,13 +520,18 @@ async function runInvestigation({ request, env }) {
 }
 
 
+/** Trusted server-to-server preflight used only after the caller verifies the user or signer HMAC. */
+export async function runTrustedInvestigation({ request, env, actor = null }) {
+  return runInvestigation({ request, env, actor, turnstileVerified: true });
+}
+
 /** Authenticated investigation route for signed-in dashboard users. */
 export async function onRequestPost(context) {
   const identity = await verifyPrivyAccessToken(context.request, context.env);
   if (!identity) {
     return json({ error: "UNAUTHORIZED", detail: "A valid Privy app access token is required for authenticated investigations." }, 401);
   }
-  return runInvestigation(context);
+  return runInvestigation({ ...context, actor: identity.sub, turnstileVerified: context.data?.turnstileVerified === true });
 }
 
 /**
@@ -494,5 +539,5 @@ export async function onRequestPost(context) {
  * or sign transactions. The Worker applies a stricter per-IP rate limit.
  */
 export async function onRequestGuestPost(context) {
-  return runInvestigation(context);
+  return runInvestigation({ ...context, turnstileVerified: context.data?.turnstileVerified === true });
 }

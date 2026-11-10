@@ -37,6 +37,10 @@ jobs:
       - name: Run test suite
         run: npm test
 
+      - name: Apply pending D1 migrations
+        if: ${{ env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: npx wrangler@4.159.0 d1 migrations apply sentinel-db --remote
+
       - name: Explain missing Cloudflare credentials
         if: ${{ env.CLOUDFLARE_API_TOKEN == '' || env.CLOUDFLARE_ACCOUNT_ID == '' }}
         run: echo "::warning::Deployment skipped. Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID as repository Actions secrets."

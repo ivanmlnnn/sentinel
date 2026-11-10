@@ -8,41 +8,89 @@ on:
 
 permissions:
   contents: read
-  id-token: write
-  attestations: write
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - name: Checkout
+      - name: Checkout full history for secret scanning
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan pull request changes for exposed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Scan complete repository history
+        shell: bash
+        run: |
+          GITLEAKS_BIN="$(printf '%s\n' /tmp/gitleaks-*/gitleaks | head -n 1)"
+          test -x "$GITLEAKS_BIN"
+          "$GITLEAKS_BIN" detect --source . --redact --exit-code 2
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+      - name: Set up Rust and WebAssembly target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install project dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
       - name: Check browser and API JavaScript syntax
         run: |
           node --check public/auth.js
           node --check public/app.js
           node --check functions/api/investigate.js
           node --check functions/api/_shared.js
+          node --check functions/api/agent.js
+          node --check functions/api/agent-approve.js
+          node --check functions/api/guest-agent.js
+          node --check functions/api/privy-webhook.js
+          node --check src/index.js
+          node --check src/http-security.mjs
+          node --check scripts/check-d1-migrations.mjs
+          node --check signer-worker/src/index.mjs
+          node --check scripts/install-restricted-signer-key.mjs
+          node --check scripts/deploy-payment-contract.mjs
+          node --check scripts/generate-restricted-signer-key.mjs
+          node --check src/agent-policy.mjs
+          node --check src/near-agent-signer.mjs
+      - name: Validate D1 migration SQL against SQLite
+        run: npm run check:d1
+      - name: Validate Cloudflare Worker bundle
+        run: npx wrangler@4.159.0 deploy --dry-run
+      - name: Validate isolated signer Worker bundle
+        run: npx wrangler@4.159.0 deploy --config signer-worker/wrangler.jsonc --dry-run
       - name: Run test suite
         run: npm test
       - name: Run offline prompt-injection demo
         run: npm run demo:attack
+      - name: Build NEAR payment contract to WebAssembly
+        run: cargo build --manifest-path payment-contract/Cargo.toml --target wasm32-unknown-unknown --release
+
+  attest-source:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Checkout exact tested revision
+        uses: actions/checkout@v4
       - name: Package exact source revision
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         run: git archive --format=tar.gz --output=sentinel-source.tar.gz "$GITHUB_SHA"
       - name: Upload source snapshot
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: sentinel-source-${{ github.sha }}
           path: sentinel-source.tar.gz
           if-no-files-found: error
       - name: Attest source snapshot provenance
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: sentinel-source.tar.gz

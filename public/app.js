@@ -24,7 +24,7 @@ function escapeHtml(value) {
 }
 async function request(path, options = {}) {
   const headers = {'content-type':'application/json', ...(options.headers || {})};
-  if (!GUEST_MODE && typeof window.getSentinelAccessToken === 'function') {
+  if (typeof window.getSentinelAccessToken === 'function') {
     try {
       const token = await window.getSentinelAccessToken();
       if (token) headers.authorization = 'Bearer ' + token;
@@ -34,7 +34,12 @@ async function request(path, options = {}) {
   }
   const response = await fetch(API + path, { ...options, headers });
   const data = await response.json().catch(() => ({error:'Invalid server response.'}));
-  if (!response.ok) throw new Error(data.error || 'Request failed. Please retry.');
+  if (!response.ok) {
+    const detail = typeof data.provider_message === 'string' ? ': ' + data.provider_message : '';
+    const error = new Error((data.error || 'Request failed. Please retry.') + detail);
+    error.data = data;
+    throw error;
+  }
   return data;
 }
 function syncWalletUI(accountId, walletName) {
@@ -73,7 +78,7 @@ async function initWallet() {
   try {
     // NEAR Connect is the current recommended connector in the NEAR Wallet Selector transition.
     const { NearConnector } = await import('https://esm.sh/@hot-labs/near-connect@0.12.0');
-    connector = new NearConnector({ network:'testnet', features:{ testnet:true }, autoConnect:false });
+    connector = new NearConnector({ network:'testnet', features:{ testnet:true, signMessage:true }, autoConnect:false });
     await connector.whenManifestLoaded;
 
     connector.on('wallet:signIn', event => {
@@ -358,6 +363,137 @@ function renderResult(data) {
   }
 }
 
+function setTrackWalletTurnstileStatus(message, state = 'loading') {
+  const status = $('turnstileTrackWalletStatus');
+  const retry = $('turnstileTrackWalletRetry');
+  const scanButton = $('scanBtn');
+  if (status) {
+    status.textContent = message;
+    status.dataset.state = state;
+  }
+  if (retry) retry.hidden = state !== 'error';
+  if (scanButton) scanButton.disabled = state !== 'verified';
+}
+function waitForTurnstileApi(retry = false) {
+  if (window.turnstile && typeof window.turnstile.render === 'function') return Promise.resolve();
+  if (retry) {
+    const previous = document.querySelector('script[src*="challenges.cloudflare.com/turnstile/v0/api.js"]');
+    previous?.remove();
+    window.__sentinelTurnstileApiPromise = null;
+  }
+  if (window.__sentinelTurnstileApiPromise) return window.__sentinelTurnstileApiPromise;
+  const promise = new Promise((resolve, reject) => {
+    let script = document.querySelector('script[src*="challenges.cloudflare.com/turnstile/v0/api.js"]');
+    if (!script) {
+      script = document.createElement('script');
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+    let settled = false;
+    const finish = (error) => {
+      if (settled) return;
+      settled = true;
+      window.clearInterval(poll);
+      window.clearTimeout(timeout);
+      script.removeEventListener('load', check);
+      script.removeEventListener('error', failed);
+      if (error) reject(error);
+      else resolve();
+    };
+    const check = () => {
+      if (window.turnstile && typeof window.turnstile.render === 'function') finish();
+    };
+    const failed = () => finish(new Error('Cloudflare Turnstile script could not be downloaded. Retry or check network filtering.'));
+    const poll = window.setInterval(check, 100);
+    const timeout = window.setTimeout(
+      () => finish(new Error('Cloudflare Turnstile did not load within 30 seconds. Check network filtering or browser content blockers.')),
+      30000
+    );
+    script.addEventListener('load', check, { once: true });
+    script.addEventListener('error', failed, { once: true });
+    check();
+  });
+  window.__sentinelTurnstileApiPromise = promise.catch(error => {
+    window.__sentinelTurnstileApiPromise = null;
+    throw error;
+  });
+  return window.__sentinelTurnstileApiPromise;
+}
+function getTrackWalletTurnstileToken() {
+  if (!window.turnstile || window.__sentinelTurnstileWidgetId === undefined || window.__sentinelTurnstileWidgetId === null) {
+    throw new Error('Cloudflare verification is not ready. Reload the page or retry the verification.');
+  }
+  const token = window.__sentinelTurnstileToken || window.turnstile.getResponse(window.__sentinelTurnstileWidgetId);
+  if (!token) throw new Error('Complete the Cloudflare verification before tracking this wallet.');
+  return token;
+}
+function resetTrackWalletTurnstile() {
+  window.__sentinelTurnstileToken = null;
+  if (window.turnstile && window.__sentinelTurnstileWidgetId !== undefined && window.__sentinelTurnstileWidgetId !== null) {
+    try { window.turnstile.reset(window.__sentinelTurnstileWidgetId); } catch (error) {
+      console.warn('Could not reset Turnstile widget:', error);
+    }
+  }
+  setTrackWalletTurnstileStatus('Complete Cloudflare verification before each wallet scan.', 'ready');
+}
+async function initTrackWalletTurnstile(retry = false) {
+  const mount = $('turnstileTrackWallet');
+  if (!mount) return;
+  const sitekey = String(mount.dataset.sitekey || '').trim();
+  if (!sitekey) {
+    setTrackWalletTurnstileStatus('Cloudflare site key is missing from this page configuration.', 'error');
+    return;
+  }
+  if (window.__sentinelTurnstileWidgetId !== undefined && window.__sentinelTurnstileWidgetId !== null) return;
+  setTrackWalletTurnstileStatus('Loading Cloudflare verification…', 'loading');
+  try {
+    await waitForTurnstileApi(retry);
+    if (window.__sentinelTurnstileWidgetId !== undefined && window.__sentinelTurnstileWidgetId !== null) return;
+    const widgetId = window.turnstile.render(mount, {
+      sitekey,
+      action: 'track_wallet',
+      theme: 'auto',
+      size: 'normal',
+      appearance: 'always',
+      execution: 'render',
+      'refresh-expired': 'auto',
+      callback: token => {
+        window.__sentinelTurnstileToken = typeof token === 'string' ? token : null;
+        setTrackWalletTurnstileStatus('Cloudflare verification complete. You can track this wallet.', 'verified');
+      },
+      'error-callback': errorCode => {
+        window.__sentinelTurnstileToken = null;
+        setTrackWalletTurnstileStatus('Cloudflare verification failed (' + String(errorCode || 'unknown') + '). Check the site key, allowed hostname, and browser network access.', 'error');
+        toast('Cloudflare verification failed. Please retry.');
+      },
+      'expired-callback': () => {
+        setTrackWalletTurnstileStatus('Verification expired. Complete Cloudflare verification again.', 'ready');
+        toast('Verification expired. Please verify again.');
+      },
+      'timeout-callback': () => setTrackWalletTurnstileStatus('Verification timed out. Please try again.', 'error')
+    });
+    if (widgetId === undefined || widgetId === null) throw new Error('Cloudflare did not return a widget ID.');
+    window.__sentinelTurnstileWidgetId = widgetId;
+    setTrackWalletTurnstileStatus('Complete Cloudflare verification before each wallet scan.', 'ready');
+  } catch (error) {
+    console.error('Turnstile initialization failed:', error);
+    setTrackWalletTurnstileStatus(error?.message || 'Cloudflare verification could not be initialized.', 'error');
+  }
+}
+$('turnstileTrackWalletRetry')?.addEventListener('click', async () => {
+  const mount = $('turnstileTrackWallet');
+  if (window.turnstile && window.__sentinelTurnstileWidgetId !== undefined && window.__sentinelTurnstileWidgetId !== null) {
+    try { window.turnstile.remove(window.__sentinelTurnstileWidgetId); } catch {}
+  }
+  window.__sentinelTurnstileWidgetId = null;
+  window.__sentinelTurnstileToken = null;
+  if (mount) mount.replaceChildren();
+  setTrackWalletTurnstileStatus('Reloading Cloudflare verification…', 'loading');
+  await initTrackWalletTurnstile(true);
+});
+
 async function loadMetrics() {
   try {
     const data = await request('/metrics'), totals = data.totals || {}, threats = data.threats || {};
@@ -368,7 +504,7 @@ async function loadMetrics() {
     const recent = Array.isArray(data.recent) ? data.recent : [];
     $('recentList').innerHTML = recent.length ? recent.map(x =>
       '<div class="recent-item"><div><div class="recent-address">'+escapeHtml(x.receiver_account)+'</div><div class="recent-meta">'+new Date(x.created_at).toLocaleString()+' · '+Number(x.amount_near||0).toLocaleString()+' NEAR</div></div><span class="pill '+escapeHtml(x.decision)+'">'+escapeHtml(x.decision)+'</span><span class="recent-score">'+(Number(x.risk_score)||0)+'/100</span></div>'
-    ).join('') : '<div class="empty-state">No checks yet. Try your first address above.</div>';
+    ).join('') : '<div class="empty-state">Individual wallet scan activity is private. Aggregate security metrics are shown above.</div>';
   } catch (error) { const apiStatus = $('apiStatus'); if (apiStatus) apiStatus.textContent = 'OFFLINE'; $('recentList').innerHTML = '<div class="empty-state">Activity is temporarily unavailable.</div>'; }
 }
 async function loadThreats() {
@@ -382,18 +518,25 @@ async function loadThreats() {
 
 $('investigateForm').addEventListener('submit', async event => {
   event.preventDefault();
-  const button = $('scanBtn'); button.disabled = true; button.textContent = 'Tracking wallet activity…';
+  const button = $('scanBtn');
+  if ($('turnstileTrackWalletStatus')?.dataset.state !== 'verified') {
+    toast('Complete Cloudflare verification before tracking this wallet.');
+    return;
+  }
+  button.disabled = true; button.textContent = 'Tracking wallet activity…';
   $('result').classList.add('hidden');
   try {
     const investigationPath = GUEST_MODE ? '/guest/investigate' : '/investigate';
+    const turnstileToken = getTrackWalletTurnstileToken();
     const data = await request(investigationPath,{method:'POST',body:JSON.stringify({
       receiver_account:$('receiver').value.trim(),
       sender_account:$('sender').value.trim() || null,
-      amount_near:0
+      amount_near:0,
+      turnstile_token: turnstileToken
     })});
     renderResult(data); await loadMetrics(); toast('Wallet tracking complete: '+data.decision);
   } catch (error) { toast(error.message); }
-  finally { button.disabled = false; button.innerHTML = 'Track wallet <b>↗</b>'; }
+  finally { resetTrackWalletTurnstile(); button.innerHTML = 'Track wallet <b>↗</b>'; }
 });
 $('pasteReceiver').addEventListener('click', async () => {
   try { $('receiver').value = await navigator.clipboard.readText(); }
@@ -416,7 +559,225 @@ $('sendReport').addEventListener('click',async () => {
   finally { button.disabled = false; }
 });
 
+const agentForm = $('agentForm');
+const GUEST_CHAT_KEY = 'sentinel.guestAgent.messages.v1';
+let guestConversation = [];
+if (GUEST_MODE) {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(GUEST_CHAT_KEY) || '[]');
+    if (Array.isArray(saved)) guestConversation = saved
+      .filter(item => item && ['user', 'assistant'].includes(item.role) && typeof item.content === 'string')
+      .slice(-14);
+  } catch { guestConversation = []; }
+}
+function renderGuestConversation(pending = false) {
+  const result = $('agentResult');
+  if (!result) return;
+  const transcript = document.createElement('div');
+  transcript.className = 'guest-chat-transcript';
+  transcript.setAttribute('aria-label', 'Sentinel AI conversation');
+
+  for (const item of guestConversation) {
+    const article = document.createElement('article');
+    article.className = 'guest-chat-message guest-chat-' + (item.role === 'user' ? 'user' : 'assistant');
+    const label = document.createElement('span');
+    label.textContent = item.role === 'user' ? 'YOU' : 'SENTINEL AI';
+    const message = document.createElement('p');
+    message.textContent = item.content;
+    article.append(label, message);
+    transcript.append(article);
+  }
+
+  if (pending) {
+    const article = document.createElement('article');
+    article.className = 'guest-chat-message guest-chat-assistant guest-chat-pending';
+    const label = document.createElement('span');
+    label.textContent = 'SENTINEL AI';
+    const message = document.createElement('p');
+    message.textContent = 'Thinking through your request…';
+    article.append(label, message);
+    transcript.append(article);
+  }
+
+  const meta = document.createElement('div');
+  meta.className = 'guest-chat-meta';
+  meta.textContent = 'GUEST READ-ONLY · ' + guestConversation.length + ' MESSAGES IN CONTEXT';
+  result.replaceChildren(transcript, meta);
+  result.classList.remove('hidden');
+  result.scrollTop = result.scrollHeight;
+}
+function saveGuestConversation() {
+  try { sessionStorage.setItem(GUEST_CHAT_KEY, JSON.stringify(guestConversation.slice(-14))); } catch {}
+}
+function renderAgentResult(data) {
+  const result = $('agentResult');
+  const status = String(data.status || 'UNKNOWN');
+  const verdict = data.sentinel?.decision || 'NOT_AVAILABLE';
+  const risk = Number.isFinite(Number(data.sentinel?.risk_score)) ? Number(data.sentinel.risk_score) + '/100' : 'Not scored';
+  const proposal = data.proposal || {};
+  const txHash = typeof data.transaction_hash === 'string' ? data.transaction_hash : '';
+  const explorerUrl = typeof data.explorer_url === 'string' &&
+    /^https:\/\/testnet\.nearblocks\.io\/txns\/[1-9A-HJ-NP-Za-km-z]{32,64}$/.test(data.explorer_url)
+    ? data.explorer_url : (data.execution_enabled === true && txHash
+      ? 'https://testnet.nearblocks.io/txns/' + encodeURIComponent(txHash) : '');
+  const txLink = data.execution_enabled === true && txHash && explorerUrl
+    ? '<a class="agent-tx-link" href="' + escapeHtml(explorerUrl) + '" target="_blank" rel="noopener noreferrer">View RPC-verified Testnet transaction ↗</a>'
+    : '';
+  const approvalId = status === 'AWAITING_HUMAN_APPROVAL' ? String(data.approval_id || '') : '';
+  result.innerHTML =
+    '<div class="agent-result-head agent-result-' + escapeHtml(status.toLowerCase()) + '">' +
+      '<span>AGENT STATUS</span><b>' + escapeHtml(status.replaceAll('_', ' ')) + '</b></div>' +
+    '<div class="agent-result-grid">' +
+      '<div><span>PROPOSED RECEIVER</span><b>' + escapeHtml(proposal.receiver_account || '—') + '</b></div>' +
+      '<div><span>AMOUNT</span><b>' + escapeHtml(proposal.amount_near == null ? '—' : String(proposal.amount_near) + ' NEAR') + '</b></div>' +
+      '<div><span>SENTINEL VERDICT</span><b>' + escapeHtml(verdict) + '</b></div>' +
+      '<div><span>RISK SCORE</span><b>' + escapeHtml(risk) + '</b></div></div>' +
+    '<p class="agent-result-reason">' + escapeHtml(data.reason || data.message || 'No execution reason returned.') + '</p>' +
+    ((data.agent_message || data.message) ? '<p class="agent-result-message">' + escapeHtml(data.agent_message || data.message) + '</p>' : '') +
+    (txHash ? '<p class="agent-result-hash">TX HASH · ' + escapeHtml(txHash) + '</p>' : '') +
+    txLink +
+    (approvalId ? '<div class="agent-approval"><p>Connect a NEAR Testnet wallet with message-signing support. Your wallet will sign the exact receiver, amount, and expiry (NEP-413); this signature does not itself transfer funds. The proposal expires in five minutes.</p><button type="button" class="primary-btn" id="approveAgentPayment">Sign with NEAR wallet & approve</button></div>' : '');
+  result.classList.remove('agent-result-enter');
+  void result.offsetWidth;
+  result.classList.add('agent-result-enter');
+  if (approvalId) {
+    $('approveAgentPayment').addEventListener('click', async () => {
+      const receiver = String(proposal.receiver_account || '');
+      const amount = String(proposal.amount_near || '');
+      if (!window.confirm('Approve this NEAR Testnet payment?\n\nTo: ' + receiver + '\nAmount: ' + amount + ' NEAR\n\nOnly this exact proposal will be approved.')) return;
+      const approveButton = $('approveAgentPayment');
+      approveButton.disabled = true;
+      approveButton.textContent = 'Requesting NEAR wallet signature…';
+      try {
+        if (!connectorReady || !connector || !connectedAccount || !connectedAccount.endsWith('.testnet')) {
+          throw new Error('Connect a NEAR Testnet wallet that supports message signing before approving.');
+        }
+        if (!data.expires_at) throw new Error('Approval expiry is missing. Create a new proposal.');
+        const wallet = await connector.wallet();
+        if (!wallet || typeof wallet.signMessage !== 'function') {
+          throw new Error('The connected wallet does not support NEP-413 message signing.');
+        }
+        const amountMicro = Math.round(Number(amount) * 1000000);
+        if (!Number.isSafeInteger(amountMicro) || amountMicro <= 0) throw new Error('Invalid exact payment amount.');
+        const message = JSON.stringify({
+          domain: 'near-sentinel',
+          version: 1,
+          approval_id: approvalId,
+          wallet_account: connectedAccount.toLowerCase(),
+          receiver_account: receiver.toLowerCase(),
+          amount_micro: amountMicro,
+          network: 'testnet',
+          expires_at: data.expires_at
+        });
+        const nonceBytes = crypto.getRandomValues(new Uint8Array(32));
+        const nonceBase64 = btoa(String.fromCharCode(...nonceBytes));
+        const signed = await wallet.signMessage({
+          message,
+          recipient: 'sentinel.ivmaladin.workers.dev',
+          nonce: nonceBytes
+        });
+        if (!signed || !signed.signature || !signed.publicKey || !signed.accountId) {
+          throw new Error('Wallet did not return a verifiable NEP-413 signature. No payment was sent.');
+        }
+        const signatureBase64 = typeof signed.signature === 'string'
+          ? signed.signature
+          : btoa(String.fromCharCode(...new Uint8Array(signed.signature)));
+        approveButton.textContent = 'Verifying wallet signature · awaiting signer…';
+        const approved = await request('/agent/approve', {
+          method: 'POST',
+          headers: { 'Idempotency-Key': crypto.randomUUID() },
+          body: JSON.stringify({
+            approval_id: approvalId,
+            wallet_approval: {
+              account_id: signed.accountId,
+              public_key: signed.publicKey,
+              signature: signatureBase64,
+              nonce: nonceBase64
+            }
+          })
+        });
+        renderAgentResult(approved);
+        toast(approved.execution_enabled ? 'NEAR Testnet transaction confirmed.' : 'Approval result: ' + String(approved.status || 'UNKNOWN'));
+      } catch (error) {
+        approveButton.disabled = false;
+        approveButton.textContent = 'Sign again & retry';
+        toast(error.message || 'Approval failed. No transfer was confirmed.');
+      }
+    });
+  }
+}
+if (agentForm) {
+  agentForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const button = $('agentRunBtn');
+    const prompt = $('agentPrompt').value.trim();
+    if (!prompt) return;
+    button.disabled = true;
+    button.classList.add('agent-running');
+    button.innerHTML = '<span class="agent-button-pulse" aria-hidden="true"></span> Agent running <b>…</b>';
+    const result = $('agentResult');
+    result.classList.remove('hidden');
+    result.textContent = 'Calling the AI provider and evaluating the proposed action…';
+    try {
+      if (GUEST_MODE) {
+        guestConversation.push({ role: 'user', content: prompt });
+        guestConversation = guestConversation.slice(-14);
+        saveGuestConversation();
+        renderGuestConversation(true);
+        const data = await request('/guest/agent', {
+          method: 'POST',
+          body: JSON.stringify({ messages: guestConversation })
+        });
+        if (typeof data.message === 'string' && data.message.trim()) {
+          guestConversation.push({ role: 'assistant', content: data.message.trim() });
+          guestConversation = guestConversation.slice(-14);
+          saveGuestConversation();
+        }
+        renderGuestConversation(false);
+        $('agentPrompt').value = '';
+        toast('Completed ' + String(data.skills_used ?? 0) + ' security skill(s) · ' + String(data.prompts_remaining ?? '—') + ' prompts left today');
+      } else {
+        const data = await request('/agent/run', {
+          method: 'POST',
+          headers: { 'Idempotency-Key': crypto.randomUUID() },
+          body: JSON.stringify({ prompt })
+        });
+        renderAgentResult(data);
+        if (data.status === 'AWAITING_HUMAN_APPROVAL') toast('Review the exact receiver and amount before approving.');
+        else toast('Agent finished: ' + String(data.status || 'UNKNOWN').replaceAll('_', ' '));
+      }
+    } catch (error) {
+      if (GUEST_MODE) {
+        renderGuestConversation(false);
+        const errorMessage = document.createElement('p');
+        errorMessage.className = 'guest-chat-error';
+        errorMessage.textContent = error?.message || 'Agent request failed.';
+        result.append(errorMessage);
+      } else {
+        result.textContent = error.message || 'Agent request failed. No transaction was confirmed.';
+      }
+      toast(error.message || 'Agent request failed.');
+    } finally {
+      button.disabled = false;
+      button.classList.remove('agent-running');
+      button.innerHTML = 'Run secure agent <b>↗</b>';
+    }
+  });
+} 
+if (GUEST_MODE) {
+  const intro = document.querySelector('.agent-lab-intro');
+  if (intro) intro.textContent = 'Guest AI access · up to 10 prompts per day. Ask questions and get security guidance. Wallet investigation is read-only; payment proposals, signing, and transfers are disabled.';
+  const prompt = $('agentPrompt');
+  if (prompt) prompt.placeholder = 'Ask Sentinel about wallet security, anomalies, or how to use the dashboard…';
+  const warning = document.querySelector('.agent-lab-warning');
+  if (warning) warning.innerHTML = '<b>GUEST READ-ONLY MODE</b><span>10 AI prompts per day · no payment proposals · no signing · no transfers.</span>';
+  const submitLabel = $('agentRunBtn');
+  if (submitLabel) submitLabel.innerHTML = 'Send message <b>↗</b>';
+  if (guestConversation.length) renderGuestConversation(false);
+}
+
 // Wallet connection is independent from Privy login; Guest users may connect a NEAR wallet too.
+initTrackWalletTurnstile();
 initWallet();
 loadMetrics();
 loadThreats();

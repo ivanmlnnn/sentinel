@@ -1,13 +1,17 @@
-import { json, readJson, verifyPrivyAccessToken } from "./_shared.js";
+import { json, readJson, verifyPrivyAccessToken, canReadInvestigation } from "./_shared.js";
 
 export async function onRequestPost({ request, env }) {
   const identity = await verifyPrivyAccessToken(request, env);
   if (!identity) return json({ error: "UNAUTHORIZED", detail: "A valid Privy app access token is required for AI review." }, 401);
-  const body = await readJson(request);
+  const body = await readJson(request, 2048);
   const id = String(body?.investigation_id || "");
   if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ error: "Valid investigation_id is required." }, 400);
   const item = await env.DB.prepare("SELECT id, receiver_account, amount_near, decision, risk_score, risk_factors, evidence, ai_explanation FROM investigations WHERE id = ?").bind(id).first();
   if (!item) return json({ error: "Investigation not found." }, 404);
+  if (!await canReadInvestigation(env, id, identity)) {
+    // Use 404 to avoid confirming whether another user's investigation exists.
+    return json({ error: "Investigation not found." }, 404);
+  }
   if (item.ai_explanation) return json({ investigation_id: id, decision: item.decision, explanation: item.ai_explanation, cached: true });
   if (!env.ANTHROPIC_API_KEY) return json({ error: "AI provider is not configured on Cloudflare.", setup_required: true }, 503);
 
@@ -22,7 +26,7 @@ export async function onRequestPost({ request, env }) {
     });
   } catch { return json({ error: "AI provider request failed." }, 502); }
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) return json({ error: data.error?.message || "AI provider rejected the request." }, 502);
+  if (!response.ok) return json({ error: "AI_PROVIDER_ERROR" }, 502);
   const explanation = (data.content || []).filter(x => x.type === "text").map(x => x.text).join("\n").trim();
   if (!explanation) return json({ error: "AI provider returned an empty explanation." }, 502);
   await env.DB.prepare("UPDATE investigations SET ai_explanation = ? WHERE id = ?").bind(explanation, id).run();

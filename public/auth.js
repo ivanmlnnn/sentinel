@@ -63,6 +63,17 @@ function buildWayangAvatar(seed) {
 
 let dashboardStarted = false;
 
+// Perform one clean full-page refresh after sign-out. The in-memory Privy/React
+// state and cached dashboard modules are discarded before the login screen returns.
+function refreshLoginAfterSignOut() {
+  if (window.__SENTINEL_SIGNOUT_REFRESHING) return;
+  window.__SENTINEL_SIGNOUT_REFRESHING = true;
+  try { sessionStorage.removeItem('sentinel_signout_refresh'); } catch {}
+  const next = new URL(window.location.href);
+  next.searchParams.set('session_refresh', Date.now().toString());
+  window.location.replace(next.toString());
+}
+
 function AuthGate() {
   const { ready, authenticated, login, logout, getAccessToken, user } = usePrivy();
   const { createGuestAccount } = useGuestAccounts();
@@ -103,13 +114,17 @@ function AuthGate() {
 
     if (!ready) return () => { cancelled = true; disposeWayang(); };
 
+    // AuthGate stays mounted across logout, so clear any pending Guest-button
+    // state whenever the Privy authentication state changes.
+    setGuestLoading(false);
+
     if (authenticated) {
       document.body.classList.add('sentinel-authenticated');
       document.body.classList.toggle('sentinel-guest', Boolean(window.SENTINEL_GUEST));
 
       if (!dashboardStarted) {
         dashboardStarted = true;
-        import('./app.js?v=20261110-wallet-header-fix2').catch((error) => {
+        import('./app.js?v=20261111-guest-agent-fix1').catch((error) => {
           console.error('Sentinel dashboard failed to initialize:', error);
           dashboardStarted = false;
           setAuthError('Dashboard failed to load. Please reload and try again.');
@@ -120,6 +135,14 @@ function AuthGate() {
 
     document.body.classList.remove('sentinel-authenticated', 'sentinel-guest');
     dashboardStarted = false;
+
+    // Covers logout transitions initiated outside the visible Sign out button too.
+    try {
+      if (sessionStorage.getItem('sentinel_signout_refresh') === '1') {
+        refreshLoginAfterSignOut();
+        return () => disposeWayang();
+      }
+    } catch {}
 
     if (window.SENTINEL_GUEST) {
       window.SENTINEL_GUEST = false;
@@ -135,14 +158,24 @@ function AuthGate() {
     window.SENTINEL_GUEST = true;
     try { sessionStorage.setItem('sentinel_privy_guest', '1'); } catch {}
 
+    let timeoutId;
     try {
-      await createGuestAccount();
+      await Promise.race([
+        createGuestAccount(),
+        new Promise((_, reject) => {
+          timeoutId = window.setTimeout(() => reject(new Error('GUEST_SESSION_TIMEOUT')), 15000);
+        })
+      ]);
     } catch (error) {
       console.error('Privy Guest Account creation failed:', error);
       window.SENTINEL_GUEST = false;
       try { sessionStorage.removeItem('sentinel_privy_guest'); } catch {}
-      setAuthError('Guest access could not be started. Check that Guest Accounts are enabled in Privy and try again.');
+      setAuthError(error?.message === 'GUEST_SESSION_TIMEOUT'
+        ? 'Guest session timed out. Retry or use email sign-in.'
+        : 'Guest access could not be started. Check that Guest Accounts are enabled in Privy and try again.');
       setGuestLoading(false);
+    } finally {
+      window.clearTimeout(timeoutId);
     }
   };
 
@@ -217,11 +250,28 @@ function AuthGate() {
     React.createElement('button', {
       type: 'button',
       className: 'sentinel-signout-button',
-      onClick: async () => {
+      onClick: async event => {
+        const button = event.currentTarget;
+        if (button.disabled) return;
+        button.disabled = true;
+        button.textContent = 'Signing out…';
+        setAuthError('');
         try {
+          window.SENTINEL_GUEST = false;
+          try {
+            sessionStorage.removeItem('sentinel_privy_guest');
+            sessionStorage.removeItem('sentinel_guest_profile_id');
+            sessionStorage.removeItem('sentinel_signout_refresh');
+          } catch {}
+          document.body.classList.remove('sentinel-guest', 'sentinel-authenticated');
           await logout();
+          dashboardStarted = false;
+          refreshLoginAfterSignOut();
         } catch (error) {
           console.error('Privy logout failed:', error);
+          button.disabled = false;
+          button.textContent = 'Sign out';
+          setAuthError('Sign out could not be completed. Please retry.');
         }
       }
     }, 'Sign out')

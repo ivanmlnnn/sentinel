@@ -1,0 +1,11 @@
+title = "NEAR Sentinel Gitleaks configuration"
+
+[allowlist]
+description = "Historical non-secret UUID fixture used only as an idempotency test value; replaced with runtime UUID generation."
+condition = "AND"
+paths = [
+  '''tests/near-agent-signer\.test\.mjs''',
+]
+regexes = [
+  '''123e4567-e89b-42d3-a456-426614174000''',
+]

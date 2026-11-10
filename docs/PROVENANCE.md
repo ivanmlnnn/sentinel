@@ -24,14 +24,16 @@ For stronger author-identity evidence, the repository owner should configure the
 
 ## Automated checks and deployment
 
-- CI checks: https://github.com/ivanmlnnn/sentinel/actions/workflows/sentinel-checks.yml
-- Example successful CI run for source revision 155c2bad: [run 42734006722](https://github.com/ivanmlnnn/sentinel/actions/runs/42734006722) — JavaScript syntax checks, full test suite, offline attack demo, source archive upload, and provenance attestation all succeeded.
-- Source snapshot artifact: `sentinel-source-155c2badc1f93a54a8961226c9c48cd45b5380ed` (download it from the linked Actions run's Artifacts section).
-- Cloudflare deployment workflow: https://github.com/ivanmlnnn/sentinel/actions/workflows/deploy-cloudflare.yml
-- On pushes to main, CI packages the exact commit with git archive, uploads the source snapshot, and creates a GitHub build-provenance attestation. After the workflow completes, download the artifact and verify it with `gh attestation verify sentinel-source.tar.gz --repo ivanmlnnn/sentinel`. This attestation proves the archive was produced by the named GitHub workflow from the stated source revision; it does not prove who authored each commit.
-- A green test run proves the checked code passed the configured tests; it does not prove a real NEAR transaction or a browser-only flow works.
-- Deployment workflow and run history: https://github.com/ivanmlnnn/sentinel/actions/workflows/deploy-cloudflare.yml. Always inspect the latest run before claiming a revision is live.
-- A successful Worker deployment proves that Cloudflare accepted the deployment; it does not prove the UI was visually inspected or that a cryptographic signer boundary exists.
+- Current feature branch: `feat/isolated-signer-worker`.
+- Current reviewed source revision: [`31a71a4`](https://github.com/ivanmlnnn/sentinel/commit/31a71a44964bffdb990bc7072ad86168b6072002).
+- [Sentinel Security CI run 42857959405](https://github.com/ivanmlnnn/sentinel/actions/runs/42857959405) completed successfully on that exact commit. Its steps include Gitleaks, JavaScript syntax checks, regression tests, and D1 migration validation.
+- [CodeQL run 42857959683](https://github.com/ivanmlnnn/sentinel/actions/runs/42857959683) completed successfully on the same commit. Workflow success does not mean there are no code-scanning alerts; inspect the Security tab for findings.
+- These are source-verification results only. They do not deploy Cloudflare Workers, apply remote D1 migrations, or prove a live NEAR transaction.
+- Release deployment is manual through [Actions → Deploy Sentinel Testnet](https://github.com/ivanmlnnn/sentinel/actions/workflows/deploy-testnet.yml). Select `feat/isolated-signer-worker`, choose the intended target, and enter exactly `DEPLOY_SENTINEL_TESTNET`. The deploy job is gated on the verify job and the GitHub `production` environment.
+- For a full deployment, select `both`; the workflow applies the Main and Signer D1 migrations, deploys the private Signer Worker before the Main Worker, then runs production smoke checks. Payment-contract deployment and restricted-key installation are separate, explicit targets/steps.
+- A successful CI run or Wrangler dry-run is not deployment evidence. Always inspect the deployment job and production smoke-test result for the exact SHA before calling a revision live.
+- The branch's latest browser-navigation cleanup removes query strings from ordinary HTML page navigations, but excludes API and authentication/callback paths. It does not rewrite arbitrary query strings used by application protocols.
+- The older CI runs listed in the previous version of this document remain historical evidence for their respective commits only.
 
 ## License
 

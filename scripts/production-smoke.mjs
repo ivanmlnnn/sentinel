@@ -22,28 +22,57 @@ console.log(`Sentinel production smoke test: ${baseUrl}`);
 const home = await request("/");
 check("dashboard responds", home.status === 200 && home.contentType.includes("text/html"), `HTTP ${home.status}`);
 
-// Public Guest investigation. This creates one normal investigation record in D1.
-const protectedInvestigation = await request("/api/investigate", {
+// Protected scan routes must fail closed without a fresh Turnstile token.
+// This smoke check intentionally does not create a scan record or consume provider quota.
+for (const path of ["/api/guest/investigate"]) {
+  const response = await request(path, {
+    method: "POST",
+    body: JSON.stringify({
+      sender_account: "agent.testnet",
+      receiver_account: "merchant.testnet",
+      amount_near: 0.1
+    })
+  });
+  check(
+    `POST ${path} rejects a missing Turnstile token before scanning`,
+    response.status === 400 &&
+      response.body?.error === "TURNSTILE_TOKEN_REQUIRED",
+    `HTTP ${response.status}; error=${response.body?.error || "none"}`
+  );
+}
+
+// The public /api/investigate route is a browser-facing route and is gated by
+// Turnstile at the Worker edge before its handler checks Privy authentication.
+// The isolated signer uses /api/internal/investigate with HMAC + Privy instead.
+const authenticatedPreflight = await request("/api/investigate", {
   method: "POST",
   body: JSON.stringify({ receiver_account: "merchant.testnet", amount_near: 0.1 })
 });
-check("POST /api/investigate rejects a missing bearer token", protectedInvestigation.status === 401, `HTTP ${protectedInvestigation.status}`);
-
-const investigation = await request("/api/guest/investigate", {
-  method: "POST",
-  body: JSON.stringify({
-    sender_account: "agent.testnet",
-    receiver_account: "merchant.testnet",
-    amount_near: 0.1
-  })
-});
 check(
-  "Guest investigation API responds with a decision",
-  investigation.status === 200 &&
-    investigation.body &&
-    ["ALLOW", "WARN", "BLOCK", "INCOMPLETE"].includes(investigation.body.decision),
-  `HTTP ${investigation.status}; decision=${investigation.body?.decision || "none"}; error=${investigation.body?.error || "none"}`
+  "POST /api/investigate rejects a missing Turnstile token before auth or scanning",
+  authenticatedPreflight.status === 400 && authenticatedPreflight.body?.error === "TURNSTILE_TOKEN_REQUIRED",
+  `HTTP ${authenticatedPreflight.status}; error=${authenticatedPreflight.body?.error || "none"}`
 );
+
+// Agent routes must reject unauthenticated callers before invoking AI or signer logic.
+for (const path of ["/api/agent/run", "/api/agent/approve"]) {
+  const response = await request(path, {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+  check(`POST ${path} rejects a missing bearer token`, response.status === 401,
+    `HTTP ${response.status}; error=${response.body?.error || "none"}`);
+}
+
+// The internal preflight endpoint must reject requests without the signer HMAC,
+// even when the request body is otherwise valid. This is a non-mutating negative test.
+const unsignedPreflight = await request("/api/internal/investigate", {
+  method: "POST",
+  body: JSON.stringify({ receiver_account: "merchant.testnet", amount_near: 0.1 })
+});
+check("POST /api/internal/investigate rejects missing HMAC authentication",
+  unsignedPreflight.status === 401 && unsignedPreflight.body?.error === "INVALID_INTERNAL_AUTH",
+  `HTTP ${unsignedPreflight.status}; error=${unsignedPreflight.body?.error || "none"}`);
 
 // These are write/AI actions. GET /api/threats is intentionally public/read-only.
 const threatWrite = await request("/api/threats", {

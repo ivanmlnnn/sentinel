@@ -4,8 +4,9 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#123d3b"><meta name="description" content="NEAR Sentinel — on-chain security for NEAR Protocol.">
 <title>NEAR Sentinel — Account Risk Intelligence</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/styles.css?v=20261110-ibm-plex-mono-wordmark">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/styles.css?v=20261111-guest-agent-fix1">
 <script type="importmap">{"imports":{"react":"https://esm.sh/react@18.3.1","react/":"https://esm.sh/react@18.3.1/","react-dom":"https://esm.sh/react-dom@18.3.1","react-dom/client":"https://esm.sh/react-dom@18.3.1/client"}}</script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 </head>
 <body>
 <div id="auth-root"><main class="sentinel-auth-screen"><section class="sentinel-auth-card"><div class="sentinel-auth-mark"><img src="/IMG_20260629_220728_136.jpg?v=2" alt="Wayang Tech and Kitchen Needs"></div><p class="sentinel-auth-kicker">NEAR PROTOCOL / WALLET RISK INTELLIGENCE</p><h1>NEAR SENTINEL</h1><p class="sentinel-auth-copy">Preparing your NEAR security workspace.</p><div class="sentinel-auth-loader"></div></section></main></div>
@@ -15,7 +16,7 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
 <header class="topbar">
  <a class="brand" href="#overview"><span class="brand-icon brand-logo"><img src="/IMG_20260629_220728_136.jpg?v=1" alt="Wayang Tech and Kitchen Needs"></span><span class="brand-name">NEAR <b>SENTINEL</b></span></a>
  <nav class="main-nav" aria-label="Main navigation">
-  <a class="nav-item active" href="#overview">Overview</a><a class="nav-item" href="#investigate">Wallet tracker</a><a class="nav-item" href="#threats">Threat registry</a><a class="nav-item" href="#activity">Audit log</a><a class="nav-item" href="#protocol">Protocol</a>
+  <a class="nav-item active" href="#overview">Overview</a><a class="nav-item" href="#investigate">Wallet tracker</a><a class="nav-item" id="agentNav" href="#agentLab">AI agent</a><a class="nav-item" href="#threats">Threat registry</a><a class="nav-item" href="#activity">Audit log</a><a class="nav-item" href="#protocol">Protocol</a>
  </nav>
  <div class="top-actions"><span class="network-pill"><i></i> NEAR TESTNET</span><button id="walletBtn" class="wallet-btn" type="button">Connect NEAR Wallet <span>↗</span></button><a class="wallet-help-link" href="#wallet-guide">Wallet help</a></div>
 </header>
@@ -24,10 +25,10 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
  <div class="hero-copy"><div class="eyebrow"><span class="live-pulse"></span> ON-CHAIN SECURITY / TESTNET</div>
  <h1>Check an address.<br><em>Before you trust it.</em></h1>
  <p class="hero-sub">Check a NEAR account before you interact.</p>
- <div class="hero-actions"><a class="cta" href="#investigate">Check an address <span>↘</span></a><span class="hero-note">READ-ONLY · NO TRANSACTION SIGNING</span></div></div>
+ <div class="hero-actions"><a class="cta" href="#investigate">Check an address <span>↘</span></a><span class="hero-note">SCANNER READ-ONLY · AGENT TESTNET-ONLY</span></div></div>
  <div class="chain-visual" aria-hidden="true"><div class="chain-grid"></div><div class="chain-node node-a">NEAR<span>RPC</span></div><div class="chain-node node-b">IV<span>SECURITY</span></div><div class="chain-node node-c">◆<span>RISK</span></div><div class="chain-line line-a"></div><div class="chain-line line-b"></div><div class="chain-line line-c"></div><div class="chain-label">SENTINEL API <b id="apiStatus">CHECKING</b></div></div>
 </section>
-<section class="wallet-guide reveal" id="wallet-guide"><div class="wallet-guide-head"><span class="section-index">QUICK START</span><b>Start in three steps</b></div><div class="wallet-guide-grid"><div><strong>01 · Connect a wallet</strong><p>Connect a wallet that supports NEAR Testnet. MetaMask EVM accounts are not NEAR accounts.</p></div><div><strong>02 · Select a wallet</strong><p>Connect to autofill your wallet, or enter any public NEAR Testnet account.</p></div><div><strong>03 · Track wallet activity</strong><p>Review indexed transactions, receipts, token transfers, and risk signals. No keys or signatures are requested.</p></div></div><p class="wallet-guide-note">TESTNET · READ-ONLY · NO TRANSACTIONS</p></section>
+<section class="wallet-guide reveal" id="wallet-guide"><div class="wallet-guide-head"><span class="section-index">QUICK START</span><b>Start in three steps</b></div><div class="wallet-guide-grid"><div><strong>01 · Connect a wallet</strong><p>Connect a wallet that supports NEAR Testnet. MetaMask EVM accounts are not NEAR accounts.</p></div><div><strong>02 · Select a wallet</strong><p>Connect to autofill your wallet, or enter any public NEAR Testnet account.</p></div><div><strong>03 · Track wallet activity</strong><p>Review indexed transactions, receipts, token transfers, and risk signals. Wallet scans are read-only; the AI agent uses a separate, restricted Testnet server wallet.</p></div></div><p class="wallet-guide-note">WALLET SCANS READ-ONLY · AGENT SIGNING TESTNET-ONLY</p></section>
 <section class="metrics reveal" aria-label="Security metrics">
  <div class="metric"><span>SCANS</span><b id="mTotal">—</b><small>ALL ASSESSMENTS</small></div>
  <div class="metric"><span class="green">ALLOW</span><b id="mAllowed">—</b><small>NO MATCH FOUND</small></div>
@@ -46,7 +47,8 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
    <div class="account-input"><span>near://</span><input id="sender" placeholder="agent.testnet (optional)" autocomplete="off" maxlength="64"></div>
    <p class="wallet-connection-state">Enter the agent account to inspect its prior outgoing interactions with this receiver.</p>
    <p id="walletConnectionState" class="wallet-connection-state" aria-live="polite">Wallet not connected. Public account checks are still available.</p>
-   <div class="scan-submit"><span>◈ Explorer-indexed wallet activity · read-only</span><button class="primary-btn" id="scanBtn" type="submit">Track wallet <b>↗</b></button></div>
+   <div class="turnstile-wrap" aria-label="Cloudflare wallet scan verification"><div id="turnstileTrackWallet" class="cf-turnstile" data-sitekey="0x4AAAAAAF61dFCiIYIOVwRj" data-action="track_wallet"></div><small id="turnstileTrackWalletStatus" role="status" aria-live="polite" data-state="loading">Loading Cloudflare verification…</small><button id="turnstileTrackWalletRetry" type="button" hidden>Retry verification</button></div>
+  <div class="scan-submit"><span>◈ Explorer-indexed wallet activity · read-only</span><button class="primary-btn" id="scanBtn" type="submit" disabled aria-describedby="turnstileTrackWalletStatus">Track wallet <b>↗</b></button></div>
   </form>
   <div id="result" class="result hidden" aria-live="polite"></div>
  </div>
@@ -66,8 +68,30 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
  <div id="reportForm" class="report-form hidden"><input id="reportAccount" placeholder="Account ID"><input id="reportCategory" placeholder="Category"><textarea id="reportEvidence" placeholder="Evidence / transaction hash / source URL"></textarea><button class="primary-btn" id="sendReport">Submit unverified report ↗</button></div></div>
  <aside class="panel fingerprint-panel"><span class="section-index">SIGNAL SOURCES</span><div class="signal-line"><b>01</b><span>Account state</span><i>RPC</i></div><div class="signal-line"><b>02</b><span>Contract code hash</span><i>RPC</i></div><div class="signal-line"><b>03</b><span>Verified reports</span><i>DB</i></div><div class="signal-line"><b>04</b><span>Risk policy</span><i>RULES</i></div></aside>
 </section>
+<div class="section-heading reveal" id="agentHeading"><div><span class="section-index">04 / AUTONOMOUS SECURITY</span><h2>AI agent lab</h2></div><span class="section-meta">PRIVY AUTH · NEAR TESTNET</span></div>
+<section class="agent-lab-grid reveal" id="agentLab">
+ <div class="panel agent-lab-panel">
+  <div class="panel-top"><span>AUTONOMOUS SECURITY SKILL ENGINE</span><span class="panel-status"><i></i> SERVER-SIDE</span></div>
+  <p class="agent-lab-intro">Tell Sentinel the security task. It can run live wallet forensics, query verified threat intelligence, analyze anomalies, and explain evidence. Guest tools are strictly read-only.</p>
+  <form id="agentForm">
+   <label for="agentPrompt">AGENT INSTRUCTION</label>
+   <textarea id="agentPrompt" maxlength="4000" required placeholder="Example: Propose a 0.01 NEAR Testnet payment to merchant.testnet for a demo."></textarea>
+   <div class="agent-lab-warning"><b>TESTNET SAFETY LIMITS</b><span>Maximum 0.1 NEAR per transfer · 0.2 NEAR per UTC day · explicit receiver allowlist · kill switch.</span></div>
+   <div class="agent-lab-submit"><span>AI proposal ≠ authorization</span><button class="primary-btn" id="agentRunBtn" type="submit">Run secure agent <b>↗</b></button></div>
+  </form>
+  <div id="agentResult" class="agent-result hidden" aria-live="polite"></div>
+ </div>
+ <aside class="panel agent-policy-panel">
+  <div class="panel-top"><span>OPERATIONAL SKILLS</span><span class="section-meta">LIVE TOOLS</span></div>
+  <div class="agent-policy-step"><b>01</b><div><strong>Live wallet forensics</strong><span>NEAR RPC · transactions · receipts · token transfers</span></div></div>
+  <div class="agent-policy-step"><b>02</b><div><strong>Threat intelligence</strong><span>Exact matches against reviewed Sentinel reports</span></div></div>
+  <div class="agent-policy-step"><b>03</b><div><strong>Anomaly detection</strong><span>Transaction velocity · recipient clusters · spam signals</span></div></div>
+  <div class="agent-policy-step"><b>04</b><div><strong>Evidence-based triage</strong><span>Risk scoring · completeness · recommended actions</span></div></div>
+  <p class="agent-policy-foot">Skills run server-side. Guest mode is read-only: no payment proposals, signing, transfers, or threat-report changes. Incomplete evidence is never labeled safe.</p>
+ </aside>
+</section>
 <section class="security-method reveal" id="protocol">
- <div class="security-method-heading"><span class="section-index">04 / SECURITY PROCEDURE</span><h2>How Sentinel checks a wallet</h2><p>Every result follows the same read-only checks. No private keys, approvals, or transactions are requested.</p></div>
+ <div class="security-method-heading"><span class="section-index">05 / SECURITY PROCEDURE</span><h2>How Sentinel checks a wallet</h2><p>Every result follows the same read-only checks. No private keys, approvals, or transactions are requested.</p></div>
  <div class="security-steps">
   <article class="security-step"><span>01</span><div><b>Verify the account</b><p>Check whether the NEAR account exists and read its on-chain account state.</p><small>SOURCE · NEAR RPC</small></div></article>
   <article class="security-step"><span>02</span><div><b>Collect wallet activity</b><p>Retrieve indexed native transactions, receipts, and fungible-token transfers, including available pages.</p><small>SOURCE · NEARBLOCKS EXPLORER DATA</small></div></article>
@@ -83,13 +107,13 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
  </div>
  <p class="security-footnote">A missing contract code is normal for a standard wallet. A code hash is an identifier, not proof of malicious code. Sentinel is a read-only risk signal, not a security guarantee.</p>
 </section>
-<footer><span>NEAR SENTINEL <b>·</b> NEAR SECURITY</span><span>TESTNET / READ-ONLY MVP / 2026 · <a href="https://testnet.nearblocks.io/" target="_blank" rel="noopener noreferrer">Powered by NearBlocks.io APIs</a></span></footer>
+<footer><span>NEAR SENTINEL <b>·</b> NEAR SECURITY</span><span>TESTNET / READ-ONLY SCANNER + TESTNET AGENT / 2026 · <a href="https://testnet.nearblocks.io/" target="_blank" rel="noopener noreferrer">Powered by NearBlocks.io APIs</a></span></footer>
 </main>
 <div id="toast" class="toast"></div>
-<script src="/motion.js?v=20261110-wayang-logo-signout" defer></script>
+<script src="/motion.js?v=20261110-signout-turnstile-fix1" defer></script>
 <script type="module">
 const authRoot = document.getElementById('auth-root');
-import('/auth.js?v=20261110-wayang-logo-signout').catch((error) => {
+import('/auth.js?v=20261111-guest-agent-fix1').catch((error) => {
   console.error('NEAR Sentinel authentication bootstrap failed:', error);
   if (!authRoot) return;
   authRoot.dataset.authBooted = '1';

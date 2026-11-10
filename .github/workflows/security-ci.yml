@@ -1,0 +1,52 @@
+name: Sentinel Security CI
+
+on:
+  push:
+    branches:
+      - main
+      - feat/isolated-signer-worker
+  pull_request:
+    branches:
+      - main
+      - feat/isolated-signer-worker
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: sentinel-security-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  security:
+    name: Input validation and security regression tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source with full history for secret scanning
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Scan repository for secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check JavaScript syntax
+        run: |
+          node --check public/app.js
+          node --check functions/api/guest-agent.js
+          node --check src/index.js
+          node --check src/http-security.mjs
+          node --check src/agent-policy.mjs
+          node --check functions/api/_shared.js
+          node --check signer-worker/src/index.mjs
+      - name: Run regression tests
+        run: npm test
+      - name: Validate D1 migrations
+        run: npm run check:d1
