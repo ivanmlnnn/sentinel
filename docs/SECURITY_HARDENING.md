@@ -16,18 +16,21 @@ This is a verification baseline, not a certification or a claim that Sentinel is
 - Main Worker DB1 uses SQLite-compatible `migrations-d1/`; signer DB2 uses `migrations-signer/`. CI validates both migration sets independently against SQLite, including signer indexes. Legacy `migrations/` files use PostgreSQL syntax and must not be applied to D1.
 - The signer is a separate Worker with no public Workers.dev or preview URL. Its private key must not be configured in the browser-facing Worker.
 
-## Automated verification results
+## Latest automated verification (10 November 2026)
 
-Evidence from source revision [28e924d](https://github.com/ivanmlnnn/sentinel/commit/28e924de201f56eb07088a38a8195a4b4bee778f):
+Exact PR head: [67f1e53](https://github.com/ivanmlnnn/sentinel/commit/67f1e53c67fa8706d79694a317311516289b56d6).
 
-- GitHub Actions run [42778165533](https://github.com/ivanmlnnn/sentinel/actions/runs/42778165533): **116 tests passed, 0 failed**.
-- Gitleaks changed-file and full-history scans passed.
+- [Sentinel checks run 42778335809](https://github.com/ivanmlnnn/sentinel/actions/runs/42778335809): **116 tests passed, 0 failed**.
+- Gitleaks changed-file and full repository-history scans passed.
 - Main Worker and isolated Signer Worker Wrangler dry-runs passed.
-- D1 migration validation, JavaScript syntax checks, and the offline prompt-injection regression demo passed.
-- CodeQL was still running at the time this result was recorded; no CodeQL PASS is claimed in this entry.
-- Turnstile source and UI regression tests are included in the 116-test suite. The source uses Cloudflare's official browser widget and Siteverify endpoint, verifies success/action/hostname, and fails closed if the secret is missing or Siteverify is unavailable.
+- All seven Main D1 migration files and the Signer D1 migration were validated against SQLite.
+- Offline prompt-injection regression demo passed.
+- [CodeQL run 42778335865](https://github.com/ivanmlnnn/sentinel/actions/runs/42778335865): JavaScript analysis workflow completed successfully. This statement does not assert zero alerts; review GitHub Security > Code scanning for alert details.
+- The PR workflow skips the source-attestation job because it only runs for push or workflow_dispatch events; no attestation is claimed for this PR check.
 
-These are automated source-level checks. They do not constitute a live browser test, a Burp Suite report, an independent penetration test, a proof of current Cloudflare deployment versions, or a verified live NEAR transfer.
+The CI suite includes source-level Turnstile and UI regression checks. The implementation calls Cloudflare's official Siteverify endpoint, checks the success flag, action and request hostname, and fails closed when the secret is absent or verification is unavailable. This is not a fresh live-browser CAPTCHA session or an independent penetration test.
+
+Automated CI is not proof of active Cloudflare deployment versions, production secrets, remote D1 migration history, a wallet signing round-trip, or a successful Sentinel-originated NEAR Testnet transfer. Keep those claims separate until the relevant live evidence is recorded.
 
 ## Access model: Cloudflare equivalent of least privilege
 
