@@ -1,66 +1,76 @@
-# Security hardening status
+# Sentinel Security Hardening Baseline
 
-This document distinguishes working features from controls that still require implementation and verification. It is intentionally conservative: a successful UI flow is not evidence of backend enforcement.
+This is a verification baseline, not a certification or a claim that Sentinel is impossible to penetrate. It distinguishes code changes from controls that still need deployment and independent testing. It is aligned with OWASP ASVS 5.0.0.
 
-## Working today
+## Implemented in this branch
 
-- **Privy email OTP sign-in:** the dashboard sends a one-time code to the email address entered by the user (including Gmail) and accepts the code through the Privy modal.
-- **Read-only investigation:** the dashboard can request an assessment and display its result; it does not sign or broadcast a NEAR transaction.
-- **Deterministic policy guard:** `src/agent-guard.mjs` denies BLOCK, requires explicit human approval for WARN, and fails closed for incomplete/invalid assessments or preflight errors.
-- **No-login Guest preview:** the dashboard has a public Guest entry path that skips Privy, disables wallet connection and report submission, and uses a separate rate-limited investigation endpoint. Guest scans persist an audit record in D1 but cannot sign transactions.
-- **Server-side Privy verification:** `POST /api/investigate`, `POST /api/threats`, and `POST /api/ai-review` require bearer access tokens verified against the Privy app JWKS (signature, issuer, audience, subject, issued-at, and expiry). Guest screening is isolated at `POST /api/guest/investigate` and receives a stricter Cloudflare rate limit. API traffic is capped at 60 requests/minute/IP and investigations at 12/minute/IP; these Cloudflare limits are approximate and location-local, not strict global quotas.
-- **Exportable verified threat feed:** `GET /api/threats?status=verified` returns verified records with evidence for consumers of this Sentinel deployment. Admin moderation is available at `POST /api/threats/verify` and requires the server-only `THREAT_REVIEW_TOKEN` secret.
-- **Automated token tests:** `tests/privy-auth.test.mjs` covers valid signatures, missing tokens, expired tokens, wrong audience, and tampered payloads.
-- **Offline prompt-injection test:** the demo exercises the guard with simulated inputs; it is not a live wallet or transaction test.
+- Public dashboard metrics are aggregate-only; individual receiver addresses and scan amounts are no longer returned by `/api/metrics`.
+- The public verified threat feed omits free-form evidence. Unverified/rejected reports and moderation require a Privy subject explicitly listed in `SENTINEL_ADMIN_DIDS`.
+- API mutations require same-origin requests when an Origin header is present and require `application/json`.
+- JSON parsing uses a streaming byte limit; agent proposal and approval bodies have smaller route-specific limits.
+- HTTP responses receive MIME sniffing, clickjacking, referrer, permissions, HSTS, and limited CSP protections. A strict `script-src` CSP is deliberately not enabled until Privy and NEAR wallet connector origins and inline-script hashes are inventoried.
+- Provider error messages are no longer returned verbatim by the agent endpoint.
+- `.env`, `.dev.vars`, local Wrangler state, and common private-key file formats are excluded from Git.
+- CodeQL static analysis is added for JavaScript/TypeScript.
+- The signer is a separate Worker with no public Workers.dev or preview URL. Its private key must not be configured in the browser-facing Worker.
 
-## Remaining security work
+## Access model: Cloudflare equivalent of least privilege
 
-### 1. Privy token verification scope and remaining hardening
+Cloudflare Workers do not expose a normal Linux filesystem with POSIX `chmod`, `chown`, or root accounts. Do not pretend browser users can be assigned Linux file permissions inside a Worker. The equivalent controls are separate deployments, bindings, service identities, and secrets.
 
-The Worker now verifies Privy ES256 bearer tokens against `https://auth.privy.io/api/v1/apps/{app_id}/jwks.json` for `POST /api/investigate`, `POST /api/threats`, and `POST /api/ai-review`. It checks the signature, `iss`, `aud`, `sub`, `iat`, and `exp`; the browser passes the current access token from the Privy SDK. The app ID is public and the current Worker has a configured fallback matching the dashboard app.
+| Principal | Allowed | Must not receive |
+|---|---|---|
+| Anonymous visitor | Public dashboard, aggregate metrics, reviewed threat metadata, read-only public scan | Admin reports, private evidence, API keys, signer operations |
+| Authenticated user | Authenticated application actions and explicit approval flow | Admin moderation, secret values, other users' private data |
+| Configured admin | Unverified/rejected reports and moderation | Signer private key |
+| Main Sentinel Worker | Investigation, AI proposal, user session verification, request to signer service | NEAR private key |
+| Signer Worker | Narrow internal request, its own key secret, policy re-check, execution ledger | Public route, dashboard assets, general user-facing secrets |
+| Cloudflare account owner | Deployment and secret administration | Must use MFA, least-privilege Cloudflare roles, and audited access |
 
-Only `POST /api/guest/investigate` and public GET endpoints remain accessible without OTP for judge/Guest use. The Guest endpoint is rate-limited and stores a scan record in D1. Cloudflare per-IP rate limits are now configured for API traffic and stricter for investigation. They are an abuse-friction layer, not a strict global quota or substitute for authenticated access; shared mobile/NAT IPs can affect multiple users. Consider a Durable Object limiter or authenticated API key/quota before production. The verified threat feed is not yet federated with independent projects. Do not treat client state, email strings, or user IDs supplied in request JSON as authorization. Keep all future write or cost-bearing endpoints behind the same server-side verifier.
+Set `SENTINEL_ADMIN_DIDS` to a comma-separated allowlist of Privy subject IDs for moderators. If unset, admin-only operations fail closed. Never put an admin bearer secret in frontend code.
 
-### 2. Make agent authorization non-bypassable
+## Residual risks — do not conceal these from judges
 
-The current guard is a policy wrapper. It cannot stop another code path from calling a signer directly. Production-grade enforcement requires a trusted signing boundary:
+1. The main Worker and signer Worker currently share the same D1 database. The signer checks a pending approval row written by the main Worker. A fully compromised main Worker with write access to that database can attempt to forge that application-level approval.
+2. Human approval is an authenticated application confirmation, not yet a cryptographic wallet-signed or passkey-backed approval bound to the exact transfer.
+3. The signer uses a dedicated Testnet FullAccess key. Keep it low-balance, Testnet-only, allowlisted, and kill-switched until live negative tests pass. Do not reuse a personal or Mainnet key.
+4. Strict `script-src` CSP is not yet enforced because external Privy/NEAR wallet dependencies and inline bootstrapping have not been fully inventoried. The current CSP is intentionally limited and is not a complete XSS boundary.
+5. CodeQL is static analysis, not a penetration test. No Burp Suite assessment or independent security audit is claimed.
 
-- Keep signing credentials out of the browser and untrusted agent runtime.
-- Route all signing requests through a server-side signer service that independently re-checks the Sentinel verdict and the exact receiver, amount, network, and method.
-- Use a NEAR function-call access key restricted to the required contract and methods where supported.
-- For native NEAR payments, use a purpose-built payment/escrow contract with owner-controlled limits, expiry, replay protection, and auditable authorization. A function-call key does not directly impose native-transfer spending limits.
-- Add adversarial tests proving that direct calls, altered receivers/amounts, replayed approvals, and missing approvals cannot reach the signer.
+## Encryption and injection resistance
 
-### 3. Guest preview verification
+Encryption does not neutralize SQL, HTML, shell, or prompt injection. Use:
+- Parameterized SQL for every database value; never concatenate user input into SQL.
+- Positive allowlist validation for account IDs, enum values, amounts, IDs, and state transitions.
+- Contextual output encoding in the browser; use `textContent` for untrusted text and avoid unsafe HTML sinks.
+- TLS for all network connections. Keep secrets in Cloudflare Worker secrets, never in `public/`, source maps, HTML, logs, or Git.
+- If sensitive application data is added later, use authenticated encryption (AES-256-GCM with a unique 96-bit nonce per key and authenticated metadata) with the key held outside the database in a managed secret/KMS boundary. Do not encrypt public NEAR account IDs and call that injection protection.
+- Hash passwords with a dedicated password KDF (Argon2id/scrypt) if local passwords are ever introduced; do not encrypt passwords reversibly.
 
-The public Guest entry is implemented as a read-only-with-respect-to-signing dashboard mode:
+## Burp Suite / manual verification plan
 
-- It starts before the Privy React module finishes loading, so judges can enter even if the sign-in UI is delayed.
-- It hides wallet connection and report-submission controls.
-- It can call the separate public Guest investigation endpoint and public GET endpoints. Guest scans are persisted in D1 but cannot submit reports, request AI review, or sign transactions.
-- It does not establish an authenticated identity or permit protected write/cost-bearing routes.
+Run only against a dedicated preview deployment and Testnet accounts:
 
-### 4. Submission polish
+- Proxy and crawl: map routes, methods, request/response headers, cookies, storage, and third-party origins.
+- Authentication: missing, expired, wrong-audience, malformed, and replayed Privy tokens; verify 401 and no data leakage.
+- Authorization/IDOR: attempt to read another user's pending approval; request unverified/rejected reports as a non-admin; call moderation without admin identity.
+- CSRF/CORS: cross-origin POST, form-encoded POST, `Origin: null`, and missing Origin; verify no unauthorized state change.
+- Input: oversized/chunked JSON, malformed UTF-8, duplicate keys, unknown fields, Unicode normalization, account ID edge cases, huge numbers, exponent notation, negative/zero values, and SQL metacharacters.
+- Replay/business logic: duplicate idempotency key, duplicate approval ID, expired approval, concurrent approval, receiver/amount substitution, kill switch enabled, daily cap exhausted.
+- XSS: stored/reflected payloads in threat category/evidence, provider text, agent rationale, account IDs, and all DOM sinks. Verify values render as text.
+- Information disclosure: `/.git/`, `/.env`, `/.dev.vars`, `*.map`, stack traces, Worker errors, headers, and public metrics/feed fields.
+- Rate limits and resilience: burst requests, upstream timeout, repeated RPC errors, D1 outage, signer unavailable, ambiguous transaction response. Verify fail-closed behavior and no duplicate transfer.
+- Crypto/config: verify TLS, secret rotation procedure, no secrets in repository history/artifacts/logs, and signer secret inaccessible to main Worker and browser.
 
-- Use one consistent Sentinel / NEAR Sentinel brand asset. Remove unrelated "Wayang Tech and Kitchen Needs" artwork from the live app if it is still present.
-- Add a concise GitHub repository description and relevant topics.
-- Submit the canonical live URL without tracking query parameters.
-- Test the live URL in a fresh browser session and on mobile before judging.
+Record each finding with request/response evidence, severity, fix commit, and a regression test. A test is PASS only after it is run and its evidence is retained.
 
-## Verification checklist
+## Deployment gates
 
-- [ ] OTP arrives in Gmail and successful verification opens the dashboard.
-- [x] Protected write/cost-bearing routes reject requests without a valid Privy token.
-- [x] Protected routes reject expired, forged, and wrong-app tokens in automated tests.
-- [x] Threat reporter identity is derived from the verified token, not request JSON.
-- [ ] Live Cloudflare deployment has been smoke-tested with a real Privy session and invalid-token requests.
-- [ ] Verify Cloudflare rate-limit bindings are active in the deployed Worker; their limits are approximate and per-location.
-- [ ] Set `THREAT_REVIEW_TOKEN` as a Cloudflare Worker secret before using the report moderation endpoint.
-- [ ] BLOCK never reaches the signer.
-- [ ] WARN reaches the signer only after explicit human approval.
-- [ ] INCOMPLETE and API failures never reach the signer.
-- [ ] No alternate agent path can call the signer directly.
-- [x] Guest mode is read-only and does not initialize wallet connection or expose report submission.
-- [ ] Live app branding, repository metadata, and canonical URL are clean.
-
-**Status note:** This file records the current known state and the work required. Items in "Remaining security work" and unchecked checklist items must not be described as implemented until code changes and tests verify them.
+- [ ] Configure `SENTINEL_ADMIN_DIDS` with the actual moderator Privy subject(s).
+- [ ] Confirm Cloudflare account MFA and least-privilege team roles.
+- [ ] Configure secrets only in the dedicated Worker that needs them.
+- [ ] Keep signer kill switch enabled until preview negative tests pass.
+- [ ] Apply additive migrations only after confirming the intended D1 database and backup.
+- [ ] Run CodeQL and the full CI suite on the exact submission commit.
+- [ ] Complete the Burp Suite plan against preview; attach a redacted report.
+- [ ] Obtain independent review of the shared-D1 and human-approval residual risks before enabling transfers.
