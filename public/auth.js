@@ -82,7 +82,15 @@ function AuthGate() {
   useEffect(() => {
     window.getSentinelAccessToken = getAccessToken;
 
-    if (!ready) return;
+    const host = document.querySelector('.sentinel-auth-mark[data-wayang-3d]');
+    let disposeWayang = () => {};
+    if (host) {
+      import('./wayang-3d.js?v=20261110-character-mesh').then(({ mountWayang3D }) => {
+        if (host.isConnected) disposeWayang = mountWayang3D(host);
+      }).catch((error) => console.error('Sentinel 3D wayang failed to load:', error));
+    }
+
+    if (!ready) return () => disposeWayang();
 
     if (authenticated) {
       document.body.classList.add('sentinel-authenticated');
@@ -96,7 +104,7 @@ function AuthGate() {
           setAuthError('Dashboard failed to load. Please reload and try again.');
         });
       }
-      return;
+      return () => disposeWayang();
     }
 
     document.body.classList.remove('sentinel-authenticated', 'sentinel-guest');
@@ -130,9 +138,7 @@ function AuthGate() {
   if (!ready) {
     return React.createElement('main', { className: 'sentinel-auth-screen' },
       React.createElement('section', { className: 'sentinel-auth-card' },
-        React.createElement('div', { className: 'sentinel-auth-mark', 'aria-label': 'NEAR Sentinel wayang' },
-          React.createElement('img', { src: '/IMG_20260629_220728_136.jpg?v=2', alt: 'NEAR Sentinel wayang emblem' })
-        ),
+        React.createElement('div', { className: 'sentinel-auth-mark', 'data-wayang-3d': '1', 'aria-label': 'Interactive three-dimensional NEAR Sentinel wayang character' }),
         React.createElement('p', { className: 'sentinel-auth-kicker' }, 'NEAR PROTOCOL / WALLET RISK INTELLIGENCE'),
         React.createElement('h1', { className: 'sentinel-login-wordmark' }, React.createElement('span', { className: 'sentinel-login-near' }, 'NEAR'), React.createElement('span', { className: 'sentinel-login-name' }, 'SENTINEL')),
         React.createElement('p', { className: 'sentinel-auth-copy' }, 'Preparing your NEAR security workspace.'),
@@ -145,9 +151,7 @@ function AuthGate() {
   if (!authenticated) {
     return React.createElement('main', { className: 'sentinel-auth-screen' },
       React.createElement('section', { className: 'sentinel-auth-card' },
-        React.createElement('div', { className: 'sentinel-auth-mark', 'aria-label': 'NEAR Sentinel wayang' },
-          React.createElement('img', { src: '/IMG_20260629_220728_136.jpg?v=1', alt: 'NEAR Sentinel wayang emblem' })
-        ),
+        React.createElement('div', { className: 'sentinel-auth-mark', 'data-wayang-3d': '1', 'aria-label': 'Interactive three-dimensional NEAR Sentinel wayang character' }),
         React.createElement('p', { className: 'sentinel-auth-kicker' }, 'NEAR PROTOCOL / ACCOUNT INTELLIGENCE'),
         React.createElement('h1', { className: 'sentinel-login-wordmark' }, React.createElement('span', { className: 'sentinel-login-near' }, 'NEAR'), React.createElement('span', { className: 'sentinel-login-name' }, 'SENTINEL')),
         React.createElement('p', { className: 'sentinel-auth-copy' }, 'Review wallet activity, assess risk signals, and make safer decisions on NEAR.'),
@@ -196,14 +200,8 @@ function AuthGate() {
     : (emailIdentity ? emailIdentity.split('@')[0] : (phoneIdentity || ('USER ' + profileCode.slice(-4))));
   const profileLabel = window.SENTINEL_GUEST ? 'GUEST PROFILE' : 'PRIVY PROFILE';
   const sessionControl = React.createElement('div', { className: 'sentinel-session-control' },
-    React.createElement('div', { className: 'sentinel-profile-chip', title: (window.SENTINEL_GUEST ? 'Read-only guest profile · ' : 'Authenticated Privy profile · ') + identityName },
-      React.createElement('span', { className: 'sentinel-session-avatar', role: 'img', 'aria-label': profileLabel + ' wayang profile' },
-        buildWayangAvatar(profileSeed)
-      ),
-      React.createElement('span', { className: 'sentinel-profile-meta' },
-        React.createElement('strong', null, identityName),
-        React.createElement('small', null, profileLabel + ' · ' + profileCode)
-      )
+    React.createElement('span', { className: 'sentinel-session-avatar', role: 'img', 'aria-label': 'Wayang profile', title: 'Profile' },
+      buildWayangAvatar(profileSeed)
     ),
     React.createElement('button', {
       type: 'button',
