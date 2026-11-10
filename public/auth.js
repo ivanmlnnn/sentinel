@@ -68,43 +68,7 @@ function AuthGate() {
   const { createGuestAccount } = useGuestAccounts();
   const [guestLoading, setGuestLoading] = useState(false);
   const [authError, setAuthError] = useState('');
-  const wayangDrag = useRef({ x: 0, y: 0, startX: 0, startY: 0, pointerId: null });
-  const wayangPointerHandlers = {
-    onPointerDown: (event) => {
-      if (event.button !== undefined && event.button !== 0) return;
-      const drag = wayangDrag.current;
-      drag.startX = event.clientX; drag.startY = event.clientY; drag.pointerId = event.pointerId;
-      event.currentTarget.classList.remove('is-tilted');
-      event.currentTarget.classList.add('is-dragging');
-      event.currentTarget.setPointerCapture?.(event.pointerId);
-      event.currentTarget.style.setProperty('--wayang-drag-transform',
-        'perspective(1000px) rotateX(' + drag.x + 'deg) rotateY(' + drag.y + 'deg) translateZ(0)');
-    },
-    onPointerMove: (event) => {
-      const drag = wayangDrag.current;
-      if (drag.pointerId !== event.pointerId) return;
-      drag.y = Math.max(-65, Math.min(65, drag.y + (event.clientX - drag.startX) * .72));
-      drag.x = Math.max(-55, Math.min(55, drag.x - (event.clientY - drag.startY) * .72));
-      drag.startX = event.clientX; drag.startY = event.clientY;
-      event.currentTarget.style.setProperty('--wayang-drag-transform',
-        'perspective(1000px) rotateX(' + drag.x + 'deg) rotateY(' + drag.y + 'deg) translateZ(0)');
-    },
-    onPointerUp: (event) => {
-      const drag = wayangDrag.current;
-      if (drag.pointerId !== event.pointerId) return;
-      drag.pointerId = null;
-      event.currentTarget.classList.remove('is-dragging');
-      event.currentTarget.classList.add('is-tilted');
-      try { event.currentTarget.releasePointerCapture?.(event.pointerId); } catch {}
-    },
-    onPointerCancel: (event) => {
-      const drag = wayangDrag.current;
-      if (drag.pointerId !== event.pointerId) return;
-      drag.pointerId = null;
-      event.currentTarget.classList.remove('is-dragging');
-      event.currentTarget.classList.add('is-tilted');
-    }
-  };
+
 
   if (!window.__SENTINEL_GUEST_SESSION_CHECKED) {
     window.__SENTINEL_GUEST_SESSION_CHECKED = true;
@@ -144,6 +108,19 @@ function AuthGate() {
     }
   }, [ready, authenticated, getAccessToken]);
 
+  useEffect(() => {
+    if (!ready || authenticated) return;
+    let cleanup = () => {};
+    let cancelled = false;
+    import('./wayang-3d.js?v=20261110-real-three-dimensional-wayang')
+      .then(({ mountWayang3D }) => {
+        if (cancelled) return;
+        cleanup = mountWayang3D(document.querySelector('.sentinel-auth-mark'));
+      })
+      .catch((error) => console.error('Sentinel 3D wayang failed to initialize:', error));
+    return () => { cancelled = true; cleanup(); };
+  }, [ready, authenticated]);
+
   const startGuestSession = async () => {
     setGuestLoading(true);
     setAuthError('');
@@ -164,8 +141,8 @@ function AuthGate() {
   if (!ready) {
     return React.createElement('main', { className: 'sentinel-auth-screen' },
       React.createElement('section', { className: 'sentinel-auth-card' },
-        React.createElement('button', { className: 'sentinel-auth-mark', type: 'button', ...wayangPointerHandlers, 'aria-label': 'Drag to rotate the Sentinel wayang emblem' },
-          React.createElement('img', { src: '/IMG_20260629_220728_136.jpg?v=1', alt: 'NEAR Sentinel wayang emblem' })
+        React.createElement('button', { className: 'sentinel-auth-mark', type: 'button', 'aria-label': 'Drag to rotate the three-dimensional Sentinel wayang' },
+          React.createElement('img', { src: '/IMG_20260629_220728_136.jpg?v=2', alt: 'NEAR Sentinel wayang emblem' })
         ),
         React.createElement('p', { className: 'sentinel-auth-kicker' }, 'NEAR PROTOCOL / WALLET RISK INTELLIGENCE'),
         React.createElement('h1', null, 'NEAR SENTINEL'),
