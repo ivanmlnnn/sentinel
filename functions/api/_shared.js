@@ -5,8 +5,43 @@ export function json(data, status = 200) {
   });
 }
 
-export async function readJson(request) {
-  try { return await request.json(); } catch { return null; }
+export async function readTextLimited(request, maxBytes = 65536) {
+  const declaredLength = Number(request.headers.get("content-length") || 0);
+  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) return { ok: false, reason: "BODY_TOO_LARGE" };
+  if (!request.body) return { ok: false, reason: "EMPTY_BODY" };
+  const reader = request.body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        return { ok: false, reason: "BODY_TOO_LARGE" };
+      }
+      chunks.push(value);
+    }
+    const bytes = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+    return { ok: true, text: new TextDecoder("utf-8", { fatal: true }).decode(bytes) };
+  } catch {
+    return { ok: false, reason: "INVALID_BODY" };
+  }
+}
+
+export async function readJson(request, maxBytes = 65536) {
+  const body = await readTextLimited(request, maxBytes);
+  if (!body.ok) return null;
+  try { return JSON.parse(body.text); } catch { return null; }
+}
+
+export function isSentinelAdmin(identity, env = {}) {
+  if (typeof identity?.sub !== "string" || !identity.sub.startsWith("did:privy:")) return false;
+  const admins = String(env.SENTINEL_ADMIN_DIDS || "").split(",").map(value => value.trim()).filter(Boolean);
+  return admins.includes(identity.sub);
 }
 
 export function validAccountId(value) {
