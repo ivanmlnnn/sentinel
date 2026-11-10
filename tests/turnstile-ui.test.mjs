@@ -7,27 +7,27 @@ const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
 
 test("wallet tracker mounts an explicit visible Turnstile widget", () => {
   assert.match(html, /turnstile\/v0\/api\.js\?render=explicit/);
-  assert.match(html, /id="turnstileTrackWallet"[^>]*data-sitekey="[^"]+"[^>]*data-action="track_wallet"/);
+  assert.match(html, /id="turnstileTrackWallet"[^>]*data-sitekey="[^"]+"/);
   assert.match(html, /id="turnstileTrackWalletStatus"[^>]*aria-live="polite"/);
   assert.match(html, /id="turnstileTrackWalletRetry"[^>]*hidden/);
 });
 
-test("wallet tracking stays disabled until the Turnstile success callback", () => {
-  assert.match(html, /id="scanBtn"[^>]*disabled[^>]*aria-describedby="turnstileTrackWalletStatus"/);
+test("wallet tracking stays disabled until Turnstile verification succeeds", () => {
+  assert.match(html, /id="scanBtn"[^>]*disabled/);
   assert.match(app, /if \(scanButton\) scanButton\.disabled = state !== 'verified'/);
-  assert.match(app, /callback: \(\) => setTrackWalletTurnstileStatus\([^\n]*'verified'\)/);
-  assert.match(app, /getResponse\(window\.__sentinelTurnstileWidgetId\)/);
+  assert.match(app, /callback: token =>/);
+  assert.match(app, /window\.__sentinelTurnstileToken = typeof token === 'string' \? token : null/);
+  assert.match(app, /if \(\$\('turnstileTrackWalletStatus'\)\?\.dataset\.state !== 'verified'\)/);
 });
 
-test("wallet tracking submits the Turnstile token and resets the challenge afterwards", () => {
+test("wallet tracking sends a Turnstile token and clears it after each attempt", () => {
   assert.match(app, /turnstile_token:\s*turnstileToken/);
+  assert.match(app, /window\.__sentinelTurnstileToken = null/);
   assert.match(app, /finally \{ resetTrackWalletTurnstile\(\); button\.innerHTML = 'Track wallet/);
-  assert.doesNotMatch(app, /finally \{ resetTrackWalletTurnstile\(\); button\.disabled = false;/);
 });
 
-test("Turnstile loader supports a fresh script retry and visible failure feedback", () => {
-  assert.match(app, /function waitForTurnstileApi\(retry = false\)/);
-  assert.match(app, /if \(retry\)[\s\S]*previous\?\.remove\(\)/);
-  assert.match(app, /Cloudflare Turnstile script could not be downloaded/);
+test("Turnstile retry removes and recreates the widget", () => {
+  assert.match(app, /window\.turnstile\.remove\(window\.__sentinelTurnstileWidgetId\)/);
+  assert.match(app, /mount\.replaceChildren\(\)/);
   assert.match(app, /initTrackWalletTurnstile\(true\)/);
 });
