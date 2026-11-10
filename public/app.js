@@ -73,7 +73,7 @@ async function initWallet() {
   try {
     // NEAR Connect is the current recommended connector in the NEAR Wallet Selector transition.
     const { NearConnector } = await import('https://esm.sh/@hot-labs/near-connect@0.12.0');
-    connector = new NearConnector({ network:'testnet', features:{ testnet:true }, autoConnect:false });
+    connector = new NearConnector({ network:'testnet', features:{ testnet:true, signMessage:true }, autoConnect:false });
     await connector.whenManifestLoaded;
 
     connector.on('wallet:signIn', event => {
@@ -573,12 +573,54 @@ function renderAgentResult(data) {
       if (!window.confirm('Approve this NEAR Testnet payment?\n\nTo: ' + receiver + '\nAmount: ' + amount + ' NEAR\n\nOnly this exact proposal will be approved.')) return;
       const approveButton = $('approveAgentPayment');
       approveButton.disabled = true;
-      approveButton.textContent = 'Re-checking · awaiting signer…';
+      approveButton.textContent = 'Requesting NEAR wallet signature…';
       try {
+        if (!connectorReady || !connector || !connectedAccount || !connectedAccount.endsWith('.testnet')) {
+          throw new Error('Connect a NEAR Testnet wallet that supports message signing before approving.');
+        }
+        if (!data.expires_at) throw new Error('Approval expiry is missing. Create a new proposal.');
+        const wallet = await connector.wallet();
+        if (!wallet || typeof wallet.signMessage !== 'function') {
+          throw new Error('The connected wallet does not support NEP-413 message signing.');
+        }
+        const amountMicro = Math.round(Number(amount) * 1000000);
+        if (!Number.isSafeInteger(amountMicro) || amountMicro <= 0) throw new Error('Invalid exact payment amount.');
+        const message = JSON.stringify({
+          domain: 'near-sentinel',
+          version: 1,
+          approval_id: approvalId,
+          wallet_account: connectedAccount.toLowerCase(),
+          receiver_account: receiver.toLowerCase(),
+          amount_micro: amountMicro,
+          network: 'testnet',
+          expires_at: data.expires_at
+        });
+        const nonceBytes = crypto.getRandomValues(new Uint8Array(32));
+        const nonceBase64 = btoa(String.fromCharCode(...nonceBytes));
+        const signed = await wallet.signMessage({
+          message,
+          recipient: 'sentinel.ivmaladin.workers.dev',
+          nonce: nonceBytes
+        });
+        if (!signed || !signed.signature || !signed.publicKey || !signed.accountId) {
+          throw new Error('Wallet did not return a verifiable NEP-413 signature. No payment was sent.');
+        }
+        const signatureBase64 = typeof signed.signature === 'string'
+          ? signed.signature
+          : btoa(String.fromCharCode(...new Uint8Array(signed.signature)));
+        approveButton.textContent = 'Verifying wallet signature · awaiting signer…';
         const approved = await request('/agent/approve', {
           method: 'POST',
           headers: { 'Idempotency-Key': crypto.randomUUID() },
-          body: JSON.stringify({ approval_id: approvalId })
+          body: JSON.stringify({
+            approval_id: approvalId,
+            wallet_approval: {
+              account_id: signed.accountId,
+              public_key: signed.publicKey,
+              signature: signatureBase64,
+              nonce: nonceBase64
+            }
+          })
         });
         renderAgentResult(approved);
         toast(approved.execution_enabled ? 'NEAR Testnet transaction confirmed.' : 'Approval result: ' + String(approved.status || 'UNKNOWN'));
