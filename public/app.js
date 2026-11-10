@@ -635,17 +635,27 @@ function renderAgentResult(data) {
   const responseText = String(data.agent_message || data.message || data.reason || 'Sentinel completed the request.').trim();
   const hasPaymentContext = Boolean(proposal.receiver_account || proposal.amount_near != null || approvalId || txHash);
   const showStatusCard = status !== 'NO_PAYMENT_PROPOSED' && (hasPaymentContext || data.sentinel || data.investigation || status === 'DENIED');
+  const walletCanApprove = Boolean(connectedAccount && connectedAccount.endsWith('.testnet'));
   const agentCard = showStatusCard
     ? '<section class="telegram-agent-status">' +
-      '<div class="agent-result-head agent-result-' + escapeHtml(status.toLowerCase()) + '"><span>SECURITY STATUS</span><b>' + escapeHtml(status.replaceAll('_', ' ')) + '</b></div>' +
-      ((hasPaymentContext || data.sentinel) ? '<div class="agent-result-grid">' +
-        (proposal.receiver_account ? '<div><span>PROPOSED RECEIVER</span><b>' + escapeHtml(proposal.receiver_account) + '</b></div>' : '') +
-        (proposal.amount_near != null ? '<div><span>AMOUNT</span><b>' + escapeHtml(String(proposal.amount_near) + ' NEAR') + '</b></div>' : '') +
-        (data.sentinel?.decision ? '<div><span>SENTINEL VERDICT</span><b>' + escapeHtml(verdict) + '</b></div>' : '') +
-        (data.sentinel && Number.isFinite(Number(data.sentinel.risk_score)) ? '<div><span>RISK SCORE</span><b>' + escapeHtml(risk) + '</b></div>' : '') +
+      '<div class="agent-proposal-top"><div class="agent-proposal-brand"><span class="agent-proposal-icon">◈</span><span>PAYMENT PROPOSAL · SENTINEL</span></div>' +
+      '<span class="agent-state-pill ' + (data.execution_enabled === true ? 'is-success' : '') + '">' + escapeHtml(status.replaceAll('_', ' ')) + '</span></div>' +
+      ((hasPaymentContext || data.sentinel) ? '<div class="agent-proposal-values">' +
+        (proposal.receiver_account ? '<div class="agent-proposal-field"><span>RECIPIENT ACCOUNT</span><b>' + escapeHtml(proposal.receiver_account) + '</b></div>' : '') +
+        (proposal.amount_near != null ? '<div class="agent-proposal-field amount"><span>PAYMENT AMOUNT</span><b>' + escapeHtml(String(proposal.amount_near)) + ' <small>NEAR</small></b></div>' : '') +
       '</div>' : '') +
-      (txHash ? '<p class="agent-result-hash">TX HASH · ' + escapeHtml(txHash) + '</p>' : '') + txLink +
-      (approvalId ? '<div class="agent-approval"><p>Connect a NEAR Testnet wallet with message-signing support. Your wallet will sign the exact receiver, amount, and expiry (NEP-413); this signature does not itself transfer funds. The proposal expires in five minutes.</p><button type="button" class="primary-btn" id="approveAgentPayment">Sign with NEAR wallet & approve</button></div>' : '') +
+      ((data.sentinel?.decision || data.sentinel?.risk_score != null) ? '<div class="agent-result-grid">' +
+        (data.sentinel?.decision ? '<div><span>SENTINEL VERDICT</span><b>' + escapeHtml(verdict) + '</b></div>' : '') +
+        (data.sentinel?.risk_score != null && Number.isFinite(Number(data.sentinel.risk_score)) ? '<div><span>RISK SCORE</span><b>' + escapeHtml(risk) + '</b></div>' : '') +
+      '</div>' : '') +
+      (approvalId ? '<div class="agent-proposal-meta"><span><i></i> NEAR TESTNET</span><span>Human approval required</span><span>Expires in 5 minutes</span></div>' : '') +
+      (approvalId ? '<div class="agent-wallet-context"><span class="agent-wallet-glyph">◉</span><div class="agent-wallet-copy"><b>Approval wallet</b><span>' + escapeHtml(connectedAccount || 'No wallet connected yet') + '</span></div><span class="agent-wallet-state">' + (walletCanApprove ? 'CONNECTED' : 'NOT CONNECTED') + '</span></div>' : '') +
+      (txHash ? '<p class="agent-result-hash">TRANSACTION HASH · ' + escapeHtml(txHash) + '</p>' : '') + txLink +
+      (approvalId ? '<div class="agent-approval"><p>Review the recipient and amount above. Sentinel will ask your connected NEAR Testnet wallet to sign an approval for this exact proposal. Signing this message does not itself transfer funds.</p><div class="agent-approval-actions">' +
+        (walletCanApprove
+          ? '<button type="button" class="primary-btn" id="approveAgentPayment">Review & sign approval <b>↗</b></button>'
+          : '<button type="button" class="primary-btn" id="connectAgentWallet">Connect NEAR Testnet wallet <b>↗</b></button>') +
+        '</div></div>' : '') +
       '</section>' : '';
   result.innerHTML = '<div class="guest-chat-transcript telegram-chat-transcript" aria-label="Sentinel AI conversation">' +
     (authenticatedPrompt ? '<article class="guest-chat-message guest-chat-user"><span>YOU</span><p>' + escapeHtml(authenticatedPrompt) + '</p></article>' : '') +
@@ -653,11 +663,34 @@ function renderAgentResult(data) {
   result.classList.remove('agent-result-enter');
   void result.offsetWidth;
   result.classList.add('agent-result-enter');
-  if (approvalId) {
+  if (approvalId && !walletCanApprove) {
+    const connectButton = $('connectAgentWallet');
+    connectButton?.addEventListener('click', async () => {
+      connectButton.disabled = true;
+      connectButton.textContent = 'Opening NEAR wallet…';
+      try {
+        if (!connectorReady || !connector) throw new Error('NEAR wallet connector is still loading. Try again in a moment.');
+        if (connectedAccount) await connector.disconnect();
+        await connector.connect();
+        const current = await connector.getConnectedWallet();
+        const account = current.accounts && current.accounts[0];
+        syncWalletUI(account?.accountId, current.wallet?.manifest?.name || 'NEAR wallet');
+        if (!account?.accountId || !account.accountId.endsWith('.testnet')) {
+          throw new Error('Connect a NEAR Testnet account to approve this proposal.');
+        }
+        toast('NEAR Testnet wallet connected. Review the proposal before signing.');
+        renderAgentResult(data);
+      } catch (error) {
+        connectButton.disabled = false;
+        connectButton.textContent = 'Connect NEAR Testnet wallet ↗';
+        toast(error.message || 'Wallet connection cancelled or unavailable.');
+      }
+    });
+  }
+  if (approvalId && walletCanApprove) {
     $('approveAgentPayment').addEventListener('click', async () => {
       const receiver = String(proposal.receiver_account || '');
       const amount = String(proposal.amount_near || '');
-      if (!window.confirm('Approve this NEAR Testnet payment?\n\nTo: ' + receiver + '\nAmount: ' + amount + ' NEAR\n\nOnly this exact proposal will be approved.')) return;
       const approveButton = $('approveAgentPayment');
       approveButton.disabled = true;
       approveButton.textContent = 'Requesting NEAR wallet signature…';
