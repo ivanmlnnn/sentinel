@@ -18,15 +18,15 @@ This is a verification baseline, not a certification or a claim that Sentinel is
 
 ## Latest automated verification (10 November 2026)
 
-Exact PR head: [67f1e53](https://github.com/ivanmlnnn/sentinel/commit/67f1e53c67fa8706d79694a317311516289b56d6).
+Latest docs-updated PR head: [cd85b86](https://github.com/ivanmlnnn/sentinel/commit/cd85b8692fd9dc766a996b220d17e832b7fa9ae8).
 
-- [Sentinel checks run 42778335809](https://github.com/ivanmlnnn/sentinel/actions/runs/42778335809): **116 tests passed, 0 failed**.
+- [Sentinel checks run 42778680965](https://github.com/ivanmlnnn/sentinel/actions/runs/42778335809): **116 tests passed, 0 failed**.
 - Gitleaks changed-file and full repository-history scans passed.
 - Main Worker and isolated Signer Worker Wrangler dry-runs passed.
 - All seven Main D1 migration files and the Signer D1 migration were validated against SQLite.
 - Offline prompt-injection regression demo passed.
-- [CodeQL run 42778335865](https://github.com/ivanmlnnn/sentinel/actions/runs/42778335865): JavaScript analysis workflow completed successfully. This statement does not assert zero alerts; review GitHub Security > Code scanning for alert details.
-- The PR workflow skips the source-attestation job because it only runs for push or workflow_dispatch events; no attestation is claimed for this PR check.
+- [CodeQL run 42778335865 on preceding source revision 67f1e53](https://github.com/ivanmlnnn/sentinel/actions/runs/42778335865): JavaScript analysis workflow completed successfully. This statement does not assert zero alerts; review GitHub Security > Code scanning for alert details.
+- CodeQL for the current docs-updated head is still running; do not claim it passed until that run completes. The PR workflow skips the source-attestation job because it only runs for push or workflow_dispatch events; no attestation is claimed for this PR check.
 
 The CI suite includes source-level Turnstile and UI regression checks. The implementation calls Cloudflare's official Siteverify endpoint, checks the success flag, action and request hostname, and fails closed when the secret is absent or verification is unavailable. This is not a fresh live-browser CAPTCHA session or an independent penetration test.
 
