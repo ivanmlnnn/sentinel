@@ -32,6 +32,13 @@ test("rejects mainnet, missing allowlist and unconfigured spend cap", () => {
   assert.equal(validatePaymentIntent(intent, { ...env, NEAR_AGENT_MAX_PAYMENT_NEAR: "" }).reason, "AMOUNT_LIMIT_OR_POLICY_UNCONFIGURED");
 });
 
+test("rejects non-Testnet receiver accounts even if explicitly allowlisted", () => {
+  assert.equal(validatePaymentIntent(
+    { ...intent, receiver_account: "merchant.near" },
+    { ...env, NEAR_AGENT_ALLOWED_RECEIVERS: "merchant.near" }
+  ).reason, "TESTNET_RECEIVER_REQUIRED");
+});
+
 test("rejects receiver and amount manipulation", () => {
   assert.equal(validatePaymentIntent({ ...intent, receiver_account: "attacker.testnet" }, env).reason, "RECEIVER_NOT_ALLOWLISTED");
   assert.equal(validatePaymentIntent({ ...intent, amount_near: 0.26 }, env).reason, "AMOUNT_LIMIT_OR_POLICY_UNCONFIGURED");
