@@ -261,7 +261,19 @@ export async function onRequestPost({ request, env }) {
     if (!requested.length) break;
     const toolResults = [];
     for (const call of requested) {
-      if (toolCalls >= MAX_TOOL_CALLS) break;
+      if (toolCalls >= MAX_TOOL_CALLS) {
+        toolResults.push({
+          type: "tool_result",
+          tool_use_id: call.id,
+          content: JSON.stringify({
+            ok: false,
+            error: "PER_PROMPT_SKILL_LIMIT",
+            message: "The per-prompt skill execution limit has been reached. Continue with the evidence already collected and tell the user which checks remain."
+          }),
+          is_error: true
+        });
+        continue;
+      }
       toolCalls++;
       const output = await runSkill(call.name, call.input || {}, { request, env, identity });
       toolResults.push({
