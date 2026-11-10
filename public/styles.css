@@ -3207,7 +3207,7 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
 .agent-result-reason,.agent-result-message{font-size:11px;line-height:1.7;color:var(--muted);overflow-wrap:anywhere}
 .agent-result-hash{font:9px var(--mono);color:var(--mint);overflow-wrap:anywhere}
 .agent-tx-link{display:inline-block;margin-top:10px;color:var(--mint);font:10px var(--mono);text-decoration:underline;text-underline-offset:3px}
-.sentinel-guest #agentNav,.sentinel-guest #agentHeading,.sentinel-guest #agentLab{display:none!important}
+/* Guest mode keeps the AI Agent visible; server enforces read-only limits. */
 @media(max-width:850px){.agent-lab-grid{grid-template-columns:1fr}.agent-policy-panel{order:2}}
 @media(max-width:560px){.agent-lab-submit{align-items:stretch;flex-direction:column}.agent-lab-submit .primary-btn{width:100%}.agent-result-grid{grid-template-columns:1fr 1fr}}
 
