@@ -57,18 +57,18 @@ test("public investigation has a stricter per-IP limit than other API routes", a
   assert.deepEqual(apiLimiter.calls[0], { key: "203.0.113.11" });
 });
 
-test("authenticated investigation uses Privy authentication instead of the guest Turnstile challenge", async () => {
+test("authenticated wallet investigations also fail closed without Turnstile", async () => {
   const response = await worker.fetch(
     new Request("https://sentinel.ivmaladin.workers.dev/api/investigate", {
       method: "POST",
       headers: { "content-type": "application/json", "CF-Connecting-IP": "203.0.113.12" },
       body: JSON.stringify({ receiver_account: "merchant.testnet", amount_near: 0.1 })
     }),
-    { API_RATE_LIMITER: limiter(true), INVESTIGATION_RATE_LIMITER: limiter(true) },
+    { API_RATE_LIMITER: limiter(true), INVESTIGATION_RATE_LIMITER: limiter(true), TURNSTILE_SECRET: "test-only-secret" },
     {}
   );
-  assert.equal(response.status, 401);
-  assert.equal((await response.json()).error, "UNAUTHORIZED");
+  assert.equal(response.status, 400);
+  assert.equal((await response.json()).error, "TURNSTILE_TOKEN_REQUIRED");
 });
 
 test("wallet investigation fails closed when Turnstile is not configured", async () => {
@@ -136,4 +136,31 @@ test("Turnstile rejects missing tokens before calling Siteverify", async () => {
   );
   assert.equal(response.status, 400);
   assert.equal((await response.json()).error, "TURNSTILE_TOKEN_REQUIRED");
+});
+
+
+test("authenticated wallet investigation verifies the token before reaching Privy auth", async t => {
+  let siteverifyCalls = 0;
+  t.mock.method(globalThis, "fetch", async (_url, init) => {
+    siteverifyCalls++;
+    const form = new URLSearchParams(init.body);
+    assert.equal(form.get("response"), "valid-test-token");
+    return new Response(JSON.stringify({
+      success: true,
+      hostname: "sentinel.ivmaladin.workers.dev",
+      action: "track_wallet"
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  });
+  const response = await worker.fetch(
+    new Request("https://sentinel.ivmaladin.workers.dev/api/investigate", {
+      method: "POST",
+      headers: { "content-type": "application/json", "CF-Connecting-IP": "203.0.113.17" },
+      body: JSON.stringify({ receiver_account: "merchant.testnet", amount_near: 0.1, turnstile_token: "valid-test-token" })
+    }),
+    { API_RATE_LIMITER: limiter(true), INVESTIGATION_RATE_LIMITER: limiter(true), TURNSTILE_SECRET: "test-only-secret" },
+    {}
+  );
+  assert.equal(siteverifyCalls, 1);
+  assert.equal(response.status, 401);
+  assert.equal((await response.json()).error, "UNAUTHORIZED");
 });
