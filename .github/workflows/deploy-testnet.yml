@@ -11,6 +11,12 @@ on:
           - both
           - main
           - signer
+          - payment-contract
+      rotate_signer_key:
+        description: "One-time only: install the restricted key and revoke the old runtime FullAccess key"
+        required: true
+        type: boolean
+        default: false
       confirm_deploy:
         description: "Type DEPLOY_SENTINEL_TESTNET to continue"
         required: true
@@ -81,6 +87,14 @@ jobs:
           node-version: 22
       - name: Install deployment tooling
         run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Set up Rust and WebAssembly target
+        if: ${{ github.event.inputs.deploy_target == 'payment-contract' }}
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Build payment contract
+        if: ${{ github.event.inputs.deploy_target == 'payment-contract' }}
+        run: cargo build --manifest-path payment-contract/Cargo.toml --target wasm32-unknown-unknown --release
       - name: Authenticate with Cloudflare
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -100,6 +114,36 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler@4.159.0 d1 migrations apply db2 --remote --config signer-worker/wrangler.jsonc
+      - name: Deploy and initialize NEAR Testnet payment contract
+        if: ${{ github.event.inputs.deploy_target == 'payment-contract' }}
+        env:
+          NEAR_PAYMENT_CONTRACT_ID: ${{ secrets.NEAR_PAYMENT_CONTRACT_ID }}
+          NEAR_PAYMENT_CONTRACT_OWNER_ID: ${{ secrets.NEAR_PAYMENT_CONTRACT_OWNER_ID }}
+          NEAR_PAYMENT_CONTRACT_DEPLOYER_PRIVATE_KEY: ${{ secrets.NEAR_PAYMENT_CONTRACT_DEPLOYER_PRIVATE_KEY }}
+          NEAR_AGENT_SIGNER_ACCOUNT_ID: ${{ secrets.NEAR_AGENT_SIGNER_ACCOUNT_ID }}
+          NEAR_PAYMENT_MAX_PAYMENT_YOCTO: ${{ secrets.NEAR_PAYMENT_MAX_PAYMENT_YOCTO }}
+        run: node scripts/deploy-payment-contract.mjs
+      - name: Install restricted function-call key and revoke old runtime key (one-time)
+        if: ${{ (github.event.inputs.deploy_target == 'signer' || github.event.inputs.deploy_target == 'both') && github.event.inputs.rotate_signer_key == 'true' }}
+        env:
+          NEAR_AGENT_SIGNER_ACCOUNT_ID: ${{ secrets.NEAR_AGENT_SIGNER_ACCOUNT_ID }}
+          NEAR_PAYMENT_CONTRACT_ID: ${{ secrets.NEAR_PAYMENT_CONTRACT_ID }}
+          NEAR_AGENT_SIGNER_ADMIN_PRIVATE_KEY: ${{ secrets.NEAR_AGENT_SIGNER_ADMIN_PRIVATE_KEY }}
+          NEAR_AGENT_SIGNER_OLD_PRIVATE_KEY: ${{ secrets.NEAR_AGENT_SIGNER_OLD_PRIVATE_KEY }}
+          NEAR_AGENT_SIGNER_RESTRICTED_PRIVATE_KEY: ${{ secrets.NEAR_AGENT_SIGNER_RESTRICTED_PRIVATE_KEY }}
+        run: node scripts/install-restricted-signer-key.mjs
+      - name: Set restricted signer key and payment contract on private Worker
+        if: ${{ github.event.inputs.deploy_target == 'signer' || github.event.inputs.deploy_target == 'both' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          NEAR_AGENT_SIGNER_RESTRICTED_PRIVATE_KEY: ${{ secrets.NEAR_AGENT_SIGNER_RESTRICTED_PRIVATE_KEY }}
+          NEAR_PAYMENT_CONTRACT_ID: ${{ secrets.NEAR_PAYMENT_CONTRACT_ID }}
+        run: |
+          test -n "$NEAR_AGENT_SIGNER_RESTRICTED_PRIVATE_KEY"
+          test -n "$NEAR_PAYMENT_CONTRACT_ID"
+          printf '%s' "$NEAR_AGENT_SIGNER_RESTRICTED_PRIVATE_KEY" | npx wrangler@4.159.0 secret put NEAR_AGENT_SIGNER_PRIVATE_KEY --config signer-worker/wrangler.jsonc
+          printf '%s' "$NEAR_PAYMENT_CONTRACT_ID" | npx wrangler@4.159.0 secret put NEAR_PAYMENT_CONTRACT_ID --config signer-worker/wrangler.jsonc
       - name: Deploy private signer (deploy before Main when target is both)
         if: ${{ github.event.inputs.deploy_target == 'signer' || github.event.inputs.deploy_target == 'both' }}
         env:
