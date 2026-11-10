@@ -124,6 +124,7 @@ jobs:
           NEAR_PAYMENT_CONTRACT_DEPLOYER_PRIVATE_KEY: ${{ secrets.NEAR_PAYMENT_CONTRACT_DEPLOYER_PRIVATE_KEY }}
           NEAR_AGENT_SIGNER_ACCOUNT_ID: ${{ secrets.NEAR_AGENT_SIGNER_ACCOUNT_ID }}
           NEAR_PAYMENT_MAX_PAYMENT_YOCTO: ${{ secrets.NEAR_PAYMENT_MAX_PAYMENT_YOCTO }}
+          NEAR_PAYMENT_MAX_DAILY_PAYMENT_YOCTO: ${{ secrets.NEAR_PAYMENT_MAX_DAILY_PAYMENT_YOCTO }}
         run: node scripts/deploy-payment-contract.mjs
       - name: Install restricted function-call key and revoke old runtime key (one-time)
         if: ${{ (github.event.inputs.deploy_target == 'signer' || github.event.inputs.deploy_target == 'both') && github.event.inputs.rotate_signer_key == 'true' }}
