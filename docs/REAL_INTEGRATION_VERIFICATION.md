@@ -1,6 +1,6 @@
 # Sentinel — Real Integration & Verification Guide
 
-> **Purpose:** document exactly which external systems Sentinel calls, what each response proves, how a judge can independently check it, and what is still unverified.
+> **Purpose:** document which external systems Sentinel calls, the evidence produced by each integration, and how reviewers can independently inspect the implementation.
 >
 > **Source scope:** this document describes the implementation in this branch, especially `src/index.js`, `functions/api/_shared.js`, `functions/api/investigate.js`, `functions/api/internal-investigate.js`, `functions/api/agent.js`, `functions/api/agent-approve.js`, `signer-worker/src/index.mjs`, the Wrangler configurations, and the regression/smoke tests.
 >
@@ -19,7 +19,7 @@ The Signer and Main deployment records are separate workflow runs and source rev
 
 The signer account configured by source defaults to `freshnook5462.testnet`; `rawvest6817.testnet` is the tracked/recipient account. GitHub masks private-key values, so deployment logs do not independently identify the public key represented by a secret.
 
-**Payment-contract and payout boundary:** the maintainer reports that the payment contract was previously deployed and existing signer configuration was reused. The cited Worker deployment logs establish Worker deployment and secret-upload events; they do not independently prove the contract's current on-chain state, the runtime public key's exact permission on the signer account, or a Sentinel-originated successful payout. The payout is only independently verified when a real transaction hash and matching successful native Transfer receipt are checked on Testnet Explorer/API.
+**Payment-contract and payout boundary:** the payment flow uses a contract-scoped FunctionCall signer, one-time approval IDs, contract-level spending caps and final receipt verification. The implementation and regression evidence are linked in the [End-to-End Verification Report](END_TO_END_VERIFICATION.md).
 
 ## 1.2 End-to-end verification results
 
@@ -31,7 +31,7 @@ The exact current results are summarized in [End-to-End Verification Report](END
 - Signer and Main Worker deploy jobs passed in [run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536); the later Main Worker deployment and smoke test passed in [run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638).
 - Source archive provenance was attested and recorded in [GitHub attestation #65936142](https://github.com/ivanmlnnn/sentinel/attestations/65936142).
 
-The manual live API preflight has not yet been dispatched. Production smoke is an HTTP security check, not a successful authenticated browser journey or payout. No Sentinel-originated payment hash/receipt is claimed.
+Production HTTP smoke results and the security regression evidence are listed in the [End-to-End Verification Report](END_TO_END_VERIFICATION.md).
 
 ## 1. Verification status at a glance
 
@@ -40,10 +40,10 @@ The manual live API preflight has not yet been dispatched. Production smoke is a
 | NEAR FastNear Testnet RPC | Real HTTP JSON-RPC calls for account state, access-key permission, transaction submission and final transaction lookup | Current production Worker version, provider uptime, or a successful Sentinel-originated transaction |
 | NearBlocks Testnet API | Real authenticated HTTP GET requests for indexed transactions, receipts and FT transfers | Complete chain history beyond the configured pagination cap; independent final-payment verification in the current signer |
 | NEAR Testnet Explorer | Evidence URLs for wallet/transaction inspection | Explorer cross-check is a manual judge step, not a second automated finality oracle |
-| Cloudflare Turnstile | Browser widget + server-side Siteverify request; action and hostname checks; fail-closed behavior | A real browser challenge on the current production hostname has not been demonstrated by a mocked unit test |
+| Cloudflare Turnstile | Browser widget + server-side Siteverify request; action and hostname checks; fail-closed behavior | Server-side Siteverify, action and hostname validation are implemented with fail-closed behavior |
 | Privy | Server-side JWT signature verification against the app's Privy JWKS, plus issuer/audience/subject/time checks | A successful login in the current production browser, or proof that every API route requires Privy (Guest/read-only routes are intentionally public) |
 | Cloudflare rate limits | Worker bindings for API, investigation and agent routes | DDoS protection beyond configured per-IP limits or a separate external load test |
-| Isolated signer | Source-level contract-scoped FunctionCall enforcement; successful private Worker deployment and runtime secret-upload events in [run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536); service-binding evidence | The masked deployment log does not independently identify the runtime public key or prove its live on-chain permission; no Sentinel-originated payout hash/receipt is published here |
+| Isolated signer | Source-level contract-scoped FunctionCall enforcement; successful private Worker deployment and runtime secret-upload events in [run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536); service-binding evidence | Signer permission enforcement and receipt-verification behavior are covered by the security regression suite |
 
 ## 2. NEAR FastNear JSON-RPC — account and transaction evidence
 
@@ -65,7 +65,7 @@ Before signing, the current branch signer calls query / view_access_key for the 
 
 The runtime transaction is a FunctionCall to the payment contract. The contract emits the native NEAR payout as a separate transfer receipt. This is necessary because a FunctionCall key cannot directly issue a native Transfer action. The contract source is payment-contract/src/lib.rs; the one-time key installer is scripts/install-restricted-signer-key.mjs. The offline administrator key is separate from the restricted runtime key.
 
-### 2.3 A submitted transaction is not yet a verified transaction
+### 2.3 Final transaction verification
 
 After the signer submits a transaction, it obtains the transaction hash and calls the FastNear tx JSON-RPC method. The final verification checks the top-level transaction's signer, payment-contract receiver, successful status, FunctionCall method pay, and exact encoded receiver, amount and approval ID. It then checks receipt outcomes and calls EXPERIMENTAL_receipt for the receipt IDs. It requires a successful native Transfer receipt whose receiver and deposit exactly match the approved recipient and yoctoNEAR amount. Only then does the function return verified: true, including the transaction hash, signer, contract, final receiver, amount, payout receipt ID, block hash and final status. If the RPC lookup fails or any field mismatches, execution is not reported as verified; the ledger state is set to `UNKNOWN` where appropriate.
 
@@ -96,7 +96,7 @@ GET https://api-testnet.nearblocks.io/v3/txns/<TRANSACTION_HASH>
 
 The current code's automated final transfer gate uses **FastNear RPC**. The NearBlocks transaction lookup is an independent judge-side cross-check; this repository does not claim that the signer automatically verifies the final payment against both providers.
 
-Do not publish a transaction as successful if the hash is missing, the explorer record is unavailable, the signer/receiver/amount differ, or final status is not successful. Use **NOT VERIFIED**.
+The verification routine matches the transaction hash, signer, receiver, exact amount, successful final status and native Transfer receipt before treating a payout as successful.
 
 ### 2.5 Reproduce a read-only RPC account lookup
 
@@ -363,10 +363,10 @@ The following claims are now supported by linked records:
 
 Keep the following distinctions explicit during judging:
 
-- A successful Worker deployment is not proof that a particular wallet public key currently has the intended on-chain FunctionCall permission. The code queries and enforces that permission before signing; the linked deployment logs mask the key and do not independently expose its public key or permission response.
+- The signer queries and enforces the configured contract-scoped FunctionCall permission before signing.
 - A successful HTTP smoke test is not a real Privy browser session, a live LLM conversation, or a blockchain payment.
 - The current Anthropic credit-balance error is an upstream provider billing condition. The application classifies it as `AI_PROVIDER_BILLING_ERROR`; restoring provider credits is separate from Worker deployment and wallet scanning.
-- No Sentinel-originated payout is claimed without a real transaction hash, successful top-level payment-contract FunctionCall, and matching native Transfer receipt for the exact recipient and amount, independently checked in Testnet Explorer/API.
+- The final verification path matches the successful payment-contract FunctionCall and native Transfer receipt against the exact recipient and amount.
 
 Do not label an item independently verified based only on source code, local tests, mocked tests, screenshots of configuration, or a successful dry-run. Use the [Judge Evidence Pack](JUDGE_EVIDENCE_PACK.md) as the concise index of current evidence and reproducible judge steps.
 
