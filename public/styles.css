@@ -2885,3 +2885,22 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
  .sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-mark{animation:none!important}
  .sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button::after{animation:none!important}
 }
+
+/* Generated identity portrait + compact profile beside sign out. */
+.sentinel-session-control{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:10px!important;min-width:0}
+.sentinel-profile-chip{display:inline-flex;align-items:center;gap:8px;min-width:0;padding:4px 10px 4px 5px;border:1px solid rgba(139,212,239,.28);border-radius:999px;background:linear-gradient(115deg,rgba(20,65,64,.82),rgba(7,25,27,.9));box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 4px 14px rgba(0,0,0,.18)}
+.sentinel-session-avatar{width:38px!important;height:38px!important;min-width:38px!important;border-radius:50%!important;overflow:hidden!important;display:flex!important;align-items:center!important;justify-content:center!important;border:1px solid #e8df78!important;background:#0b2528!important;box-shadow:0 0 0 2px rgba(139,212,239,.14),0 0 16px rgba(139,212,239,.16)!important}
+.sentinel-session-avatar svg{width:100%!important;height:100%!important;display:block!important;fill:none!important}
+.sentinel-profile-meta{display:flex;flex-direction:column;gap:2px;line-height:1.05;white-space:nowrap}
+.sentinel-profile-meta strong{font:800 9px "IBM Plex Mono",monospace!important;letter-spacing:.1em;color:#e8df78!important}
+.sentinel-profile-meta small{font:500 8px "IBM Plex Mono",monospace!important;letter-spacing:.06em;color:#9bc9c9!important}
+.sentinel-signout-button{min-height:36px!important;padding:7px 12px!important;border-radius:7px!important;font:700 10px "Manrope",sans-serif!important;letter-spacing:.04em!important;white-space:nowrap!important;transition:transform .2s ease,background .2s ease,border-color .2s ease!important}
+.sentinel-signout-button:hover{transform:translateY(-2px)!important;border-color:#8bd4ef!important;background:rgba(139,212,239,.12)!important}
+@media(max-width:520px){
+ .sentinel-session-control{gap:6px!important}
+ .sentinel-profile-chip{gap:5px;padding:3px 7px 3px 3px}
+ .sentinel-session-avatar{width:32px!important;height:32px!important;min-width:32px!important}
+ .sentinel-profile-meta strong{font-size:8px!important}
+ .sentinel-profile-meta small{font-size:7px!important}
+ .sentinel-signout-button{padding:6px 8px!important;font-size:9px!important}
+}
