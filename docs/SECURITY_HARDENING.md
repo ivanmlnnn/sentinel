@@ -5,6 +5,7 @@ This is a verification baseline, not a certification or a claim that Sentinel is
 ## Implemented in this branch
 
 - Public dashboard metrics are aggregate-only; individual receiver addresses and scan amounts are no longer returned by `/api/metrics`.
+- AI review now checks a D1 ownership mapping; authenticated users can only read analyses for investigations they initiated, while configured admins can review across users. Guest scans intentionally have no owner row.
 - The public verified threat feed omits free-form evidence. Unverified/rejected reports and moderation require a Privy subject explicitly listed in `SENTINEL_ADMIN_DIDS`.
 - API mutations require same-origin requests when an Origin header is present and require `application/json`.
 - JSON parsing uses a streaming byte limit; agent proposal and approval bodies have smaller route-specific limits.
@@ -71,7 +72,7 @@ Record each finding with request/response evidence, severity, fix commit, and a 
 - [ ] Confirm Cloudflare account MFA and least-privilege team roles.
 - [ ] Configure secrets only in the dedicated Worker that needs them.
 - [ ] Keep signer kill switch enabled until preview negative tests pass.
-- [ ] Review the remote D1 migration history and schema, back up the intended database, and apply only the SQLite-compatible `migrations-d1/` sequence.
+- [ ] Review the remote D1 migration history and schema, back up the intended database, and apply only the SQLite-compatible `migrations-d1/` sequence (0001–0007).
 - [ ] Run CodeQL and the full CI suite on the exact submission commit.
 - [ ] Complete the Burp Suite plan against preview; attach a redacted report.
 - [ ] Obtain independent review of the shared-D1 and human-approval residual risks before enabling transfers.
