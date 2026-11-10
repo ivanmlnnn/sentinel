@@ -17,8 +17,10 @@ jobs:
     name: Analyze JavaScript
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout full history for complete analysis
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:

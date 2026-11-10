@@ -23,8 +23,10 @@ jobs:
     name: Input validation and security regression tests
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout source
+      - name: Checkout source with full history for secret scanning
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -37,6 +39,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Check JavaScript syntax
         run: |
+          node --check public/app.js
+          node --check functions/api/guest-agent.js
           node --check src/index.js
           node --check src/http-security.mjs
           node --check src/agent-policy.mjs
