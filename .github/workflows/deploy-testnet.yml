@@ -65,6 +65,7 @@ jobs:
           node --check scripts/install-restricted-signer-key.mjs
           node --check scripts/deploy-payment-contract.mjs
           node --check scripts/generate-restricted-signer-key.mjs
+          node --check src/signed-verdict.mjs
           node --check public/app.js
           npm run check:d1
           npx wrangler@4.159.0 deploy --dry-run
