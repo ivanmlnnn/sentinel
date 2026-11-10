@@ -11,6 +11,7 @@ Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verifi
   <a href="https://github.com/ivanmlnnn/sentinel"><strong>SOURCE CODE</strong></a> ·
   <a href="docs/SECURE_AGENT_PIPELINE.md"><strong>SECURE AGENT PIPELINE</strong></a> ·
   <a href="docs/JUDGE_DEMO.md"><strong>JUDGE DEMO GUIDE</strong></a> ·
+  <a href="docs/MANUAL_DEPLOYMENT_AND_CHAIN_VERIFICATION.md"><strong>MANUAL DEPLOY & CHAIN VERIFICATION</strong></a> ·
   <a href="docs/SECURITY_HARDENING.md"><strong>SECURITY HARDENING</strong></a>
 </p>
 
@@ -65,6 +66,16 @@ The reproducible results below are tied to the last fully evidenced CI revision 
 - JavaScript syntax checks, both Wrangler Worker bundle dry-runs, D1 migration validation, and the offline prompt-injection regression demo passed.
 - Cloudflare Turnstile is integrated using the official browser widget and server-side Siteverify endpoint (`https://challenges.cloudflare.com/turnstile/v0/siteverify`). The wallet-scan UI remains disabled until a Turnstile token is received; the server validates `success`, the `track_wallet` action, and the hostname, and fails closed on missing configuration or verification outage.
 - The PR-triggered source-attestation job is skipped by workflow design; this is not a signed release artifact. These tests do **not** constitute a Burp Suite assessment, independent audit, proof of live Cloudflare deployment, or proof of a successful Sentinel-signed Testnet transfer.
+
+## Deployment and on-chain verification
+
+**Release deployment is manual through GitHub Actions only.** Use [Actions → Deploy Sentinel Testnet](https://github.com/ivanmlnnn/sentinel/actions/workflows/deploy-testnet.yml), select the reviewed branch, and enter `DEPLOY_SENTINEL_TESTNET`. The workflow must pass source validation before it applies remote D1 migrations, deploys the private Signer Worker, deploys the Main Worker, and runs production smoke checks. Do not treat a Wrangler dry-run or Cloudflare preview build as a production deployment.
+
+The Signer Worker checks the final transaction against NEAR Testnet FastNear JSON-RPC for signer, receiver, exact amount, and successful final status. Its response includes a Testnet NearBlocks Explorer link when a transaction is actually verified. Independently compare that same hash with the [NearBlocks Testnet API](https://api-testnet.nearblocks.io/api-docs) and [Testnet Explorer](https://testnet.nearblocks.io/) before presenting it to judges. The Explorer cross-check is a manual evidence step; the signer currently uses FastNear RPC as its automated final gate.
+
+See [manual deployment and chain-verification procedure](docs/MANUAL_DEPLOYMENT_AND_CHAIN_VERIFICATION.md) for required GitHub secrets, DB1/DB2 bindings, exact workflow steps, and the evidence checklist. No transaction hash is claimed here unless it has actually been produced and checked.
+
+**Security limitation:** the isolated Signer Worker currently requires a dedicated Testnet FullAccess key. It is isolated from the Main Worker and enforces application policy, but it is not a contract-scoped function-call key and therefore does not fully satisfy that explicit track requirement. Do not claim otherwise. Native NEAR transfer through a function-call key requires a purpose-built payment/escrow contract.
 
 ## Run it locally
 
