@@ -85,7 +85,11 @@ export async function onRequestPost({ request, env }) {
     });
   } catch { return json({ error: "AI_PROVIDER_UNAVAILABLE" }, 502); }
   const providerData = await providerResponse.json().catch(() => ({}));
-  if (!providerResponse.ok) return json({ error: "AI_PROVIDER_ERROR" }, 502);
+  if (!providerResponse.ok) {
+    const providerMessage = String(providerData?.error?.message || "The configured AI provider rejected the request.").slice(0, 240);
+    const billing = /credit balance|insufficient.{0,20}credit|plans\s*&\s*billing|purchase credits|billing/i.test(providerMessage);
+    return json({ error: billing ? "AI_PROVIDER_BILLING_ERROR" : "AI_PROVIDER_ERROR", provider_status: providerResponse.status, provider_message: providerMessage }, 502);
+  }
   const content = Array.isArray(providerData.content) ? providerData.content : [];
   const anomalyTool = content.find(item => item.type === "tool_use" && item.name === "investigate_near_account");
   const toolUse = content.find(item => item.type === "tool_use" && item.name === "request_near_payment");
@@ -138,7 +142,11 @@ export async function onRequestPost({ request, env }) {
         signal: AbortSignal.timeout(15000)
       });
       const followupData = await followup.json().catch(() => ({}));
-      if (!followup.ok) return json({ run_id: idempotencyKey, status: "AI_PROVIDER_ERROR", investigation: safeEvidence }, 502);
+      if (!followup.ok) {
+        const providerMessage = String(followupData?.error?.message || "The configured AI provider rejected the follow-up request.").slice(0, 240);
+        const billing = /credit balance|insufficient.{0,20}credit|plans\s*&\s*billing|purchase credits|billing/i.test(providerMessage);
+        return json({ run_id: idempotencyKey, status: billing ? "AI_PROVIDER_BILLING_ERROR" : "AI_PROVIDER_ERROR", provider_status: followup.status, provider_message: providerMessage, investigation: safeEvidence }, 502);
+      }
       agentText = (followupData.content || []).filter(item => item.type === "text").map(item => item.text).join("\n").slice(0, 4000);
     } catch {
       return json({ run_id: idempotencyKey, status: "AI_PROVIDER_UNAVAILABLE", investigation: safeEvidence }, 502);
