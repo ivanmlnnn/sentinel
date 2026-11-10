@@ -3217,3 +3217,13 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
 .agent-approval p{margin:0 0 12px;color:var(--muted,#9aa6a1);font-size:13px;line-height:1.55}
 .agent-approval .primary-btn{width:100%;min-height:46px}
 .agent-approval .primary-btn:disabled{opacity:.55;cursor:wait}
+
+/* Cloudflare Turnstile wallet-scan verification */
+.turnstile-wrap{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin-top:16px;padding:12px;border:1px solid #39463d;background:#0b120e;border-radius:4px;min-height:88px;position:relative;z-index:1}
+.turnstile-wrap .cf-turnstile{display:block;min-height:65px;min-width:300px;max-width:100%;visibility:visible!important;opacity:1!important}
+#turnstileTrackWalletStatus{display:block;min-height:16px;font:10px/1.5 var(--sans);color:#aeb9af}
+#turnstileTrackWalletStatus[data-state="verified"]{color:#8be0ad}
+#turnstileTrackWalletStatus[data-state="error"]{color:#f0a0a0}
+#turnstileTrackWalletRetry{border:1px solid #829b85;background:transparent;color:#d5e4d6;padding:7px 11px;font:10px var(--mono);cursor:pointer}
+#turnstileTrackWalletRetry[hidden]{display:none!important}
+@media(max-width:420px){.turnstile-wrap .cf-turnstile{min-width:0;width:100%;transform-origin:top left}}
