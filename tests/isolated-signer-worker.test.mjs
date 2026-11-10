@@ -77,30 +77,21 @@ test("signer kill switch denies before reading key material or touching D1", asy
   assert.equal(result.reason, "KILL_SWITCH_ACTIVE");
 });
 
-test("signer requires an exact actor-bound pending approval and claims it once", async () => {
-  const inserted = new Set();
+test("signer rejects missing wallet signature and mismatched approval intent", async () => {
   const env = {
     DB: { prepare(sql) {
       assert.match(sql, /^SELECT id, actor/);
       return { bind(...args) { return { async first() {
         return { id: args[0], actor: args[1], receiver_account: "rawvest6817.testnet",
-          amount_micro: 10000, status: "APPROVING" };
+          amount_micro: 10000, status: "APPROVING", expires_at: "2026-11-10 05:00:00" };
       } }; } };
     } },
-    DB2: { prepare(sql) {
-      assert.match(sql, /^INSERT INTO signer_approval_claims/);
-      return { bind(...args) { return { async run() {
-        if (inserted.has(args[0])) throw new Error("UNIQUE constraint");
-        inserted.add(args[0]);
-        return { meta: { changes: 1 } };
-      } }; } };
-    } }
+    DB2: { prepare() { throw new Error("DB2 must not be touched before signature validation"); } }
   };
   const claim = { approvalId: "123e4567-e89b-42d3-a456-426614174000",
     idempotencyKey: "123e4567-e89b-42d3-a456-426614174001",
     actor: "did:privy:test", receiver: "rawvest6817.testnet", amountMicro: 10000 };
-  await claimApproval(env, claim);
-  await assert.rejects(() => claimApproval(env, claim), /UNIQUE constraint/);
+  await assert.rejects(() => claimApproval(env, claim), /WALLET_SIGNATURE_REQUIRED/);
   await assert.rejects(() => claimApproval(env, { ...claim, amountMicro: 20000 }), /HUMAN_APPROVAL_NOT_VERIFIED/);
 });
 
