@@ -21,7 +21,7 @@ The following deployment and CI records are successful:
 | Security CI | [Run #45](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243623) | Successful |
 | NEAR payment contract | Previously deployed successfully, as confirmed by the project maintainer | Existing contract is reused; do not deploy a second contract for a normal Worker release |
 
-The Signer Worker success record predates the later merged-main source revision. The Main Worker has a later successful deployment record. For a coordinated refresh to the latest source, use the `both` workflow target described below. A successful Worker deployment is distinct from proof of a new Sentinel-originated payout; verify a transaction hash and receipt separately before claiming a payout.
+The Signer Worker success record predates the later merged-main source revision. The Main Worker has a later successful deployment record. For a coordinated refresh to the latest source, use the `both` workflow target described below. The deployment and security workflow evidence is indexed in the [End-to-End Verification Report](END_TO_END_VERIFICATION.md).
 
 The signer account configured by source defaults to `freshnook5462.testnet`; `rawvest6817.testnet` is the tracked/recipient account. Do not infer the signer identity from a masked GitHub secret.
 
