@@ -56,6 +56,7 @@ Do not run these deployment steps until CI is green and the branch has been revi
 ### Main Worker variables
 
 - `NEAR_NETWORK=testnet`
+- `NEAR_AGENT_KILL_SWITCH=false` — this enables the *proposal and approval API* to create intents. It does **not** enable signing; the isolated Signer Worker must keep its own kill switch set to `true` until all negative tests and deployment checks pass.
 - `NEAR_AGENT_ALLOWED_RECEIVERS=rawvest6817.testnet`
 - `NEAR_AGENT_MAX_PAYMENT_NEAR=0.01`
 - `NEAR_AGENT_MAX_DAILY_NEAR=0.02`
