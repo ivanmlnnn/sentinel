@@ -8,7 +8,7 @@ export function json(data, status = 200) {
 export async function readTextLimited(request, maxBytes = 65536) {
   const lengthHeader = request.headers.get("content-length");
   if (lengthHeader !== null) {
-    if (!/^\\d+$/.test(lengthHeader) || !Number.isSafeInteger(Number(lengthHeader))) return { ok: false, reason: "INVALID_CONTENT_LENGTH" };
+    if (!/^\d+$/.test(lengthHeader) || !Number.isSafeInteger(Number(lengthHeader))) return { ok: false, reason: "INVALID_CONTENT_LENGTH" };
     if (Number(lengthHeader) > maxBytes) return { ok: false, reason: "BODY_TOO_LARGE" };
   }
   const encoding = (request.headers.get("content-encoding") || "identity").trim().toLowerCase();
