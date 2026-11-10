@@ -2596,3 +2596,26 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
  .sentinel-auth-card:has(.sentinel-auth-guest-button),
  .sentinel-auth-card:has(.sentinel-auth-loader){background:linear-gradient(145deg,rgba(32,72,73,.97),rgba(20,54,56,.98))!important}
 }
+
+/* Refined Sentinel auth typography + motion */
+.sentinel-auth-screen{font-family:"Manrope","Inter",ui-sans-serif,system-ui,sans-serif!important;perspective:1200px}
+.sentinel-auth-card:has(.sentinel-auth-guest-button),.sentinel-auth-card:has(.sentinel-auth-loader){border-radius:3px!important;transform-origin:50% 58%;animation:sentinel-auth-arrive .95s cubic-bezier(.16,1,.3,1) both!important;will-change:transform,opacity,filter}
+@keyframes sentinel-auth-arrive{0%{opacity:0;transform:translate3d(0,28px,-36px) scale(.965);filter:blur(9px)}65%{opacity:1;filter:blur(0);transform:translate3d(0,-3px,0) scale(1.006)}100%{opacity:1;transform:translate3d(0,0,0) scale(1);filter:blur(0)}}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-mark,.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-mark{animation:sentinel-auth-logo-in .9s cubic-bezier(.16,1,.3,1) .08s both!important}
+@keyframes sentinel-auth-logo-in{from{opacity:0;transform:translateY(13px) rotateX(12deg) scale(.88);filter:blur(5px)}to{opacity:1;transform:translateY(0) rotateX(0) scale(1);filter:blur(0)}}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-kicker,.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-kicker{font-family:"IBM Plex Mono",ui-monospace,monospace!important;font-size:9px!important;letter-spacing:.19em!important;animation:sentinel-auth-text-in .7s cubic-bezier(.2,.8,.2,1) .17s both}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) h1,.sentinel-auth-card:has(.sentinel-auth-loader) h1{font-family:"Manrope","Inter",ui-sans-serif,sans-serif!important;font-size:clamp(29px,5.2vw,38px)!important;font-weight:800!important;letter-spacing:.045em!important;line-height:1.08!important;text-shadow:0 3px 24px rgba(139,212,239,.12);animation:sentinel-auth-text-in .78s cubic-bezier(.2,.8,.2,1) .24s both}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-copy,.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-copy{font-family:"Manrope","Inter",ui-sans-serif,sans-serif!important;font-size:13.5px!important;font-weight:500!important;line-height:1.8!important;letter-spacing:.005em!important;animation:sentinel-auth-text-in .78s cubic-bezier(.2,.8,.2,1) .31s both}
+@keyframes sentinel-auth-text-in{from{opacity:0;transform:translateY(10px);filter:blur(3px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button,.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button{font-family:"Manrope","Inter",ui-sans-serif,sans-serif!important;font-weight:800!important;letter-spacing:.015em!important;transition:transform .38s cubic-bezier(.2,.9,.25,1),box-shadow .38s ease,background .3s ease,border-color .3s ease,color .3s ease!important}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button{animation:sentinel-auth-action-in .8s cubic-bezier(.2,.8,.2,1) .38s both}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button{animation:sentinel-auth-action-in .8s cubic-bezier(.2,.8,.2,1) .46s both}
+@keyframes sentinel-auth-action-in{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-footnote,.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-security{animation:sentinel-auth-text-in .75s ease .52s both}
+.sentinel-auth-loading-status{font-family:"IBM Plex Mono",ui-monospace,monospace!important;letter-spacing:.14em!important;animation:sentinel-auth-text-in .65s ease .38s both}
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-loader{animation:sentinel-auth-line-in .7s ease .48s both!important}
+@keyframes sentinel-auth-line-in{from{opacity:0;transform:scaleX(.35);filter:brightness(1.8)}to{opacity:1;transform:scaleX(1);filter:brightness(1)}}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-mark:hover,.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-mark:hover{transform:perspective(700px) rotateY(-9deg) rotateX(7deg) translateY(-5px) scale(1.025)!important;transition:transform .5s cubic-bezier(.2,.9,.25,1),box-shadow .4s ease,border-color .4s ease!important}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button:hover:not(:disabled),.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button:hover:not(:disabled){transform:translateY(-3px) scale(1.012)!important}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button:active,.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button:active{transform:translateY(0) scale(.975)!important;transition-duration:.12s!important}
+@media(prefers-reduced-motion:reduce){.sentinel-auth-card:has(.sentinel-auth-guest-button),.sentinel-auth-card:has(.sentinel-auth-loader),.sentinel-auth-card:has(.sentinel-auth-guest-button) *,.sentinel-auth-card:has(.sentinel-auth-loader) *{animation:none!important;transition:none!important}}
