@@ -115,6 +115,7 @@ export function mountWayang3D(host) {
   const templeCore=sphere(-.23,.43,.91,.12,.12,.06,steel);
   sphere(-.23,.43,.97,.045,.045,.025,cyan);
   tube([[-.48,.52,.82],[-.25,.7,.86],[.05,.72,.84],[.29,.61,.84]],.035,gold);
+  const jointMat=new THREE.MeshPhysicalMaterial({color:0x899ba3,metalness:.9,roughness:.2});
   // Layered circular mechanical head cage and riveted temple plates from the reference helmet.
   const helmetArc=new THREE.Mesh(new THREE.TorusGeometry(.58,.055,12,64,Math.PI*1.22),steel);
   helmetArc.position.set(-.08,.45,.39);helmetArc.rotation.z=.22;puppet.add(helmetArc);
@@ -158,7 +159,6 @@ export function mountWayang3D(host) {
   // Neck ornaments and articulated arm/hand shapes.
   tube([[-.28,-.38,.56],[-.08,-.5,.7],[.2,-.42,.56]],.045,paleGold);
   // Segmented mechanical arms: black carbon links, circular silver pivots and plated forearms.
-  const jointMat=new THREE.MeshPhysicalMaterial({color:0x899ba3,metalness:.9,roughness:.2});
   const armPlate=new THREE.MeshStandardMaterial({color:0x202a30,metalness:.72,roughness:.3});
   function linkBetween(a,b,r1,r2,material,parent=puppet){
     const va=new THREE.Vector3(...a),vb=new THREE.Vector3(...b),d=new THREE.Vector3().subVectors(vb,va);
