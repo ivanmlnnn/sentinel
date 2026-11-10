@@ -355,6 +355,20 @@ export default {
     if (!identity) return json({ error: "UNAUTHORIZED" }, 401);
     let payload;
     try { payload = JSON.parse(rawBody); } catch { return json({ error: "INVALID_JSON" }, 400); }
+    const exactKeys = (value, expected) => value && typeof value === "object" && !Array.isArray(value) &&
+      Object.keys(value).sort().join(",") === [...expected].sort().join(",");
+    if (!exactKeys(payload, ["intent", "actor", "idempotency_key", "approval_id", "wallet_approval"]) ||
+        !exactKeys(payload.intent, ["receiver_account", "amount_near", "rationale"]) ||
+        !exactKeys(payload.wallet_approval, ["account_id", "public_key", "signature", "nonce"]) ||
+        typeof payload.actor !== "string" || payload.actor.length > 128 ||
+        typeof payload.intent.receiver_account !== "string" || payload.intent.receiver_account.length > 64 ||
+        typeof payload.intent.rationale !== "string" || payload.intent.rationale.length > 500 ||
+        typeof payload.wallet_approval.account_id !== "string" || payload.wallet_approval.account_id.length > 64 ||
+        typeof payload.wallet_approval.public_key !== "string" || payload.wallet_approval.public_key.length > 128 ||
+        typeof payload.wallet_approval.signature !== "string" || payload.wallet_approval.signature.length > 256 ||
+        typeof payload.wallet_approval.nonce !== "string" || payload.wallet_approval.nonce.length > 128) {
+      return json({ error: "INVALID_PAYLOAD_SCHEMA" }, 400);
+    }
     const result = await execute(payload, request.headers.get("authorization") || "", identity, env);
     return json(result, 200);
   }
