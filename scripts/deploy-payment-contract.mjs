@@ -48,7 +48,7 @@ const tx = await account.createTransaction({
     actions.deployContract(wasm),
     actions.functionCall("new", initArgs, 100_000_000_000_000n, 0n)
   ],
-  publicKey: signer.getPublicKey().toString()
+  publicKey: (await signer.getPublicKey()).toString()
 });
 const signed = await signer.signTransaction(tx);
 const outcome = await provider.sendTransaction(signed.signedTransaction);
