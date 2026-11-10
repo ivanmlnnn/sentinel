@@ -2904,3 +2904,72 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
  .sentinel-profile-meta small{font-size:7px!important}
  .sentinel-signout-button{padding:6px 8px!important;font-size:9px!important}
 }
+
+
+/* Login title hierarchy: bold, bright, unmistakably the product name. */
+.sentinel-auth-card:has(.sentinel-auth-guest-button) h1{
+ color:#fff!important;font-family:"Manrope","Inter",sans-serif!important;font-size:clamp(35px,6vw,46px)!important;
+ font-weight:900!important;letter-spacing:.055em!important;line-height:1.02!important;
+ text-shadow:0 2px 0 rgba(139,212,239,.25),0 5px 22px rgba(0,0,0,.42),0 0 34px rgba(139,212,239,.2)!important;
+ -webkit-text-stroke:.35px rgba(255,255,255,.7);
+}
+.sentinel-auth-card:has(.sentinel-auth-loader) h1{
+ color:#fff!important;font-family:"Manrope","Inter",sans-serif!important;font-size:clamp(31px,5.8vw,39px)!important;
+ font-weight:900!important;letter-spacing:.07em!important;text-shadow:0 3px 24px rgba(139,212,239,.22),0 2px 0 rgba(139,212,239,.2)!important;
+}
+/* Direct-manipulation 3D: drag horizontally and vertically to rotate the emblem. */
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-mark,
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-mark{
+ cursor:grab!important;touch-action:none!important;user-select:none!important;-webkit-user-select:none!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-mark.is-dragging,
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-mark.is-tilted,
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-mark.is-dragging,
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-mark.is-tilted{
+ animation:none!important;transform:var(--wayang-drag-transform)!important;transition:box-shadow .2s ease!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-mark.is-dragging,
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-mark.is-dragging{
+ cursor:grabbing!important;box-shadow:0 4px 0 #8bd4ef,0 9px 0 #235653,0 18px 36px rgba(0,0,0,.55),0 0 38px rgba(139,212,239,.32)!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-mark.is-dragging img,
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-mark.is-tilted img,
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-mark.is-dragging img,
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-mark.is-tilted img{transform:translateZ(44px) scale(1.035)!important}
+/* Loading session: layered reveal and subtle ambient movement; preserve the original sweep line. */
+.sentinel-auth-card:has(.sentinel-auth-loader){animation:sentinel-session-arrive 1.05s cubic-bezier(.16,1,.3,1) both!important}
+.sentinel-auth-card:has(.sentinel-auth-loader)::before{animation:sentinel-session-edge 4.8s ease-in-out infinite!important}
+.sentinel-auth-card:has(.sentinel-auth-loader)::after{
+ content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+ background:linear-gradient(112deg,transparent 20%,rgba(139,212,239,.075) 48%,transparent 72%);
+ transform:translateX(-120%);animation:sentinel-session-scan 5.2s ease-in-out .7s infinite;
+}
+.sentinel-auth-card:has(.sentinel-auth-loader)>*{position:relative;z-index:1}
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-mark{animation:sentinel-session-emblem 5s ease-in-out infinite!important}
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-kicker{animation:sentinel-session-rise .7s cubic-bezier(.2,.8,.2,1) .12s both!important}
+.sentinel-auth-card:has(.sentinel-auth-loader) h1{animation:sentinel-session-rise .8s cubic-bezier(.2,.8,.2,1) .22s both!important}
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-copy{animation:sentinel-session-rise .8s cubic-bezier(.2,.8,.2,1) .34s both!important}
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-loading-status{animation:sentinel-session-rise .8s cubic-bezier(.2,.8,.2,1) .45s both!important}
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-status-dot{animation:sentinel-status-breathe 1.35s ease-in-out infinite!important}
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-loader{
+ animation:sentinel-session-rise .8s cubic-bezier(.2,.8,.2,1) .52s both!important;
+ box-shadow:0 0 0 1px rgba(232,223,120,.16),0 0 22px rgba(139,212,239,.12)!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-loader::before,
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-loader::after{animation:sentinel-loading-sweep 1.45s cubic-bezier(.65,0,.35,1) infinite!important}
+@keyframes sentinel-session-arrive{
+ 0%{opacity:0;transform:translateY(24px) scale(.965);filter:blur(9px)}
+ 65%{opacity:1;filter:blur(0)}100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}
+}
+@keyframes sentinel-session-rise{0%{opacity:0;transform:translateY(13px);filter:blur(4px)}100%{opacity:1;transform:translateY(0);filter:blur(0)}}
+@keyframes sentinel-session-emblem{
+ 0%,100%{transform:perspective(900px) rotateX(5deg) rotateY(-8deg) translateY(0)}
+ 50%{transform:perspective(900px) rotateX(-4deg) rotateY(8deg) translateY(-5px)}
+}
+@keyframes sentinel-session-edge{0%,100%{opacity:.45}50%{opacity:1}}
+@keyframes sentinel-session-scan{0%,35%{transform:translateX(-120%)}75%,100%{transform:translateX(120%)}}
+@media(prefers-reduced-motion:reduce){
+ .sentinel-auth-card:has(.sentinel-auth-loader){animation:none!important}
+ .sentinel-auth-card:has(.sentinel-auth-loader)::after{animation:none!important}
+ .sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-mark{animation:none!important}
+}
