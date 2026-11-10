@@ -154,3 +154,27 @@ The signed-verdict implementation was merged through [PR #10](https://github.com
 | CodeQL | **PASS** | [Run](https://github.com/ivanmlnnn/sentinel/actions/runs/42900812267) |
 
 The deployment job applied both D1 migration sets, deployed the isolated Signer Worker before the Main Worker, and completed the production smoke suite. The smoke suite confirms dashboard availability and the expected unauthenticated/missing-token rejection paths. It does not claim a live AI conversation, wallet connection, or Sentinel-originated NEAR payout.
+
+
+## 8. Latest main release and independent local stress lab — 11 November 2026
+
+The latest main release workflow records are:
+
+| Verification | Result | Evidence |
+|---|---|---|
+| Automated regression | **127 passed, 0 failed** | [Sentinel checks run 42901218667](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218667) |
+| Main D1 migration validation | **PASS — 8 migrations, 10 tables, 24 indexes** | Same run job log |
+| Signer D1 migration validation | **PASS — 1 migration, 3 tables, 7 indexes** | Same run job log |
+| Main and isolated Signer bundle validation | **PASS** | Same run |
+| Payment-contract WASM release build | **PASS** | Same run |
+| Prompt-injection regression | **PASS — BLOCK; signer invoked: NO** | Same run job log |
+| Main + isolated Signer deployment | **PASS** | [Deployment run 42901218870](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218870) |
+| Signer Worker version | `98dc36e1-f9ef-4f6e-b4a5-f28de4a59661` | Same deployment run |
+| Main Worker version | `df27ffb5-cafc-4ab0-bedc-b1ff8bf4cfa7` | Same deployment run |
+| Production HTTP smoke | **8/8 PASS** | Same deployment run |
+| Security CI | **PASS** | [Run 42901218721](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218721) |
+| CodeQL | **PASS** | [Run 42901218658](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218658) |
+
+The workflow logs show the Main and Signer D1 migration steps, deployment of the isolated Signer Worker before the Main Worker, and the eight production HTTP checks. The smoke checks cover dashboard availability and expected Turnstile, bearer-token, and internal-HMAC rejection behavior.
+
+A separate [Independent Local Stress Lab report](INDEPENDENT_LOCAL_STRESS_LAB.md) records nine local simulation checks, including concurrency, simulated multi-instance claims, local HTTP load, fault injection, policy-model fuzzing, and synthetic E2E state transitions. Those results are explicitly local-only: they do not establish distributed Cloudflare D1 behavior, deployed Worker p95/p99 latency, live NEAR RPC saturation handling, deployed Rust contract fuzzing, or real concurrent Testnet payouts.
