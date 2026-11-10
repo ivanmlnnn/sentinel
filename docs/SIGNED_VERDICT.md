@@ -57,3 +57,24 @@ The following records are historical evidence for the revisions they identify:
 The updated release workflow is designed to make a successful run prove both Worker deployment steps and both migration steps. That evidence must be added after the updated workflow has actually been run. A workflow file change or a successful Main-only deployment is not proof of Signer deployment.
 
 A production HTTP smoke test is not itself a signed-verdict runtime test. Do not claim a live Privy-to-Testnet payment exercised Ed25519 unless a trace or test demonstrates a valid signed attestation was accepted and an invalid/expired/tampered attestation was rejected at the deployed Signer boundary. No secret values are committed.
+
+
+## Verified dual-Worker deployment — 11 November 2026
+
+[GitHub Actions run #221](https://github.com/ivanmlnnn/sentinel/actions/runs/42887069411) ran the revised deployment workflow on `feat/signed-verdict-attestation` at commit `48e64d4be6152b168a0dd2a340cdc8d45fc6b4c4`. GitHub reports the workflow and its `test-and-deploy` job as **completed / success**. The job's individual step summaries confirm:
+
+| Step | Result |
+|---|---|
+| Require Cloudflare deployment credentials | PASS |
+| Validate Main Worker configuration | PASS |
+| Validate isolated Signer Worker configuration | PASS |
+| Run automated test suite | PASS |
+| Apply Main Worker D1 migrations | PASS |
+| Apply isolated Signer D1 migrations | PASS |
+| Deploy isolated `sentinel-signer` | PASS |
+| Deploy Main `sentinel` Worker | PASS |
+| Smoke test production | PASS |
+
+This is the branch-specific dual-Worker deployment evidence. It supersedes the earlier Main-only deployment as evidence for the PR #10 release workflow. The workflow logs and step summaries are available in [run #221](https://github.com/ivanmlnnn/sentinel/actions/runs/42887069411).
+
+The deployment result establishes that the configured Cloudflare deployment credentials were accepted and both deployment actions and production smoke test completed successfully. It does **not** disclose or independently compare the private/public Ed25519 secret values, nor does it demonstrate a live Privy-to-Testnet payment using a signed verdict. For that final runtime claim, retain a trace proving a valid attestation is accepted and an invalid, expired, or modified attestation is rejected by the deployed Signer. Until that trace exists, report deployment as verified and live signed-verdict transaction exercise as not yet evidenced.
