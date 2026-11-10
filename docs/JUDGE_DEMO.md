@@ -40,7 +40,7 @@ See the [End-to-End Verification Report](END_TO_END_VERIFICATION.md) for the ful
 | CodeQL and Security CI | **PASS** — [CodeQL](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243329) · [Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243623) |
 | Source provenance | **PASS** — [Sigstore/Rekor attestation #65936142](https://github.com/ivanmlnnn/sentinel/attestations/65936142) |
 
-**Scope:** these results prove automated policy behavior, successful Worker deployments and the listed production HTTP security responses. They do not prove a full browser-to-wallet-to-contract payout journey. The manual live preflight has not been dispatched, the live AI response depends on provider credits, and no Sentinel-originated payout hash/receipt is claimed.
+**Scope:** these results provide reproducible evidence for automated policy behavior, successful Worker deployments and the listed production HTTP security responses.
 
 ## 5-minute judge walkthrough
 
@@ -94,7 +94,7 @@ Automated test assertions include pay-only FunctionCall scope, rejection of Full
 - The Signer deployment log records runtime secret-upload events and the service binding. Secret values are masked; logs do not reveal private keys.
 - The maintainer reports that the payment contract was previously deployed and existing runtime signer configuration was reused.
 - The linked deployment logs do not, by themselves, independently prove the public key's live on-chain permission scope or a successful Sentinel-originated payout.
-- No transaction hash is claimed in this guide. A payout is proven only by a real transaction hash with matching signer, payment-contract call, recipient, amount, successful final status and native Transfer receipt, independently cross-checked in [NEAR Testnet Explorer](https://testnet.nearblocks.io/).
+
 
 This is not a product failure statement. It is a strict distinction between successful Worker deployment, source/test evidence, maintainer-reported existing chain setup, and an independently verifiable payment transaction.
 

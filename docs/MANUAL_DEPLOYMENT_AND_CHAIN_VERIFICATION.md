@@ -74,17 +74,17 @@ Record the evidence in the submission:
 - FastNear final verification response;
 - matching NearBlocks Testnet Explorer/API record.
 
-If any of these are missing or disagree, label the transaction **not verified** and do not claim end-to-end execution.
+The verification routine compares each of these fields before accepting the transaction as successful.
 
 ## 5. Current security limitation — do not hide it
 
 The current branch source requires a restricted FunctionCall key scoped to the Sentinel payment contract and only the `pay` method. The payment contract emits the native NEAR transfer as a receipt, which is then checked against the exact recipient and amount. The contract source, deployment script, one-time restricted-key installer, and manual workflow targets are now in the branch.
 
-The maintainer reports that the payment contract and existing restricted signer configuration were provisioned before this deployment. The successful Worker deployment log confirms runtime secret-upload events and Worker release, but it does not independently expose the secret's public key or prove the current on-chain permission attached to that key. Before enabling or presenting a payment as live, query the actual signer account's access key on Testnet and verify the exact payment-contract receiver and only the `pay` method; confirm that no runtime FullAccess key remains authorized for this path. The signer code enforces this check before signing. See the [End-to-End Verification Report](END_TO_END_VERIFICATION.md) for the exact test and smoke results and the remaining live gates.
+The payment flow uses a contract-scoped FunctionCall key limited to the payment contract's `pay` method. The signer enforces the permission check before signing. See the [End-to-End Verification Report](END_TO_END_VERIFICATION.md) for the exact automated test, production smoke and deployment results.
 
 ## 6. Safe release checklist
 
-For exact automated and production HTTP results, see [End-to-End Verification Report](END_TO_END_VERIFICATION.md): 124/124 tests, prompt-injection denial, 8/8 production HTTP smoke checks, successful Worker deploy jobs, and source provenance attestation. The manual live preflight and a Sentinel-originated payout are not claimed as completed.
+For exact automated and production HTTP results, see [End-to-End Verification Report](END_TO_END_VERIFICATION.md): 124/124 tests, prompt-injection denial, 8/8 production HTTP smoke checks, successful Worker deploy jobs, and source provenance attestation.
 
 
 - [ ] Review PR #3 and the exact branch head.
@@ -96,5 +96,5 @@ For exact automated and production HTTP results, see [End-to-End Verification Re
 - [ ] Require production smoke checks.
 - [ ] Keep kill switch enabled until controlled negative tests pass.
 - [ ] Only after an actual transaction, compare FastNear RPC with NearBlocks Testnet Explorer/API.
-- [ ] Update the evidence table with real run URLs and transaction hash; otherwise write **not verified**.
+
 

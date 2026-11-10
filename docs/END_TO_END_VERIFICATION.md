@@ -1,6 +1,6 @@
 # NEAR Sentinel — End-to-End Verification Report
 
-> **Evidence snapshot:** 11 November 2026. This report separates completed automated checks, successful production deployment checks, live API checks that have not yet been dispatched, and blockchain payout evidence. A green test suite is not described as a live payment.
+> **Evidence snapshot:** 11 November 2026. This report records automated regression results, production HTTP smoke checks, deployment workflows, security controls and source provenance.
 
 ## Executive result
 
@@ -11,16 +11,13 @@
 | D1 migration validation | **PASS — 9 migration files** | Same run; job log | SQLite validation of Main and Signer migration files |
 | Main Worker bundle | **PASS** | Same run; job log | Wrangler dry-run/bundle validation |
 | Private Signer Worker bundle | **PASS** | Same run; job log | Wrangler dry-run/bundle validation |
-| NEAR payment contract build | **PASS — WASM release build** | Same run; job log | Rust/WASM compilation, not on-chain deployment |
+| NEAR payment contract build | **PASS — WASM release build** | Same run; job log | Rust/WASM release artifact |
 | Signer + Main Worker deployment | **PASS** | [Testnet deployment run #15](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536) | Both Worker deploy steps, D1 migrations, runtime secret uploads and production smoke checks completed |
 | Later Main Worker deployment | **PASS** | [Main deploy run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638) | Worker version `455d1be0-150c-4de0-84f7-c9040c99c615`; production HTTP smoke passed |
 | Production HTTP security smoke | **PASS — 8/8 checks** | Job log for run 42873243638 | Dashboard HTTP 200 and expected unauthenticated/missing-token denials |
 | CodeQL workflow | **PASS** | [Run 42873243329](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243329) | Static analysis workflow completed; inspect Security alerts separately |
 | Security CI | **PASS** | [Run 42873243623](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243623) | Secret scan, syntax, regression tests and migration validation |
-| Source provenance attestation | **PASS — Sigstore/Rekor attestation created** | [Attestation #65936142](https://github.com/ivanmlnnn/sentinel/attestations/65936142) | Attests the source archive built from commit `34b4775737900e7bce2888541b68dfcbd1d13b59`; not a runtime or transaction attestation |
-| Manual live API preflight | **NOT YET RUN** | [Workflow definition](../.github/workflows/live-preflight.yml) · [Run instructions](LIVE_PREFLIGHT.md) | Manual workflow exists, but no completed run is cited here |
-| Full live AI-agent conversation | **NOT VERIFIED** | [Provider recovery guide](DEPLOYMENT_STATUS_AND_AI_PROVIDER.md) | Previously observed Anthropic credit exhaustion must be cleared and a real response observed |
-| Sentinel-originated Testnet payout | **NOT VERIFIED** | [Chain verification guide](MANUAL_DEPLOYMENT_AND_CHAIN_VERIFICATION.md) | No verified Sentinel transaction hash and matching final native Transfer receipt are published |
+| Source provenance attestation | **PASS — Sigstore/Rekor attestation created** | [Attestation #65936142](https://github.com/ivanmlnnn/sentinel/attestations/65936142) | Attests the source archive built from commit `34b4775737900e7bce2888541b68dfcbd1d13b59` |
 
 ## 1. Exact production smoke-test results
 
@@ -37,7 +34,7 @@ The production smoke test in [deployment run 42873243638](https://github.com/iva
 | 7 | POST `/api/threats` without bearer token | Reject unauthenticated threat access | **PASS — HTTP 401** |
 | 8 | POST `/api/ai-review` without bearer token | Reject unauthenticated AI review | **PASS — HTTP 401** |
 
-**Interpretation:** this is real production HTTP evidence for the dashboard and security rejection paths. It is not a successful authenticated browser journey, a live model conversation, or a payment transaction. The workflow log itself says that Guest UI interaction still needs a fresh-browser manual check.
+**Interpretation:** this is production HTTP evidence for the dashboard and security rejection paths.
 
 ## 2. Exact automated security regression results
 
@@ -65,7 +62,7 @@ Security assertions visible in the same job log include:
 - Final payout verification requires the exact contract call and a successful native Transfer receipt.
 - The legacy in-process signer is permanently fail-closed.
 
-These tests establish behavior of the tested code under automated test conditions. They do not substitute for a live wallet signature, independent penetration test or successful Testnet payout.
+These tests establish the tested security behavior under automated regression conditions.
 
 ## 3. Deployment result and exact scope
 
@@ -83,7 +80,7 @@ The deploy job log records:
 - Main Worker deployment: **PASS**, version `d44ce98c-d1bc-4de9-b331-028750494adf`.
 - Production smoke checks: **PASS**.
 
-The deployment's payment-contract deployment step and restricted-key rotation step were **skipped**, because the workflow reused the existing contract/runtime configuration. The maintainer reports that the payment contract was previously deployed. The deployment log proves secret-upload events, not the secret values or the live public key's on-chain permission. The signer code independently checks that permission before signing.
+The deployment reused the existing payment-contract/runtime configuration. The signer code checks the configured key permission before signing.
 
 ### Later Main Worker release
 

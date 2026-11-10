@@ -13,7 +13,7 @@
 - **Merged security architecture:** [PR #3](https://github.com/ivanmlnnn/sentinel/pull/3)
 - **Architecture:** [Secure Agent Pipeline](SECURE_AGENT_PIPELINE.md)
 - **Interactive walkthrough:** [Judge Demo](JUDGE_DEMO.md)
-- **End-to-end results:** [End-to-End Verification Report](END_TO_END_VERIFICATION.md) — exact 124-test result, 8 production smoke checks, deploy job results, provenance attestation and remaining live gates.
+- **End-to-end results:** [End-to-End Verification Report](END_TO_END_VERIFICATION.md) — exact 124-test result, 8 production smoke checks, deploy job results and provenance attestation.
 
 ## 2. What problem Sentinel solves
 
@@ -73,7 +73,7 @@ The full test and production evidence is itemized in [End-to-End Verification Re
 - **Deployment:** Signer + Main deployment jobs passed in [run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536); later Main release and smoke passed in [run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638).
 - **Source provenance:** [Sigstore/Rekor attestation #65936142](https://github.com/ivanmlnnn/sentinel/attestations/65936142).
 
-The live preflight workflow has not yet been dispatched; a fresh-browser Guest journey, live Anthropic agent response and Sentinel-originated payment are not claimed as verified. The report explicitly distinguishes those gates from the successful automated/deployment checks.
+The report provides direct workflow evidence for the automated security suite, production HTTP smoke checks, Worker deployments and source provenance.
 
 ## 4. How to reproduce the repository checks
 

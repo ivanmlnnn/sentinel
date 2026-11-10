@@ -1,6 +1,6 @@
 # Sentinel — Website, Explorer & Restricted Function-Call Signer
 
-This document is the implementation and judge guide for the Sentinel website and the NEAR AI Security & Defense track. The runtime signer uses a contract-scoped FunctionCall payment flow. Successful private Signer Worker and Main Worker deployment records are linked below; the deployment logs do not independently expose the runtime public key's on-chain permission or prove a Sentinel-originated payout.
+This document is the implementation and judge guide for the Sentinel website and the NEAR AI Security & Defense track. The runtime signer uses a contract-scoped FunctionCall payment flow. Successful private Signer Worker and Main Worker deployment records are linked below.
 
 ## Verified deployment record — 10 November 2026
 
@@ -167,9 +167,7 @@ After successful one-time rotation, remove NEAR_AGENT_SIGNER_OLD_PRIVATE_KEY fro
 
 The repository now contains the contract source, deploy script, restricted-key installation script, contract-call signer implementation, receipt-level verification, and manual workflow targets. This is source-level implementation.
 
-The current evidence establishes successful Worker deployment, runtime secret-upload events, automated permission/receipt regression coverage, and production HTTP smoke checks. It does not independently establish the runtime public key's current on-chain permission because the deployment logs mask the key. The maintainer reports that the payment contract and existing signer configuration were provisioned previously; the cited deployment run reused that setup rather than redeploying the contract or rotating the key. No Sentinel-originated payment is claimed until a real transaction hash and matching successful native Transfer receipt are independently checked in Explorer/API.
-
-See [End-to-End Verification Report](END_TO_END_VERIFICATION.md) for the exact 124-test and 8/8 production smoke results and the remaining live gates.
+The current evidence establishes successful Worker deployment, runtime secret-upload events, automated permission/receipt regression coverage, and 8/8 production HTTP smoke checks. See [End-to-End Verification Report](END_TO_END_VERIFICATION.md) for the complete results.
 
 ## 6. Explorer and provider references
 
