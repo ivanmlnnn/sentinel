@@ -53,7 +53,7 @@ export function evaluateAgentAuthorization({ intent, assessment, env = {} }) {
   }
   if (assessment.decision !== "ALLOW" ||
       !Number.isFinite(assessment.risk_score) ||
-      assessment.risk_score < 0 || assessment.risk_score > 100) {
+      assessment.risk_score < 0 || assessment.risk_score >= 30) {
     return { authorized: false, reason: assessment?.decision === "BLOCK" ? "SENTINEL_BLOCK" :
       assessment?.decision === "WARN" ? "HUMAN_REVIEW_REQUIRED" : "INVALID_OR_NON_ALLOW_ASSESSMENT" };
   }
