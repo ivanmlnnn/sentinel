@@ -80,12 +80,14 @@ Generate the HMAC secret locally (never send it in chat or commit it), then set 
 
 ### D1 migration gate
 
-The migrations are additive: `004_agent_security.sql`, `005_agent_execution.sql`, `006_signer_nonces.sql`, `007_agent_pending_approvals.sql`, and `008_signer_approval_claims.sql`. Before applying them to the shared database:
+**Important:** the legacy `migrations/` directory contains PostgreSQL-specific SQL and is not used by Wrangler D1. Both Worker configs now point to `migrations-d1/`, which contains SQLite-compatible migrations `0001`–`0006`. CI executes the complete sequence against an in-memory SQLite database. Do not apply the legacy PostgreSQL files to D1. Before applying D1 migrations to the remote database:
 
 1. Confirm the database ID in `wrangler.jsonc` is the intended Sentinel D1 database.
 2. Export/backup the database.
-3. Run `npx wrangler d1 migrations list f3fa44b2-2b49-4af1-8687-2346cb336b22 --remote`.
-4. Review pending migrations, then apply them with `npx wrangler d1 migrations apply f3fa44b2-2b49-4af1-8687-2346cb336b22 --remote`.
+3. Run `npm run check:d1` and inspect the generated SQLite schema.
+4. Run `npx wrangler d1 migrations list f3fa44b2-2b49-4af1-8687-2346cb336b22 --remote`.
+5. Compare existing production tables and migration history. Take a backup/export before any change.
+6. Only after confirming the target D1 and pending migration list, apply with `npx wrangler d1 migrations apply f3fa44b2-2b49-4af1-8687-2346cb336b22 --remote`.
 
 Do not apply migrations against a different database or from an unreviewed branch.
 
@@ -93,7 +95,7 @@ Do not apply migrations against a different database or from an unreviewed branc
 
 - [ ] CI passes on the exact commit being deployed.
 - [ ] Both Worker bundles pass Wrangler dry-run.
-- [ ] D1 backup exists and migrations 004–007 are applied to the intended database.
+- [ ] D1 backup exists and the SQLite migrations in `migrations-d1/` are applied to the intended database.
 - [ ] Signer Worker is deployed separately and is not publicly addressable.
 - [ ] Main Worker service binding points to the signer Worker.
 - [ ] HMAC secret matches between Workers; private key exists only in signer Worker.
