@@ -8,6 +8,14 @@
 
 Primary track: **AI Security & Defense**. The official track explicitly calls for spending limits, policy engines, sandboxed wallets, reputation, and scam detection. Sentinel's core contribution is a pre-sign policy checkpoint that treats AI output as untrusted, evaluates on-chain evidence, requires exact-intent human approval, and isolates a Testnet signer. Do not position Open Innovation as the primary track, and do not claim a complete autonomous business or NEAR Intents integration.
 
+## Deployment and transaction evidence
+
+The release path is the manual [Deploy Sentinel Testnet GitHub Actions workflow](https://github.com/ivanmlnnn/sentinel/actions/workflows/deploy-testnet.yml), not a local Wrangler deploy. Select the reviewed branch and enter `DEPLOY_SENTINEL_TESTNET`; the deploy job only runs after source validation passes. Show the exact successful workflow run and deployed commit SHA. A preview build or dry-run is not production deployment evidence.
+
+For a real transfer, show the Signer Worker's FastNear RPC verification result and open the exact hash in [NEAR Testnet Explorer](https://testnet.nearblocks.io/). Cross-check signer, receiver, amount, and execution status against the [NearBlocks Testnet API](https://api-testnet.nearblocks.io/api-docs). The current automated final gate checks FastNear RPC; the NearBlocks cross-check is an independent manual judge-evidence step, not an automated second oracle.
+
+The current signer requires a dedicated Testnet FullAccess key. It is isolated in a private Worker but is not the contract-scoped function-call key requested by the track. State this limitation clearly. Do not imply that a native NEAR transfer was executed under a function-call key.
+
 ## 2:45 demo sequence
 
 Record the real browser and working application. The public URL is the scanner entry point. The maintainer reports manually deploying both Main and Signer Workers; before recording the Agent Lab as live, confirm the active Cloudflare Worker versions, service binding, secrets, remote D1 migration state, and a successful smoke test. A source branch or Wrangler dry-run alone is not deployment proof. Keep the recording concise; do not use slides as a substitute for the working product.
