@@ -72,7 +72,17 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
 <section class="agent-lab-grid reveal" id="agentLab">
  <div class="panel agent-lab-panel">
   <div class="panel-top"><span>AUTONOMOUS SECURITY SKILL ENGINE</span><span class="panel-status"><i></i> SERVER-SIDE</span></div>
-  <p class="agent-lab-intro">Tell Sentinel the security task. It can run live wallet forensics, query verified threat intelligence, analyze anomalies, and explain evidence. Guest tools are strictly read-only.</p>
+  <p class="agent-lab-intro">Your NEAR security command center. Choose a skill, start from a guided draft, or tell Sentinel what you need in your own words.</p>
+  <section class="sentinel-prompt-studio" aria-label="Sentinel prompt studio">
+   <div class="prompt-studio-head"><div><span class="section-index">PROMPT STUDIO / QUICK ACTIONS</span><h3>What should Sentinel do?</h3></div><span class="prompt-studio-hint">SELECT A SKILL TO START</span></div>
+   <div class="sentinel-skill-grid">
+    <button type="button" class="sentinel-skill-card is-selected" data-skill="investigate" data-prompt="Investigate the NEAR account [ACCOUNT_ID]. Check account state, recent transactions, receipts, token transfers, contract activity, anomalies, and evidence completeness. Explain the risk verdict and cite the strongest findings."><span class="skill-card-icon">⌕</span><b>Wallet investigation</b><small>On-chain activity · risk signals · evidence</small><i>READ-ONLY ↗</i></button>
+    <button type="button" class="sentinel-skill-card" data-skill="threat" data-prompt="Check the Sentinel verified threat registry for [ACCOUNT_ID]. Return exact matches, report categories, verification status, and explain what a match or no match means."><span class="skill-card-icon">◈</span><b>Threat intelligence</b><small>Verified reports · account matching</small><i>REGISTRY LOOKUP ↗</i></button>
+    <button type="button" class="sentinel-skill-card" data-skill="triage" data-prompt="Analyze the following NEAR security evidence and prioritize the risks. Separate confirmed facts from suspicious indicators, explain severity and confidence, identify missing evidence, and recommend next steps: [PASTE EVIDENCE OR ACCOUNT_ID]."><span class="skill-card-icon">⌁</span><b>Security triage</b><small>Risk explanation · evidence prioritization</small><i>ANALYSIS ↗</i></button>
+    <button type="button" class="sentinel-skill-card" data-skill="payment" data-prompt="Create a payment proposal to [RECEIVER.testnet] for [AMOUNT] NEAR. Reason: [PAYMENT PURPOSE]. Run Sentinel policy checks and present the exact proposal for human approval. Do not execute without my explicit wallet approval."><span class="skill-card-icon">↗</span><b>Payment proposal</b><small>Policy checks · human approval · Testnet</small><i>AUTHENTICATED ONLY ↗</i></button>
+   </div>
+   <div class="prompt-draft-row"><span class="prompt-draft-label">GUIDED PAYMENT DRAFT</span><div class="prompt-draft-fields"><input id="draftReceiver" maxlength="64" autocomplete="off" placeholder="Recipient · example.testnet" aria-label="Payment recipient"><input id="draftAmount" type="number" min="0.000001" max="0.1" step="0.000001" placeholder="Amount · NEAR" aria-label="Payment amount"><input id="draftReason" maxlength="180" placeholder="Reason · optional" aria-label="Payment reason"><button type="button" class="secondary-btn" id="usePaymentDraft">Use draft ↗</button></div><small>Creates a proposal request only. A connected Testnet wallet and explicit human approval are required before execution.</small></div>
+  </section>
   <form id="agentForm">
    <div id="agentResult" class="agent-result hidden" aria-live="polite"></div>
    <label for="agentPrompt">MESSAGE SENTINEL</label>
