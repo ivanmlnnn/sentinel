@@ -14,7 +14,8 @@ Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verifi
   <a href="docs/MANUAL_DEPLOYMENT_AND_CHAIN_VERIFICATION.md"><strong>MANUAL DEPLOY & CHAIN VERIFICATION</strong></a> ·
   <a href="docs/REAL_INTEGRATION_VERIFICATION.md"><strong>REAL INTEGRATION VERIFICATION</strong></a> ·
   <a href="docs/WEBSITE_EXPLORER_AND_RESTRICTED_SIGNER.md"><strong>WEBSITE, EXPLORER & RESTRICTED SIGNER</strong></a> ·
-  <a href="docs/SECURITY_HARDENING.md"><strong>SECURITY HARDENING</strong></a>
+  <a href="docs/SECURITY_HARDENING.md"><strong>SECURITY HARDENING</strong></a> ·
+  <a href="docs/SIGNED_VERDICT.md"><strong>SIGNED VERDICT</strong></a>
 </p>
 
 | Builder | Network | Track direction | Stack |
@@ -46,7 +47,8 @@ The repository's automated attack demo is an offline regression test. It is not 
 - Privy-authenticated investigation, AI review, and agent routes.
 - Anthropic tool-calling agent whose output is treated as an untrusted proposal.
 - Actor-bound, exact-intent, five-minute human approval plus a signer-side one-time approval claim before payment execution.
-- Separate signer Worker, private service binding, signer-owned D1 ledger (DB2), HMAC-SHA256 timestamp/nonce protection, replay ledger, exact pending-approval claim, NEP-413 wallet signature verification, receiver allowlist, spend caps, kill switch, and conservative `UNKNOWN` handling.
+- Separate signer Worker, private service binding, signer-owned D1 ledger (DB2), HMAC-SHA256 internal-request authentication, and Ed25519-signed short-lived verdict attestations binding sender account, receiver, exact microNEAR amount, nonce, expiry, decision, and assessment ID. The signer verifies the signature and all intent fields before policy evaluation, approval claim, spend reservation, or contract call.
+- Replay ledger, exact pending-approval claim, NEP-413 wallet signature verification, receiver allowlist, spend caps, kill switch, and conservative `UNKNOWN` handling.
 - Contract-scoped NEAR FunctionCall signer path: runtime key is checked on-chain for the exact payment contract and `pay` method; native NEAR payouts are emitted by the payment contract, which enforces per-payment and UTC-day caps plus one-time approval IDs. The signer checks the actual payout receipt. The contract source and one-time key migration are in this branch; do not call the production flow live until the contract/key/Worker deployment sequence has completed.
 - Legacy in-process signing path disabled.
 - Aggregate-only public metrics, private admin report handling, per-investigation owner checks for AI review, bounded JSON parsing, same-origin API mutation checks, security response headers, and CodeQL/secret-scanning CI.
@@ -57,7 +59,7 @@ The signer implementation is in a separate Worker project under `signer-worker/`
 
 **Deployment evidence and source evidence are kept separate.** The maintainer reports manually deploying both Workers to Cloudflare. This review verifies the repository configuration (Main Worker service binding to `sentinel-signer`, private Signer Worker config, DB1/DB2 bindings) and successful CI dry-runs; it does not independently inspect the Cloudflare account's active deployment versions, live secrets, or remote migration history. No Sentinel-originated Testnet transfer is claimed in this README until its transaction hash is supplied and independently matched to signer, receiver, amount, and final status. Keep the Signer Worker kill switch enabled until live negative tests and a controlled transaction are evidenced.
 
-See [Secure Agent Pipeline](docs/SECURE_AGENT_PIPELINE.md) for the trust boundary, [Security Hardening](docs/SECURITY_HARDENING.md) for the access model and Burp Suite test plan, and [SECURITY.md](SECURITY.md) for responsible disclosure.
+See [Secure Agent Pipeline](docs/SECURE_AGENT_PIPELINE.md) for the trust boundary, [Signed Verdict](docs/SIGNED_VERDICT.md) for the Ed25519 attestation format and key provisioning, [Security Hardening](docs/SECURITY_HARDENING.md) for the access model and Burp Suite test plan, and [SECURITY.md](SECURITY.md) for responsible disclosure.
 
 ## Security verification evidence
 
