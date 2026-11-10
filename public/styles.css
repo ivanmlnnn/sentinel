@@ -3365,3 +3365,28 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
  .telegram-agent-status .agent-result-grid{grid-template-columns:1fr 1fr}
  .agent-lab-submit>span{line-height:1.5}
 }
+
+
+/* Chat viewport: one predictable scroll container on desktop and touch devices. */
+#agentForm>.agent-result:not(.hidden){
+  max-height:min(68vh,680px)!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  -webkit-overflow-scrolling:touch!important;
+  overscroll-behavior-y:contain!important;
+  touch-action:pan-y!important;
+  min-height:0!important;
+  scroll-behavior:smooth!important;
+}
+#agentForm>.agent-result .guest-chat-transcript,
+#agentForm>.agent-result .telegram-chat-transcript{
+  max-height:none!important;
+  height:auto!important;
+  overflow:visible!important;
+  overscroll-behavior:initial!important;
+  touch-action:pan-y!important;
+}
+#agentForm>.agent-result .guest-chat-message{flex:0 0 auto;min-width:0}
+@media(max-width:560px){
+  #agentForm>.agent-result:not(.hidden){max-height:62svh!important;min-height:120px!important;padding:12px!important}
+}
