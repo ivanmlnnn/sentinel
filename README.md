@@ -61,14 +61,14 @@ See [Secure Agent Pipeline](docs/SECURE_AGENT_PIPELINE.md) for the trust boundar
 
 ## Security verification evidence
 
-The reproducible results below are tied to the last fully evidenced CI revision [`cd85b86`](https://github.com/ivanmlnnn/sentinel/commit/cd85b8692fd9dc766a996b220d17e832b7fa9ae8). The branch has advanced since that run, including additional signer-authentication, workflow, and production-smoke-check changes. Those later changes must receive a completed CI run before this branch's current head can be described as fully green. Treat the linked run as evidence for its exact commit—not as automatic proof for newer commits.
+The current branch head is [`31a71a4`](https://github.com/ivanmlnnn/sentinel/commit/31a71a44964bffdb990bc7072ad86168b6072002). Its GitHub Actions checks completed successfully:
 
-- **116/116 automated tests passed; 0 failed** in [GitHub Actions run 42778680965](https://github.com/ivanmlnnn/sentinel/actions/runs/42778680965), on revision [`cd85b86`](https://github.com/ivanmlnnn/sentinel/commit/cd85b8692fd9dc766a996b220d17e832b7fa9ae8).
-- Gitleaks changed-file scan and full repository-history scan passed in that run.
-- CodeQL completed successfully on source revision [`67f1e53`](https://github.com/ivanmlnnn/sentinel/commit/67f1e53c67fa8706d79694a317311516289b56d6) in [run 42778335865](https://github.com/ivanmlnnn/sentinel/actions/runs/42778335865). This is an earlier revision than the current branch head. A successful workflow run is not a claim of zero findings; review the repository Security tab for individual alerts.
-- JavaScript syntax checks, both Wrangler Worker bundle dry-runs, D1 migration validation, and the offline prompt-injection regression demo passed.
-- Cloudflare Turnstile is integrated using the official browser widget and server-side Siteverify endpoint (`https://challenges.cloudflare.com/turnstile/v0/siteverify`). The wallet-scan UI remains disabled until a Turnstile token is received; the server validates `success`, the `track_wallet` action, and the hostname, and fails closed on missing configuration or verification outage.
-- The PR-triggered source-attestation job is skipped by workflow design; this is not a signed release artifact. These tests do **not** constitute a Burp Suite assessment, independent audit, proof of live Cloudflare deployment, or proof of a successful Sentinel-signed Testnet transfer.
+- [Sentinel Security CI run 42857959405](https://github.com/ivanmlnnn/sentinel/actions/runs/42857959405) — secret scan, JavaScript syntax checks, regression tests, and D1 migration validation passed.
+- [CodeQL run 42857959683](https://github.com/ivanmlnnn/sentinel/actions/runs/42857959683) — completed successfully for the same commit. Workflow success is not a zero-alert certificate; review individual findings in GitHub Security.
+- The CI workflow validates source and migrations. It does **not** deploy Cloudflare Workers or prove a real NEAR transaction.
+- The latest browser-navigation cleanup removes query strings from ordinary HTML page navigations and redirects to the clean path. API and authentication/callback routes are excluded so protocol parameters are not indiscriminately discarded.
+
+These checks are tied to the exact commit above. They do **not** constitute a Burp Suite assessment, independent audit, proof of live Cloudflare deployment, or proof of a successful Sentinel-signed Testnet transfer.
 
 ## Deployment and on-chain verification
 
