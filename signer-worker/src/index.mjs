@@ -126,8 +126,18 @@ export async function execute(payload, authorizationHeader, identity, env) {
   const authorization = evaluateAgentAuthorization({ intent, assessment, env });
   if (!authorization.authorized) return deny("SIGNER_" + authorization.reason);
 
-  try { await reserveSpend(env, { idempotencyKey, actor: identity.sub, receiver: validated.receiver_account, amountMicro, dailyCapMicro: dailyCap }); }
-  catch (error) { return deny(error.message || "EXECUTION_RESERVATION_FAILED"); }
+  try {
+    await claimApproval(env, { approvalId, idempotencyKey, actor: identity.sub,
+      receiver: validated.receiver_account, amountMicro });
+  } catch (error) {
+    return deny(error.message === "HUMAN_APPROVAL_NOT_VERIFIED" ? error.message : "APPROVAL_ALREADY_CLAIMED");
+  }
+  try {
+    await reserveSpend(env, { idempotencyKey, actor: identity.sub, receiver: validated.receiver_account,
+      amountMicro, dailyCapMicro: dailyCap });
+  } catch (error) {
+    return deny(error.message || "EXECUTION_RESERVATION_FAILED");
+  }
 
   let submitted = false;
   try {
