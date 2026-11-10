@@ -63,6 +63,17 @@ function buildWayangAvatar(seed) {
 
 let dashboardStarted = false;
 
+// Perform one clean full-page refresh after sign-out. The in-memory Privy/React
+// state and cached dashboard modules are discarded before the login screen returns.
+function refreshLoginAfterSignOut() {
+  if (window.__SENTINEL_SIGNOUT_REFRESHING) return;
+  window.__SENTINEL_SIGNOUT_REFRESHING = true;
+  try { sessionStorage.removeItem('sentinel_signout_refresh'); } catch {}
+  const next = new URL(window.location.href);
+  next.searchParams.set('session_refresh', Date.now().toString());
+  window.location.replace(next.toString());
+}
+
 function AuthGate() {
   const { ready, authenticated, login, logout, getAccessToken, user } = usePrivy();
   const { createGuestAccount } = useGuestAccounts();
@@ -124,6 +135,14 @@ function AuthGate() {
 
     document.body.classList.remove('sentinel-authenticated', 'sentinel-guest');
     dashboardStarted = false;
+
+    // Covers logout transitions initiated outside the visible Sign out button too.
+    try {
+      if (sessionStorage.getItem('sentinel_signout_refresh') === '1') {
+        refreshLoginAfterSignOut();
+        return () => disposeWayang();
+      }
+    } catch {}
 
     if (window.SENTINEL_GUEST) {
       window.SENTINEL_GUEST = false;
@@ -233,13 +252,16 @@ function AuthGate() {
       className: 'sentinel-signout-button',
       onClick: async () => {
         try {
-          await logout();
-          // A full navigation clears the cached app.js module and its session-scoped
-          // GUEST_MODE / __SENTINEL_APP_STARTED flags before the next login or Guest session.
+          // Set the marker before calling Privy: the auth-state effect can then
+          // refresh immediately when authenticated becomes false.
+          try { sessionStorage.setItem('sentinel_signout_refresh', '1'); } catch {}
           window.SENTINEL_GUEST = false;
           try { sessionStorage.removeItem('sentinel_privy_guest'); } catch {}
-          window.location.replace(window.location.pathname + '?session_refresh=' + Date.now());
+          await logout();
+          // Fallback if the SDK resolves logout without producing a state transition.
+          refreshLoginAfterSignOut();
         } catch (error) {
+          try { sessionStorage.removeItem('sentinel_signout_refresh'); } catch {}
           console.error('Privy logout failed:', error);
           setAuthError('Sign out could not be completed. Please retry.');
         }
