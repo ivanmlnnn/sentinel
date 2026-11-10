@@ -713,7 +713,7 @@ if (agentForm) {
         }
         renderGuestConversation(false);
         $('agentPrompt').value = '';
-        toast('Sentinel AI replied · ' + String(data.prompts_remaining ?? '—') + ' prompts left today');
+        toast('Completed ' + String(data.skills_used ?? 0) + ' security skill(s) · ' + String(data.prompts_remaining ?? '—') + ' prompts left today');
       } else {
         const data = await request('/agent/run', {
           method: 'POST',
