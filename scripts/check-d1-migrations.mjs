@@ -2,7 +2,6 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-const directory = new URL("../migrations-d1/", import.meta.url);
 const root = new URL("../", import.meta.url);
 const folder = join(new URL(".", root).pathname, "migrations-d1");
 const files = readdirSync(folder).filter(name => /^\d+_.*\.sql$/.test(name)).sort();
