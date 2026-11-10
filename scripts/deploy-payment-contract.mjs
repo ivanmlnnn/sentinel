@@ -7,11 +7,14 @@ const signerAccountId = String(process.env.NEAR_AGENT_SIGNER_ACCOUNT_ID || "").t
 const ownerId = String(process.env.NEAR_PAYMENT_CONTRACT_OWNER_ID || "").toLowerCase();
 const privateKey = process.env.NEAR_PAYMENT_CONTRACT_DEPLOYER_PRIVATE_KEY;
 const maxPaymentYocto = String(process.env.NEAR_PAYMENT_MAX_PAYMENT_YOCTO || "");
+const maxDailyPaymentYocto = String(process.env.NEAR_PAYMENT_MAX_DAILY_PAYMENT_YOCTO || "");
 
 if (!/^[a-z0-9._-]{2,64}\.testnet$/.test(contractId) ||
     !/^[a-z0-9._-]{2,64}\.testnet$/.test(signerAccountId) ||
     !/^[a-z0-9._-]{2,64}\.testnet$/.test(ownerId) ||
-    !privateKey || !/^[1-9][0-9]*$/.test(maxPaymentYocto)) {
+    !privateKey || !/^[1-9][0-9]*$/.test(maxPaymentYocto) ||
+    !/^[1-9][0-9]*$/.test(maxDailyPaymentYocto) ||
+    BigInt(maxDailyPaymentYocto) < BigInt(maxPaymentYocto)) {
   throw new Error("MISSING_OR_INVALID_PAYMENT_CONTRACT_DEPLOY_CONFIG");
 }
 
@@ -24,7 +27,8 @@ const wasm = new Uint8Array(await readFile(
 const initArgs = new TextEncoder().encode(JSON.stringify({
   owner_id: ownerId,
   signer_id: signerAccountId,
-  max_payment_yocto: maxPaymentYocto
+  max_payment_yocto: maxPaymentYocto,
+  max_daily_payment_yocto: maxDailyPaymentYocto
 }));
 const tx = await account.createTransaction({
   receiverId: contractId,
@@ -47,6 +51,7 @@ console.log(JSON.stringify({
   owner_id: ownerId,
   signer_id: signerAccountId,
   max_payment_yocto: maxPaymentYocto,
+  max_daily_payment_yocto: maxDailyPaymentYocto,
   transaction_hash: outcome.transaction?.hash || outcome.transaction_outcome?.id || null,
   explorer_url: "https://testnet.nearblocks.io/txns/" + (outcome.transaction?.hash || outcome.transaction_outcome?.id || "")
 }, null, 2));
