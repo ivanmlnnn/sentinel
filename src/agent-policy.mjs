@@ -13,6 +13,9 @@ export function validatePaymentIntent(input, env = {}) {
   if (!ACCOUNT_ID.test(receiver) || receiver.startsWith(".") || receiver.endsWith(".")) {
     return { ok: false, reason: "INVALID_RECEIVER" };
   }
+  if (!receiver.endsWith(".testnet")) {
+    return { ok: false, reason: "TESTNET_RECEIVER_REQUIRED" };
+  }
   if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000) {
     return { ok: false, reason: "INVALID_AMOUNT" };
   }
