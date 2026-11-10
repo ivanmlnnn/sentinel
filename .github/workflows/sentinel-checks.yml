@@ -29,7 +29,9 @@ jobs:
           node --check public/app.js
           node --check functions/api/investigate.js
           node --check functions/api/_shared.js
-          node --check functions/api/agent.js\n          node --check functions/api/agent-approve.js\n          node --check signer-worker/src/index.mjs
+          node --check functions/api/agent.js
+          node --check functions/api/agent-approve.js
+          node --check signer-worker/src/index.mjs
           node --check src/agent-policy.mjs
           node --check src/near-agent-signer.mjs
       - name: Validate Cloudflare Worker bundle
