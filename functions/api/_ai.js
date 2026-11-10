@@ -50,20 +50,29 @@ function toModelMessages(system, messages = []) {
 
 export function normalizeSentinelAIResponse(data = {}) {
   const content = [];
-  const text = typeof data.response === "string" ? data.response
+  const choice = Array.isArray(data.choices) ? data.choices[0] : null;
+  const message = choice?.message || choice?.delta || {};
+  const rawText = typeof data.response === "string" ? data.response
     : typeof data.output_text === "string" ? data.output_text
-    : typeof data.content === "string" ? data.content : "";
+    : typeof data.content === "string" ? data.content
+    : typeof message.content === "string" ? message.content
+    : Array.isArray(message.content) ? message.content.filter(part => part?.type === "text" && typeof part.text === "string").map(part => part.text).join("\n")
+    : typeof data.text === "string" ? data.text : "";
+  const text = rawText.trim() ? rawText : (typeof data.summary === "string" ? data.summary : "");
   if (text.trim()) content.push({ type: "text", text });
-  const calls = Array.isArray(data.tool_calls) ? data.tool_calls : [];
+  const calls = Array.isArray(data.tool_calls) ? data.tool_calls
+    : Array.isArray(message.tool_calls) ? message.tool_calls
+    : Array.isArray(choice?.tool_calls) ? choice.tool_calls : [];
   for (let index = 0; index < Math.min(calls.length, MAX_TOOL_CALLS); index++) {
     const call = calls[index];
     const fn = call?.function || call;
-    if (!fn || typeof fn.name !== "string" || !/^[a-zA-Z0-9_-]{1,80}$/.test(fn.name)) continue;
+    const name = fn?.name;
+    if (typeof name !== "string" || !/^[a-zA-Z0-9_-]{1,80}$/.test(name)) continue;
     content.push({
       type: "tool_use",
       id: typeof call.id === "string" && call.id ? call.id.slice(0, 128) : `sentinel-call-${index + 1}`,
-      name: fn.name,
-      input: parseArguments(fn.arguments ?? call.arguments)
+      name,
+      input: parseArguments(fn.arguments ?? call.arguments ?? fn.input)
     });
   }
   return {
