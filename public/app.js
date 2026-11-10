@@ -385,7 +385,8 @@ $('investigateForm').addEventListener('submit', async event => {
   const button = $('scanBtn'); button.disabled = true; button.textContent = 'Tracking wallet activity…';
   $('result').classList.add('hidden');
   try {
-    const data = await request('/investigate',{method:'POST',body:JSON.stringify({
+    const investigationPath = GUEST_MODE ? '/guest/investigate' : '/investigate';
+    const data = await request(investigationPath,{method:'POST',body:JSON.stringify({
       receiver_account:$('receiver').value.trim(),
       sender_account:$('sender').value.trim() || null,
       amount_near:0
