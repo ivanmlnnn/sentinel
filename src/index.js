@@ -5,6 +5,7 @@ import { onRequestPost as investigatePost, onRequestGuestPost as guestInvestigat
 import { onRequestPost as aiReviewPost } from "../functions/api/ai-review.js";
 import { onRequestPost as agentRunPost } from "../functions/api/agent.js";
 import { onRequestPost as agentApprovePost } from "../functions/api/agent-approve.js";
+import { onRequestPost as internalInvestigatePost } from "../functions/api/internal-investigate.js";
 import { onRequestPost as privyWebhookPost } from "../functions/api/privy-webhook.js";
 
 const routes = {
@@ -17,6 +18,7 @@ const routes = {
   "POST /api/ai-review": aiReviewPost,
   "POST /api/agent/run": agentRunPost,
   "POST /api/agent/approve": agentApprovePost,
+  "POST /api/internal/investigate": internalInvestigatePost,
   "POST /api/privy-webhook": privyWebhookPost
 };
 
