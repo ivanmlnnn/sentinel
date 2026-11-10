@@ -134,7 +134,6 @@ jobs:
           NEAR_AGENT_SIGNER_ACCOUNT_ID: ${{ secrets.NEAR_AGENT_SIGNER_ACCOUNT_ID }}
           NEAR_PAYMENT_CONTRACT_ID: ${{ secrets.NEAR_PAYMENT_CONTRACT_ID }}
           NEAR_AGENT_SIGNER_ADMIN_PRIVATE_KEY: ${{ secrets.NEAR_AGENT_SIGNER_ADMIN_PRIVATE_KEY }}
-          NEAR_AGENT_SIGNER_OLD_PRIVATE_KEY: ${{ secrets.NEAR_AGENT_SIGNER_OLD_PRIVATE_KEY }}
           NEAR_AGENT_SIGNER_RESTRICTED_PRIVATE_KEY: ${{ secrets.NEAR_AGENT_SIGNER_RESTRICTED_PRIVATE_KEY }}
         run: node scripts/install-restricted-signer-key.mjs
       - name: Set restricted signer key and payment contract on private Worker
