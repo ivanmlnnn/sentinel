@@ -3227,3 +3227,70 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
 #turnstileTrackWalletRetry{border:1px solid #829b85;background:transparent;color:#d5e4d6;padding:7px 11px;font:10px var(--mono);cursor:pointer}
 #turnstileTrackWalletRetry[hidden]{display:none!important}
 @media(max-width:420px){.turnstile-wrap .cf-turnstile{min-width:0;width:100%;transform-origin:top left}}
+
+
+/* Premium motion language for the AI agent — aligned with Sentinel scan controls. */
+#agentRunBtn{
+  position:relative;isolation:isolate;overflow:hidden;
+  min-height:44px;padding:13px 18px;
+  border:1px solid rgba(143,255,220,.42);
+  background:linear-gradient(115deg,#68e0bd 0%,#9bf3d4 48%,#68e0bd 100%);
+  background-size:200% 100%;
+  box-shadow:0 0 0 1px rgba(104,224,189,.08),0 7px 24px rgba(37,177,139,.12);
+  transition:filter .2s ease,transform .2s ease,box-shadow .25s ease,background-position .35s ease;
+}
+#agentRunBtn:before{
+  content:"";position:absolute;inset:0;z-index:-1;
+  background:linear-gradient(105deg,transparent 25%,rgba(255,255,255,.34) 48%,transparent 68%);
+  transform:translateX(-120%);transition:transform .55s ease;
+}
+#agentRunBtn:hover:not(:disabled){
+  filter:brightness(1.08);transform:translateY(-2px);
+  background-position:100% 0;box-shadow:0 10px 30px rgba(37,177,139,.22),0 0 0 3px rgba(104,224,189,.08);
+}
+#agentRunBtn:hover:not(:disabled):before{transform:translateX(120%)}
+#agentRunBtn:active:not(:disabled){transform:translateY(0) scale(.985)}
+#agentRunBtn:disabled{opacity:1;cursor:wait;filter:saturate(.85);box-shadow:0 0 0 1px rgba(104,224,189,.12),0 0 22px rgba(104,224,189,.12)}
+#agentRunBtn.agent-running{background:linear-gradient(110deg,#173b32,#235c4c,#173b32);background-size:200% 100%;color:#bffff0;border-color:#4d9c82;animation:agent-button-flow 1.8s ease-in-out infinite}
+#agentRunBtn .agent-button-pulse{display:inline-block;width:7px;height:7px;margin-right:9px;border-radius:50%;background:#9bffda;box-shadow:0 0 0 0 rgba(155,255,218,.55);vertical-align:1px;animation:agent-pulse 1.25s ease-out infinite}
+#agentRunBtn b{margin-left:13px}
+@keyframes agent-button-flow{0%,100%{background-position:0 0}50%{background-position:100% 0}}
+@keyframes agent-pulse{0%{box-shadow:0 0 0 0 rgba(155,255,218,.5)}75%,100%{box-shadow:0 0 0 8px rgba(155,255,218,0)}}
+.agent-result{
+  position:relative;overflow:hidden;
+  border-color:rgba(104,224,189,.25);
+  background:linear-gradient(145deg,rgba(15,29,35,.98),rgba(7,14,21,.98));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025),0 14px 38px rgba(0,0,0,.18);
+  transition:opacity .22s ease,transform .22s ease,border-color .25s ease,box-shadow .25s ease;
+}
+.agent-result:before{
+  content:"";position:absolute;inset:0 auto 0 0;width:2px;
+  background:linear-gradient(180deg,#9bf3d4,#3a8d79,transparent);
+  opacity:.9;pointer-events:none;
+}
+.agent-result-enter{animation:sentinel-agent-result-in .46s cubic-bezier(.2,.75,.25,1) both}
+@keyframes sentinel-agent-result-in{
+  0%{opacity:0;transform:translateY(13px) scale(.992);filter:blur(3px)}
+  65%{opacity:1;filter:blur(0)}
+  100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}
+}
+.agent-result-head{padding-bottom:14px}
+.agent-result-head b{letter-spacing:.07em}
+.agent-result-grid>div{
+  padding:12px;border:1px solid rgba(91,123,132,.2);
+  border-radius:6px;background:rgba(17,31,39,.52);
+  transition:border-color .2s ease,background .2s ease,transform .2s ease;
+}
+.agent-result-grid>div:hover{border-color:rgba(104,224,189,.38);background:rgba(21,49,48,.5);transform:translateY(-2px)}
+.agent-result-grid b{line-height:1.55}
+.agent-result-message{
+  padding:13px 14px;margin:12px 0 0;
+  border:1px solid rgba(104,224,189,.16);border-radius:6px;
+  background:rgba(24,61,53,.2);color:#c0d5d2;
+}
+.agent-result-reason{margin-top:12px}
+.agent-result-hash{padding:10px 12px;border:1px dashed rgba(104,224,189,.25);border-radius:5px;background:rgba(13,39,34,.25)}
+.agent-approval{box-shadow:0 0 24px rgba(211,170,72,.06)}
+@media(prefers-reduced-motion:reduce){
+ #agentRunBtn,#agentRunBtn:before,.agent-result,.agent-result-enter,.agent-result-grid>div{animation:none!important;transition:none!important;transform:none!important;filter:none!important}
+}
