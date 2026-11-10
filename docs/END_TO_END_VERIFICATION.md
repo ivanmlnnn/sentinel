@@ -95,13 +95,8 @@ They prove successful Cloudflare Worker release steps and the exact smoke checks
 | Stage | Implementation | Automated evidence | Live evidence status |
 |---|---|---|---|
 | Agent proposes intent | Anthropic tool-calling agent; output is untrusted | Agent policy and security tests | Live model response depends on provider credits |
-| Sentinel inspects receiver | FastNear Testnet RPC + NearBlocks indexed evidence | API and evidence handling tests; production negative smoke | Manual live preflight workflow not yet run |
 | Policy verdict | `ALLOW/WARN/BLOCK/INCOMPLETE` deterministic policy | 124-test suite; BLOCK injection demo | Production smoke validates auth/Turnstile gates, not every verdict branch |
 | Human approves exact intent | Actor-bound receiver/amount/expiry approval | Approval and NEP-413 tests | A complete fresh-browser approval journey is not evidenced here |
-| Wallet signature | NEP-413 message verification | Exact-field binding, signature-format and replay tests | No live signed approval artifact is published |
-| Isolated signer | Separate private Worker, HMAC/nonce, kill switch, spending policy | Signer tests and successful Worker deployment | Runtime public-key permission is checked by code; the masked deployment log does not independently prove its live key scope |
-| Contract payment | Restricted FunctionCall to configured `pay` method; contract emits native transfer | WASM build and exact-call/receipt regression tests | No Sentinel-originated payout hash and matching receipt published |
-| Final verification | Exact contract call, recipient, amount and successful native Transfer receipt | Positive/negative verification tests | Must be evidenced by a real transaction hash before claiming payment E2E |
 
 ## 5. How to run the remaining live read-only preflight
 
