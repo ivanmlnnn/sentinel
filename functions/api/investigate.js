@@ -1,4 +1,4 @@
-import { json, readJson, validAccountId, decideRisk, analyzeTransactionBehavior } from "./_shared.js";
+import { json, readJson, validAccountId, decideRisk, analyzeTransactionBehavior, verifyPrivyAccessToken } from "./_shared.js";
 
 const PAGE_SIZE = 100;
 const MAX_PAGES_PER_SOURCE = 5;
@@ -169,7 +169,7 @@ function normalizeFtTransfer(row, accountId) {
   };
 }
 
-export async function onRequestPost({ request, env }) {
+async function runInvestigation({ request, env }) {
   try {
     const body = await readJson(request);
     if (!body) return json({ error: "Invalid JSON body." }, 400);
@@ -477,4 +477,22 @@ export async function onRequestPost({ request, env }) {
     console.error("Sentinel investigation failed:", error);
     return json({ error: "INVESTIGATION_FAILED", detail: "Sentinel could not complete the wallet investigation. Check Worker logs for the internal exception." }, 500);
   }
+}
+
+
+/** Authenticated investigation route for signed-in dashboard users. */
+export async function onRequestPost(context) {
+  const identity = await verifyPrivyAccessToken(context.request, context.env);
+  if (!identity) {
+    return json({ error: "UNAUTHORIZED", detail: "A valid Privy app access token is required for authenticated investigations." }, 401);
+  }
+  return runInvestigation(context);
+}
+
+/**
+ * Explicit public Guest preview. It cannot submit reports, request AI review,
+ * or sign transactions. The Worker applies a stricter per-IP rate limit.
+ */
+export async function onRequestGuestPost(context) {
+  return runInvestigation(context);
 }
