@@ -59,7 +59,7 @@ The target on-chain permission is:
       }
     }
 
-The exact contract account ID is supplied at deployment time. The only permitted method is pay. The key cannot transfer native NEAR directly, deploy code, add/delete keys, call another contract, or call any other method. The function-call allowance is for gas/transaction fees, not the payout principal.
+The exact contract account ID is supplied at deployment time. The only permitted method is pay. The key cannot transfer native NEAR directly, deploy code, add/delete keys, call another contract, or call any other method. The function-call allowance is for gas/transaction fees, not the payout principal. The signer verifies that the remaining allowance is positive and no greater than the initial 0.25 NEAR allowance; it does not demand the original exact value because NEAR consumes allowance as gas is spent.
 
 ### Payment contract boundary
 
@@ -133,7 +133,7 @@ After successful one-time rotation, remove NEAR_AGENT_SIGNER_OLD_PRIVATE_KEY fro
 
 1. Use the existing Sentinel signer account `freshnook5462.testnet`. The existing `rawvest6817.testnet` is the previously used recipient/tracked account, not the payment contract. Create and fund a separate dedicated payment-contract Testnet account. Using the account's wallet/key-management UI, add a second FullAccess key for offline administration before rotation; store that new key as `NEAR_AGENT_SIGNER_ADMIN_PRIVATE_KEY`. The installer will preserve this admin key and remove the single other FullAccess key (the old runtime key).
 2. Generate a new keypair for the runtime signer in a trusted local terminal using `node scripts/generate-restricted-signer-key.mjs`. Store its public key for later RPC checks. Put its private key in GitHub secret `NEAR_AGENT_SIGNER_RESTRICTED_PRIVATE_KEY`. Never run the generator in CI or share its private-key output.
-3. Add all required GitHub Actions secrets above.
+3. Add all required GitHub Actions secrets above. The installer queries the signer account's access-key list, requires the offline admin key to be FullAccess, and requires exactly one other FullAccess key (the old runtime key) to revoke. It fails closed if the account has zero or multiple candidate runtime FullAccess keys.
 4. Run the workflow with deploy_target=payment-contract and rotate_signer_key=false. Confirm the deployment/init transaction in Testnet Explorer.
 5. Run with deploy_target=signer and rotate_signer_key=true. The workflow installs the restricted key, revokes the old runtime key, sets the private Worker secrets, and deploys Signer Worker.
 6. The old runtime public key is removed on-chain by the installer. Remove NEAR_AGENT_SIGNER_ADMIN_PRIVATE_KEY from GitHub Actions secrets and keep it offline; the restricted key is the only signer key installed in the private Worker.
