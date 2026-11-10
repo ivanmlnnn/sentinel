@@ -11,12 +11,12 @@
   "ratelimits": [
     {
       "name": "API_RATE_LIMITER",
-      "namespace_id": "1001",
+      "namespace_id": "2026111001",
       "simple": { "limit": 60, "period": 60 }
     },
     {
       "name": "INVESTIGATION_RATE_LIMITER",
-      "namespace_id": "1002",
+      "namespace_id": "2026111002",
       "simple": { "limit": 12, "period": 60 }
     }
   ],
