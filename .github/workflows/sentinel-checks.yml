@@ -32,6 +32,8 @@ jobs:
           node --check functions/api/agent.js
           node --check src/agent-policy.mjs
           node --check src/near-agent-signer.mjs
+      - name: Validate Cloudflare Worker bundle
+        run: npx wrangler@4.159.0 deploy --dry-run
       - name: Run test suite
         run: npm test
       - name: Run offline prompt-injection demo
