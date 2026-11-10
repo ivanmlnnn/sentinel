@@ -19,6 +19,10 @@ This branch implements a two-Worker signing architecture and a mandatory human a
 9. The signer uses only the fixed NEAR Testnet RPC. It requires a FunctionCall key scoped to the payment contract and the single pay method. It submits a contract call, then verifies the top-level transaction and the successful native Transfer receipt for exact recipient and yoctoNEAR amount before returning EXECUTED. A NearBlocks Testnet Explorer link is returned only with this receipt-level verification evidence. Ambiguous post-submit outcomes remain UNKNOWN and are not automatically retried.
 10. Audit proposals, approvals, reservations, and transaction hashes are stored in D1. Prompts, JWTs, provider payloads, and private keys are not stored.
 
+## Signed verdict attestation
+
+The Main Worker signs each trusted internal assessment with Ed25519. The canonical payload binds `sender_account`, `receiver_account`, `amount_micro`, a signer-generated nonce, `issued_at`, `expires_at`, decision, risk score, assessment status, and assessment ID. The default validity is 60 seconds; the signer rejects lifetimes over 120 seconds, expired verdicts, future-issued verdicts, invalid signatures, and any sender/receiver/amount/nonce mismatch. The private key is configured only as Main Worker secret `SENTINEL_VERDICT_PRIVATE_KEY` (base64 PKCS#8); the matching public key is configured only as Signer Worker secret `SENTINEL_VERDICT_PUBLIC_KEY` (base64 raw Ed25519). HMAC remains for internal HTTP request authentication and replay protection; it is not the verdict signature. See [Signed Verdict](SIGNED_VERDICT.md).
+
 ## Worker separation
 
 ### Main Worker: `sentinel`
@@ -32,7 +36,7 @@ This branch implements a two-Worker signing architecture and a mandatory human a
 ### Signer Worker: `sentinel-signer`
 
 - Separate Worker deployment, configured with `workers_dev=false` and `preview_urls=false`.
-- Holds `NEAR_AGENT_SIGNER_PRIVATE_KEY` and the matching `AGENT_SIGNER_HMAC_SECRET` as Worker secrets.
+- Holds `NEAR_AGENT_SIGNER_PRIVATE_KEY`, `AGENT_SIGNER_HMAC_SECRET`, and `SENTINEL_VERDICT_PUBLIC_KEY` as Worker secrets. The public verdict key is base64 raw Ed25519; the private key is never provisioned to this Worker.
 - Reads pending approvals from Main Worker's D1 database through `DB` and stores nonce, approval-claim, and spend ledgers in its separate D1 database through `DB2`.
 - Has no browser assets or public route configured.
 - Re-runs the authenticated Sentinel investigation using `SENTINEL_PREFLIGHT_URL`.
@@ -75,6 +79,7 @@ Do not run these deployment steps until CI is green and the branch has been revi
 - `ANTHROPIC_MODEL=claude-haiku-5-5` (optional; current default)
 - `ANTHROPIC_API_KEY` as a Worker secret
 - `AGENT_SIGNER_HMAC_SECRET` as a Worker secret
+- `SENTINEL_VERDICT_PRIVATE_KEY` as a Worker secret (base64 PKCS#8 Ed25519 private key)
 
 ### Signer Worker variables
 
