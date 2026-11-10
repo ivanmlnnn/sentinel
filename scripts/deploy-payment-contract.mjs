@@ -9,15 +9,25 @@ const privateKey = process.env.NEAR_PAYMENT_CONTRACT_DEPLOYER_PRIVATE_KEY;
 const maxPaymentYocto = String(process.env.NEAR_PAYMENT_MAX_PAYMENT_YOCTO || "");
 const maxDailyPaymentYocto = String(process.env.NEAR_PAYMENT_MAX_DAILY_PAYMENT_YOCTO || "");
 
-if (!/^[a-z0-9._-]{2,64}\.testnet$/.test(contractId) ||
-    !/^[a-z0-9._-]{2,64}\.testnet$/.test(signerAccountId) ||
-    !/^[a-z0-9._-]{2,64}\.testnet$/.test(ownerId) ||
-    !privateKey || !/^[1-9][0-9]*$/.test(maxPaymentYocto) ||
-    !/^[1-9][0-9]*$/.test(maxDailyPaymentYocto) ||
-    BigInt(maxPaymentYocto) > 100_000_000_000_000_000_000_000n ||
-    BigInt(maxDailyPaymentYocto) < BigInt(maxPaymentYocto) ||
-    BigInt(maxDailyPaymentYocto) > 200_000_000_000_000_000_000_000n) {
-  throw new Error("MISSING_OR_INVALID_PAYMENT_CONTRACT_DEPLOY_CONFIG");
+const invalidConfig = [];
+if (!/^[a-z0-9._-]{2,64}\.testnet$/.test(contractId)) invalidConfig.push("NEAR_PAYMENT_CONTRACT_ID");
+if (!/^[a-z0-9._-]{2,64}\.testnet$/.test(signerAccountId)) invalidConfig.push("NEAR_AGENT_SIGNER_ACCOUNT_ID");
+if (!/^[a-z0-9._-]{2,64}\.testnet$/.test(ownerId)) invalidConfig.push("NEAR_PAYMENT_CONTRACT_OWNER_ID");
+if (!privateKey) invalidConfig.push("NEAR_PAYMENT_CONTRACT_DEPLOYER_PRIVATE_KEY");
+if (!/^[1-9][0-9]*$/.test(maxPaymentYocto) ||
+    ( /^[1-9][0-9]*$/.test(maxPaymentYocto) && BigInt(maxPaymentYocto) > 100_000_000_000_000_000_000_000n)) {
+  invalidConfig.push("NEAR_PAYMENT_MAX_PAYMENT_YOCTO");
+}
+if (!/^[1-9][0-9]*$/.test(maxDailyPaymentYocto) ||
+    ( /^[1-9][0-9]*$/.test(maxDailyPaymentYocto) &&
+      BigInt(maxDailyPaymentYocto) > 200_000_000_000_000_000_000_000n) ||
+    (/^[1-9][0-9]*$/.test(maxDailyPaymentYocto) &&
+      /^[1-9][0-9]*$/.test(maxPaymentYocto) &&
+      BigInt(maxDailyPaymentYocto) < BigInt(maxPaymentYocto))) {
+  invalidConfig.push("NEAR_PAYMENT_MAX_DAILY_PAYMENT_YOCTO");
+}
+if (invalidConfig.length) {
+  throw new Error("MISSING_OR_INVALID_PAYMENT_CONTRACT_DEPLOY_CONFIG: " + invalidConfig.join(", "));
 }
 
 const signer = KeyPairSigner.fromSecretKey(privateKey);
