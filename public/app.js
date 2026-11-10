@@ -562,6 +562,7 @@ $('sendReport').addEventListener('click',async () => {
 const agentForm = $('agentForm');
 const GUEST_CHAT_KEY = 'sentinel.guestAgent.messages.v1';
 let guestConversation = [];
+let authenticatedPrompt = '';
 if (GUEST_MODE) {
   try {
     const saved = JSON.parse(sessionStorage.getItem(GUEST_CHAT_KEY) || '[]');
@@ -574,7 +575,7 @@ function renderGuestConversation(pending = false) {
   const result = $('agentResult');
   if (!result) return;
   const transcript = document.createElement('div');
-  transcript.className = 'guest-chat-transcript';
+  transcript.className = 'guest-chat-transcript telegram-chat-transcript';
   transcript.setAttribute('aria-label', 'Sentinel AI conversation');
 
   for (const item of guestConversation) {
@@ -609,6 +610,13 @@ function renderGuestConversation(pending = false) {
 function saveGuestConversation() {
   try { sessionStorage.setItem(GUEST_CHAT_KEY, JSON.stringify(guestConversation.slice(-14))); } catch {}
 }
+function renderAuthenticatedPending(prompt) {
+ const result = $('agentResult');
+ if (!result) return;
+ result.innerHTML = '<div class="guest-chat-transcript telegram-chat-transcript"><article class="guest-chat-message guest-chat-user"><span>YOU</span><p>' + escapeHtml(prompt) + '</p></article><article class="guest-chat-message guest-chat-assistant guest-chat-pending telegram-agent-bubble"><span>SENTINEL AI</span><p>Thinking through your request…</p><div class="telegram-typing" aria-label="Sentinel is typing"><i></i><i></i><i></i></div></article></div>';
+ result.classList.remove('hidden');
+ result.scrollTop = result.scrollHeight;
+}
 function renderAgentResult(data) {
   const result = $('agentResult');
   const status = String(data.status || 'UNKNOWN');
@@ -624,7 +632,7 @@ function renderAgentResult(data) {
     ? '<a class="agent-tx-link" href="' + escapeHtml(explorerUrl) + '" target="_blank" rel="noopener noreferrer">View RPC-verified Testnet transaction ↗</a>'
     : '';
   const approvalId = status === 'AWAITING_HUMAN_APPROVAL' ? String(data.approval_id || '') : '';
-  result.innerHTML =
+  const agentCard =
     '<div class="agent-result-head agent-result-' + escapeHtml(status.toLowerCase()) + '">' +
       '<span>AGENT STATUS</span><b>' + escapeHtml(status.replaceAll('_', ' ')) + '</b></div>' +
     '<div class="agent-result-grid">' +
@@ -636,7 +644,10 @@ function renderAgentResult(data) {
     ((data.agent_message || data.message) ? '<p class="agent-result-message">' + escapeHtml(data.agent_message || data.message) + '</p>' : '') +
     (txHash ? '<p class="agent-result-hash">TX HASH · ' + escapeHtml(txHash) + '</p>' : '') +
     txLink +
-    (approvalId ? '<div class="agent-approval"><p>Connect a NEAR Testnet wallet with message-signing support. Your wallet will sign the exact receiver, amount, and expiry (NEP-413); this signature does not itself transfer funds. The proposal expires in five minutes.</p><button type="button" class="primary-btn" id="approveAgentPayment">Sign with NEAR wallet & approve</button></div>' : '');
+    (approvalId ? '<div class="agent-approval"><p>Connect a NEAR Testnet wallet with message-signing support. Your wallet will sign the exact receiver, amount, and expiry (NEP-413); this signature does not itself transfer funds. The proposal expires in five minutes.</p><button type="button" class="primary-btn" id="approveAgentPayment">Sign with NEAR wallet & approve</button></div>' : '');;
+  result.innerHTML = '<div class="guest-chat-transcript telegram-chat-transcript" aria-label="Sentinel AI conversation">' +
+    (authenticatedPrompt ? '<article class="guest-chat-message guest-chat-user"><span>YOU</span><p>' + escapeHtml(authenticatedPrompt) + '</p></article>' : '') +
+    '<article class="guest-chat-message guest-chat-assistant telegram-agent-bubble"><span>SENTINEL AI</span><div class="telegram-agent-card">' + agentCard + '</div></article></div>';
   result.classList.remove('agent-result-enter');
   void result.offsetWidth;
   result.classList.add('agent-result-enter');
@@ -737,12 +748,15 @@ if (agentForm) {
         $('agentPrompt').value = '';
         toast('Completed ' + String(data.skills_used ?? 0) + ' security skill(s) · ' + String(data.prompts_remaining ?? '—') + ' prompts left today');
       } else {
+        authenticatedPrompt = prompt;
+        renderAuthenticatedPending(prompt);
         const data = await request('/agent/run', {
           method: 'POST',
           headers: { 'Idempotency-Key': crypto.randomUUID() },
           body: JSON.stringify({ prompt })
         });
         renderAgentResult(data);
+        $('agentPrompt').value = '';
         if (data.status === 'AWAITING_HUMAN_APPROVAL') toast('Review the exact receiver and amount before approving.');
         else toast('Agent finished: ' + String(data.status || 'UNKNOWN').replaceAll('_', ' '));
       }
@@ -754,7 +768,8 @@ if (agentForm) {
         errorMessage.textContent = error?.message || 'Agent request failed.';
         result.append(errorMessage);
       } else {
-        result.textContent = error.message || 'Agent request failed. No transaction was confirmed.';
+        result.innerHTML = '<div class="guest-chat-transcript telegram-chat-transcript"><article class="guest-chat-message guest-chat-user"><span>YOU</span><p>' + escapeHtml(authenticatedPrompt) + '</p></article><article class="guest-chat-message guest-chat-assistant telegram-agent-bubble"><span>SENTINEL AI</span><p class="guest-chat-error">' + escapeHtml(error.message || 'Agent request failed. No transaction was confirmed.') + '</p></article></div>';
+        result.classList.remove('hidden');
       }
       toast(error.message || 'Agent request failed.');
     } finally {
