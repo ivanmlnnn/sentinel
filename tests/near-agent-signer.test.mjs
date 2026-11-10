@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { nearToMicro, executeTestnetPayment } from "../src/near-agent-signer.mjs";
 
 test("converts decimal NEAR to exact microNEAR without floating point", () => {
@@ -18,7 +19,7 @@ test("legacy in-process signer is permanently fail-closed", async () => {
   const result = await executeTestnetPayment({
     intent: { receiver_account: "rawvest6817.testnet", amount_near: 0.01 },
     actor: "did:privy:test",
-    idempotencyKey: "123e4567-e89b-42d3-a456-426614174000",
+    idempotencyKey: randomUUID(),
     env: { NEAR_NETWORK: "testnet", NEAR_AGENT_KILL_SWITCH: "false",
       NEAR_AGENT_SIGNER_PRIVATE_KEY: "must-never-be-used", NEAR_AGENT_SIGNER_ACCOUNT_ID: "freshnook5462.testnet" }
   });
