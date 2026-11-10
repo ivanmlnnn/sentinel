@@ -2,6 +2,20 @@
 
 This document is the implementation and judge guide for the Sentinel website and the NEAR AI Security & Defense track requirement. It supersedes older statements in earlier notes that described the runtime signer as a FullAccess signer: the current branch source has been changed to a contract-scoped FunctionCall payment flow. A live Testnet deployment is still required before claiming the new flow is active.
 
+## Verified deployment record — 10 November 2026
+
+The repository's GitHub Actions history confirms a successful Testnet deployment before PR #3 was merged:
+
+- Workflow: [Deploy Sentinel Testnet — run #15](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536)
+- Branch / source: `feat/isolated-signer-worker` at `989964e8f967120d61e94bec61e7d09d4049bb4c`
+- Result: **success**. Both the verification job and deployment job completed successfully.
+- The deployment job uploaded `NEAR_AGENT_SIGNER_PRIVATE_KEY` and `NEAR_PAYMENT_CONTRACT_ID` to the private Worker, deployed `sentinel-signer`, reported Worker version `45194350-5fb8-4aec-8418-45b742147f35`, then deployed Main Worker `sentinel` with the `SIGNER_SERVICE` binding and passed production smoke checks.
+- The payment-contract deployment and restricted-key installation steps were skipped in this run; the restricted runtime key was supplied as an existing GitHub Actions secret. This is a successful deployment of the private Signer Worker, not the one-time key-rotation event.
+
+Afterward, PR #3 was merged to `main` as `67c2b00007190e98c2038110c7bb0749b3a6f5c2`. The production Main Worker was redeployed successfully from that commit in [run 42871954699](https://github.com/ivanmlnnn/sentinel/actions/runs/42871954699), with its smoke test passing. The merged source retains the private `sentinel-signer` Worker and the `SIGNER_SERVICE` binding. Thus the Signer Worker has a prior successful deployment record; the Main Worker has a later successful production deployment record.
+
+The signer account configured by the source defaults to `freshnook5462.testnet`; `rawvest6817.testnet` is the tracked/recipient account in the project context. The deployment logs mask private-key values and do not print the wallet account ID, so the run itself proves the Worker deployment and secret upload, not the identity of the wallet represented by the secret. Never infer or publish a wallet address from a masked private key.
+
 ## 1. Sentinel website vs NEAR Explorer
 
 They are different products with different responsibilities.
