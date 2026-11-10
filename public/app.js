@@ -644,7 +644,7 @@ function renderAgentResult(data) {
     ((data.agent_message || data.message) ? '<p class="agent-result-message">' + escapeHtml(data.agent_message || data.message) + '</p>' : '') +
     (txHash ? '<p class="agent-result-hash">TX HASH · ' + escapeHtml(txHash) + '</p>' : '') +
     txLink +
-    (approvalId ? '<div class="agent-approval"><p>Connect a NEAR Testnet wallet with message-signing support. Your wallet will sign the exact receiver, amount, and expiry (NEP-413); this signature does not itself transfer funds. The proposal expires in five minutes.</p><button type="button" class="primary-btn" id="approveAgentPayment">Sign with NEAR wallet & approve</button></div>' : '');;
+    (approvalId ? '<div class="agent-approval"><p>Connect a NEAR Testnet wallet with message-signing support. Your wallet will sign the exact receiver, amount, and expiry (NEP-413); this signature does not itself transfer funds. The proposal expires in five minutes.</p><button type="button" class="primary-btn" id="approveAgentPayment">Sign with NEAR wallet & approve</button></div>' : '');
   result.innerHTML = '<div class="guest-chat-transcript telegram-chat-transcript" aria-label="Sentinel AI conversation">' +
     (authenticatedPrompt ? '<article class="guest-chat-message guest-chat-user"><span>YOU</span><p>' + escapeHtml(authenticatedPrompt) + '</p></article>' : '') +
     '<article class="guest-chat-message guest-chat-assistant telegram-agent-bubble"><span>SENTINEL AI</span><div class="telegram-agent-card">' + agentCard + '</div></article></div>';
