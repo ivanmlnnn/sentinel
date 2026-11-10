@@ -38,6 +38,12 @@ test("rejects receiver and amount manipulation", () => {
   assert.equal(evaluateAgentAuthorization({ intent: { ...intent, amount_near: 0.2 }, assessment, env }).reason, "ASSESSMENT_INTENT_MISMATCH");
 });
 
+test("an ALLOW verdict at the WARN risk threshold is inconsistent and denied", () => {
+  assert.equal(evaluateAgentAuthorization({
+    intent, assessment: { ...assessment, risk_score: 30 }, env
+  }).authorized, false);
+});
+
 test("BLOCK, WARN, incomplete, malformed and absent evidence never authorize", () => {
   for (const bad of [
     { ...assessment, decision: "BLOCK", risk_score: 100 },
