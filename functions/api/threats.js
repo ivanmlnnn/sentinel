@@ -1,13 +1,16 @@
 import { json, readJson, validAccountId, verifyPrivyAccessToken } from "./_shared.js";
 
 export async function onRequestGet({ request, env }) {
-  const status = new URL(request.url).searchParams.get("status");
-  if (status && !["verified", "unverified", "rejected"].includes(status)) {
+  const requestedStatus = new URL(request.url).searchParams.get("status");
+  const status = requestedStatus || "verified";
+  if (!["verified", "unverified", "rejected"].includes(status)) {
     return json({ error: "status must be verified, unverified, or rejected." }, 400);
   }
-  const result = status
-    ? await env.DB.prepare("SELECT id, account_id, category, evidence, status, created_at FROM threat_reports WHERE status = ? ORDER BY created_at DESC LIMIT 500").bind(status).all()
-    : await env.DB.prepare("SELECT id, account_id, category, evidence, status, created_at FROM threat_reports ORDER BY created_at DESC LIMIT 100").all();
+  if (status !== "verified") {
+    const identity = await verifyPrivyAccessToken(request, env);
+    if (!identity) return json({ error: "UNAUTHORIZED", detail: "A valid Privy app access token is required to view unverified or rejected reports." }, 401);
+  }
+  const result = await env.DB.prepare("SELECT id, account_id, category, evidence, status, created_at FROM threat_reports WHERE status = ? ORDER BY created_at DESC LIMIT 500").bind(status).all();
   return json({
     registry_scope: "this_sentinel_deployment",
     verified_feed: status === "verified",
