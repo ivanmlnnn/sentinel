@@ -5,12 +5,12 @@ This repository intentionally deploys through GitHub Actions. Do not deploy eith
 ## 1. Select the exact source revision
 
 1. Open [Actions → Deploy Sentinel Testnet](https://github.com/ivanmlnnn/sentinel/actions/workflows/deploy-testnet.yml).
-2. Select **Run workflow**.
-3. Select branch `feat/isolated-signer-worker` (or the reviewed release branch after PR #3 is merged).
-4. Enter exactly `DEPLOY_SENTINEL_TESTNET` in the confirmation field.
-5. Start the workflow and open its run.
+2. Select **Run workflow** and branch `feat/isolated-signer-worker`.
+3. Choose `payment-contract`, `signer`, `main`, or `both`.
+4. Set `rotate_signer_key=true` only for the one-time restricted-key installation after contract deployment.
+5. Enter exactly `DEPLOY_SENTINEL_TESTNET` and start the workflow.
 
-The workflow is manual-only (`workflow_dispatch`). It first checks out the selected commit, scans for secrets, validates syntax, D1 migrations, both Wrangler bundles, runs the regression suite and offline attack test, and runs CodeQL. The deploy job is gated on successful verification and the exact confirmation string. It then applies the configured remote D1 migrations, deploys the private Signer Worker first, deploys the Main Worker second, and runs production smoke tests.
+The workflow validates JavaScript, D1 migrations, both Wrangler bundles, regression tests, the offline attack demo, and the Rust/Wasm payment contract. Deploy the payment contract once, then install the restricted key and deploy Signer Worker, then deploy Main Worker. The `both` target deploys Signer before Main. See [Website vs Explorer and Restricted Signer](WEBSITE_EXPLORER_AND_RESTRICTED_SIGNER.md) for the required secrets and exact sequence.
 
 **Do not bypass a failed verification job.** A successful dry-run is not a production deployment. The deployment job must itself finish successfully.
 
@@ -72,9 +72,9 @@ If any of these are missing or disagree, label the transaction **not verified** 
 
 ## 5. Current security limitation — do not hide it
 
-The signer code explicitly queries the NEAR access key and requires `FullAccess` for the dedicated Testnet signer key. This is a separate Testnet key held by the private Worker, not a contract-scoped function-call key. It is isolated from the Main Worker, but it does **not** satisfy the track prompt's function-call-key requirement. A NEAR function-call key cannot directly transfer native NEAR; satisfying that requirement for native payments needs a purpose-built payment/escrow contract and a restricted key scoped to that contract/method.
+The current branch source requires a restricted FunctionCall key scoped to the Sentinel payment contract and only the `pay` method. The payment contract emits the native NEAR transfer as a receipt, which is then checked against the exact recipient and amount. The contract source, deployment script, one-time restricted-key installer, and manual workflow targets are now in the branch.
 
-Do not change the signer permission check to accept a function-call key without implementing and testing the contract-call payment design. That would break the current native transfer path. Until that architecture exists, describe the signer as an isolated, capped Testnet FullAccess signer and mark the track requirement as outstanding.
+This is not yet proof that the contract and key have been provisioned on Testnet. Do not enable payment until the contract is deployed and initialized, the restricted key is installed and the old runtime FullAccess key revoked, and the private Worker is deployed with the restricted key and contract ID.
 
 ## 6. Safe release checklist
 
