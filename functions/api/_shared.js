@@ -93,21 +93,31 @@ export function analyzeTransactionBehavior(rows = [], now = Date.now()) {
   const five = dated.filter(t => now - t <= 300000 && now >= t).length;
   const hour = dated.filter(t => now - t <= 3600000 && now >= t).length;
 
-  // Detect at least 30 distinct recipients in any rolling five-minute window.
+  // Count distinct recipients only from successful transactions actually signed
+  // by the inspected account. Use a sliding frequency map to avoid rebuilding a
+  // Set for every event, and report the observed count even below the alert limit.
   const recipientEvents = successful
-    .map(row => ({ time: parseTransactionTimestamp(row.tx_block_timestamp), recipient: typeof row.receiver_account === "string" ? row.receiver_account.toLowerCase() : null }))
+    .map(row => ({
+      time: parseTransactionTimestamp(row.tx_block_timestamp),
+      recipient: typeof row.receiver_account === "string" ? row.receiver_account.trim().toLowerCase() : null
+    }))
     .filter(row => Number.isFinite(row.time) && row.time > 0 && row.time <= now + 60000 && row.recipient);
   recipientEvents.sort((a, b) => a.time - b.time);
-  let multipleRecipients5m = false;
+  const recipientCounts = new Map();
+  let left = 0;
   let multipleRecipientsCount = 0;
-  for (let left = 0, right = 0; right < recipientEvents.length; right++) {
-    while (recipientEvents[right].time - recipientEvents[left].time > 300000) left++;
-    const distinct = new Set(recipientEvents.slice(left, right + 1).map(event => event.recipient)).size;
-    if (distinct >= 30) {
-      multipleRecipients5m = true;
-      multipleRecipientsCount = Math.max(multipleRecipientsCount, distinct);
+  for (let right = 0; right < recipientEvents.length; right++) {
+    const event = recipientEvents[right];
+    recipientCounts.set(event.recipient, (recipientCounts.get(event.recipient) || 0) + 1);
+    while (event.time - recipientEvents[left].time > 300000) {
+      const expired = recipientEvents[left++];
+      const count = recipientCounts.get(expired.recipient) - 1;
+      if (count === 0) recipientCounts.delete(expired.recipient);
+      else recipientCounts.set(expired.recipient, count);
     }
+    multipleRecipientsCount = Math.max(multipleRecipientsCount, recipientCounts.size);
   }
+  const multipleRecipients5m = multipleRecipientsCount >= 30;
 
   const factors = [];
   if (multipleRecipients5m) factors.push({ code: "MULTIPLE_RECIPIENTS_DETECTED", severity: "medium", detail: multipleRecipientsCount + " distinct recipient wallets received successful signed transactions within a five-minute window; review for suspicious distribution activity." });
