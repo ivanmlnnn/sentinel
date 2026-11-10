@@ -31,6 +31,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Validate Wrangler configuration
+        run: npx wrangler@4.159.0 deploy --dry-run
+
       - name: Run test suite
         run: npm test
 
