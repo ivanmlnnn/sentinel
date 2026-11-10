@@ -93,9 +93,6 @@ if (existingRestrictedKey) {
   }
   console.log(JSON.stringify({
     status: "RESTRICTED_FUNCTION_CALL_KEY_ALREADY_INSTALLED",
-    signer_account: accountId,
-    restricted_public_key: restrictedPublicKey,
-    ...safePermissionSummary(existingRestrictedKey),
     admin_full_access_key_preserved: true,
     transaction_submitted: false
   }, null, 2));
@@ -141,8 +138,6 @@ if (!installed || !matchesExpectedPermission(installed)) {
 console.log(JSON.stringify({
   status: "RESTRICTED_FUNCTION_CALL_KEY_INSTALLED",
   transaction_hash: outcome.transaction?.hash || outcome.transaction_outcome?.id || null,
-  signer_account: accountId,
-  restricted_public_key: restrictedPublicKey,
-  ...safePermissionSummary(installed),
-  admin_full_access_key_preserved: true
+  admin_full_access_key_preserved: true,
+  permission_postcheck: "PASSED"
 }, null, 2));

@@ -573,14 +573,36 @@ if (GUEST_MODE) {
 function renderGuestConversation(pending = false) {
   const result = $('agentResult');
   if (!result) return;
-  const transcript = guestConversation.map(item =>
-    '<article class="guest-chat-message guest-chat-' + item.role + '">' +
-      '<span>' + (item.role === 'user' ? 'YOU' : 'SENTINEL AI') + '</span>' +
-      '<p>' + escapeHtml(item.content) + '</p></article>'
-  ).join('');
-  result.innerHTML = '<div class="guest-chat-transcript" aria-label="Sentinel AI conversation">' +
-    transcript + (pending ? '<article class="guest-chat-message guest-chat-assistant guest-chat-pending"><span>SENTINEL AI</span><p>Thinking through your request…</p></article>' : '') +
-    '</div><div class="guest-chat-meta">GUEST READ-ONLY · ' + guestConversation.length + ' MESSAGES IN CONTEXT</div>';
+  const transcript = document.createElement('div');
+  transcript.className = 'guest-chat-transcript';
+  transcript.setAttribute('aria-label', 'Sentinel AI conversation');
+
+  for (const item of guestConversation) {
+    const article = document.createElement('article');
+    article.className = 'guest-chat-message guest-chat-' + (item.role === 'user' ? 'user' : 'assistant');
+    const label = document.createElement('span');
+    label.textContent = item.role === 'user' ? 'YOU' : 'SENTINEL AI';
+    const message = document.createElement('p');
+    message.textContent = item.content;
+    article.append(label, message);
+    transcript.append(article);
+  }
+
+  if (pending) {
+    const article = document.createElement('article');
+    article.className = 'guest-chat-message guest-chat-assistant guest-chat-pending';
+    const label = document.createElement('span');
+    label.textContent = 'SENTINEL AI';
+    const message = document.createElement('p');
+    message.textContent = 'Thinking through your request…';
+    article.append(label, message);
+    transcript.append(article);
+  }
+
+  const meta = document.createElement('div');
+  meta.className = 'guest-chat-meta';
+  meta.textContent = 'GUEST READ-ONLY · ' + guestConversation.length + ' MESSAGES IN CONTEXT';
+  result.replaceChildren(transcript, meta);
   result.classList.remove('hidden');
   result.scrollTop = result.scrollHeight;
 }
@@ -727,8 +749,10 @@ if (agentForm) {
     } catch (error) {
       if (GUEST_MODE) {
         renderGuestConversation(false);
-        const detail = error?.message || 'Agent request failed.';
-        result.insertAdjacentHTML('beforeend', '<p class="guest-chat-error">' + escapeHtml(detail) + '</p>');
+        const errorMessage = document.createElement('p');
+        errorMessage.className = 'guest-chat-error';
+        errorMessage.textContent = error?.message || 'Agent request failed.';
+        result.append(errorMessage);
       } else {
         result.textContent = error.message || 'Agent request failed. No transaction was confirmed.';
       }

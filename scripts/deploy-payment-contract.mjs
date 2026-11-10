@@ -56,14 +56,10 @@ const status = outcome?.status;
 if (!status || !(Object.hasOwn(status, "SuccessValue") || Object.hasOwn(status, "SuccessReceiptId"))) {
   throw new Error("PAYMENT_CONTRACT_DEPLOY_OR_INITIALIZATION_FAILED");
 }
+const transactionHash = outcome.transaction?.hash || outcome.transaction_outcome?.id || null;
 console.log(JSON.stringify({
   status: "PAYMENT_CONTRACT_DEPLOYED_AND_INITIALIZED",
   network: "testnet",
-  contract_id: contractId,
-  owner_id: ownerId,
-  signer_id: signerAccountId,
-  max_payment_yocto: maxPaymentYocto,
-  max_daily_payment_yocto: maxDailyPaymentYocto,
-  transaction_hash: outcome.transaction?.hash || outcome.transaction_outcome?.id || null,
-  explorer_url: "https://testnet.nearblocks.io/txns/" + (outcome.transaction?.hash || outcome.transaction_outcome?.id || "")
+  transaction_hash: transactionHash,
+  explorer_url: transactionHash ? "https://testnet.nearblocks.io/txns/" + transactionHash : null
 }, null, 2));
