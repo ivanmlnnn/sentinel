@@ -12,7 +12,8 @@ Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verifi
 
 - **[Judge Evidence Pack](docs/JUDGE_EVIDENCE_PACK.md)** — project explanation, evidence index, reproducible commands and judge walkthrough.
 - **[End-to-End Verification Report](docs/END_TO_END_VERIFICATION.md)** — exact test counts, production HTTP smoke results, deployment scope and provenance attestation.
-- **[Mainnet Readiness Preparation](docs/MAINNET_READINESS.md)** — planned load, cross-contract, token-compatibility and failure-recovery validation. Preparation only; no Mainnet readiness claim.
+- **[Mainnet Readiness Preparation](docs/MAINNET_READINESS.md)** — staged readiness gates and evidence requirements.
+- **[Mainnet Deployment Readiness Pack](docs/MAINNET_DEPLOYMENT_READINESS.md)** — deployment audit, release gates, environment separation, rollback and operator runbook.
 - **[Merged security architecture — PR #3](https://github.com/ivanmlnnn/sentinel/pull/3)** — isolated signer, actor-bound approval and replay protections.
 - **[Live dashboard](https://sentinel.ivmaladin.workers.dev)** · **[Judge Demo](docs/JUDGE_DEMO.md)** · **[Secure Agent Pipeline](docs/SECURE_AGENT_PIPELINE.md)**.
 - **Deployment proof:** [Signer Worker run #15](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536), [Main Worker run](https://github.com/ivanmlnnn/sentinel/actions/runs/42871954699), and [later Main Worker run #209](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638).

@@ -1,0 +1,65 @@
+name: Mainnet Readiness Audit (No Deployment)
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "functions/**"
+      - "signer-worker/**"
+      - "payment-contract/**"
+      - "migrations-d1/**"
+      - "migrations-signer/**"
+      - "scripts/mainnet-readiness-audit.mjs"
+      - "tests/**"
+      - "wrangler.jsonc"
+      - ".github/workflows/mainnet-readiness.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sentinel-mainnet-readiness-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Verify build and report Mainnet blockers
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Set up Rust and WebAssembly target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Validate JavaScript and D1 migrations
+        run: |
+          node --check scripts/mainnet-readiness-audit.mjs
+          npm run check:d1
+      - name: Run regression tests
+        run: npm test
+      - name: Build NEAR payment contract
+        run: cargo build --manifest-path payment-contract/Cargo.toml --target wasm32-unknown-unknown --release
+      - name: Validate both Worker bundles without deploying
+        run: |
+          npx wrangler@4.159.0 deploy --dry-run
+          npx wrangler@4.159.0 deploy --config signer-worker/wrangler.jsonc --dry-run
+      - name: Generate Mainnet readiness audit report
+        run: npm run readiness:mainnet > mainnet-readiness-report.json
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: mainnet-readiness-audit
+          path: mainnet-readiness-report.json
+          if-no-files-found: error
+          retention-days: 30
+
+# This workflow intentionally has no deployment job, no production secrets,
+# no Mainnet RPC write calls and no payment execution step.
