@@ -136,7 +136,7 @@ After successful one-time rotation, remove NEAR_AGENT_SIGNER_OLD_PRIVATE_KEY fro
 3. Add all required GitHub Actions secrets above.
 4. Run the workflow with deploy_target=payment-contract and rotate_signer_key=false. Confirm the deployment/init transaction in Testnet Explorer.
 5. Run with deploy_target=signer and rotate_signer_key=true. The workflow installs the restricted key, revokes the old runtime key, sets the private Worker secrets, and deploys Signer Worker.
-6. The old runtime public key is removed on-chain by the installer. Remove any copy of its private key from Cloudflare/GitHub runtime secrets; retain only the separate offline admin key outside the Worker runtime.
+6. The old runtime public key is removed on-chain by the installer. Remove NEAR_AGENT_SIGNER_ADMIN_PRIVATE_KEY from GitHub Actions secrets and keep it offline; the restricted key is the only signer key installed in the private Worker.
 7. Run with deploy_target=main to deploy the dashboard, or deploy_target=both for a coordinated Signer-then-Main release.
 8. Query view_access_key for the new runtime public key and confirm the FunctionCall permission exactly matches the contract and pay. Confirm the old runtime public key is no longer present.
 9. Keep the kill switch enabled until all negative checks pass. Fund the contract only with a small controlled Testnet balance. Then enable a controlled payment test.
