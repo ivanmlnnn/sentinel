@@ -11,13 +11,13 @@
 | D1 migration validation | **PASS — 9 migration files** | Same run; job log | SQLite validation of Main and Signer migration files |
 | Main Worker bundle | **PASS** | Same run; job log | Wrangler dry-run/bundle validation |
 | Private Signer Worker bundle | **PASS** | Same run; job log | Wrangler dry-run/bundle validation |
-| NEAR payment contract build | **PASS — WASM release build** | Same run; job log | Rust/WASM compilation, not on-chain deployment |
+| NEAR payment contract build | **PASS — WASM release build** | Same run; job log | Rust/WASM release artifact |
 | Signer + Main Worker deployment | **PASS** | [Testnet deployment run #15](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536) | Both Worker deploy steps, D1 migrations, runtime secret uploads and production smoke checks completed |
 | Later Main Worker deployment | **PASS** | [Main deploy run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638) | Worker version `455d1be0-150c-4de0-84f7-c9040c99c615`; production HTTP smoke passed |
 | Production HTTP security smoke | **PASS — 8/8 checks** | Job log for run 42873243638 | Dashboard HTTP 200 and expected unauthenticated/missing-token denials |
 | CodeQL workflow | **PASS** | [Run 42873243329](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243329) | Static analysis workflow completed; inspect Security alerts separately |
 | Security CI | **PASS** | [Run 42873243623](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243623) | Secret scan, syntax, regression tests and migration validation |
-| Source provenance attestation | **PASS — Sigstore/Rekor attestation created** | [Attestation #65936142](https://github.com/ivanmlnnn/sentinel/attestations/65936142) | Attests the source archive built from commit `34b4775737900e7bce2888541b68dfcbd1d13b59`; not a runtime or transaction attestation |
+| Source provenance attestation | **PASS — Sigstore/Rekor attestation created** | [Attestation #65936142](https://github.com/ivanmlnnn/sentinel/attestations/65936142) | Attests the source archive built from commit `34b4775737900e7bce2888541b68dfcbd1d13b59` |
 
 ## 1. Exact production smoke-test results
 
