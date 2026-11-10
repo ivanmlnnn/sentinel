@@ -18,9 +18,9 @@ This is a verification baseline, not a certification or a claim that Sentinel is
 
 ## Latest automated verification (10 November 2026)
 
-Latest docs-updated PR head: [cd85b86](https://github.com/ivanmlnnn/sentinel/commit/cd85b8692fd9dc766a996b220d17e832b7fa9ae8).
+Last CI-verified PR revision: [cd85b86](https://github.com/ivanmlnnn/sentinel/commit/cd85b8692fd9dc766a996b220d17e832b7fa9ae8); later branch commits in this evidence refresh are documentation-only.
 
-- [Sentinel checks run 42778680965](https://github.com/ivanmlnnn/sentinel/actions/runs/42778335809): **116 tests passed, 0 failed**.
+- [Sentinel checks run 42778680965](https://github.com/ivanmlnnn/sentinel/actions/runs/42778680965): **116 tests passed, 0 failed**.
 - Gitleaks changed-file and full repository-history scans passed.
 - Main Worker and isolated Signer Worker Wrangler dry-runs passed.
 - All seven Main D1 migration files and the Signer D1 migration were validated against SQLite.
