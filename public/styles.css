@@ -3151,3 +3151,27 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
 /* Extra-compact sign-out chip. */
 .top-actions .sentinel-signout-button{min-height:20px!important;height:20px!important;padding:0 6px!important;border-radius:5px!important;font:600 8px/1 Inter,Arial,sans-serif!important;letter-spacing:0!important}
 @media(max-width:760px){.top-actions .sentinel-signout-button{min-height:19px!important;height:19px!important;padding:0 5px!important;font-size:7px!important}}
+
+
+/* Login brand wordmark: IBM Plex Mono for a precise technical identity. */
+.sentinel-auth-card .sentinel-login-wordmark,
+.sentinel-auth-card h1.sentinel-login-wordmark,
+.sentinel-auth-card .sentinel-login-near,
+.sentinel-auth-card .sentinel-login-name{
+  font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,monospace!important;
+  font-weight:600!important;
+  letter-spacing:.035em!important;
+  font-variant-ligatures:none!important;
+}
+.sentinel-auth-card .sentinel-login-wordmark{
+  font-size:clamp(29px,4.8vw,42px)!important;
+  line-height:1.16!important;
+}
+.sentinel-auth-card .sentinel-login-near,
+.sentinel-auth-card .sentinel-login-name{
+  font:inherit!important;
+  letter-spacing:inherit!important;
+}
+@media(max-width:760px){
+  .sentinel-auth-card .sentinel-login-wordmark{font-size:clamp(25px,7.2vw,34px)!important}
+}
