@@ -1,5 +1,7 @@
 # Signed Sentinel Verdicts
 
+**Release status:** merged into `main` through [PR #10](https://github.com/ivanmlnnn/sentinel/pull/10), merge commit `2351fd39d8e272a721a00d6e7f9f8c82a9b43721`. The merged-main release completed both Worker deployments and the production HTTP smoke suite in [run 42900812519](https://github.com/ivanmlnnn/sentinel/actions/runs/42900812519).
+
 ## Security flow
 
 The Main Worker signs each trusted internal assessment with Ed25519. The isolated Signer Worker verifies the signature and exact payment intent before policy evaluation, approval claim, spend reservation, or contract invocation.
