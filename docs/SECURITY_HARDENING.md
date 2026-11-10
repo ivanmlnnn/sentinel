@@ -8,7 +8,7 @@ This document distinguishes working features from controls that still require im
 - **Read-only investigation:** the dashboard can request an assessment and display its result; it does not sign or broadcast a NEAR transaction.
 - **Deterministic policy guard:** `src/agent-guard.mjs` denies BLOCK, requires explicit human approval for WARN, and fails closed for incomplete/invalid assessments or preflight errors.
 - **No-login Guest preview:** the dashboard has a public read-only entry path that skips Privy, disables wallet connection and report submission, and permits public account investigation.
-- **Server-side Privy verification for protected routes:** `POST /api/threats` and `POST /api/ai-review` require a bearer access token verified against the app JWKS with signature and issuer/audience/subject/expiry checks. Public investigation and GET routes remain public by design.
+- **Server-side Privy verification for protected routes:** `POST /api/threats` and `POST /api/ai-review` require a bearer access token verified against the app JWKS with signature and issuer/audience/subject/expiry checks. Public Guest investigation and GET routes remain public by design; Cloudflare Worker rate-limit bindings now cap API traffic at 60 requests/minute/IP and investigation at 12/minute/IP. Cloudflare's binding is approximate and location-local, not a strict global quota.
 - **Exportable verified threat feed:** `GET /api/threats?status=verified` returns verified records with evidence for consumers of this Sentinel deployment. Admin moderation is available at `POST /api/threats/verify` and requires the server-only `THREAT_REVIEW_TOKEN` secret.
 - **Automated token tests:** `tests/privy-auth.test.mjs` covers valid signatures, missing tokens, expired tokens, wrong audience, and tampered payloads.
 - **Offline prompt-injection test:** the demo exercises the guard with simulated inputs; it is not a live wallet or transaction test.
@@ -19,7 +19,7 @@ This document distinguishes working features from controls that still require im
 
 The Worker now verifies Privy ES256 bearer tokens against `https://auth.privy.io/api/v1/apps/{app_id}/jwks.json` for `POST /api/threats` and `POST /api/ai-review`. It checks the signature, `iss`, `aud`, `sub`, `iat`, and `exp`; the browser passes the current access token from the Privy SDK. The app ID is public and the current Worker has a configured fallback matching the dashboard app.
 
-The read-only investigation endpoint and public GET endpoints remain intentionally accessible without OTP for judge/Guest use. Add Cloudflare rate limiting and request quotas before relying on these public endpoints in production. The verified threat feed is not yet federated with independent projects. Do not treat client state, email strings, or user IDs supplied in request JSON as authorization. Keep all future write or cost-bearing endpoints behind the same server-side verifier.
+The read-only investigation endpoint and public GET endpoints remain intentionally accessible without OTP for judge/Guest use. Cloudflare per-IP rate limits are now configured for API traffic and stricter for investigation. They are an abuse-friction layer, not a strict global quota or substitute for authenticated access; shared mobile/NAT IPs can affect multiple users. Consider a Durable Object limiter or authenticated API key/quota before production. The verified threat feed is not yet federated with independent projects. Do not treat client state, email strings, or user IDs supplied in request JSON as authorization. Keep all future write or cost-bearing endpoints behind the same server-side verifier.
 
 ### 2. Make agent authorization non-bypassable
 
@@ -54,6 +54,7 @@ The public Guest entry is implemented as a read-only dashboard mode:
 - [x] Protected routes reject expired, forged, and wrong-app tokens in automated tests.
 - [x] Threat reporter identity is derived from the verified token, not request JSON.
 - [ ] Live Cloudflare deployment has been smoke-tested with a real Privy session and invalid-token requests.
+- [ ] Verify Cloudflare rate-limit bindings are active in the deployed Worker; their limits are approximate and per-location.
 - [ ] Set `THREAT_REVIEW_TOKEN` as a Cloudflare Worker secret before using the report moderation endpoint.
 - [ ] BLOCK never reaches the signer.
 - [ ] WARN reaches the signer only after explicit human approval.
