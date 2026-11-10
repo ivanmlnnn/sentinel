@@ -105,7 +105,7 @@ The workflow now has a deploy_target choice:
 | main | Applies DB1 migrations, deploys Main Worker and runs production HTTP smoke checks |
 | both | Applies both migrations, deploys Signer Worker first, then Main Worker, then runs production HTTP smoke checks |
 
-The rotate_signer_key checkbox is a one-time operation. Set it to true only for the initial restricted-key installation, after the payment contract has been deployed. It adds the restricted key and deletes the previous FullAccess runtime key. Keep it false for ordinary future deployments.
+The rotate_signer_key checkbox is a one-time operation. Set it to true only for the initial restricted-key installation, after the payment contract has been deployed. The installer reads the signer account's on-chain access-key list, verifies the separate admin key, requires exactly one other FullAccess key, adds the restricted key and deletes that old runtime key. It fails closed if the key list is ambiguous. Keep it false for ordinary future deployments.
 
 ### Required GitHub Actions secrets
 
@@ -122,8 +122,7 @@ NEAR payment contract deployment:
 
 Signer key installation:
 - NEAR_AGENT_SIGNER_ACCOUNT_ID — existing Sentinel Testnet signer account: `freshnook5462.testnet`;
-- NEAR_AGENT_SIGNER_ADMIN_PRIVATE_KEY — separate administrator FullAccess key for the signer account; keep it offline and do not install it in a Worker;
-- NEAR_AGENT_SIGNER_OLD_PRIVATE_KEY — the old runtime FullAccess key to revoke during the one-time rotation;
+- NEAR_AGENT_SIGNER_ADMIN_PRIVATE_KEY — separate administrator FullAccess key for the signer account; it must already be installed on the signer account and must not be the old runtime key;
 - NEAR_AGENT_SIGNER_RESTRICTED_PRIVATE_KEY — the new restricted FunctionCall key private key.
 
 The workflow installs NEAR_AGENT_SIGNER_RESTRICTED_PRIVATE_KEY into the private Worker's NEAR_AGENT_SIGNER_PRIVATE_KEY secret and sets NEAR_PAYMENT_CONTRACT_ID. Existing HMAC, DB, Privy and kill-switch secrets must remain configured in the correct Worker.
@@ -132,12 +131,12 @@ After successful one-time rotation, remove NEAR_AGENT_SIGNER_OLD_PRIVATE_KEY fro
 
 ### Required one-time sequence
 
-1. Use the existing Sentinel signer account `freshnook5462.testnet`. The existing `rawvest6817.testnet` is the previously used recipient/tracked account, not the payment contract. Create and fund a separate dedicated payment-contract Testnet account, and keep the signer's administrator FullAccess key offline.
-2. Generate a new keypair for the runtime signer in a trusted local terminal using `node scripts/generate-restricted-signer-key.mjs`. Store its public key for later RPC checks. Put its private key in GitHub secret NEAR_AGENT_SIGNER_RESTRICTED_PRIVATE_KEY; retain the old runtime key temporarily as NEAR_AGENT_SIGNER_OLD_PRIVATE_KEY. Never run the generator in CI or share its private-key output.
+1. Use the existing Sentinel signer account `freshnook5462.testnet`. The existing `rawvest6817.testnet` is the previously used recipient/tracked account, not the payment contract. Create and fund a separate dedicated payment-contract Testnet account. Using the account's wallet/key-management UI, add a second FullAccess key for offline administration before rotation; store that new key as `NEAR_AGENT_SIGNER_ADMIN_PRIVATE_KEY`. The installer will preserve this admin key and remove the single other FullAccess key (the old runtime key).
+2. Generate a new keypair for the runtime signer in a trusted local terminal using `node scripts/generate-restricted-signer-key.mjs`. Store its public key for later RPC checks. Put its private key in GitHub secret `NEAR_AGENT_SIGNER_RESTRICTED_PRIVATE_KEY`. Never run the generator in CI or share its private-key output.
 3. Add all required GitHub Actions secrets above.
 4. Run the workflow with deploy_target=payment-contract and rotate_signer_key=false. Confirm the deployment/init transaction in Testnet Explorer.
 5. Run with deploy_target=signer and rotate_signer_key=true. The workflow installs the restricted key, revokes the old runtime key, sets the private Worker secrets, and deploys Signer Worker.
-6. Remove the old runtime private key from GitHub Actions secrets.
+6. The old runtime public key is removed on-chain by the installer. Remove any copy of its private key from Cloudflare/GitHub runtime secrets; retain only the separate offline admin key outside the Worker runtime.
 7. Run with deploy_target=main to deploy the dashboard, or deploy_target=both for a coordinated Signer-then-Main release.
 8. Query view_access_key for the new runtime public key and confirm the FunctionCall permission exactly matches the contract and pay. Confirm the old runtime public key is no longer present.
 9. Keep the kill switch enabled until all negative checks pass. Fund the contract only with a small controlled Testnet balance. Then enable a controlled payment test.
