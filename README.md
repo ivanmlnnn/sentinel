@@ -47,7 +47,7 @@ Prompt injection, poisoned tool output and malicious destinations can trick an A
 - Optional sender-to-receiver interaction context and observed counterparty discovery.
 - Deployment-local Cloudflare D1 threat registry; only verified reports can trigger `BLOCK`.
 - Reusable application-level guard with fail-closed behavior for API errors, incomplete evidence, receiver mismatch, invalid risk scores, and payment-intent mismatch (the assessed amount must exactly match the amount passed to the signer).
-- Privy email OTP for protected report submission and AI review; public investigation remains available to Guest users.
+- Privy email OTP is required for authenticated investigations, threat-report submission, and AI review. Guest users use a separate public investigation route with stricter rate limiting.
 - Optional NEAR wallet identity connection through HOT Labs NEAR Connect. Wallet connection is read-only in this dashboard and does not sign transactions.
 
 ## Run it
