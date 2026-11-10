@@ -26,7 +26,11 @@ export async function onRequestPost({ request, env }) {
     });
   } catch { return json({ error: "AI provider request failed." }, 502); }
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) return json({ error: "AI_PROVIDER_ERROR" }, 502);
+  if (!response.ok) {
+    const providerMessage = String(data?.error?.message || "The configured AI provider rejected the request.").slice(0, 240);
+    const billing = /credit balance|insufficient.{0,20}credit|plans\s*&\s*billing|purchase credits|billing/i.test(providerMessage);
+    return json({ error: billing ? "AI_PROVIDER_BILLING_ERROR" : "AI_PROVIDER_ERROR", provider_status: response.status, provider_message: providerMessage }, 502);
+  }
   const explanation = (data.content || []).filter(x => x.type === "text").map(x => x.text).join("\n").trim();
   if (!explanation) return json({ error: "AI provider returned an empty explanation." }, 502);
   await env.DB.prepare("UPDATE investigations SET ai_explanation = ? WHERE id = ?").bind(explanation, id).run();
