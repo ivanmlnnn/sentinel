@@ -1,132 +1,130 @@
 import * as THREE from 'https://esm.sh/three@0.180.0';
 
-export function mountWayang3D(button) {
-  if (!button || button.dataset.wayang3dMounted === '1') return () => {};
-  const source = button.querySelector('img');
-  if (!source) return () => {};
-  button.dataset.wayang3dMounted = '1';
-  button.classList.add('wayang-3d-host');
+export function mountWayang3D(host) {
+  if (!host || host.dataset.wayang3dMounted === '1') return () => {};
+  host.dataset.wayang3dMounted = '1';
+  host.classList.add('wayang-3d-host');
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
-  camera.position.set(0, 0, 10.8);
-  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const camera = new THREE.PerspectiveCamera(34, 1, .1, 100);
+  camera.position.set(0, 0, 10.4);
+  const renderer = new THREE.WebGLRenderer({ alpha:true, antialias:true, powerPreference:'high-performance' });
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
   renderer.setClearColor(0x000000, 0);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.25;
+  renderer.toneMappingExposure = 1.18;
   renderer.domElement.className = 'wayang-3d-canvas';
-  renderer.domElement.setAttribute('aria-label', 'Interactive three-dimensional Sentinel wayang');
-  button.replaceChildren(renderer.domElement);
+  renderer.domElement.setAttribute('aria-label','Drag to rotate the three-dimensional wayang character');
+  host.replaceChildren(renderer.domElement);
 
-  scene.add(new THREE.AmbientLight(0xffffff, 1.7));
-  const keyLight = new THREE.DirectionalLight(0xffe8ae, 3.2);
-  keyLight.position.set(-3, 5, 7); scene.add(keyLight);
-  const rimLight = new THREE.PointLight(0x64c9ef, 2.6, 16);
-  rimLight.position.set(4, 1, -3); scene.add(rimLight);
-  const fillLight = new THREE.PointLight(0xe8df78, 1.8, 12);
-  fillLight.position.set(-4, -3, 4); scene.add(fillLight);
+  scene.add(new THREE.AmbientLight(0xffffff,1.25));
+  const key = new THREE.DirectionalLight(0xffe6ad,3.1); key.position.set(-3,5,7); scene.add(key);
+  const rim = new THREE.PointLight(0x63c9ef,2.8,18); rim.position.set(4,1,-4); scene.add(rim);
+  const fill = new THREE.PointLight(0xe8df78,1.9,15); fill.position.set(-4,-3,5); scene.add(fill);
 
-  const object = new THREE.Group();
-  scene.add(object);
-  const pivot = new THREE.Group();
-  object.add(pivot);
-  const materialGold = new THREE.MeshStandardMaterial({ color: 0xc4a85b, metalness: .82, roughness: .28 });
-  const backing = new THREE.Mesh(new THREE.BoxGeometry(4.35, 4.35, .18, 1, 1, 1), new THREE.MeshStandardMaterial({ color: 0x123b3d, metalness: .72, roughness: .34 }));
-  backing.position.z = -.14;
-  object.add(backing);
-  const rim = new THREE.Mesh(new THREE.BoxGeometry(4.42, 4.42, .12), materialGold);
-  rim.position.z = -.24; object.add(rim);
-  const face = new THREE.Mesh(new THREE.BoxGeometry(4.34, 4.34, .08), new THREE.MeshStandardMaterial({ color: 0x123b3d, metalness: .55, roughness: .4 }));
-  face.position.z = -.04; object.add(face);
+  const puppet = new THREE.Group(); scene.add(puppet);
+  const gold = new THREE.MeshPhysicalMaterial({color:0xe3bd63,metalness:.78,roughness:.27,clearcoat:.8});
+  const paleGold = new THREE.MeshStandardMaterial({color:0xffe6a0,metalness:.72,roughness:.3});
+  const teal = new THREE.MeshStandardMaterial({color:0x17616a,metalness:.5,roughness:.32});
+  const dark = new THREE.MeshStandardMaterial({color:0x092b32,metalness:.35,roughness:.36});
+  const skin = new THREE.MeshPhysicalMaterial({color:0xe6a96d,metalness:.12,roughness:.42,clearcoat:.25});
+  const cyan = new THREE.MeshPhysicalMaterial({color:0x65c9ef,metalness:.42,roughness:.24,clearcoat:.9});
 
-  const image = new Image();
-  image.crossOrigin = 'anonymous';
-  image.onload = () => {
-    const canvas = document.createElement('canvas');
-    canvas.width = image.naturalWidth || 640; canvas.height = image.naturalHeight || 640;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-    const w = canvas.width, h = canvas.height;
-    const pixels = ctx.getImageData(0, 0, w, h);
-    for (let i = 0; i < pixels.data.length; i += 4) {
-      const r = pixels.data[i], g = pixels.data[i + 1], b = pixels.data[i + 2];
-      if (g > r * 1.12 && g > b * 1.04 && g - r > 13 && g > 38 && r < 75) pixels.data[i + 3] = 0;
-    }
-    ctx.putImageData(pixels, 0, 0);
-    // Remove the original wing from the artwork; it is rebuilt as a separate articulated 3D part.
-    ctx.save(); ctx.globalCompositeOperation = 'destination-out';
-    ctx.beginPath();
-    [[365,246],[405,218],[458,191],[508,151],[562,157],[596,177],[582,225],[560,282],[532,333],[490,378],[455,391],[421,361],[395,319]].forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));
-    ctx.closePath(); ctx.fill(); ctx.restore();
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-    // Turn the original artwork into a tessellated relief surface, not a CSS-rotated flat image.
-    const portraitGeometry = new THREE.PlaneGeometry(4.55, 4.55, 160, 160);
-    const vertices = portraitGeometry.attributes.position;
-    for (let v = 0; v < vertices.count; v++) {
-      const u = (vertices.getX(v) / 4.55) + .5;
-      const y = (vertices.getY(v) / 4.55) + .5;
-      const px = Math.max(0, Math.min(w - 1, Math.round(u * (w - 1))));
-      const py = Math.max(0, Math.min(h - 1, Math.round((1 - y) * (h - 1))));
-      const at = (py * w + px) * 4;
-      const alpha = pixels.data[at + 3] / 255;
-      const luminance = (pixels.data[at] * .2126 + pixels.data[at + 1] * .7152 + pixels.data[at + 2] * .0722) / 255;
-      vertices.setZ(v, alpha > .04 ? .10 + luminance * .30 : -.025);
-    }
-    portraitGeometry.computeVertexNormals();
-    const portrait = new THREE.Mesh(portraitGeometry, new THREE.MeshStandardMaterial({ map: texture, transparent: true, roughness: .48, metalness: .2, side: THREE.DoubleSide, alphaTest: .025 }));
-    portrait.position.z = .13; pivot.add(portrait);
-    source.remove();
+  function shapeMesh(points, material, depth=.16, bevel=.045) {
+    const s = new THREE.Shape();
+    s.moveTo(points[0][0],points[0][1]);
+    for(let i=1;i<points.length;i++) s.lineTo(points[i][0],points[i][1]);
+    s.closePath();
+    const geo = new THREE.ExtrudeGeometry(s,{depth,bevelEnabled:true,bevelSegments:3,steps:1,bevelSize:bevel,bevelThickness:bevel,curveSegments:12});
+    const mesh = new THREE.Mesh(geo,material); return mesh;
+  }
+  function sphere(x,y,z,sx,sy,sz,material,parent=puppet) {
+    const m=new THREE.Mesh(new THREE.SphereGeometry(1,32,24),material);
+    m.position.set(x,y,z);m.scale.set(sx,sy,sz);parent.add(m);return m;
+  }
+  function tube(points,r,material,parent=puppet) {
+    const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)));
+    const m=new THREE.Mesh(new THREE.TubeGeometry(curve,36,r,8,false),material);parent.add(m);return m;
+  }
 
-    // Sculpted, bevelled wing, hinged independently from the wayang body.
-    const wingPivot = new THREE.Group();
-    wingPivot.position.set(.56, .49, .2);
-    pivot.add(wingPivot);
-    const wingShape = new THREE.Shape();
-    wingShape.moveTo(-.02, -.05);
-    wingShape.bezierCurveTo(.30, .22, .76, .82, 1.28, .91);
-    wingShape.bezierCurveTo(1.57, .95, 1.70, .78, 1.62, .49);
-    wingShape.bezierCurveTo(1.53, .14, 1.36, -.32, 1.02, -.66);
-    wingShape.bezierCurveTo(.72, -.96, .38, -.92, .08, -.55);
-    wingShape.bezierCurveTo(-.10, -.34, -.15, -.17, -.02, -.05);
-    const wingGeo = new THREE.ExtrudeGeometry(wingShape, { depth: .075, bevelEnabled: true, bevelSegments: 3, steps: 1, bevelSize: .035, bevelThickness: .035, curveSegments: 14 });
-    const wing = new THREE.Mesh(wingGeo, new THREE.MeshPhysicalMaterial({ color: 0x73c7f4, metalness: .35, roughness: .24, clearcoat: .85, clearcoatRoughness: .2, side: THREE.DoubleSide }));
-    wing.position.z = .08; wingPivot.add(wing);
-    const outline = new THREE.Line(new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(-.02,-.05,.17),new THREE.Vector3(.35,.37,.17),new THREE.Vector3(.83,.78,.17),new THREE.Vector3(1.28,.91,.17),new THREE.Vector3(1.62,.49,.17),new THREE.Vector3(1.02,-.66,.17),new THREE.Vector3(.38,-.92,.17),new THREE.Vector3(-.02,-.05,.17)
-    ]), new THREE.LineBasicMaterial({ color: 0x122d35, transparent: true, opacity: .9 }));
-    wingPivot.add(outline);
-    for (let n=0;n<4;n++) {
-      const vein = new THREE.Mesh(new THREE.CylinderGeometry(.012,.018,.92-n*.09,7), new THREE.MeshStandardMaterial({ color: n===1?0xe8df78:0x2a5364, metalness:.5, roughness:.35 }));
-      vein.position.set(.66+n*.13,.02-n*.12,.19); vein.rotation.z = -.68; wingPivot.add(vein);
-    }
-    wingPivot.userData.flap = true;
-    object.userData.wingPivot = wingPivot;
-  };
-  image.src = source.currentSrc || source.src;
+  // Circular presentation medallion remains behind the character; the puppet itself is fully volumetric.
+  const medallion=new THREE.Mesh(new THREE.CylinderGeometry(2.32,2.32,.16,96),dark);
+  medallion.rotation.x=Math.PI/2;medallion.position.z=-.55;puppet.add(medallion);
+  const rimRing=new THREE.Mesh(new THREE.TorusGeometry(2.28,.035,12,100),gold);rimRing.position.z=-.43;puppet.add(rimRing);
 
-  let down = false, lastX = 0, lastY = 0, velocityX = 0, velocityY = 0, lastTime = 0, frame = 0, disposed = false;
-  const onDown = (e) => { down = true; lastX=e.clientX; lastY=e.clientY; lastTime=performance.now(); velocityX=velocityY=0; renderer.domElement.setPointerCapture?.(e.pointerId); renderer.domElement.classList.add('is-grabbing'); };
-  const onMove = (e) => { if(!down)return; const dx=e.clientX-lastX,dy=e.clientY-lastY,now=performance.now(),dt=Math.max(8,now-lastTime); object.rotation.y += dx*.009; object.rotation.x += dy*.009; velocityX=dx/dt; velocityY=dy/dt; lastX=e.clientX;lastY=e.clientY;lastTime=now; };
-  const onUp = () => { down=false; renderer.domElement.classList.remove('is-grabbing'); };
-  renderer.domElement.addEventListener('pointerdown',onDown);
-  renderer.domElement.addEventListener('pointermove',onMove);
-  renderer.domElement.addEventListener('pointerup',onUp);
-  renderer.domElement.addEventListener('pointercancel',onUp);
-  renderer.domElement.addEventListener('lostpointercapture',onUp);
-  renderer.domElement.addEventListener('wheel',(e)=>{e.preventDefault();camera.position.z=THREE.MathUtils.clamp(camera.position.z+e.deltaY*.006,7.2,14);},{passive:false});
-  const resize = () => { const rect=button.getBoundingClientRect(); const size=Math.max(180,Math.min(rect.width||260,rect.height||260,340)); renderer.setSize(size,size,false); camera.aspect=1; camera.updateProjectionMatrix(); };
-  const observer = new ResizeObserver(resize); observer.observe(button); resize();
-  const animate = (now) => {
-    if(disposed)return;
-    frame=requestAnimationFrame(animate);
-    const dt=Math.min(.04,(now-(animate.last||now))/1000); animate.last=now;
-    if(!down){ object.rotation.y += .13*dt + velocityX*dt*18; object.rotation.x += velocityY*dt*18; velocityX*=.94; velocityY*=.94; }
-    const wingPivot=object.userData.wingPivot;
-    if(wingPivot) wingPivot.rotation.z = Math.sin(now*.0015)*.075 + Math.sin(now*.0008)*.025;
+  // Swept wing: a thick, bevelled silhouette with individual feather blades and gold quills.
+  const wingPivot=new THREE.Group();wingPivot.position.set(.42,.28,.05);puppet.add(wingPivot);
+  const wing=shapeMesh([[0,0],[.25,.55],[.58,1.12],[1.03,1.53],[1.55,1.65],[1.82,1.39],[1.67,.95],[1.43,.48],[1.14,.05],[.76,-.28],[.36,-.2]],cyan,.22,.055);
+  wingPivot.add(wing);
+  for(let i=0;i<7;i++){
+    const x=.28+i*.19, y=.18+i*.18;
+    const feather=shapeMesh([[x,y],[x+.17,y+.34],[x+.38,y+.67],[x+.31,y+.25],[x+.12,y-.04]],i%2?teal:gold,.12,.025);
+    feather.position.z=.25;wingPivot.add(feather);
+    tube([[x+.12,y,.4],[x+.25,y+.25,.4],[x+.34,y+.52,.4]],.018,paleGold,wingPivot);
+  }
+
+  // Body and shoulder armor.
+  const torso=shapeMesh([[-.68,-1.65],[-.82,-.95],[-.58,-.52],[-.2,-.34],[.32,-.43],[.62,-.86],[.55,-1.65]],teal,.32,.08);
+  torso.position.z=.12;puppet.add(torso);
+  const chest=shapeMesh([[-.35,-.65],[-.42,-1.35],[0,-1.56],[.38,-1.3],[.3,-.65],[0,-.48]],gold,.15,.035);chest.position.z=.48;puppet.add(chest);
+  sphere(-.45,-.56,.5,.34,.24,.2,gold);
+  sphere(.45,-.56,.5,.34,.24,.2,gold);
+
+  // Head in three dimensions, with a distinct side-profile nose and jaw.
+  const head=sphere(-.05,.34,.42,.56,.69,.43,skin);
+  const faceProfile=shapeMesh([[-.42,.64],[-.64,.47],[-.91,.34],[-.63,.23],[-.55,-.02],[-.24,-.24],[.28,-.18],[.48,.12],[.43,.58],[.12,.9]],skin,.18,.035);
+  faceProfile.position.z=.48;puppet.add(faceProfile);
+  sphere(-.45,.48,.69,.10,.055,.035,dark);
+  tube([[-.55,.25,.72],[-.35,.19,.73],[-.19,.24,.72]],.018,dark);
+  sphere(-.26,-.02,.69,.055,.04,.035,gold);
+
+  // Tall, layered Javanese crown with pointed ornaments.
+  const crown=shapeMesh([[-.57,.75],[-.7,1.15],[-.42,1.03],[-.34,1.52],[-.08,1.18],[.18,1.62],[.32,1.16],[.62,1.32],[.48,.78],[.2,.68],[-.24,.68]],gold,.24,.045);
+  crown.position.z=.62;puppet.add(crown);
+  for(const [x,y,r] of [[-.36,1.05,.12],[-.08,1.26,.14],[.22,1.18,.12],[.39,.94,.1]]){
+    sphere(x,y,.93,r,r, .07,paleGold);
+  }
+  tube([[-.44,.82,.91],[-.18,.91,.98],[.12,.9,.98],[.39,.82,.9]],.025,paleGold);
+  const ear=sphere(.45,.34,.62,.16,.2,.12,gold);
+  sphere(.46,.34,.76,.055,.08,.04,teal);
+
+  // Neck ornaments and articulated arm/hand shapes.
+  tube([[-.28,-.38,.56],[-.08,-.5,.7],[.2,-.42,.56]],.045,paleGold);
+  tube([[-.55,-.78,.54],[-.88,-1.03,.4],[-1.02,-1.34,.35]],.105,gold);
+  sphere(-1.02,-1.36,.36,.14,.18,.13,skin);
+  tube([[.53,-.8,.52],[.85,-1.04,.38],[.95,-1.33,.34]],.105,gold);
+  sphere(.95,-1.35,.36,.14,.18,.13,skin);
+
+  // Shoulder tassels and layered costume details.
+  for(let i=0;i<5;i++){
+    tube([[-.58+i*.18,-1.05,.62],[-.56+i*.18,-1.42,.68],[-.48+i*.18,-1.7,.62]],.022,i%2?gold:paleGold);
+  }
+  const jewel=sphere(-.02,.02,.99,.12,.16,.07,cyan);jewel.rotation.z=.4;
+  for(let i=0;i<3;i++){
+    const bead=sphere(-.22+i*.22,-.84,.76,.045,.045,.045,paleGold);
+  }
+
+  // Side ornaments and rear silhouette add depth visible during a full turn.
+  const back=shapeMesh([[-.55,.48],[-.72,.2],[-.54,-.18],[-.35,-.38],[.24,-.3],[.5,.12],[.32,.46]],dark,.22,.05);
+  back.position.z=-.26;puppet.add(back);
+  for(let i=0;i<5;i++) sphere(-.55+i*.25,-1.7,.2,.07,.12,.08,gold);
+
+  let down=false,lastX=0,lastY=0,lastAt=0,vx=0,vy=0,frame=0,disposed=false;
+  const canvas=renderer.domElement;
+  const onDown=e=>{down=true;lastX=e.clientX;lastY=e.clientY;lastAt=performance.now();vx=vy=0;canvas.setPointerCapture?.(e.pointerId);canvas.classList.add('is-grabbing');};
+  const onMove=e=>{if(!down)return;const dx=e.clientX-lastX,dy=e.clientY-lastY,dt=Math.max(8,performance.now()-lastAt);puppet.rotation.y+=dx*.009;puppet.rotation.x=THREE.MathUtils.clamp(puppet.rotation.x+dy*.008,-Math.PI*.48,Math.PI*.48);vx=dx/dt;vy=dy/dt;lastX=e.clientX;lastY=e.clientY;lastAt=performance.now();};
+  const onUp=()=>{down=false;canvas.classList.remove('is-grabbing');};
+  canvas.addEventListener('pointerdown',onDown);canvas.addEventListener('pointermove',onMove);
+  canvas.addEventListener('pointerup',onUp);canvas.addEventListener('pointercancel',onUp);canvas.addEventListener('lostpointercapture',onUp);
+  const resize=()=>{const r=host.getBoundingClientRect(),size=Math.max(180,Math.min(r.width||220,r.height||220,340));renderer.setSize(size,size,false);camera.aspect=1;camera.updateProjectionMatrix();};
+  const observer=new ResizeObserver(resize);observer.observe(host);resize();
+  const animate=now=>{
+    if(disposed)return;frame=requestAnimationFrame(animate);
+    const dt=Math.min(.04,(now-(animate.last||now))/1000);animate.last=now;
+    if(!down){puppet.rotation.y+=.17*dt+vx*dt*18;puppet.rotation.x=THREE.MathUtils.clamp(puppet.rotation.x+vy*dt*18,-Math.PI*.48,Math.PI*.48);vx*=.94;vy*=.94;}
+    wingPivot.rotation.z=Math.sin(now*.00125)*.055;
     renderer.render(scene,camera);
   };
   frame=requestAnimationFrame(animate);
-  return () => { disposed=true; cancelAnimationFrame(frame); observer.disconnect(); renderer.dispose(); scene.traverse(o=>{o.geometry?.dispose?.(); if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material?.dispose?.();}); button.dataset.wayang3dMounted='0'; };
+  return ()=>{disposed=true;cancelAnimationFrame(frame);observer.disconnect();canvas.removeEventListener('pointerdown',onDown);canvas.removeEventListener('pointermove',onMove);canvas.removeEventListener('pointerup',onUp);canvas.removeEventListener('pointercancel',onUp);canvas.removeEventListener('lostpointercapture',onUp);renderer.dispose();scene.traverse(o=>{o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material?.dispose?.();});host.dataset.wayang3dMounted='0';};
 }
