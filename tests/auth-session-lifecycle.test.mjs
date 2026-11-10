@@ -25,5 +25,5 @@ test("email login clears a previous Guest marker", () => {
 });
 
 test("dashboard imports the cache-busted app bundle", () => {
-  assert.match(auth, /app\.js\?v=20261111-chat-scroll-greeting-fix3/);
+  assert.match(auth, /app\.js\?v=20261111-future-console1/);
 });
