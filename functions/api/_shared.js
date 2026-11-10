@@ -6,8 +6,13 @@ export function json(data, status = 200) {
 }
 
 export async function readTextLimited(request, maxBytes = 65536) {
-  const declaredLength = Number(request.headers.get("content-length") || 0);
-  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) return { ok: false, reason: "BODY_TOO_LARGE" };
+  const lengthHeader = request.headers.get("content-length");
+  if (lengthHeader !== null) {
+    if (!/^\\d+$/.test(lengthHeader) || !Number.isSafeInteger(Number(lengthHeader))) return { ok: false, reason: "INVALID_CONTENT_LENGTH" };
+    if (Number(lengthHeader) > maxBytes) return { ok: false, reason: "BODY_TOO_LARGE" };
+  }
+  const encoding = (request.headers.get("content-encoding") || "identity").trim().toLowerCase();
+  if (encoding !== "identity") return { ok: false, reason: "UNSUPPORTED_CONTENT_ENCODING" };
   if (!request.body) return { ok: false, reason: "EMPTY_BODY" };
   const reader = request.body.getReader();
   const chunks = [];
@@ -55,7 +60,7 @@ export async function canReadInvestigation(env, investigationId, identity) {
 
 export function validAccountId(value) {
   return typeof value === "string" && value.length >= 2 && value.length <= 64 &&
-    /^[a-z0-9._-]+$/.test(value) && !value.startsWith(".") && !value.endsWith(".");
+    /^[a-z0-9]+(?:[-_.][a-z0-9]+)*$/.test(value);
 }
 
 /**
