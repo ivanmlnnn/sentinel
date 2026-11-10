@@ -102,3 +102,70 @@ test("maps Gemini rate limits into a stable provider error", async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+
+test("retries transient Gemini 503 overload and succeeds when capacity recovers", async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    if (calls < 3) return new Response(JSON.stringify({ error: { message: "high demand" } }), {
+      status: 503, headers: { "content-type": "application/json" }
+    });
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: "Recovered." }] } }] }), {
+      status: 200, headers: { "content-type": "application/json" }
+    });
+  };
+  try {
+    const result = await callGemini({ GEMINI_API_KEY: "test-secret" }, {
+      system: "system", messages: [{ role: "user", content: "hello" }]
+    });
+    assert.equal(calls, 3);
+    assert.equal(result.ok, true);
+    assert.equal(result.data.content[0].text, "Recovered.");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("does not retry permanent Gemini authentication or model errors", async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    return new Response(JSON.stringify({ error: { message: "invalid API key" } }), {
+      status: 401, headers: { "content-type": "application/json" }
+    });
+  };
+  try {
+    const result = await callGemini({ GEMINI_API_KEY: "test-secret" }, {
+      system: "system", messages: [{ role: "user", content: "hello" }]
+    });
+    assert.equal(calls, 1);
+    assert.equal(result.error, "AI_PROVIDER_AUTH_FAILED");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("returns a stable upstream error after bounded Gemini overload retries", async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    return new Response(JSON.stringify({ error: { message: "high demand" } }), {
+      status: 503, headers: { "content-type": "application/json" }
+    });
+  };
+  try {
+    const result = await callGemini({ GEMINI_API_KEY: "test-secret" }, {
+      system: "system", messages: [{ role: "user", content: "hello" }]
+    });
+    assert.equal(calls, 3);
+    assert.equal(result.ok, false);
+    assert.equal(result.status, 503);
+    assert.equal(result.error, "AI_PROVIDER_UPSTREAM_ERROR");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
