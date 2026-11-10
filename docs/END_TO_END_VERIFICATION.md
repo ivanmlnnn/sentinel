@@ -197,6 +197,22 @@ The authenticated Agent, Guest Agent, and AI Review routes have been migrated fr
 
 The Gemini adapter test suite covers schema/conversation conversion, response normalization, missing-secret fail-closed behavior, request construction, and provider rate-limit handling. These are deterministic tests with a mocked HTTP response; they do not establish production Gemini availability.
 
+**PR #13 source-code CI evidence — commit `4a44e5665dded3c0785d3d78fc2df53adf0b1bdf`:**
+
+| Check | Result | Evidence |
+|---|---|---|
+| Automated regression | **135 passed, 0 failed** | [Sentinel checks run 42906396916](https://github.com/ivanmlnnn/sentinel/actions/runs/42906396916) |
+| Gemini adapter tests | **5 passed** | Same run; tests 44–48 |
+| Main D1 migrations | **PASS — 8 migrations, 10 tables, 24 indexes** | Same run |
+| Signer D1 migration | **PASS — 1 migration, 3 tables, 7 indexes** | Same run |
+| NEAR payment-contract WASM release build | **PASS** | Same run; `cargo build --manifest-path payment-contract/Cargo.toml --target wasm32-unknown-unknown --release` |
+| Sentinel Security CI | **PASS** | [Run 42906396166](https://github.com/ivanmlnnn/sentinel/actions/runs/42906396166) |
+| CodeQL JavaScript analysis workflow | **PASS** | [Run 42906396384](https://github.com/ivanmlnnn/sentinel/actions/runs/42906396384) |
+| Main Worker Cloudflare preview build | **PASS** | [Build d91f166c](https://dash.cloudflare.com/70700c67711eb5444dd645c3612eacf2/workers/services/view/sentinel/production/previews/fix-signer-reservation-order-and-lab-evidence/builds/d91f166c-a845-4159-9f18-8013bbf858c1) |
+| Signer Worker Cloudflare preview build | **PASS** | [Build 354387f8](https://dash.cloudflare.com/70700c67711eb5444dd645c3612eacf2/workers/services/view/sentinel-signer/production/previews/fix-signer-reservation-order-and-lab-evidence/builds/354387f8-fd52-4fa2-8f05-ca9c2dd60e06) |
+
+These are PR preview/build and CI results, not a production deployment or proof that the production Gemini secret is installed.
+
 **Production activation:** configure `GEMINI_API_KEY` on the Cloudflare Main Worker and deploy the exact reviewed commit. Then test all three routes with a real authenticated session. The isolated Signer Worker does not need the Gemini key.
 
 **Release evidence boundary:** Payment-contract WASM build, CodeQL, Security CI, Sentinel checks, Worker deployment, and live AI route verification must be read from the GitHub Actions runs associated with the exact PR head. Do not reuse a green run from an earlier commit as proof for this migration.
