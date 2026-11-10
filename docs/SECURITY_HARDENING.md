@@ -50,7 +50,7 @@ Set `SENTINEL_ADMIN_DIDS` to a comma-separated allowlist of Privy subject IDs fo
 ## Residual risks — do not conceal these from judges
 
 1. Main Worker DB1 and signer ledger DB2 are separate; the Main Worker has no DB2 binding. The signer still binds DB1 to read pending approvals, and that binding is write-capable at the platform level even though current signer code only uses SELECT. The Main Worker also holds the shared HMAC secret and can write pending approvals. A fully compromised Main Worker can still attempt to forge an application-level approval. This split isolates signer ledgers from direct Main Worker writes; it does not create an independent approval authority.
-2. Human approval is an authenticated application confirmation, not yet a cryptographic wallet-signed or passkey-backed approval bound to the exact transfer.
+2. The approval flow includes a NEP-413 wallet signature that the isolated signer verifies against the exact approval ID, wallet account, receiver, amount, Testnet network, expiry, recipient domain, and nonce. The application click/confirmation and DB1 pending-approval record are not, by themselves, an independent authorization authority. This distinction matters because the Main Worker holds the HMAC secret and can write DB1; the signer-side signature verification and DB2 replay/claim ledgers provide additional enforcement, but do not eliminate the DB1 trust boundary.
 3. The signer uses a dedicated Testnet FullAccess key. Keep it low-balance, Testnet-only, allowlisted, and kill-switched until live negative tests pass. Do not reuse a personal or Mainnet key.
 4. Strict `script-src` CSP is not yet enforced because external Privy/NEAR wallet dependencies and inline bootstrapping have not been fully inventoried. The current CSP is intentionally limited and is not a complete XSS boundary.
 5. CodeQL is static analysis, not a penetration test. No Burp Suite assessment or independent security audit is claimed.
@@ -91,4 +91,4 @@ Record each finding with request/response evidence, severity, fix commit, and a 
 - [ ] Back up both databases and reconcile migration history: Main DB1 uses `migrations-d1/` (0001–0007); signer DB2 uses `migrations-signer/` (0001).
 - [ ] Run CodeQL and the full CI suite on the exact submission commit.
 - [ ] Complete the Burp Suite plan against preview; attach a redacted report.
-- [ ] Obtain independent review of the remaining DB1 approval trust boundary and human-approval residual risk before enabling transfers.
+- [ ] Obtain independent review of the remaining DB1 approval trust boundary and signer-side NEP-413 verification before enabling transfers.
