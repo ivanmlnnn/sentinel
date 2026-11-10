@@ -33,6 +33,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Set up Rust and WebAssembly target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
       - name: Install project dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
       - name: Check browser and API JavaScript syntax
@@ -48,6 +52,8 @@ jobs:
           node --check src/http-security.mjs
           node --check scripts/check-d1-migrations.mjs
           node --check signer-worker/src/index.mjs
+          node --check scripts/install-restricted-signer-key.mjs
+          node --check scripts/deploy-payment-contract.mjs
           node --check src/agent-policy.mjs
           node --check src/near-agent-signer.mjs
       - name: Validate D1 migration SQL against SQLite
@@ -60,6 +66,8 @@ jobs:
         run: npm test
       - name: Run offline prompt-injection demo
         run: npm run demo:attack
+      - name: Build NEAR payment contract to WebAssembly
+        run: cargo build --manifest-path payment-contract/Cargo.toml --target wasm32-unknown-unknown --release
 
   attest-source:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
