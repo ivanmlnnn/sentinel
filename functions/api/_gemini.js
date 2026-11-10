@@ -1,4 +1,7 @@
 const DEFAULT_MODEL = "gemini-3.8-flash";
+const MAX_RETRIES = 2;
+const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 function geminiSchema(schema = {}) {
   const out = {};
@@ -85,17 +88,39 @@ export async function callGemini(env, { system, messages, tools = [], maxOutputT
     body.toolConfig = { functionCallingConfig: { mode: "AUTO" } };
   }
   let response;
-  try {
-    response = await fetch(url, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(timeoutMs)
-    });
-  } catch {
-    return { ok: false, status: 0, error: "AI_PROVIDER_UNAVAILABLE", message: "Gemini could not be reached." };
+  let data = {};
+  let lastNetworkError = false;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(timeoutMs)
+      });
+      data = await response.json().catch(() => ({}));
+      lastNetworkError = false;
+    } catch {
+      lastNetworkError = true;
+      if (attempt < MAX_RETRIES) {
+        await sleep(250 * (2 ** attempt));
+        continue;
+      }
+      return { ok: false, status: 0, error: "AI_PROVIDER_UNAVAILABLE", message: "Gemini could not be reached after automatic retries." };
+    }
+
+    if (response.ok || !RETRYABLE_STATUSES.has(response.status) || attempt === MAX_RETRIES) break;
+
+    const retryAfter = Number(response.headers.get("retry-after"));
+    const delayMs = Number.isFinite(retryAfter) && retryAfter > 0
+      ? Math.min(1500, retryAfter * 1000)
+      : 250 * (2 ** attempt);
+    await sleep(delayMs);
   }
-  const data = await response.json().catch(() => ({}));
+
+  if (lastNetworkError || !response) {
+    return { ok: false, status: 0, error: "AI_PROVIDER_UNAVAILABLE", message: "Gemini could not be reached after automatic retries." };
+  }
   if (!response.ok) {
     const message = String(data?.error?.message || "Gemini rejected the request.").slice(0, 240);
     const status = response.status;
@@ -103,7 +128,7 @@ export async function callGemini(env, { system, messages, tools = [], maxOutputT
       : status === 404 ? "AI_PROVIDER_MODEL_NOT_FOUND"
       : status === 429 ? "AI_PROVIDER_RATE_LIMITED"
       : status >= 500 ? "AI_PROVIDER_UPSTREAM_ERROR" : "AI_PROVIDER_ERROR";
-    console.error("gemini_provider_error", { status, message, code: data?.error?.status || null });
+    console.error("gemini_provider_error", { status, message, code: data?.error?.status || null, retries: MAX_RETRIES });
     return { ok: false, status, error, message };
   }
   const normalized = normalizeGeminiResponse(data);
