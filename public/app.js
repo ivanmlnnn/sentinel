@@ -549,8 +549,12 @@ function renderAgentResult(data) {
   const risk = Number.isFinite(Number(data.sentinel?.risk_score)) ? Number(data.sentinel.risk_score) + '/100' : 'Not scored';
   const proposal = data.proposal || {};
   const txHash = typeof data.transaction_hash === 'string' ? data.transaction_hash : '';
-  const txLink = data.execution_enabled === true && txHash
-    ? '<a class="agent-tx-link" href="https://testnet.nearblocks.io/txns/' + encodeURIComponent(txHash) + '" target="_blank" rel="noopener noreferrer">View verified Testnet transaction ↗</a>'
+  const explorerUrl = typeof data.explorer_url === 'string' &&
+    /^https:\/\/testnet\.nearblocks\.io\/txns\/[1-9A-HJ-NP-Za-km-z]{32,64}$/.test(data.explorer_url)
+    ? data.explorer_url : (data.execution_enabled === true && txHash
+      ? 'https://testnet.nearblocks.io/txns/' + encodeURIComponent(txHash) : '');
+  const txLink = data.execution_enabled === true && txHash && explorerUrl
+    ? '<a class="agent-tx-link" href="' + escapeHtml(explorerUrl) + '" target="_blank" rel="noopener noreferrer">View RPC-verified Testnet transaction ↗</a>'
     : '';
   const approvalId = status === 'AWAITING_HUMAN_APPROVAL' ? String(data.approval_id || '') : '';
   result.innerHTML =
