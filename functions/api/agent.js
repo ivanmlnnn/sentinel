@@ -1,5 +1,6 @@
 import { json, verifyPrivyAccessToken, readTextLimited } from "./_shared.js";
 import { evaluateAgentAuthorization, validatePaymentIntent } from "../../src/agent-policy.mjs";
+import { runTrustedInvestigation } from "./investigate.js";
 
 const MAX_PROMPT_LENGTH = 4000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -93,8 +94,7 @@ export async function onRequestPost({ request, env }) {
       headers: { "content-type": "application/json", authorization: request.headers.get("authorization") || "" },
       body: JSON.stringify({ receiver_account: intent.receiver_account, amount_near: intent.amount_near })
     });
-    const { onRequestPost: investigatePost } = await import("./investigate.js");
-    const response = await investigatePost({ request: preflightRequest, env });
+    const response = await runTrustedInvestigation({ request: preflightRequest, env, actor: identity.sub });
     assessment = await response.json().catch(() => null);
     if (!response.ok) preflightError = assessment?.error || "SENTINEL_PREFLIGHT_FAILED";
   } catch { preflightError = "SENTINEL_PREFLIGHT_UNAVAILABLE"; }
@@ -110,7 +110,7 @@ export async function onRequestPost({ request, env }) {
       proposal: { receiver_account: intent.receiver_account, amount_near: intent.amount_near },
       sentinel: assessment ? { decision: assessment.decision || null, risk_score: assessment.risk_score ?? null,
         assessment_status: assessment.assessment_status || null } : null,
-      agent_message: agentText, expires_at: savedApproval?.expires_at || null, transaction_hash: null, execution_enabled: false });
+      agent_message: agentText, expires_at: null, transaction_hash: null, execution_enabled: false });
   }
 
   // Proposals never spend automatically. A separate authenticated approval
