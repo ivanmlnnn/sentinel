@@ -24,7 +24,7 @@ function escapeHtml(value) {
 }
 async function request(path, options = {}) {
   const headers = {'content-type':'application/json', ...(options.headers || {})};
-  if (!GUEST_MODE && typeof window.getSentinelAccessToken === 'function') {
+  if (typeof window.getSentinelAccessToken === 'function') {
     try {
       const token = await window.getSentinelAccessToken();
       if (token) headers.authorization = 'Bearer ' + token;
@@ -652,7 +652,7 @@ function renderAgentResult(data) {
     });
   }
 }
-if (agentForm && !GUEST_MODE) {
+if (agentForm) {
   agentForm.addEventListener('submit', async event => {
     event.preventDefault();
     const button = $('agentRunBtn');
@@ -665,7 +665,7 @@ if (agentForm && !GUEST_MODE) {
     result.classList.remove('hidden');
     result.textContent = 'Calling the AI provider and evaluating the proposed action…';
     try {
-      const data = await request('/agent/run', {
+      const data = await request(GUEST_MODE ? '/guest/agent' : '/agent/run', {
         method: 'POST',
         headers: { 'Idempotency-Key': crypto.randomUUID() },
         body: JSON.stringify({ prompt })
@@ -682,15 +682,16 @@ if (agentForm && !GUEST_MODE) {
       button.innerHTML = 'Run secure agent <b>↗</b>';
     }
   });
-} else {
-  const agentNav = $('agentNav');
-  const agentHeading = $('agentHeading');
-  const agentLab = $('agentLab');
-  if (GUEST_MODE) {
-    agentNav?.remove();
-    agentHeading?.remove();
-    agentLab?.remove();
-  }
+} 
+if (GUEST_MODE) {
+  const intro = document.querySelector('.agent-lab-intro');
+  if (intro) intro.textContent = 'Guest AI access · up to 10 prompts per day. Ask questions and get security guidance. Wallet investigation is read-only; payment proposals, signing, and transfers are disabled.';
+  const prompt = $('agentPrompt');
+  if (prompt) prompt.placeholder = 'Ask Sentinel about wallet security, anomalies, or how to use the dashboard…';
+  const warning = document.querySelector('.agent-lab-warning');
+  if (warning) warning.innerHTML = '<b>GUEST READ-ONLY MODE</b><span>10 AI prompts per day · no payment proposals · no signing · no transfers.</span>';
+  const submitLabel = $('agentRunBtn');
+  if (submitLabel) submitLabel.innerHTML = 'Ask Sentinel AI <b>↗</b>';
 }
 
 // Wallet connection is independent from Privy login; Guest users may connect a NEAR wallet too.
