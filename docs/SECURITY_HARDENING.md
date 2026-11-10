@@ -16,6 +16,19 @@ This is a verification baseline, not a certification or a claim that Sentinel is
 - Main Worker DB1 uses SQLite-compatible `migrations-d1/`; signer DB2 uses `migrations-signer/`. CI validates both migration sets independently against SQLite, including signer indexes. Legacy `migrations/` files use PostgreSQL syntax and must not be applied to D1.
 - The signer is a separate Worker with no public Workers.dev or preview URL. Its private key must not be configured in the browser-facing Worker.
 
+## Automated verification results
+
+Evidence from source revision [28e924d](https://github.com/ivanmlnnn/sentinel/commit/28e924de201f56eb07088a38a8195a4b4bee778f):
+
+- GitHub Actions run [42778165533](https://github.com/ivanmlnnn/sentinel/actions/runs/42778165533): **116 tests passed, 0 failed**.
+- Gitleaks changed-file and full-history scans passed.
+- Main Worker and isolated Signer Worker Wrangler dry-runs passed.
+- D1 migration validation, JavaScript syntax checks, and the offline prompt-injection regression demo passed.
+- CodeQL was still running at the time this result was recorded; no CodeQL PASS is claimed in this entry.
+- Turnstile source and UI regression tests are included in the 116-test suite. The source uses Cloudflare's official browser widget and Siteverify endpoint, verifies success/action/hostname, and fails closed if the secret is missing or Siteverify is unavailable.
+
+These are automated source-level checks. They do not constitute a live browser test, a Burp Suite report, an independent penetration test, a proof of current Cloudflare deployment versions, or a verified live NEAR transfer.
+
 ## Access model: Cloudflare equivalent of least privilege
 
 Cloudflare Workers do not expose a normal Linux filesystem with POSIX `chmod`, `chown`, or root accounts. Do not pretend browser users can be assigned Linux file permissions inside a Worker. The equivalent controls are separate deployments, bindings, service identities, and secrets.
