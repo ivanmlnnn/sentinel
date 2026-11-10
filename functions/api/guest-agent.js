@@ -71,18 +71,52 @@ async function runSkill(name, input, { request, env, identity }) {
       ok: false, error: data?.error || "INVESTIGATION_FAILED",
       message: data?.detail || "The live investigation failed; no safety conclusion can be made."
     };
+    const evidence = data.evidence || {};
+    const activity = evidence.wallet_activity || {};
+    const native = activity.native_transactions || {};
+    const receipts = activity.receipts || {};
+    const transfers = activity.fungible_token_transfers || {};
     return {
       ok: true,
       skill: name,
       account_id: data.receiver_account || accountId,
-      network: data.evidence?.network || null,
+      network: evidence.network || null,
       decision: data.decision || "INCOMPLETE",
       risk_score: Number.isFinite(data.risk_score) ? data.risk_score : null,
       risk_factors: Array.isArray(data.risk_factors) ? data.risk_factors.slice(0, 30) : [],
       assessment_status: data.assessment_status || "INCOMPLETE",
-      evidence: data.evidence || null,
+      evidence: {
+        checked_at: evidence.checked_at || null,
+        account: evidence.account || null,
+        native_transactions: {
+          count: native.count || 0, pages_fetched: native.pages_fetched || 0,
+          complete: native.complete === true, incoming_spam_sources: (native.incoming_spam_sources || []).slice(0, 10)
+        },
+        receipts: { count: receipts.count || 0, pages_fetched: receipts.pages_fetched || 0, complete: receipts.complete === true },
+        fungible_token_transfers: { count: transfers.count || 0, pages_fetched: transfers.pages_fetched || 0, complete: transfers.complete === true },
+        transaction_behavior: evidence.transaction_history || null,
+        first_seen_activity: evidence.first_seen_activity || null,
+        contract_code_history: evidence.contract_code_history ? {
+          available: evidence.contract_code_history.available,
+          current_code_hash: evidence.contract_code_history.current_code_hash,
+          prior_observations: evidence.contract_code_history.prior_observations,
+          previous_code_hash: evidence.contract_code_history.previous_code_hash,
+          changed_since_previous_scan: evidence.contract_code_history.changed_since_previous_scan,
+          explorer_deployments: evidence.contract_code_history.explorer_deployments ? {
+            available: evidence.contract_code_history.explorer_deployments.available,
+            count: evidence.contract_code_history.explorer_deployments.count,
+            complete: evidence.contract_code_history.explorer_deployments.complete,
+            earliest_deployment_at: evidence.contract_code_history.explorer_deployments.earliest_deployment_at,
+            observed_code_hashes: (evidence.contract_code_history.explorer_deployments.observed_code_hashes || []).slice(0, 8)
+          } : null
+        } : null,
+        agent_receiver_interaction: evidence.agent_receiver_interaction || null,
+        counterparty_candidates: (evidence.counterparty_candidates?.candidates || []).slice(0, 10),
+        verified_threat: evidence.verified_threat || null,
+        limitations: (evidence.limitations || []).slice(0, 10)
+      },
       investigation_id: data.id || null,
-      checked_at: data.created_at || data.evidence?.checked_at || null
+      checked_at: data.created_at || evidence.checked_at || null
     };
   }
 
