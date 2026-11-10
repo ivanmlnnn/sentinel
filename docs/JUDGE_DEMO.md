@@ -49,7 +49,9 @@ Prepare these short cases after the corresponding branch deployment and show the
 
 ## Latest reproducible CI evidence
 
-The last fully evidenced CI revision [cd85b86](https://github.com/ivanmlnnn/sentinel/commit/cd85b8692fd9dc766a996b220d17e832b7fa9ae8) passed [116/116 automated tests](https://github.com/ivanmlnnn/sentinel/actions/runs/42778680965), Gitleaks scans, both Wrangler dry-runs, D1 migration validation, and the offline prompt-injection regression. [CodeQL analysis](https://github.com/ivanmlnnn/sentinel/actions/runs/42778335865) completed successfully on an earlier source revision. The branch has since received further signer-authentication, workflow, and production-smoke-check changes; require a fresh completed CI run on the exact submission commit. These CI results do not prove the live deployment, live CAPTCHA browser interaction, or a completed signer transaction.
+The current feature branch head [`31a71a4`](https://github.com/ivanmlnnn/sentinel/commit/31a71a44964bffdb990bc7072ad86168b6072002) passed [Sentinel Security CI run 42857959405](https://github.com/ivanmlnnn/sentinel/actions/runs/42857959405) and [CodeQL run 42857959683](https://github.com/ivanmlnnn/sentinel/actions/runs/42857959683). The security CI includes Gitleaks, JavaScript syntax checks, regression tests, and D1 migration validation. CodeQL completed successfully; inspect the Security tab for individual findings.
+
+These results apply only to the exact commit above. They do not prove a live Cloudflare deployment, remote D1 migration state, real Privy browser sign-in, or a successful Testnet signer transaction. The deploy workflow is manual and must complete its deployment and production smoke-test jobs before the dashboard or Signer Worker can be described as updated.
 
 ## Judge questions and concise answers
 
