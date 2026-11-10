@@ -34,7 +34,12 @@ async function request(path, options = {}) {
   }
   const response = await fetch(API + path, { ...options, headers });
   const data = await response.json().catch(() => ({error:'Invalid server response.'}));
-  if (!response.ok) throw new Error(data.error || 'Request failed. Please retry.');
+  if (!response.ok) {
+    const detail = typeof data.provider_message === 'string' ? ': ' + data.provider_message : '';
+    const error = new Error((data.error || 'Request failed. Please retry.') + detail);
+    error.data = data;
+    throw error;
+  }
   return data;
 }
 function syncWalletUI(accountId, walletName) {
@@ -555,6 +560,33 @@ $('sendReport').addEventListener('click',async () => {
 });
 
 const agentForm = $('agentForm');
+const GUEST_CHAT_KEY = 'sentinel.guestAgent.messages.v1';
+let guestConversation = [];
+if (GUEST_MODE) {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(GUEST_CHAT_KEY) || '[]');
+    if (Array.isArray(saved)) guestConversation = saved
+      .filter(item => item && ['user', 'assistant'].includes(item.role) && typeof item.content === 'string')
+      .slice(-14);
+  } catch { guestConversation = []; }
+}
+function renderGuestConversation(pending = false) {
+  const result = $('agentResult');
+  if (!result) return;
+  const transcript = guestConversation.map(item =>
+    '<article class="guest-chat-message guest-chat-' + item.role + '">' +
+      '<span>' + (item.role === 'user' ? 'YOU' : 'SENTINEL AI') + '</span>' +
+      '<p>' + escapeHtml(item.content) + '</p></article>'
+  ).join('');
+  result.innerHTML = '<div class="guest-chat-transcript" aria-label="Sentinel AI conversation">' +
+    transcript + (pending ? '<article class="guest-chat-message guest-chat-assistant guest-chat-pending"><span>SENTINEL AI</span><p>Thinking through your request…</p></article>' : '') +
+    '</div><div class="guest-chat-meta">GUEST READ-ONLY · ' + guestConversation.length + ' MESSAGES IN CONTEXT</div>';
+  result.classList.remove('hidden');
+  result.scrollTop = result.scrollHeight;
+}
+function saveGuestConversation() {
+  try { sessionStorage.setItem(GUEST_CHAT_KEY, JSON.stringify(guestConversation.slice(-14))); } catch {}
+}
 function renderAgentResult(data) {
   const result = $('agentResult');
   const status = String(data.status || 'UNKNOWN');
@@ -665,16 +697,41 @@ if (agentForm) {
     result.classList.remove('hidden');
     result.textContent = 'Calling the AI provider and evaluating the proposed action…';
     try {
-      const data = await request(GUEST_MODE ? '/guest/agent' : '/agent/run', {
-        method: 'POST',
-        headers: { 'Idempotency-Key': crypto.randomUUID() },
-        body: JSON.stringify({ prompt })
-      });
-      renderAgentResult(data);
-      if (data.status === 'AWAITING_HUMAN_APPROVAL') toast('Review the exact receiver and amount before approving.');
-      else toast('Agent finished: ' + String(data.status || 'UNKNOWN').replaceAll('_', ' '));
+      if (GUEST_MODE) {
+        guestConversation.push({ role: 'user', content: prompt });
+        guestConversation = guestConversation.slice(-14);
+        saveGuestConversation();
+        renderGuestConversation(true);
+        const data = await request('/guest/agent', {
+          method: 'POST',
+          body: JSON.stringify({ messages: guestConversation })
+        });
+        if (typeof data.message === 'string' && data.message.trim()) {
+          guestConversation.push({ role: 'assistant', content: data.message.trim() });
+          guestConversation = guestConversation.slice(-14);
+          saveGuestConversation();
+        }
+        renderGuestConversation(false);
+        $('agentPrompt').value = '';
+        toast('Sentinel AI replied · ' + String(data.prompts_remaining ?? '—') + ' prompts left today');
+      } else {
+        const data = await request('/agent/run', {
+          method: 'POST',
+          headers: { 'Idempotency-Key': crypto.randomUUID() },
+          body: JSON.stringify({ prompt })
+        });
+        renderAgentResult(data);
+        if (data.status === 'AWAITING_HUMAN_APPROVAL') toast('Review the exact receiver and amount before approving.');
+        else toast('Agent finished: ' + String(data.status || 'UNKNOWN').replaceAll('_', ' '));
+      }
     } catch (error) {
-      result.textContent = error.message || 'Agent request failed. No transaction was confirmed.';
+      if (GUEST_MODE) {
+        renderGuestConversation(false);
+        const detail = error?.message || 'Agent request failed.';
+        result.insertAdjacentHTML('beforeend', '<p class="guest-chat-error">' + escapeHtml(detail) + '</p>');
+      } else {
+        result.textContent = error.message || 'Agent request failed. No transaction was confirmed.';
+      }
       toast(error.message || 'Agent request failed.');
     } finally {
       button.disabled = false;
@@ -691,7 +748,8 @@ if (GUEST_MODE) {
   const warning = document.querySelector('.agent-lab-warning');
   if (warning) warning.innerHTML = '<b>GUEST READ-ONLY MODE</b><span>10 AI prompts per day · no payment proposals · no signing · no transfers.</span>';
   const submitLabel = $('agentRunBtn');
-  if (submitLabel) submitLabel.innerHTML = 'Ask Sentinel AI <b>↗</b>';
+  if (submitLabel) submitLabel.innerHTML = 'Send message <b>↗</b>';
+  if (guestConversation.length) renderGuestConversation(false);
 }
 
 // Wallet connection is independent from Privy login; Guest users may connect a NEAR wallet too.
