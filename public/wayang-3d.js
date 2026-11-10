@@ -16,7 +16,7 @@ export function mountWayang3D(button) {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.25;
   renderer.domElement.className = 'wayang-3d-canvas';
-  renderer.setAttribute?.('aria-label', 'Interactive three-dimensional Sentinel wayang');
+  renderer.domElement.setAttribute('aria-label', 'Interactive three-dimensional Sentinel wayang');
   button.replaceChildren(renderer.domElement);
 
   scene.add(new THREE.AmbientLight(0xffffff, 1.7));
@@ -94,7 +94,7 @@ export function mountWayang3D(button) {
 
   let down = false, lastX = 0, lastY = 0, velocityX = 0, velocityY = 0, lastTime = 0, frame = 0, disposed = false;
   const onDown = (e) => { down = true; lastX=e.clientX; lastY=e.clientY; lastTime=performance.now(); velocityX=velocityY=0; renderer.domElement.setPointerCapture?.(e.pointerId); renderer.domElement.classList.add('is-grabbing'); };
-  const onMove = (e) => { if(!down)return; const dx=e.clientX-lastX,dy=e.clientY-lastY,now=performance.now(),dt=Math.max(8,now-lastTime); object.rotation.y += dx*.009; object.rotation.x = THREE.MathUtils.clamp(object.rotation.x+dy*.009,-Math.PI*1.45,Math.PI*1.45); velocityX=dx/dt; velocityY=dy/dt; lastX=e.clientX;lastY=e.clientY;lastTime=now; };
+  const onMove = (e) => { if(!down)return; const dx=e.clientX-lastX,dy=e.clientY-lastY,now=performance.now(),dt=Math.max(8,now-lastTime); object.rotation.y += dx*.009; object.rotation.x += dy*.009; velocityX=dx/dt; velocityY=dy/dt; lastX=e.clientX;lastY=e.clientY;lastTime=now; };
   const onUp = () => { down=false; renderer.domElement.classList.remove('is-grabbing'); };
   renderer.domElement.addEventListener('pointerdown',onDown);
   renderer.domElement.addEventListener('pointermove',onMove);
