@@ -53,6 +53,26 @@ check(
   `HTTP ${authenticatedPreflight.status}; error=${authenticatedPreflight.body?.error || "none"}`
 );
 
+// Agent routes must reject unauthenticated callers before invoking AI or signer logic.
+for (const path of ["/api/agent/run", "/api/agent/approve"]) {
+  const response = await request(path, {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+  check(`POST ${path} rejects a missing bearer token`, response.status === 401,
+    `HTTP ${response.status}; error=${response.body?.error || "none"}`);
+}
+
+// The internal preflight endpoint must reject requests without the signer HMAC,
+// even when the request body is otherwise valid. This is a non-mutating negative test.
+const unsignedPreflight = await request("/api/internal/investigate", {
+  method: "POST",
+  body: JSON.stringify({ receiver_account: "merchant.testnet", amount_near: 0.1 })
+});
+check("POST /api/internal/investigate rejects missing HMAC authentication",
+  unsignedPreflight.status === 401 && unsignedPreflight.body?.error === "INVALID_INTERNAL_AUTH",
+  `HTTP ${unsignedPreflight.status}; error=${unsignedPreflight.body?.error || "none"}`);
+
 // These are write/AI actions. GET /api/threats is intentionally public/read-only.
 const threatWrite = await request("/api/threats", {
   method: "POST",
