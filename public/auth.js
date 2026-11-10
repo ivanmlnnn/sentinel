@@ -86,31 +86,18 @@ function AuthGate() {
     let disposeWayang = () => {};
     let cancelled = false;
     if (host) {
-      import('./wayang-3d.js?v=20261110-full-sculpt-360').then(({ mountWayang3D }) => {
+      import('./wayang-3d.js?v=20261110-three-cdn-fix').then(({ mountWayang3D }) => {
         if (!cancelled && host.isConnected) {
           try {
             disposeWayang = mountWayang3D(host);
           } catch (error) {
             console.error('Sentinel 3D wayang mount failed:', error);
-            host.classList.remove('wayang-3d-host');
-            host.replaceChildren();
-            const fallback = document.createElement('img');
-            fallback.src = '/IMG_20260629_220728_136.jpg';
-            fallback.alt = 'NEAR Sentinel WayangTech mascot';
-            fallback.style.cssText = 'width:100%;height:100%;object-fit:contain;display:block';
-            host.appendChild(fallback);
+            host.dataset.wayang3dError = error?.message || 'WebGL renderer unavailable';
           }
         }
       }).catch((error) => {
         console.error('Sentinel 3D wayang module failed to load:', error);
-        if (!cancelled && host.isConnected) {
-          host.replaceChildren();
-          const fallback = document.createElement('img');
-          fallback.src = '/IMG_20260629_220728_136.jpg';
-          fallback.alt = 'NEAR Sentinel WayangTech mascot';
-          fallback.style.cssText = 'width:100%;height:100%;object-fit:contain;display:block';
-          host.appendChild(fallback);
-        }
+        if (!cancelled && host.isConnected) host.dataset.wayang3dError = error?.message || '3D module unavailable';
       });
     }
 
