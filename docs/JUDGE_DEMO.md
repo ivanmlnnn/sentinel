@@ -10,7 +10,7 @@ Primary track: **AI Security & Defense**. The official track explicitly calls fo
 
 ## 2:45 demo sequence
 
-Record the real browser and working application. The existing public URL currently demonstrates the deployed scanner. The new Agent Lab flow is on Draft PR #3 and must be deployed to a preview or live environment before recording it as a working feature. Keep the recording concise; do not use slides as a substitute for the working product.
+Record the real browser and working application. The public URL is the scanner entry point. The maintainer reports manually deploying both Main and Signer Workers; before recording the Agent Lab as live, confirm the active Cloudflare Worker versions, service binding, secrets, remote D1 migration state, and a successful smoke test. A source branch or Wrangler dry-run alone is not deployment proof. Keep the recording concise; do not use slides as a substitute for the working product.
 
 | Time | What the judge sees | What to say |
 |---|---|---|
@@ -22,9 +22,9 @@ Record the real browser and working application. The existing public URL current
 | 2:15–2:35 | Show signer architecture and security test results | “The main Worker does not hold the NEAR key. A separate private Worker rechecks policy, enforces caps, replay protection, and a kill switch.” |
 | 2:35–2:45 | Show verified explorer transaction only if available | “This hash is shown only after the Testnet transaction is independently confirmed.” |
 
-### If the signer has not been deployed
+### If the live signer flow or transfer cannot be independently verified
 
-Stop the demo at the approval screen and show the fail-closed response. Say clearly: **“The separate signer deployment and live transfer remain gated; this demo proves the proposal, policy, and approval workflow, not a completed transfer.”** Never display a mock hash or imply a simulated transaction is real.
+Stop the demo at the approval screen and show the fail-closed response. Say clearly: **“The source and automated tests validate the signer controls, but I am not presenting an unverified deployment or transaction as live.”** Never display a mock hash or imply a simulated transaction is real.
 
 ## Judge test cases
 
