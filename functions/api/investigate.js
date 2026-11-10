@@ -169,7 +169,7 @@ function normalizeFtTransfer(row, accountId) {
   };
 }
 
-async function runInvestigation({ request, env }) {
+async function runInvestigation({ request, env, actor = null }) {
   try {
     const body = await readJson(request, 4096);
     if (!body) return json({ error: "Invalid JSON body." }, 400);
@@ -457,6 +457,10 @@ async function runInvestigation({ request, env }) {
       // Keep INCOMPLETE as an assessment status in the response/evidence, not as a persisted decision value.
       await env.DB.prepare("INSERT INTO investigations (id, sender_account, receiver_account, amount_near, network, decision, risk_score, risk_factors, evidence, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
         .bind(id, sender, receiver, amount, network, verdict.decision, verdict.risk_score, JSON.stringify(verdict.risk_factors), JSON.stringify(evidence), createdAt).run();
+      if (actor) {
+        await env.DB.prepare("INSERT INTO investigation_owners (investigation_id, actor, created_at) VALUES (?, ?, ?)")
+          .bind(id, actor, createdAt).run();
+      }
     } catch (error) {
       console.error("Sentinel D1 investigation insert failed:", error);
       return json({ error: "DATABASE_WRITE_FAILED", detail: "Sentinel could not save the investigation to D1. Check Worker logs for the D1 constraint or binding error." }, 503);
@@ -486,7 +490,7 @@ export async function onRequestPost(context) {
   if (!identity) {
     return json({ error: "UNAUTHORIZED", detail: "A valid Privy app access token is required for authenticated investigations." }, 401);
   }
-  return runInvestigation(context);
+  return runInvestigation({ ...context, actor: identity.sub });
 }
 
 /**
