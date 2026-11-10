@@ -63,7 +63,9 @@ export async function onRequestPost({ request, env }) {
     "UPDATE agent_pending_approvals SET status='APPROVING', updated_at=CURRENT_TIMESTAMP WHERE id=? AND actor=? AND status='PENDING' AND expires_at > CURRENT_TIMESTAMP"
   ).bind(approvalId, identity.sub).run();
   if (claimed.meta?.changes !== 1) {
-    await updateApproval(env, approvalId, "EXPIRED");
+    await env.DB.prepare(
+      "UPDATE agent_pending_approvals SET status='EXPIRED', updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='PENDING' AND expires_at <= CURRENT_TIMESTAMP"
+    ).bind(approvalId).run();
     return json({ error: "APPROVAL_EXPIRED_OR_ALREADY_CLAIMED" }, 409);
   }
 
