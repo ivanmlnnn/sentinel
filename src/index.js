@@ -14,6 +14,26 @@ const routes = {
   "POST /api/privy-webhook": privyWebhookPost
 };
 
+async function enforceRateLimit(binding, key) {
+  if (!binding || typeof binding.limit !== "function") return false;
+  const result = await binding.limit({ key });
+  return result?.success === true;
+}
+
+function rateLimitResponse() {
+  return new Response(JSON.stringify({
+    error: "RATE_LIMITED",
+    detail: "Too many API requests. Wait before retrying."
+  }), {
+    status: 429,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+      "retry-after": "60"
+    }
+  });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -31,6 +51,35 @@ export default {
     const handler = routes[`${request.method} ${url.pathname}`];
     if (handler) {
       try {
+        if (url.pathname.startsWith("/api/")) {
+          const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+          const allowed = await enforceRateLimit(env.API_RATE_LIMITER, ip);
+          if (!allowed) {
+            if (!env.API_RATE_LIMITER) {
+              return new Response(JSON.stringify({ error: "RATE_LIMIT_NOT_CONFIGURED" }), {
+                status: 503,
+                headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
+              });
+            }
+            return rateLimitResponse();
+          }
+
+          // Guest investigation stays public for the judge demo, but receives
+          // a stricter per-IP budget because it fans out to several upstream APIs.
+          if (request.method === "POST" && url.pathname === "/api/investigate") {
+            const investigationAllowed = await enforceRateLimit(env.INVESTIGATION_RATE_LIMITER, ip);
+            if (!investigationAllowed) {
+              if (!env.INVESTIGATION_RATE_LIMITER) {
+                return new Response(JSON.stringify({ error: "INVESTIGATION_RATE_LIMIT_NOT_CONFIGURED" }), {
+                  status: 503,
+                  headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
+                });
+              }
+              return rateLimitResponse();
+            }
+          }
+        }
+
         return await handler({ request, env, ctx, params: {}, data: {} });
       } catch (error) {
         console.error("NEAR Sentinel API error:", error);
