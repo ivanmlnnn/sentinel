@@ -1,4 +1,6 @@
 import { Account, JsonRpcProvider, KeyPairSigner, actions, nearToYocto } from "near-api-js";
+import { verifyMessage } from "near-api-js/nep413";
+import { APPROVAL_RECIPIENT, buildWalletApprovalMessage, decodeBase64Bytes } from "../../src/agent-approval-signature.mjs";
 import { verifyPrivyAccessToken } from "../../functions/api/_shared.js";
 import { evaluateAgentAuthorization, validatePaymentIntent } from "../../src/agent-policy.mjs";
 
@@ -99,14 +101,36 @@ async function assertFullAccessKey(accountId, publicKey) {
   const data = await response.json();
   if (data.error || data.result?.permission !== "FullAccess") throw new Error("SIGNER_REQUIRES_FULL_ACCESS_TESTNET_KEY");
 }
-export async function claimApproval(env, { approvalId, idempotencyKey, actor, receiver, amountMicro }) {
+export async function claimApproval(env, { approvalId, idempotencyKey, actor, receiver, amountMicro, walletApproval }) {
   const pending = await env.DB.prepare(
-    "SELECT id, actor, receiver_account, amount_micro, status FROM agent_pending_approvals " +
+    "SELECT id, actor, receiver_account, amount_micro, status, expires_at FROM agent_pending_approvals " +
     "WHERE id=? AND actor=? AND status='APPROVING' AND expires_at > CURRENT_TIMESTAMP"
   ).bind(approvalId, actor).first();
   if (!pending || pending.receiver_account !== receiver || Number(pending.amount_micro) !== amountMicro) {
     throw new Error("HUMAN_APPROVAL_NOT_VERIFIED");
   }
+  const accountId = String(walletApproval?.account_id || "").toLowerCase();
+  const publicKey = String(walletApproval?.public_key || "");
+  const signature = decodeBase64Bytes(walletApproval?.signature, 64);
+  const nonce = decodeBase64Bytes(walletApproval?.nonce, 32);
+  if (!/^[a-z0-9._-]{2,64}\.testnet$/.test(accountId) ||
+      !/^(?:ed25519|secp256k1):[1-9A-HJ-NP-Za-km-z]+$/.test(publicKey) ||
+      !signature || !nonce) throw new Error("WALLET_SIGNATURE_REQUIRED");
+  const nonceText = String(walletApproval.nonce);
+  const message = buildWalletApprovalMessage({
+    approvalId, walletAccount: accountId, receiverAccount: receiver,
+    amountMicro, expiresAt: pending.expires_at
+  });
+  const provider = new JsonRpcProvider({ url: RPC });
+  try {
+    await verifyMessage({
+      payload: { message, nonce, recipient: APPROVAL_RECIPIENT },
+      provider, signature, signerAccountId: accountId, signerPublicKey: publicKey
+    });
+  } catch {
+    throw new Error("WALLET_SIGNATURE_INVALID");
+  }
+  if (!await reserveNonce(env, "wallet:" + nonceText)) throw new Error("WALLET_SIGNATURE_REPLAYED");
   await env.DB2.prepare(
     "INSERT INTO signer_approval_claims (approval_id, idempotency_key, actor, receiver_account, amount_micro, claimed_at) " +
     "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"
@@ -140,7 +164,7 @@ async function investigate(intent, authorizationHeader, env) {
   return data;
 }
 export async function execute(payload, authorizationHeader, identity, env) {
-  const { intent, idempotency_key: idempotencyKey, approval_id: approvalId } = payload;
+  const { intent, idempotency_key: idempotencyKey, approval_id: approvalId, wallet_approval: walletApproval } = payload;
   if (!UUID_RE.test(String(idempotencyKey || ""))) return deny("INVALID_IDEMPOTENCY_KEY");
   if (!UUID_RE.test(String(approvalId || ""))) return deny("INVALID_APPROVAL_ID");
   if (env.NEAR_NETWORK !== "testnet") return deny("TESTNET_ONLY");
@@ -166,7 +190,7 @@ export async function execute(payload, authorizationHeader, identity, env) {
 
   try {
     await claimApproval(env, { approvalId, idempotencyKey, actor: identity.sub,
-      receiver: validated.receiver_account, amountMicro });
+      receiver: validated.receiver_account, amountMicro, walletApproval });
   } catch (error) {
     return deny(error.message === "HUMAN_APPROVAL_NOT_VERIFIED" ? error.message : "APPROVAL_ALREADY_CLAIMED");
   }
