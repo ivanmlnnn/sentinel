@@ -20,14 +20,15 @@ export async function auditMainnetReadiness(root = process.cwd()) {
   const checks = [];
   const add = (id, status, detail) => checks.push({ id, status, detail });
 
-  add("NET-001", signer.includes("https://rpc.testnet.fastnear.com") ? "BLOCKED" : "REVIEW",
-    signer.includes("https://rpc.testnet.fastnear.com")
-      ? "Signer RPC is hard-coded to NEAR Testnet; no Mainnet network selector is implemented."
+  const signerRpcPinned = signer.includes("https://rpc.testnet.fastnear.com");
+  add("NET-001", signerRpcPinned ? "BLOCKED" : "REVIEW",
+    signerRpcPinned ? "Signer RPC is hard-coded to NEAR Testnet; no Mainnet network selector is implemented."
       : "No known hard-coded FastNear Testnet RPC literal found; perform a full network-routing review.");
-  add("NET-002", /\\\\\.testnet/.test(signer) || signer.includes(".testnet$") ? "BLOCKED" : "REVIEW",
+  const signerTestnetValidation = signer.includes("\\.testnet$") || signer.includes(".testnet$");
+  add("NET-002", signerTestnetValidation ? "BLOCKED" : "REVIEW",
     "Inspect signer account-ID validation and every network-specific address assumption before Mainnet.");
-  add("NET-003", contractDeploy.includes("rpc.testnet.fastnear.com") || contractDeploy.includes("\\.testnet")
-      ? "BLOCKED" : "REVIEW",
+  const deployTestnetPinned = contractDeploy.includes("rpc.testnet.fastnear.com") || contractDeploy.includes("\\.testnet");
+  add("NET-003", deployTestnetPinned ? "BLOCKED" : "REVIEW",
     "Payment-contract deployment script must be independently network-parameterized and Mainnet-guarded.");
   add("ENV-001", !mainConfig.includes("env.mainnet") || !signerConfig.includes("env.mainnet") ? "BLOCKED" : "REVIEW",
     "Separate Mainnet Worker configurations and bindings are not both defined.");
@@ -55,9 +56,11 @@ export async function auditMainnetReadiness(root = process.cwd()) {
   };
 }
 
-const report = await auditMainnetReadiness();
-console.log(JSON.stringify(report, null, 2));
-if (process.argv.includes("--strict") && report.result !== "READY") {
-  console.error("\nMAINNET READINESS STRICT GATE: BLOCKED — resolve every blocker and review item before deployment.");
-  process.exitCode = 1;
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const report = await auditMainnetReadiness();
+  console.log(JSON.stringify(report, null, 2));
+  if (process.argv.includes("--strict") && report.result !== "READY") {
+    console.error("\\nMAINNET READINESS STRICT GATE: BLOCKED — resolve every blocker and review item before deployment.");
+    process.exitCode = 1;
+  }
 }
