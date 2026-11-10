@@ -48,7 +48,7 @@ test('29 distinct recipients within five minutes do not trigger the multiple-rec
   }));
   const behavior = analyzeTransactionBehavior(rows, NOW);
   assert.equal(behavior.multiple_recipients_5m, false);
-  assert.equal(behavior.distinct_recipients_5m, 0);
+  assert.equal(behavior.distinct_recipients_5m, 29);
   assert.equal(behavior.factors.some(f => f.code === 'MULTIPLE_RECIPIENTS_DETECTED'), false);
 });
 
@@ -62,6 +62,41 @@ test('30 distinct recipients within five minutes trigger WARN', () => {
   assert.equal(behavior.multiple_recipients_5m, true);
   assert.ok(behavior.factors.some(f => f.code === 'MULTIPLE_RECIPIENTS_DETECTED'));
   assert.equal(decideRisk(account, null, 0, behavior).decision, 'WARN');
+});
+
+test('recipient fan-out ignores incoming and non-signer activity', () => {
+  const rows = [
+    ...Array.from({ length: 29 }, (_, i) => ({
+      direction: 'OUTGOING_SIGNED', is_success: true, is_real_signer: true,
+      receiver_account: 'wallet-' + i + '.testnet',
+      tx_block_timestamp: new Date(NOW - i * 5000).toISOString()
+    })),
+    {
+      direction: 'INCOMING', is_success: true, is_real_signer: false,
+      receiver_account: 'extra-wallet.testnet',
+      tx_block_timestamp: new Date(NOW - 1000).toISOString()
+    },
+    {
+      direction: 'OUTGOING_SIGNED', is_success: true, is_real_signer: false,
+      receiver_account: 'spoofed-wallet.testnet',
+      tx_block_timestamp: new Date(NOW - 2000).toISOString()
+    }
+  ];
+  const behavior = analyzeTransactionBehavior(rows, NOW);
+  assert.equal(behavior.distinct_recipients_5m, 29);
+  assert.equal(behavior.multiple_recipients_5m, false);
+  assert.equal(behavior.factors.some(f => f.code === 'MULTIPLE_RECIPIENTS_DETECTED'), false);
+});
+
+test('recipient fan-out reports the maximum distinct count in a rolling window', () => {
+  const rows = Array.from({ length: 31 }, (_, i) => ({
+    direction: 'OUTGOING_SIGNED', is_success: true, is_real_signer: true,
+    receiver_account: 'wallet-' + i + '.testnet',
+    tx_block_timestamp: new Date(NOW - i * 5000).toISOString()
+  }));
+  const behavior = analyzeTransactionBehavior(rows, NOW);
+  assert.equal(behavior.distinct_recipients_5m, 31);
+  assert.equal(behavior.multiple_recipients_5m, true);
 });
 
 test('repeated sends to one recipient only trigger the existing more-than-10 rule', () => {
