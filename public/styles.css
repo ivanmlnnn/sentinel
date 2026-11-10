@@ -3049,3 +3049,45 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
  .sentinel-auth-card .sentinel-login-near{font-size:clamp(30px,8vw,38px)!important}
  .sentinel-auth-card .sentinel-login-name{font-size:clamp(18px,5vw,23px)!important}
 }
+
+
+/* Login correction: use the original wayang photo only, clipped to a clean circle. */
+.sentinel-auth-card .sentinel-auth-mark{
+  display:block!important;position:relative!important;
+  width:clamp(180px,23vw,224px)!important;
+  height:clamp(180px,23vw,224px)!important;
+  margin:0 auto 26px!important;padding:0!important;
+  overflow:hidden!important;border:0!important;border-radius:50%!important;
+  background:transparent!important;box-shadow:none!important;
+  outline:0!important;transform:none!important;animation:none!important;
+  cursor:default!important;touch-action:auto!important;
+}
+.sentinel-auth-card .sentinel-auth-mark::before,
+.sentinel-auth-card .sentinel-auth-mark::after{content:none!important;display:none!important}
+.sentinel-auth-card .sentinel-auth-mark img{
+  display:block!important;width:100%!important;height:100%!important;
+  object-fit:cover!important;object-position:center!important;
+  border:0!important;border-radius:50%!important;
+  box-shadow:none!important;transform:none!important;
+}
+.sentinel-auth-card .sentinel-login-wordmark{
+  display:block!important;margin:0 0 14px!important;
+  color:#fff!important;-webkit-text-fill-color:#fff!important;
+  font-family:Inter,Arial,sans-serif!important;
+  font-size:clamp(29px,5vw,40px)!important;
+  font-weight:900!important;letter-spacing:.035em!important;
+  line-height:1.12!important;text-align:left!important;
+  text-shadow:0 2px 16px rgba(139,212,239,.22)!important;
+  -webkit-text-stroke:0!important;
+}
+.sentinel-auth-card .sentinel-login-near,
+.sentinel-auth-card .sentinel-login-name{
+  display:inline!important;color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+  font:inherit!important;letter-spacing:inherit!important;
+}
+.sentinel-auth-card .sentinel-login-name{margin-left:.28em!important}
+@media(max-width:760px){
+ .sentinel-auth-card .sentinel-auth-mark{width:190px!important;height:190px!important}
+ .sentinel-auth-card .sentinel-login-wordmark{font-size:clamp(27px,8vw,35px)!important}
+}
