@@ -21,7 +21,8 @@ test("wallet tracking stays disabled until the Turnstile success callback", () =
 
 test("wallet tracking submits the Turnstile token and resets the challenge afterwards", () => {
   assert.match(app, /turnstile_token:\s*turnstileToken/);
-  assert.match(app, /finally \{ resetTrackWalletTurnstile\(\); button\.disabled = false;/);
+  assert.match(app, /finally \{ resetTrackWalletTurnstile\(\); button\.innerHTML = 'Track wallet/);
+  assert.doesNotMatch(app, /finally \{ resetTrackWalletTurnstile\(\); button\.disabled = false;/);
 });
 
 test("Turnstile loader supports a fresh script retry and visible failure feedback", () => {
