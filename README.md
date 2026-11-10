@@ -57,9 +57,9 @@ See [Secure Agent Pipeline](docs/SECURE_AGENT_PIPELINE.md) for the trust boundar
 
 ## Security verification evidence
 
-The following results are tied to the exact source revision [`67f1e53`](https://github.com/ivanmlnnn/sentinel/commit/67f1e53c67fa8706d79694a317311516289b56d6), not a claim that every live deployment path has been penetration-tested:
+The following results are tied to the last CI-verified PR revision [`cd85b86`](https://github.com/ivanmlnnn/sentinel/commit/cd85b8692fd9dc766a996b220d17e832b7fa9ae8), whose changes after application-source revision `67f1e53` were documentation-only. Subsequent commits in this branch continue to update documentation; their CI must finish before treating the exact current head as fully green.
 
-- **116/116 automated tests passed; 0 failed** in [GitHub Actions run 42778680965](https://github.com/ivanmlnnn/sentinel/actions/runs/42778335809), on the latest docs-updated PR head [`cd85b86`](https://github.com/ivanmlnnn/sentinel/commit/cd85b8692fd9dc766a996b220d17e832b7fa9ae8).
+- **116/116 automated tests passed; 0 failed** in [GitHub Actions run 42778680965](https://github.com/ivanmlnnn/sentinel/actions/runs/42778680965), on revision [`cd85b86`](https://github.com/ivanmlnnn/sentinel/commit/cd85b8692fd9dc766a996b220d17e832b7fa9ae8).
 - Gitleaks changed-file scan and full repository-history scan passed in that run.
 - CodeQL completed successfully on the immediately preceding source revision [`67f1e53`](https://github.com/ivanmlnnn/sentinel/commit/67f1e53c67fa8706d79694a317311516289b56d6) in [run 42778335865](https://github.com/ivanmlnnn/sentinel/actions/runs/42778335865). CodeQL for the current docs-updated head is running separately. A successful workflow run is not represented here as a claim of zero findings; review the repository Security tab for individual alerts.
 - JavaScript syntax checks, both Wrangler Worker bundle dry-runs, D1 migration validation, and the offline prompt-injection regression demo passed.
