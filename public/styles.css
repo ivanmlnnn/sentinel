@@ -3336,3 +3336,32 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
 @keyframes telegram-typing{0%,60%,100%{opacity:.35;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}
 @media(max-width:560px){#agentForm>.agent-result{padding:8px;margin-bottom:18px}.telegram-chat-transcript .guest-chat-message{max-width:94%;padding:11px 13px}.telegram-agent-bubble{max-width:98%!important}.telegram-agent-card .agent-result-grid{grid-template-columns:1fr 1fr;gap:7px}.telegram-agent-card .agent-result-grid>div{padding:9px}}
 @media(prefers-reduced-motion:reduce){.telegram-chat-transcript .guest-chat-message,.telegram-typing i{animation:none!important}}
+
+
+/* Authenticated Sentinel chat: conversational first, operational details only when relevant. */
+#agentForm>.agent-result{margin-top:18px;padding:18px;background:linear-gradient(180deg,#0b131b,#080e14);border:1px solid #243640;border-radius:16px;max-height:560px;overflow-y:auto;scroll-behavior:smooth}
+.telegram-chat-transcript{display:flex;flex-direction:column;gap:14px}
+.telegram-chat-transcript .guest-chat-message{width:fit-content;max-width:min(88%,760px);padding:13px 16px;border:1px solid rgba(104,224,189,.15);border-radius:16px;animation:telegram-bubble-in .22s ease-out}
+.telegram-chat-transcript .guest-chat-user{align-self:flex-end;background:linear-gradient(145deg,rgba(28,83,70,.72),rgba(17,53,48,.82));border-bottom-right-radius:5px}
+.telegram-chat-transcript .guest-chat-assistant{align-self:flex-start;background:linear-gradient(145deg,rgba(20,34,43,.98),rgba(12,23,31,.98));border-color:rgba(119,151,158,.2);border-bottom-left-radius:5px}
+.telegram-chat-transcript .guest-chat-message>span{display:block;margin-bottom:6px;color:var(--mint);font:9px var(--mono);letter-spacing:.1em}
+.telegram-chat-transcript .guest-chat-message p{margin:0;color:var(--text);font:13px/1.75 var(--sans);white-space:pre-wrap;overflow-wrap:anywhere}
+.telegram-agent-bubble{width:min(96%,780px);max-width:96%!important}
+.telegram-agent-status{margin-top:14px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#080f15}
+.telegram-agent-status .agent-result-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px 0 2px}
+.telegram-agent-status .agent-result-grid>div{padding:9px;border-radius:8px;background:#101a22}
+.telegram-agent-status .agent-result-grid b{font:11px var(--mono);overflow-wrap:anywhere}
+.telegram-agent-response{font-size:13px!important;line-height:1.8!important}
+#agentPrompt{min-height:58px;max-height:180px;resize:vertical;padding:15px 16px;border-radius:12px;font:13px/1.6 var(--sans);background:#0a1118}
+#agentForm label{margin:18px 0 8px;font-size:9px}
+.agent-lab-submit{margin-top:14px}
+.agent-lab-submit>span{font:10px var(--sans);color:var(--muted)}
+.agent-lab-submit .primary-btn{min-width:150px;border-radius:10px}
+.agent-lab-intro{max-width:720px;margin:12px 0 18px}
+@media(max-width:560px){
+ #agentForm>.agent-result{padding:12px;max-height:62vh}
+ .telegram-chat-transcript .guest-chat-message{max-width:96%;padding:12px 14px}
+ .telegram-agent-bubble{max-width:100%!important}
+ .telegram-agent-status .agent-result-grid{grid-template-columns:1fr 1fr}
+ .agent-lab-submit>span{line-height:1.5}
+}
