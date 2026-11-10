@@ -3308,3 +3308,9 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
 .guest-chat-meta{padding-top:10px;border-top:1px solid var(--line);font:9px var(--mono);letter-spacing:.08em;color:var(--muted)}
 .guest-chat-error{margin:12px 0 0;padding:10px;border:1px solid rgba(255,170,80,.3);border-radius:6px;color:var(--amber);font:11px/1.6 var(--mono);overflow-wrap:anywhere}
 @keyframes guestThinking{from{opacity:.45}to{opacity:1}}
+
+
+/* Keep the latest agent output first in the form, above instructions and controls. */
+#agentForm>.agent-result{margin:0 0 22px;}
+#agentForm>.agent-result.hidden{display:none!important}
+#agentForm>.agent-result:not(.hidden){display:block}
