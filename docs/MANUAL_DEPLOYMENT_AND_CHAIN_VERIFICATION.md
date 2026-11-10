@@ -30,7 +30,11 @@ The committed Wrangler configurations bind:
 
 Check that these resource names/IDs still match the intended Cloudflare account before selecting Run workflow. Do not create replacement databases or change IDs as a deployment workaround.
 
-## 3. What the workflow verifies
+## 3. Signed-verdict key provisioning
+
+The Main Worker requires `SENTINEL_VERDICT_PRIVATE_KEY` (base64 PKCS#8 Ed25519 private key). The private Signer Worker requires the matching `SENTINEL_VERDICT_PUBLIC_KEY` (base64 raw 32-byte public key). Generate the pair offline, provision each value only to its designated Worker secret store, and never expose the private key in GitHub Actions logs or repository files. The signer rejects an absent/invalid attestation, expired verdicts, and mismatched sender, receiver, amount, or nonce. See [Signed Verdict](SIGNED_VERDICT.md) for the signed payload and tests.
+
+## 4. What the workflow verifies
 
 | Stage | Evidence | What it does not prove |
 |---|---|---|
@@ -41,7 +45,7 @@ Check that these resource names/IDs still match the intended Cloudflare account 
 
 A workflow is considered deployed only when the **deploy job** and **production smoke** finish successfully. Keep the signer kill switch enabled until a controlled Testnet transaction has been verified.
 
-## 4. Transaction evidence: RPC + Explorer
+## 5. Transaction evidence: RPC + Explorer
 
 The Signer Worker currently performs a final transaction lookup against the NEAR Testnet FastNear JSON-RPC `tx` method. It checks:
 - transaction hash format and lookup success;
@@ -70,13 +74,13 @@ Record the evidence in the submission:
 
 If any of these are missing or disagree, label the transaction **not verified** and do not claim end-to-end execution.
 
-## 5. Current security limitation — do not hide it
+## 6. Current security limitation — do not hide it
 
 The current branch source requires a restricted FunctionCall key scoped to the Sentinel payment contract and only the `pay` method. The payment contract emits the native NEAR transfer as a receipt, which is then checked against the exact recipient and amount. The contract source, deployment script, one-time restricted-key installer, and manual workflow targets are now in the branch.
 
 This is not yet proof that the contract and key have been provisioned on Testnet. Do not enable payment until the contract is deployed and initialized, the restricted key is installed and the old runtime FullAccess key revoked, and the private Worker is deployed with the restricted key and contract ID.
 
-## 6. Safe release checklist
+## 7. Safe release checklist
 
 - [ ] Review PR #3 and the exact branch head.
 - [ ] Confirm the intended D1 database IDs and Worker service binding.
