@@ -26,6 +26,22 @@ Do not claim that Sentinel implements NEAR Intents, a complete autonomous busine
 
 These are separate workflow runs. The Signer Worker deployment run and later Main Worker deployment run must not be represented as a single simultaneous deployment of identical source revisions.
 
+## Verified end-to-end results
+
+See the [End-to-End Verification Report](END_TO_END_VERIFICATION.md) for the full evidence matrix.
+
+| Check | Recorded result |
+|---|---|
+| Automated regression | **124 passed, 0 failed** — [run 42873243801](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243801) |
+| Prompt-injection guard | **PASS** — `DENIED - SENTINEL_BLOCK`; `Signer invoked: NO` |
+| Signer + Main Worker deployment | **PASS** — [run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536) |
+| Later Main Worker release | **PASS** — version `455d1be0-150c-4de0-84f7-c9040c99c615`; [run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638) |
+| Production HTTP smoke | **8/8 PASS** — dashboard HTTP 200; missing Turnstile/bearer/HMAC requests rejected as expected |
+| CodeQL and Security CI | **PASS** — [CodeQL](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243329) · [Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243623) |
+| Source provenance | **PASS** — [Sigstore/Rekor attestation #65936142](https://github.com/ivanmlnnn/sentinel/attestations/65936142) |
+
+**Scope:** these results prove automated policy behavior, successful Worker deployments and the listed production HTTP security responses. They do not prove a full browser-to-wallet-to-contract payout journey. The manual live preflight has not been dispatched, the live AI response depends on provider credits, and no Sentinel-originated payout hash/receipt is claimed.
+
 ## 5-minute judge walkthrough
 
 1. **Open the product:** https://sentinel.ivmaladin.workers.dev
