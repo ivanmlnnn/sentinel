@@ -4,6 +4,7 @@ import { onRequestGet as threatsGet, onRequestPost as threatsPost, onRequestVeri
 import { onRequestPost as investigatePost, onRequestGuestPost as guestInvestigatePost } from "../functions/api/investigate.js";
 import { onRequestPost as aiReviewPost } from "../functions/api/ai-review.js";
 import { onRequestPost as agentRunPost } from "../functions/api/agent.js";
+import { onRequestPost as guestAgentPost } from "../functions/api/guest-agent.js";
 import { onRequestPost as agentApprovePost } from "../functions/api/agent-approve.js";
 import { onRequestPost as internalInvestigatePost } from "../functions/api/internal-investigate.js";
 import { onRequestPost as privyWebhookPost } from "../functions/api/privy-webhook.js";
@@ -18,6 +19,7 @@ const routes = {
   "POST /api/guest/investigate": guestInvestigatePost,
   "POST /api/ai-review": aiReviewPost,
   "POST /api/agent/run": agentRunPost,
+  "POST /api/guest/agent": guestAgentPost,
   "POST /api/agent/approve": agentApprovePost,
   "POST /api/internal/investigate": internalInvestigatePost,
   "POST /api/privy-webhook": privyWebhookPost
@@ -129,7 +131,7 @@ export default {
           const ip = request.headers.get("CF-Connecting-IP") || "unknown";
           if (!env.API_RATE_LIMITER) return respond(serviceUnavailable("RATE_LIMIT_NOT_CONFIGURED"));
           if (!await enforceRateLimit(env.API_RATE_LIMITER, ip)) return respond(rateLimitResponse());
-          if (request.method === "POST" && ["/api/agent/run", "/api/agent/approve"].includes(url.pathname)) {
+          if (request.method === "POST" && ["/api/agent/run", "/api/agent/approve", "/api/guest/agent"].includes(url.pathname)) {
             if (!env.AGENT_RATE_LIMITER) return respond(serviceUnavailable("AGENT_RATE_LIMIT_NOT_CONFIGURED"));
             if (!await enforceRateLimit(env.AGENT_RATE_LIMITER, ip)) return respond(rateLimitResponse());
           }
