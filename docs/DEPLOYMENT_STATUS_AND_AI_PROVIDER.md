@@ -6,7 +6,7 @@ Updated: 11 November 2026
 
 ## Verified project status
 
-The full test-by-test and endpoint-by-endpoint results are in the [End-to-End Verification Report](END_TO_END_VERIFICATION.md). The recorded CI run reports 124/124 tests passed; the latest production smoke run reports 8/8 expected HTTP checks passed. These do not represent a successful live AI conversation or blockchain payout.
+The full test-by-test and endpoint-by-endpoint results are in the [End-to-End Verification Report](END_TO_END_VERIFICATION.md). The Gemini migration merged to `main` as commit `7e88eee64954dbf61ce6e28dc4c31530c3ce14b2`. The merged-main release reports 135/135 automated tests passed, Payment Contract WASM release build passed, CodeQL analysis passed, Security CI passed, and 8/8 production HTTP smoke checks passed. These do not represent a successful live Gemini conversation or a new blockchain payout.
 
 
 The following deployment and CI records are successful:
@@ -19,6 +19,11 @@ The following deployment and CI records are successful:
 | Sentinel checks | [Run #467](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243801) | Successful |
 | CodeQL | [Run #426](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243329) | Successful |
 | Security CI | [Run #45](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243623) | Successful |
+
+| Gemini migration merged-main release | [Deploy run #42907136456](https://github.com/ivanmlnnn/sentinel/actions/runs/42907136456) | Successful; Main Worker deployed and production smoke checks passed |
+| Merged-main Sentinel checks | [Run #42907136315](https://github.com/ivanmlnnn/sentinel/actions/runs/42907136315) | Successful; 135/135 tests, Payment Contract WASM release build passed |
+| Merged-main CodeQL | [Run #42907136225](https://github.com/ivanmlnnn/sentinel/actions/runs/42907136225) | Successful JavaScript analysis |
+| Merged-main Security CI | [Run #42907136354](https://github.com/ivanmlnnn/sentinel/actions/runs/42907136354) | Successful |
 | NEAR payment contract | Previously deployed successfully, as confirmed by the project maintainer | Existing contract is reused; do not deploy a second contract for a normal Worker release |
 
 The Signer Worker success record predates the later merged-main source revision. The Main Worker has a later successful deployment record. For a coordinated refresh to the latest source, use the `both` workflow target described below. The deployment and security workflow evidence is indexed in the [End-to-End Verification Report](END_TO_END_VERIFICATION.md).
@@ -93,7 +98,7 @@ Sentinel's authenticated Agent, Guest Agent, and AI Review routes now use the Go
 
 ### Runtime secret setup
 
-The Gemini key is a **Main Worker runtime secret**, not a source-code value and not a Signer Worker secret. The Agent, Guest Agent, and AI Review routes execute in the Main Worker.
+The Gemini key is a **Main Worker runtime secret**, not a source-code value and not a Signer Worker secret. The Agent, Guest Agent, and AI Review routes execute in the Main Worker. The merged-main source is deployed, but CI and HTTP boundary smoke tests do not prove this secret is present or that Gemini has returned a live response.
 
 1. Create an API key in [Google AI Studio](https://aistudio.google.com/apikey).
 2. In the repository's root directory, run `npx wrangler secret put GEMINI_API_KEY` and paste the key at the hidden prompt. Confirm the Wrangler target is the production `sentinel` Main Worker.
