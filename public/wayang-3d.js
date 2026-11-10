@@ -23,12 +23,12 @@ export function mountWayang3D(host) {
   const fill = new THREE.PointLight(0xe8df78,1.9,15); fill.position.set(-4,-3,5); scene.add(fill);
 
   const puppet = new THREE.Group(); scene.add(puppet);
-  const gold = new THREE.MeshPhysicalMaterial({color:0xe3bd63,metalness:.78,roughness:.27,clearcoat:.8});
-  const paleGold = new THREE.MeshStandardMaterial({color:0xffe6a0,metalness:.72,roughness:.3});
-  const teal = new THREE.MeshStandardMaterial({color:0x17616a,metalness:.5,roughness:.32});
-  const dark = new THREE.MeshStandardMaterial({color:0x092b32,metalness:.35,roughness:.36});
+  const gold = new THREE.MeshPhysicalMaterial({color:0xd9a83e,metalness:.82,roughness:.24,clearcoat:1});
+  const paleGold = new THREE.MeshStandardMaterial({color:0xf2d65d,metalness:.62,roughness:.34});
+  const teal = new THREE.MeshStandardMaterial({color:0x101b20,metalness:.58,roughness:.3});
+  const dark = new THREE.MeshStandardMaterial({color:0x080f14,metalness:.62,roughness:.28});
   const skin = new THREE.MeshPhysicalMaterial({color:0xe6a96d,metalness:.12,roughness:.42,clearcoat:.25});
-  const cyan = new THREE.MeshPhysicalMaterial({color:0x65c9ef,metalness:.42,roughness:.24,clearcoat:.9});
+  const cyan = new THREE.MeshPhysicalMaterial({color:0x83d4ff,metalness:.22,roughness:.2,clearcoat:1});
 
   function shapeMesh(points, material, depth=.16, bevel=.045) {
     const s = new THREE.Shape();
@@ -47,14 +47,11 @@ export function mountWayang3D(host) {
     const m=new THREE.Mesh(new THREE.TubeGeometry(curve,36,r,8,false),material);parent.add(m);return m;
   }
 
-  // Circular presentation medallion remains behind the character; the puppet itself is fully volumetric.
-  const medallion=new THREE.Mesh(new THREE.CylinderGeometry(2.32,2.32,.16,96),dark);
-  medallion.rotation.x=Math.PI/2;medallion.position.z=-.55;puppet.add(medallion);
-  const rimRing=new THREE.Mesh(new THREE.TorusGeometry(2.28,.035,12,100),gold);rimRing.position.z=-.43;puppet.add(rimRing);
+  // No circular badge: preserve the tall, narrow silhouette of the reference character.
 
   // One oversized, swept sky-blue wing, outlined in dark ink like the GitHub logo.
   const wingPivot=new THREE.Group();wingPivot.position.set(.42,.28,.05);puppet.add(wingPivot);
-  const wingPoints=[[0,0],[.25,.55],[.58,1.12],[1.03,1.53],[1.55,1.65],[1.82,1.39],[1.67,.95],[1.43,.48],[1.14,.05],[.76,-.28],[.36,-.2]];
+  const wingPoints=[[0,-.05],[.28,.42],[.62,.91],[1.02,1.36],[1.52,1.67],[1.98,1.68],[2.12,1.43],[1.98,1.08],[1.78,.62],[1.55,.12],[1.25,-.28],[.88,-.48],[.46,-.34]];
   const wingOutline=shapeMesh(wingPoints,dark,.27,.075);wingOutline.position.z=-.035;wingPivot.add(wingOutline);
   const wing=shapeMesh(wingPoints,cyan,.22,.055);wing.position.z=.04;wingPivot.add(wing);
   tube([[.43,.28,.34],[.78,.64,.35],[1.12,1.05,.35],[1.47,1.4,.34]],.045,dark,wingPivot);
@@ -62,9 +59,19 @@ export function mountWayang3D(host) {
   const wingMark=shapeMesh([[.55,.48],[.78,.59],[.98,.52],[.82,.39],[.64,.37]],paleGold,.07,.018);wingMark.position.z=.38;wingPivot.add(wingMark);
 
   // Body and shoulder armor.
-  const torso=shapeMesh([[-.68,-1.65],[-.82,-.95],[-.58,-.52],[-.2,-.34],[.32,-.43],[.62,-.86],[.55,-1.65]],teal,.32,.08);
+  const torso=shapeMesh([[-.48,-2.02],[-.62,-1.48],[-.43,-.92],[-.28,-.48],[.27,-.48],[.48,-.92],[.62,-1.48],[.43,-2.02],[.16,-2.16],[-.16,-2.16]],teal,.32,.055);
   torso.position.z=.12;puppet.add(torso);
-  const chest=shapeMesh([[-.35,-.65],[-.42,-1.35],[0,-1.56],[.38,-1.3],[.3,-.65],[0,-.48]],gold,.15,.035);chest.position.z=.48;puppet.add(chest);
+  const chest=shapeMesh([[-.25,-.58],[-.34,-1.16],[0,-1.42],[.34,-1.16],[.25,-.58],[0,-.42]],dark,.15,.025);chest.position.z=.48;puppet.add(chest);
+  // Dense gold filigree, central pendant and repeated costume motifs echo the source illustration.
+  tube([[-.28,-.55,.72],[0,-.72,.76],[.28,-.55,.72]],.035,gold);
+  tube([[-.25,-.82,.72],[0,-1.05,.76],[.25,-.82,.72]],.027,paleGold);
+  tube([[0,-.52,.78],[0,-1.58,.79]],.025,gold);
+  for(let row=0;row<5;row++) for(let col=0;col<3;col++){
+    const x=(col-1)*.16, y=-.78-row*.22;
+    const motif=shapeMesh([[x,y+.07],[x+.055,y],[x,y-.08],[x-.055,y]],row%2?gold:paleGold,.035,.008);
+    motif.position.z=.83;puppet.add(motif);
+  }
+  const pendant=sphere(0,-.64,.91,.12,.17,.07,gold); pendant.rotation.z=.2;
   sphere(-.45,-.56,.5,.34,.24,.2,gold);
   sphere(.45,-.56,.5,.34,.24,.2,gold);
 
@@ -86,18 +93,18 @@ export function mountWayang3D(host) {
   const templeCore=sphere(-.23,.43,.91,.12,.12,.06,steel);
   sphere(-.23,.43,.97,.045,.045,.025,cyan);
   tube([[-.48,.52,.82],[-.25,.7,.86],[.05,.72,.84],[.29,.61,.84]],.035,gold);
-  // Chef toque: unmistakable pleated band and soft, puffed crown in warm yellow.
-  const hatGroup=new THREE.Group();hatGroup.position.set(-.12,1.03,.7);puppet.add(hatGroup);
-  const hatBand=new THREE.Mesh(new THREE.CylinderGeometry(.43,.48,.2,48,1,false),gold);
-  hatBand.scale.set(1.22,1,0.72);hatBand.rotation.z=-.12;hatGroup.add(hatBand);
-  const hatPuffs=[[-.36,.19,0,.35,.38,.29],[-.12,.36,0,.39,.48,.31],[.18,.35,0,.39,.47,.31],[.43,.17,0,.3,.35,.27]];
+  // Oversized yellow chef toque, tilted back-left exactly like the reference silhouette.
+  const hatGroup=new THREE.Group();hatGroup.position.set(-.56,1.13,.73);hatGroup.rotation.z=.28;puppet.add(hatGroup);
+  const hatBand=new THREE.Mesh(new THREE.CylinderGeometry(.39,.47,.22,48,1,false),gold);
+  hatBand.scale.set(1.25,1,.72);hatBand.rotation.z=-.08;hatGroup.add(hatBand);
+  const hatPuffs=[[-.43,.16,0,.43,.37,.29],[-.25,.39,0,.43,.48,.31],[.06,.49,0,.43,.53,.32],[.38,.38,0,.4,.47,.31],[.53,.14,0,.31,.34,.27]];
   for(const [x,y,z,sx,sy,sz] of hatPuffs) sphere(x,y,z,sx,sy,sz,paleGold,hatGroup);
-  // Fine stitched folds and curved top seam make the toque read as fabric, not a crown.
-  for(let i=0;i<5;i++){
-    const x=-.39+i*.19;
-    tube([[x,-.01,.23],[x-.035,.2,.27],[x+.015,.42,.22],[x+.09,.58,.14]],.012,gold,hatGroup);
+  // Curved dark-gold stitched seams and pleats on the chef fabric.
+  for(let i=0;i<6;i++){
+    const x=-.55+i*.2;
+    tube([[x,-.02,.23],[x-.08,.2,.27],[x-.03,.43,.24],[x+.05,.66,.16]],.014,gold,hatGroup);
   }
-  tube([[-.48,.12,.24],[-.22,.08,.29],[.08,.08,.29],[.39,.13,.23]],.022,gold,hatGroup);
+  tube([[-.55,.13,.24],[-.24,.06,.3],[.08,.07,.3],[.42,.13,.24]],.025,gold,hatGroup);
   // Small ornamental forehead plate keeps the Javanese wayang identity.
   const brow=shapeMesh([[-.34,.73],[-.23,.92],[-.08,.78],[.08,.88],[.22,.69],[0,.63]],gold,.12,.025);brow.position.z=.94;puppet.add(brow);
   sphere(.32,.29,.82,.11,.07,.07,gold);
