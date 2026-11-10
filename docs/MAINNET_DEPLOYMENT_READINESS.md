@@ -11,6 +11,22 @@ Sentinel is **not currently Mainnet-deployable**. The repository has a working T
 
 This pack makes the remaining work explicit and provides a repeatable audit command. It does not change the network, provision resources, upload secrets, deploy contracts, or authorize real-value transfers.
 
+## Safe HTTP load harness
+
+A bounded, read-only HTTP load harness is included for local development or an explicitly allowlisted staging host. It uses GET requests only, refuses the production dashboard hostname, does not attach credentials and has strict request/concurrency/duration ceilings.
+
+```bash
+# Local development only (defaults: 100 requests, concurrency 5, max 30 seconds)
+SENTINEL_LOAD_TEST_URL=http://127.0.0.1:8787 npm run load:test:safe
+
+# Optional staging: set both values to the exact staging host you control
+SENTINEL_LOAD_TEST_URL=https://sentinel-staging.example.workers.dev \\
+SENTINEL_STAGING_HOST=sentinel-staging.example.workers.dev \\
+SENTINEL_ALLOW_STAGING_LOAD=1 npm run load:test:safe
+```
+
+Optional bounded settings: `SENTINEL_LOAD_REQUESTS` (1–10000), `SENTINEL_LOAD_CONCURRENCY` (1–25), and `SENTINEL_LOAD_DURATION_SECONDS` (1–60). This measures HTTP responsiveness only; it does not measure NEAR transaction throughput, signing capacity, contract execution or finality.
+
 ## One-command audit
 
 ```bash

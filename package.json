@@ -9,7 +9,8 @@
     "smoke:test": "node scripts/production-smoke.mjs",
     "check:d1": "node --experimental-sqlite scripts/check-d1-migrations.mjs",
     "readiness:mainnet": "node scripts/mainnet-readiness-audit.mjs",
-    "readiness:mainnet:strict": "node scripts/mainnet-readiness-audit.mjs --strict"
+    "readiness:mainnet:strict": "node scripts/mainnet-readiness-audit.mjs --strict",
+    "load:test:safe": "node scripts/mainnet-readiness/load-test.mjs"
   },
   "description": "A pre-sign security checkpoint for AI agents on NEAR.",
   "license": "MIT",
