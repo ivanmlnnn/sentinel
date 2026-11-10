@@ -93,29 +93,31 @@ export function mountWayang3D(host) {
   const templeCore=sphere(-.23,.43,.91,.12,.12,.06,steel);
   sphere(-.23,.43,.97,.045,.045,.025,cyan);
   tube([[-.48,.52,.82],[-.25,.7,.86],[.05,.72,.84],[.29,.61,.84]],.035,gold);
-  // Sculpted chef toque: one continuous cloth silhouette, not stacked spherical puffs.
-  const hatGroup=new THREE.Group();hatGroup.position.set(-.57,1.13,.73);hatGroup.rotation.z=.24;puppet.add(hatGroup);
-  const hatCloth=new THREE.MeshPhysicalMaterial({color:0xe9d35b,metalness:.08,roughness:.76,clearcoat:.12,side:THREE.DoubleSide});
-  const hatShade=new THREE.MeshStandardMaterial({color:0xb99b39,metalness:.12,roughness:.72});
-  // Flattened, swept fabric crown with an irregular folded top edge.
-  const crownShape=new THREE.Shape();
-  crownShape.moveTo(-.55,-.02);
-  crownShape.bezierCurveTo(-.66,.22,-.53,.58,-.28,.72);
-  crownShape.bezierCurveTo(-.12,.82,.02,.78,.13,.69);
-  crownShape.bezierCurveTo(.28,.79,.48,.67,.52,.48);
-  crownShape.bezierCurveTo(.67,.31,.58,.08,.48,-.02);
-  crownShape.lineTo(-.55,-.02);
-  const crownGeo=new THREE.ExtrudeGeometry(crownShape,{depth:.16,bevelEnabled:true,bevelSegments:4,steps:1,bevelSize:.045,bevelThickness:.045,curveSegments:24});
-  const crownMesh=new THREE.Mesh(crownGeo,hatCloth);crownMesh.scale.set(1.12,.86,.82);crownMesh.rotation.z=-.04;hatGroup.add(crownMesh);
-  // Soft folds are narrow raised seams following the fabric, not inflated lobes.
-  tube([[-.47,.03,.22],[-.45,.25,.25],[-.31,.48,.24],[-.12,.64,.2]],.018,hatShade,hatGroup);
-  tube([[-.19,.02,.25],[-.16,.28,.28],[-.03,.53,.25],[.12,.68,.2]],.014,hatShade,hatGroup);
-  tube([[.08,.02,.25],[.16,.25,.28],[.31,.46,.24],[.4,.57,.18]],.016,hatShade,hatGroup);
-  tube([[.39,.02,.22],[.48,.19,.24],[.49,.36,.2]],.014,hatShade,hatGroup);
-  // Narrow gathered lower band, visibly separate from the soft crown.
-  const hatBand=shapeMesh([[-.55,-.12],[-.51,.02],[-.35,.08],[-.12,.06],[.14,.07],[.4,.03],[.54,-.06],[.5,-.2],[-.48,-.2]],gold,.12,.025);
-  hatBand.position.z=.12;hatGroup.add(hatBand);
-  tube([[-.49,-.13,.31],[-.24,-.16,.33],[.05,-.15,.33],[.39,-.12,.3]],.018,paleGold,hatGroup);
+  // Flat folded chef cap silhouette from the reference: angular cloth, not a puffed/bubble dome.
+  const hatGroup=new THREE.Group();hatGroup.position.set(-.59,1.16,.73);hatGroup.rotation.z=.22;puppet.add(hatGroup);
+  const hatCloth=new THREE.MeshStandardMaterial({color:0xe6cf57,metalness:.04,roughness:.88,side:THREE.DoubleSide});
+  const hatLight=new THREE.MeshStandardMaterial({color:0xf2df79,metalness:.02,roughness:.9});
+  const hatFold=new THREE.MeshStandardMaterial({color:0xb99c3e,metalness:.08,roughness:.85});
+  // A single shallow extruded cloth panel with the slanted, folded outline of the actual toque.
+  const cap=new THREE.Shape();
+  cap.moveTo(-.62,-.03);
+  cap.lineTo(-.72,.17);cap.lineTo(-.55,.28);cap.lineTo(-.48,.53);
+  cap.lineTo(-.22,.72);cap.lineTo(-.02,.62);cap.lineTo(.12,.76);
+  cap.lineTo(.38,.61);cap.lineTo(.49,.37);cap.lineTo(.42,.15);
+  cap.lineTo(.53,-.04);cap.lineTo(-.62,-.03);
+  const capGeo=new THREE.ExtrudeGeometry(cap,{depth:.055,bevelEnabled:true,bevelSegments:1,steps:1,bevelSize:.012,bevelThickness:.012,curveSegments:2});
+  const capMesh=new THREE.Mesh(capGeo,hatCloth);capMesh.scale.set(1.08,1.0,.8);hatGroup.add(capMesh);
+  // Folded cloth panels are narrow raised planes, with crisp seams instead of inflated volume.
+  const panel1=shapeMesh([[-.53,.12],[-.43,.43],[-.2,.63],[-.08,.58],[-.28,.36],[-.35,.12]],hatLight,.012,.003);
+  panel1.position.z=.075;hatGroup.add(panel1);
+  const panel2=shapeMesh([[-.12,.08],[.02,.57],[.12,.67],[.23,.55],[.13,.32],[.12,.08]],hatLight,.012,.003);
+  panel2.position.z=.078;hatGroup.add(panel2);
+  const panel3=shapeMesh([[.18,.08],[.35,.5],[.43,.37],[.35,.13]],hatFold,.01,.002);
+  panel3.position.z=.08;hatGroup.add(panel3);
+  // Gathered narrow lower cuff; a clearly defined band, not a round brim.
+  const cuff=shapeMesh([[-.62,-.08],[-.56,.06],[-.3,.02],[-.02,.04],[.27,.02],[.51,.06],[.57,-.09],[.35,-.17],[-.35,-.17]],gold,.075,.012);
+  cuff.position.z=.09;hatGroup.add(cuff);
+  tube([[-.53,-.12,.18],[-.25,-.14,.19],[.05,-.14,.19],[.4,-.12,.18]],.009,hatFold,hatGroup);
   // Small ornamental forehead plate keeps the Javanese wayang identity.
   const brow=shapeMesh([[-.34,.73],[-.23,.92],[-.08,.78],[.08,.88],[.22,.69],[0,.63]],gold,.12,.025);brow.position.z=.94;puppet.add(brow);
   sphere(.32,.29,.82,.11,.07,.07,gold);
