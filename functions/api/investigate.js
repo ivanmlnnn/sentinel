@@ -201,12 +201,14 @@ async function verifyTurnstileToken(token, request, env) {
   return { ok: true };
 }
 
-async function runInvestigation({ request, env, actor = null }) {
+async function runInvestigation({ request, env, actor = null, turnstileVerified = false }) {
   try {
     const body = await readJson(request, 4096);
     if (!body) return json({ error: "Invalid JSON body." }, 400);
-    const captcha = await verifyTurnstileToken(body.turnstile_token, request, env);
-    if (!captcha.ok) return json({ error: captcha.error }, captcha.status);
+    if (!turnstileVerified) {
+      const captcha = await verifyTurnstileToken(body.turnstile_token, request, env);
+      if (!captcha.ok) return json({ error: captcha.error }, captcha.status);
+    }
     const receiver = String(body.receiver_account || "").trim().toLowerCase();
     const sender = body.sender_account ? String(body.sender_account).trim().toLowerCase() : null;
     const amount = Number(body.amount_near || 0);
@@ -524,7 +526,7 @@ export async function onRequestPost(context) {
   if (!identity) {
     return json({ error: "UNAUTHORIZED", detail: "A valid Privy app access token is required for authenticated investigations." }, 401);
   }
-  return runInvestigation({ ...context, actor: identity.sub });
+  return runInvestigation({ ...context, actor: identity.sub, turnstileVerified: context.data?.turnstileVerified === true });
 }
 
 /**
@@ -532,5 +534,5 @@ export async function onRequestPost(context) {
  * or sign transactions. The Worker applies a stricter per-IP rate limit.
  */
 export async function onRequestGuestPost(context) {
-  return runInvestigation(context);
+  return runInvestigation({ ...context, turnstileVerified: context.data?.turnstileVerified === true });
 }
