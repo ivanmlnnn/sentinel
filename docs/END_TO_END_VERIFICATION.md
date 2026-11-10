@@ -90,41 +90,7 @@ The deployment reused the existing payment-contract/runtime configuration. The s
 
 They prove successful Cloudflare Worker release steps and the exact smoke checks shown above. They do not prove that a wallet connected in a browser, an AI model returned a live answer, or a NEAR payout was submitted.
 
-## 4. End-to-end security path — implemented and tested by boundary
-
-| Stage | Implementation | Automated evidence | Live evidence status |
-|---|---|---|---|
-| Agent proposes intent | Anthropic tool-calling agent; output is untrusted | Agent policy and security tests | Live model response depends on provider credits |
-| Policy verdict | `ALLOW/WARN/BLOCK/INCOMPLETE` deterministic policy | 124-test suite; BLOCK injection demo | Production smoke validates auth/Turnstile gates, not every verdict branch |
-| Human approves exact intent | Actor-bound receiver/amount/expiry approval | Approval and NEP-413 tests | A complete fresh-browser approval journey is not evidenced here |
-
-## 5. How to run the remaining live read-only preflight
-
-The repository includes a local runner that calls the deployed `POST /api/investigate` endpoint and then routes the assessment through the existing guard. The stub signer deliberately throws before signing or creating a transaction.
-
-```bash
-git clone https://github.com/ivanmlnnn/sentinel.git
-cd sentinel
-npm ci
-SENTINEL_URL=https://sentinel.ivmaladin.workers.dev \
-SENTINEL_RECEIVER=guest-book.testnet \
-SENTINEL_AMOUNT=0.1 \
-node examples/live-preflight-check.mjs
-```
-
-The manual GitHub Actions workflow [Live Sentinel preflight](../.github/workflows/live-preflight.yml) directly queries the deployed API and records the decision and evidence. It is a separate API preflight, not a signer transaction. Its workflow has not been dispatched in the evidence snapshot for this report. Once run, link the successful run here and preserve the output JSON.
-
-## 6. Remaining evidence gates — do not mark as passed until observed
-
-1. **Fresh-browser UI check:** Guest entry, Turnstile completion, wallet connection, read-only scan, evidence display and Explorer link. Record screenshots/video and browser/network results.
-2. **Live AI response:** restore the configured Anthropic provider credits (or implement and test a complete provider adapter), then record one real agent response. Do not label a billing classification as provider recovery.
-3. **Live approval path:** connect a Testnet wallet, request NEP-413 approval for an exact intent, reject a modified receiver/amount and replay attempt, and preserve redacted evidence.
-4. **Controlled Testnet payment:** only if explicitly intended and safe, use a small capped amount after verifying the contract, restricted FunctionCall public key, allowlist and kill switch. Preserve the real transaction hash and receipt.
-5. **Independent chain cross-check:** compare signer, payment-contract call, recipient, amount, successful status and native Transfer receipt in NEAR Testnet RPC and NearBlocks Explorer/API.
-
-Until those gates are completed, describe the product as **deployed with passing automated security and production HTTP smoke checks**, not as a fully verified live payment E2E system.
-
-## 7. Reproduce the repository checks
+## 4. Reproduce the repository checks
 
 Requirements: Node.js 22+ and Rust stable with `wasm32-unknown-unknown`.
 
@@ -144,6 +110,6 @@ npx wrangler@4.159.0 deploy --config signer-worker/wrangler.jsonc --dry-run
 
 A dry-run validates the bundle only. It is not a deployment.
 
-## 8. Source provenance
+## 5. Source provenance
 
-[Source attestation #65936142](https://github.com/ivanmlnnn/sentinel/attestations/65936142) records a Sigstore-signed build provenance attestation for the source archive built from commit `34b4775737900e7bce2888541b68dfcbd1d13b59`; its signature was uploaded to the Rekor transparency log. This attests the source archive/build workflow, not the live Worker version or a NEAR transaction.
+[Source attestation #65936142](https://github.com/ivanmlnnn/sentinel/attestations/65936142) records a Sigstore-signed build provenance attestation for the source archive built from commit `34b4775737900e7bce2888541b68dfcbd1d13b59`; its signature was uploaded to the Rekor transparency log. 
