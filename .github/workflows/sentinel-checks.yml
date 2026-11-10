@@ -39,9 +39,12 @@ jobs:
           node --check functions/api/agent-approve.js
           node --check src/index.js
           node --check src/http-security.mjs
+          node --check scripts/check-d1-migrations.mjs
           node --check signer-worker/src/index.mjs
           node --check src/agent-policy.mjs
           node --check src/near-agent-signer.mjs
+      - name: Validate D1 migration SQL against SQLite
+        run: npm run check:d1
       - name: Validate Cloudflare Worker bundle
         run: npx wrangler@4.159.0 deploy --dry-run
       - name: Validate isolated signer Worker bundle
