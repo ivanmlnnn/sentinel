@@ -1,5 +1,7 @@
 # Sentinel deployment status and recovery guide
 
+> For the concise judge-facing evidence index, current deployment links, reproducible checks and claim boundaries, see [Judge Evidence Pack](JUDGE_EVIDENCE_PACK.md).
+
 Updated: 11 November 2026
 
 ## Verified project status

@@ -6,18 +6,20 @@
 >
 > **Important:** code that calls a real provider is evidence of a real integration path. It is not by itself proof that the deployed production Worker has the same commit, that credentials are configured, or that a live request succeeded. Live deployment and live credentials must be evidenced separately.
 
-## 1.1 Verified Cloudflare deployment history
+## 1.1 Verified Cloudflare deployment history — updated 11 November 2026
 
-GitHub Actions confirms that the private Signer Worker was successfully deployed on 10 November 2026:
+The repository now has linked successful deployment records. The scope of each run matters:
 
-- [Deploy Sentinel Testnet run #15](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536), source commit `989964e8f967120d61e94bec61e7d09d4049bb4c`, branch `feat/isolated-signer-worker`.
-- Both workflow jobs completed with `success`.
-- The deployment log confirms successful upload of `NEAR_AGENT_SIGNER_PRIVATE_KEY` and `NEAR_PAYMENT_CONTRACT_ID` to Worker `sentinel-signer`, successful deployment of that Worker (version `45194350-5fb8-4aec-8418-45b742147f35`), successful Main Worker deployment, service binding `SIGNER_SERVICE`, and passing production smoke checks.
-- The payment-contract deployment and key-installation steps were skipped in this run because the runtime key/contract configuration were supplied as existing secrets. The run is therefore evidence of successful Signer Worker deployment, not evidence of a new contract deployment or a new key rotation.
+- **Private Signer Worker:** [Deploy Sentinel Testnet run #15](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536), source commit `989964e8f967120d61e94bec61e7d09d4049bb4c`, branch `feat/isolated-signer-worker`. The workflow completed successfully. Job logs show runtime signer and payment-contract ID secret upload events, deployment of private Worker `sentinel-signer`, Worker version `45194350-5fb8-4aec-8418-45b742147f35`, and the configured `SIGNER_SERVICE` binding. Secret values are masked.
+- **Merged Main Worker:** [run 42871954699](https://github.com/ivanmlnnn/sentinel/actions/runs/42871954699) deployed merged `main` commit `67c2b00007190e98c2038110c7bb0749b3a6f5c2`; the production smoke test passed.
+- **Later Main Worker deployment:** [run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638) completed successfully with Main Worker version `455d1be0-150c-4de0-84f7-c9040c99c615` and passing production HTTP smoke checks.
+- **Automated checks:** [Sentinel checks run 42873243801](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243801), [CodeQL run 42873243329](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243329), and [Security CI run 42873243623](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243623) completed successfully. Review the linked job logs and GitHub Security alerts; workflow success is not a zero-finding certificate.
 
-The merged `main` revision is `67c2b00007190e98c2038110c7bb0749b3a6f5c2`. Its Main Worker deployment and production smoke test passed in [run 42871954699](https://github.com/ivanmlnnn/sentinel/actions/runs/42871954699). CI, Sentinel checks, CodeQL and Security CI for that revision also completed successfully.
+The Signer and Main deployment records are separate workflow runs and source revisions. Do not describe them as one atomic deployment of identical commits. For a coordinated future release, use the documented `both` target and verify both deployment jobs in that run.
 
-The source default signer account is `freshnook5462.testnet`; `rawvest6817.testnet` is the tracked/recipient account. GitHub masks secret values, so the successful deployment log does not independently reveal which wallet public key corresponds to the installed private-key secret.
+The signer account configured by source defaults to `freshnook5462.testnet`; `rawvest6817.testnet` is the tracked/recipient account. GitHub masks private-key values, so deployment logs do not independently identify the public key represented by a secret.
+
+**Payment-contract and payout boundary:** the maintainer reports that the payment contract was previously deployed and existing signer configuration was reused. The cited Worker deployment logs establish Worker deployment and secret-upload events; they do not independently prove the contract's current on-chain state, the runtime public key's exact permission on the signer account, or a Sentinel-originated successful payout. The payout is only independently verified when a real transaction hash and matching successful native Transfer receipt are checked on Testnet Explorer/API.
 
 ## 1. Verification status at a glance
 
@@ -29,7 +31,7 @@ The source default signer account is `freshnook5462.testnet`; `rawvest6817.testn
 | Cloudflare Turnstile | Browser widget + server-side Siteverify request; action and hostname checks; fail-closed behavior | A real browser challenge on the current production hostname has not been demonstrated by a mocked unit test |
 | Privy | Server-side JWT signature verification against the app's Privy JWKS, plus issuer/audience/subject/time checks | A successful login in the current production browser, or proof that every API route requires Privy (Guest/read-only routes are intentionally public) |
 | Cloudflare rate limits | Worker bindings for API, investigation and agent routes | DDoS protection beyond configured per-IP limits or a separate external load test |
-| Isolated signer | Private Worker configuration, service binding, HMAC, replay ledger, human approval, spending policy, and source-level contract-scoped FunctionCall key enforcement | Live Testnet contract deployment, restricted-key installation, Worker secret rotation, and successful contract payout still require the manual workflow |
+| Isolated signer | Source-level contract-scoped FunctionCall enforcement; successful private Worker deployment and runtime secret-upload events in [run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536); service-binding evidence | The masked deployment log does not independently identify the runtime public key or prove its live on-chain permission; no Sentinel-originated payout hash/receipt is published here |
 
 ## 2. NEAR FastNear JSON-RPC — account and transaction evidence
 
@@ -336,24 +338,25 @@ For a credible live demonstration, capture these artifacts with secrets and acce
 
 Do not put actual JWTs, Turnstile tokens, private keys, HMAC secrets, Cloudflare API tokens, or NearBlocks API keys in the evidence pack.
 
-## 11. Current honest status
+## 11. Current honest status — evidence snapshot 11 November 2026
 
-The code contains real integration paths for FastNear Testnet RPC, NearBlocks Testnet API, Cloudflare Turnstile Siteverify, Privy JWKS verification, and the private Signer Worker. The source also contains unit/regression tests and an HTTP smoke-test script.
+The source contains real integration paths for FastNear Testnet RPC, NearBlocks Testnet API, Cloudflare Turnstile Siteverify, Privy JWKS verification, and the private Signer Worker. The live dashboard and wallet scanner are publicly available. The maintainer confirms that the production dashboard displays NearBlocks Explorer links in Track Wallet results and that authentication flows are working.
 
-The maintainer confirms that the production dashboard already displays NearBlocks Explorer links in Track Wallet results and that the authentication flows are working. Those existing website features should not be described as missing or unimplemented.
+The following claims are now supported by linked records:
 
-The following still require fresh deployment/chain evidence before they can be called independently verified for the current branch revision:
+- Private Signer Worker deployment completed successfully; version and secret-upload events are visible in [run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536).
+- Main Worker deployment and production smoke tests completed successfully in [run 42871954699](https://github.com/ivanmlnnn/sentinel/actions/runs/42871954699), with a later successful Main deployment in [run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638).
+- Automated source/security workflows completed successfully: [Sentinel checks](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243801), [CodeQL](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243329), and [Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243623).
+- The payment contract was previously deployed and existing signer configuration was reused, as reported by the maintainer and recorded in the [deployment status guide](DEPLOYMENT_STATUS_AND_AI_PROVIDER.md).
 
-- exact production commit and Cloudflare Worker versions;
-- current production Turnstile Siteverify and Privy API round-trip evidence tied to that deployed commit;
-- payment contract deployed, initialized and funded on Testnet;
-- restricted FunctionCall key installed on the actual signer account, with the old runtime FullAccess key revoked and the key scope confirmed by view_access_key;
-- private Signer Worker deployed with the restricted key and payment contract ID;
-- a Sentinel-originated native payout verified from the top-level FunctionCall and successful transfer receipt, then independently cross-checked in NearBlocks Explorer/API.
+Keep the following distinctions explicit during judging:
 
-The source code no longer accepts a FullAccess runtime signer. However, source implementation is not proof that the new key and contract have been provisioned or deployed.
+- A successful Worker deployment is not proof that a particular wallet public key currently has the intended on-chain FunctionCall permission. The code queries and enforces that permission before signing; the linked deployment logs mask the key and do not independently expose its public key or permission response.
+- A successful HTTP smoke test is not a real Privy browser session, a live LLM conversation, or a blockchain payment.
+- The current Anthropic credit-balance error is an upstream provider billing condition. The application classifies it as `AI_PROVIDER_BILLING_ERROR`; restoring provider credits is separate from Worker deployment and wallet scanning.
+- No Sentinel-originated payout is claimed without a real transaction hash, successful top-level payment-contract FunctionCall, and matching native Transfer receipt for the exact recipient and amount, independently checked in Testnet Explorer/API.
 
-Do not replace these labels with "verified" based only on source code, local tests, mocked tests, screenshots of configuration, or a successful dry-run.
+Do not label an item independently verified based only on source code, local tests, mocked tests, screenshots of configuration, or a successful dry-run. Use the [Judge Evidence Pack](JUDGE_EVIDENCE_PACK.md) as the concise index of current evidence and reproducible judge steps.
 
 ## 12. Official provider references
 
