@@ -14,8 +14,10 @@ if (!/^[a-z0-9._-]{2,64}\.testnet$/.test(accountId) ||
 
 const adminSigner = KeyPairSigner.fromSecretKey(admin);
 const restrictedSigner = KeyPairSigner.fromSecretKey(restricted);
-const adminPublicKey = adminSigner.getPublicKey().toString();
-const restrictedPublicKey = restrictedSigner.getPublicKey().toString();
+const adminPublicKeyObject = await adminSigner.getPublicKey();
+const restrictedPublicKeyObject = await restrictedSigner.getPublicKey();
+const adminPublicKey = adminPublicKeyObject.toString();
+const restrictedPublicKey = restrictedPublicKeyObject.toString();
 
 if (adminPublicKey === restrictedPublicKey) {
   throw new Error("ADMIN_AND_RESTRICTED_KEYS_MUST_BE_DISTINCT");
@@ -60,14 +62,14 @@ const tx = await account.createTransaction({
   receiverId: accountId,
   actions: [
     actions.addFunctionCallAccessKey(
-      restrictedSigner.getPublicKey(),
+      restrictedPublicKeyObject,
       contractId,
       ["pay"],
       250_000_000_000_000_000_000_000n
     ),
     actions.deleteKey(PublicKey.fromString(oldRuntimePublicKey))
   ],
-  publicKey: adminSigner.getPublicKey()
+  publicKey: adminPublicKey
 });
 const signed = await adminSigner.signTransaction(tx);
 const outcome = await provider.sendTransaction(signed.signedTransaction);
