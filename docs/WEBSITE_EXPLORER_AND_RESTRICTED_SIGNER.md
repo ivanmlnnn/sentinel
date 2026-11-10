@@ -133,7 +133,7 @@ After successful one-time rotation, remove NEAR_AGENT_SIGNER_OLD_PRIVATE_KEY fro
 ### Required one-time sequence
 
 1. Create and fund the dedicated payment-contract Testnet account. Create the signer Testnet account and keep its administrator FullAccess key offline.
-2. Generate a new keypair for the runtime signer. Put the private key in GitHub secret NEAR_AGENT_SIGNER_RESTRICTED_PRIVATE_KEY; retain the old runtime key temporarily as NEAR_AGENT_SIGNER_OLD_PRIVATE_KEY.
+2. Generate a new keypair for the runtime signer in a trusted local terminal using `node scripts/generate-restricted-signer-key.mjs`. Store its public key for later RPC checks. Put its private key in GitHub secret NEAR_AGENT_SIGNER_RESTRICTED_PRIVATE_KEY; retain the old runtime key temporarily as NEAR_AGENT_SIGNER_OLD_PRIVATE_KEY. Never run the generator in CI or share its private-key output.
 3. Add all required GitHub Actions secrets above.
 4. Run the workflow with deploy_target=payment-contract and rotate_signer_key=false. Confirm the deployment/init transaction in Testnet Explorer.
 5. Run with deploy_target=signer and rotate_signer_key=true. The workflow installs the restricted key, revokes the old runtime key, sets the private Worker secrets, and deploys Signer Worker.
