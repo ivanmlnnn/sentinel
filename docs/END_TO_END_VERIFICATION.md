@@ -187,7 +187,7 @@ The authenticated Agent, Guest Agent, and AI Review routes have been migrated fr
 | Area | Implementation |
 |---|---|
 | Provider endpoint | Google Gemini `generateContent` API |
-| Default model | `gemini-2.5-flash` |
+| Default model | `gemini-3.8-flash` |
 | Runtime credential | `GEMINI_API_KEY`, stored only as a Cloudflare Main Worker secret |
 | Tool calling | Sentinel allowlisted tools are converted to Gemini function declarations |
 | Multi-turn tool results | Gemini function calls/responses are normalized to the route's internal conversation format |
@@ -235,3 +235,23 @@ PR #13 was squash-merged to `main` as commit `7e88eee64954dbf61ce6e28dc4c31530c3
 | Cloudflare Main Worker and Signer Worker build checks | **PASS** | Both Worker build checks on merged commit completed successfully |
 
 The production smoke suite validates public endpoint availability and fail-closed authentication behavior. It does not exercise a live Gemini completion or a new NEAR payment. Configure `GEMINI_API_KEY` on the production Main Worker, then run authenticated Agent, Guest Agent, and AI Review conversation tests before claiming live Gemini provider activation. No signer secret or NEAR payment-contract configuration is changed by the AI provider migration.
+
+
+## 11. Latest merged-main deployment after agent-result placement — 11 November 2026
+
+Commit [`c7bf59df0b5596e086f8011ef95057bf33bb1e3e`](https://github.com/ivanmlnnn/sentinel/commit/c7bf59df0b5596e086f8011ef95057bf33bb1e3e) was merged through [PR #15](https://github.com/ivanmlnnn/sentinel/pull/15). The push-to-main workflows completed successfully.
+
+| Verification | Result | Evidence |
+|---|---|---|
+| Automated regression | **136 passed, 0 failed** | [Sentinel checks #42913399066](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399066) |
+| Main D1 remote migration | **PASS — no migrations to apply** | [Deployment #42913399162](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399162) job log |
+| Signer D1 remote migration | **PASS — no migrations to apply** | Same job log |
+| Main Worker deployment | **PASS** — version `91d0798d-3af0-4853-a6ae-1e951e3eb8c7` | Same job log |
+| Signer Worker | **No new target deployed** — unchanged code; Wrangler reported current version ID `97e07af1-dfc3-42d0-b980-7e698d977d8e` | Same job log |
+| Production HTTP smoke | **8/8 PASS** | Same job log |
+| Security CI | **PASS** | [Run #42913399216](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399216) |
+| CodeQL | **PASS** | [Run #42913399079](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399079) |
+
+The smoke suite verified dashboard HTTP 200 and expected rejection behavior for missing Turnstile, bearer authentication, and internal HMAC credentials. Both remote D1 migration commands completed successfully with no pending migrations. This release deployed the Main Worker; the isolated Signer Worker was unchanged.
+
+The nine concurrency/load/fault/fuzz/E2E results in [the independent local stress lab](INDEPENDENT_LOCAL_STRESS_LAB.md) remain separately labeled as local simulation evidence. They are not included in the 136 automated-test count and are not represented as production D1 race measurements.
