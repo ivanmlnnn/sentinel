@@ -3,14 +3,19 @@
  * The model is never an authorization source. Defaults deny when policy is
  * not explicitly configured. This module does not sign or broadcast.
  */
-const ACCOUNT_ID = /^[a-z0-9._-]{2,64}$/;
+const ACCOUNT_ID = /^[a-z0-9]+(?:[-_.][a-z0-9]+)*$/;
 
 export function validatePaymentIntent(input, env = {}) {
   const receiver = typeof input?.receiver_account === "string"
     ? input.receiver_account.trim().toLowerCase() : "";
-  const amount = Number(input?.amount_near);
+  const amountRaw = typeof input?.amount_near === "number" ? String(input.amount_near)
+    : typeof input?.amount_near === "string" ? input.amount_near.trim() : "";
+  if (!/^(?:0|[1-9][0-9]*)(?:\\.[0-9]{1,6})?$/.test(amountRaw)) {
+    return { ok: false, reason: "INVALID_AMOUNT" };
+  }
+  const amount = Number(amountRaw);
 
-  if (!ACCOUNT_ID.test(receiver) || receiver.startsWith(".") || receiver.endsWith(".")) {
+  if (receiver.length < 2 || receiver.length > 64 || !ACCOUNT_ID.test(receiver)) {
     return { ok: false, reason: "INVALID_RECEIVER" };
   }
   if (!receiver.endsWith(".testnet")) {
@@ -32,7 +37,7 @@ export function validatePaymentIntent(input, env = {}) {
   }
 
   const allowed = String(env.NEAR_AGENT_ALLOWED_RECEIVERS || "")
-    .split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
+    .split(",").map(value => value.trim().toLowerCase()).filter(value => value.length >= 2 && value.length <= 64 && ACCOUNT_ID.test(value));
   if (!allowed.length || !allowed.includes(receiver)) {
     return { ok: false, reason: "RECEIVER_NOT_ALLOWLISTED" };
   }
