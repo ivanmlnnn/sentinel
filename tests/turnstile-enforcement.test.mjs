@@ -8,8 +8,8 @@ const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
 test("wallet investigation requires server-side Cloudflare Siteverify", () => {
   assert.match(investigation, /TURNSTILE_SECRET/);
   assert.match(investigation, /challenges\.cloudflare\.com\/turnstile\/v0\/siteverify/);
-  assert.match(investigation, /result\\?\\.success/);
-  assert.match(investigation, /result\.action !== "track_wallet"/);
+  assert.ok(investigation.includes("result?.success"));
+  assert.ok(investigation.includes('result.action !== "track_wallet"'));
   assert.match(investigation, /verifyTurnstileToken\(body\.turnstile_token, request, env\)/);
 });
 
