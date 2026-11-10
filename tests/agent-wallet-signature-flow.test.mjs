@@ -27,6 +27,6 @@ test("isolated signer verifies NEP-413 and rejects replayed wallet nonce", () =>
 
 test("UI only labels final-RPC-verified transaction links as verified", () => {
   assert.match(signer, /verifyFinalTransfer\(/);
-  assert.match(signer, /FINAL_TRANSACTION_VERIFICATION_UNAVAILABLE/);
+  assert.match(signer, /FINAL_PAYMENT_VERIFICATION_UNAVAILABLE/);
   assert.match(app, /View RPC-verified Testnet transaction/);
 });
