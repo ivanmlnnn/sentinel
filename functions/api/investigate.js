@@ -169,10 +169,44 @@ function normalizeFtTransfer(row, accountId) {
   };
 }
 
+async function verifyTurnstileToken(token, request, env) {
+  const secret = typeof env.TURNSTILE_SECRET === "string" ? env.TURNSTILE_SECRET.trim() : "";
+  if (!secret) return { ok: false, status: 503, error: "TURNSTILE_NOT_CONFIGURED" };
+  if (typeof token !== "string" || token.length < 10 || token.length > 2048) {
+    return { ok: false, status: 403, error: "TURNSTILE_TOKEN_REQUIRED" };
+  }
+  const form = new URLSearchParams({ secret, response: token });
+  const ip = request.headers.get("cf-connecting-ip");
+  if (ip) form.set("remoteip", ip);
+  let response;
+  try {
+    response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: form.toString(),
+      signal: AbortSignal.timeout(5000)
+    });
+  } catch {
+    return { ok: false, status: 503, error: "TURNSTILE_VERIFY_UNAVAILABLE" };
+  }
+  if (!response.ok) return { ok: false, status: 503, error: "TURNSTILE_VERIFY_UNAVAILABLE" };
+  const result = await response.json().catch(() => null);
+  if (!result?.success || result.action !== "track_wallet") {
+    return { ok: false, status: 403, error: "TURNSTILE_VERIFICATION_FAILED" };
+  }
+  const allowed = String(env.TURNSTILE_ALLOWED_HOSTNAMES || "").split(",").map(x => x.trim().toLowerCase()).filter(Boolean);
+  if (allowed.length && !allowed.includes(String(result.hostname || "").toLowerCase())) {
+    return { ok: false, status: 403, error: "TURNSTILE_HOSTNAME_MISMATCH" };
+  }
+  return { ok: true };
+}
+
 async function runInvestigation({ request, env, actor = null }) {
   try {
     const body = await readJson(request, 4096);
     if (!body) return json({ error: "Invalid JSON body." }, 400);
+    const captcha = await verifyTurnstileToken(body.turnstile_token, request, env);
+    if (!captcha.ok) return json({ error: captcha.error }, captcha.status);
     const receiver = String(body.receiver_account || "").trim().toLowerCase();
     const sender = body.sender_account ? String(body.sender_account).trim().toLowerCase() : null;
     const amount = Number(body.amount_near || 0);
