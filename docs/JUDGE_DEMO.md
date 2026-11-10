@@ -41,7 +41,7 @@ Prepare these short cases after the corresponding branch deployment and show the
 
 ## Latest reproducible CI evidence
 
-The last CI-verified PR revision [cd85b86](https://github.com/ivanmlnnn/sentinel/commit/cd85b8692fd9dc766a996b220d17e832b7fa9ae8) passed [116/116 automated tests](https://github.com/ivanmlnnn/sentinel/actions/runs/42778680965), Gitleaks scans, both Wrangler dry-runs, D1 migration validation, and the offline prompt-injection regression. [CodeQL analysis](https://github.com/ivanmlnnn/sentinel/actions/runs/42778335865) also completed successfully. This does not prove the live deployment, live CAPTCHA browser interaction, or a completed signer transaction.
+The last fully evidenced CI revision [cd85b86](https://github.com/ivanmlnnn/sentinel/commit/cd85b8692fd9dc766a996b220d17e832b7fa9ae8) passed [116/116 automated tests](https://github.com/ivanmlnnn/sentinel/actions/runs/42778680965), Gitleaks scans, both Wrangler dry-runs, D1 migration validation, and the offline prompt-injection regression. [CodeQL analysis](https://github.com/ivanmlnnn/sentinel/actions/runs/42778335865) completed successfully on an earlier source revision. The branch has since received further signer-authentication, workflow, and production-smoke-check changes; require a fresh completed CI run on the exact submission commit. These CI results do not prove the live deployment, live CAPTCHA browser interaction, or a completed signer transaction.
 
 ## Judge questions and concise answers
 
