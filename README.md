@@ -2,61 +2,60 @@
 
 ### A pre-sign security checkpoint for AI agents on NEAR.
 
-**An agent can propose a payment. Sentinel decides whether the application should let it reach the signer.**
+**An agent can propose a payment. Sentinel checks the destination. A human approves the exact intent. A separate Testnet signer enforces the final limits.**
 
 Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verified threat registry, then returns a deterministic verdict: `ALLOW`, `WARN`, `BLOCK`, or `INCOMPLETE`.
 
 <p align="center">
   <a href="https://sentinel.ivmaladin.workers.dev"><strong>⚡ OPEN LIVE DASHBOARD</strong></a> ·
   <a href="https://github.com/ivanmlnnn/sentinel"><strong>SOURCE CODE</strong></a> ·
-  <a href="docs/AGENT_GUARD.md"><strong>AGENT GUARD</strong></a>
+  <a href="docs/SECURE_AGENT_PIPELINE.md"><strong>SECURE AGENT PIPELINE</strong></a> ·
+  <a href="docs/JUDGE_DEMO.md"><strong>JUDGE DEMO GUIDE</strong></a>
 </p>
 
-| Builder | Network | Track fit | Stack |
+| Builder | Network | Track direction | Stack |
 |---|---|---|---|
-| Ivan Maulana Alaudin · IVTECH | NEAR Testnet | AI Security & Defense | Cloudflare Workers · NEAR · Privy · NearBlocks |
+| Ivan Maulana Alaudin · IVTECH | NEAR Testnet | Autonomous Business / Open Innovation | Cloudflare Workers · NEAR · Privy · Anthropic · NearBlocks |
+
+## Why Sentinel
+
+AI agents can be manipulated into proposing payments to unsafe destinations. A language model's confidence is not authorization. Sentinel adds deterministic on-chain evidence checks, a human approval checkpoint, and a separate key-owning Testnet Worker before a payment can be signed.
 
 ## 30-second judge walkthrough
 
-1. Open the [live dashboard](https://sentinel.ivmaladin.workers.dev) and continue as **Guest**.
-2. Optionally connect a NEAR wallet using the NEAR Connect picker (Meteor is among its listed integrations).
-3. Enter a public NEAR account and run **Check address**.
-4. Inspect the verdict and evidence: account state, indexed activity, transfer history and threat-registry match.
-5. Run the local guard test: `npm install && npm test && npm run demo:attack`.
-6. After deploying, run the HTTP checks: `npm run smoke:test`.
+1. Open the [live dashboard](https://sentinel.ivmaladin.workers.dev) and sign in.
+2. Check a public NEAR Testnet account and inspect the evidence behind its verdict.
+3. Open Agent Lab and ask Anthropic to propose a small Testnet payment.
+4. Review the exact receiver and amount. The agent cannot spend automatically; a user must approve the exact proposal.
+5. Inspect the signer boundary, D1 audit trail, and Testnet transaction only if the separate signer deployment has been enabled and a real hash has been verified.
 
-**Expected guard-test result:** a blocked assessment does not invoke the signer callback. The current attack demo is an offline guard test—not a live autonomous agent or a real Testnet transfer.
-
-## The security problem
-
-Prompt injection, poisoned tool output and malicious destinations can trick an AI agent into proposing an unsafe payment. Model confidence is not authorization. Sentinel adds an independent policy check before the application's signing path.
-
-| Verdict | Meaning | Required behavior |
-|---|---|---|
-| `ALLOW` | Required checks completed; no configured blocking signal found | Continue only through the guarded signer |
-| `WARN` | A review signal was detected | Pause for explicit human approval |
-| `BLOCK` | Receiver matches a verified threat record | Deny; signer must not be called |
-| `INCOMPLETE` | Required evidence could not be verified | Fail closed |
+The repository's automated attack demo is an offline regression test. It is not proof of a live transaction. See [Judge demo guide](docs/JUDGE_DEMO.md).
 
 ## What is implemented
 
 - NEAR account-state checks through FastNear JSON-RPC.
-- Indexed transaction, receipt and fungible-token transfer evidence through NearBlocks.
+- Indexed native transaction, receipt, and fungible-token transfer evidence through NearBlocks.
+- Evidence completeness tracking; missing or unavailable data is not treated as safe.
 - First-seen indexed activity proxy, explicitly not account creation age.
-- Contract code-hash comparison against prior Sentinel scans.
-- Optional sender-to-receiver interaction context and observed counterparty discovery.
-- Deployment-local Cloudflare D1 threat registry; only verified reports can trigger `BLOCK`.
-- Reusable application-level guard with fail-closed behavior for API errors, incomplete evidence, receiver mismatch, invalid risk scores, and payment-intent mismatch (the assessed amount must exactly match the amount passed to the signer).
-- Privy email OTP is required for authenticated investigations, threat-report submission, and AI review. Guest users use a separate public investigation route with stricter rate limiting.
-- Optional NEAR wallet identity connection through HOT Labs NEAR Connect. Wallet connection is read-only in this dashboard and does not sign transactions.
+- Contract code-hash comparison against earlier Sentinel scans.
+- Deployment-local D1 threat registry; only verified reports can trigger `BLOCK`.
+- Privy-authenticated investigation, AI review, and agent routes.
+- Anthropic tool-calling agent whose output is treated as an untrusted proposal.
+- Actor-bound, exact-intent, five-minute human approval before payment execution.
+- Separate signer Worker, private service binding, HMAC timestamp/nonce protection, replay ledger, allowlist, spend caps, kill switch, and conservative `UNKNOWN` handling.
+- Legacy in-process signing path disabled.
 
-## AI agent pipeline (Testnet signer gated)
+## Security boundary and honest status
 
-This branch adds an authenticated Anthropic tool-calling agent, deterministic Sentinel preflight, and an isolated server-side NEAR Testnet signer. The signer requires a dedicated Testnet full-access key, explicit receiver allowlist, kill switch, D1 execution ledger, idempotency key, and strict hard caps (0.1 NEAR per transfer / 0.2 NEAR per UTC day). The signing path is not considered verified until a real Testnet transaction hash is independently checked. See [Secure Agent Pipeline](docs/SECURE_AGENT_PIPELINE.md) for required secrets, migrations, and verification steps.
+The signer implementation is in a separate Worker project under `signer-worker/`; the main Worker does not import the signing key. The signer is configured without a public `workers.dev` endpoint and is intended to be invoked only through a Cloudflare service binding.
 
-## Run it
+**A separate Worker in source code is not the same as a verified live deployment.** No live Testnet transfer is claimed until both Workers are deployed, the D1 migrations and secrets are configured, and the transaction hash is independently checked. The signer kill switch must remain enabled until the deployment checklist and negative tests pass.
 
-Requirements: Node.js 20+.
+See [Secure Agent Pipeline](docs/SECURE_AGENT_PIPELINE.md) for the complete trust boundary, setup, and verification gates.
+
+## Run it locally
+
+Requirements: Node.js 22+.
 
 ```bash
 git clone https://github.com/ivanmlnnn/sentinel.git
@@ -66,26 +65,25 @@ npm test
 npm run demo:attack
 ```
 
-For the guard integration and exact expected outputs, see [Agent Guard quickstart](docs/AGENT_GUARD.md). For API routes, evidence sources, configuration, security boundaries and the development timeline, see [Technical details](docs/TECHNICAL_DETAILS.md).
+The signer Worker bundle can be checked separately:
 
-## Security boundary — read this honestly
+```bash
+npx wrangler@4.159.0 deploy --config signer-worker/wrangler.jsonc --dry-run
+```
 
-**Sentinel is not yet a cryptographic signing boundary.** The current repository has a wallet-agnostic application guard, server-side Privy verification for protected write/AI routes, and Cloudflare rate limits on API traffic. It still has no deployed autonomous agent, no restricted function-call access key enforced as the signing authority, and no verified real Testnet transaction passing through a Sentinel-controlled signing service. The guard now binds each assessment to the exact receiver and amount, requires COMPLETE evidence, and validates the risk score before calling the supplied signer; this hardens the application path but does not make it a cryptographic signing boundary. Other application code with direct signer access could bypass an application-level guard.
+## Hackathon provenance
 
-That is the next engineering milestone: a minimal agent → Sentinel policy check → restricted Testnet signer pipeline, with a transaction hash on `ALLOW` and proof that the signer was never called on `BLOCK`.
+This repository has pre-existing history and earlier project assets. The submission does not claim the entire repository was created during the hackathon. The event-period work is recorded in Git history; judges should evaluate the changes authored during the official build window. See [provenance and development timeline](docs/TECHNICAL_DETAILS.md#12-development-timeline-and-pre-existing-repository-history).
 
-## Hackathon build disclosure
-
-Sentinel has pre-existing repository history and earlier project assets. This submission does **not** claim the entire repository was created during the hackathon. The November 2026 work is recorded in Git history; judges should evaluate the work authored during the official event window. See the dated commit table in [Technical details](docs/TECHNICAL_DETAILS.md#12-development-timeline-and-pre-existing-repository-history).
-
-Official event: [NEAR HACKATHON](https://nearhackathon.com/) · [Official builder instructions](https://nearhackathon.com/HACKATHON.md)
-
-## Links
+## Submission assets
 
 - **Live dashboard:** https://sentinel.ivmaladin.workers.dev
 - **Repository:** https://github.com/ivanmlnnn/sentinel
+- **Demo video:** not published yet — required for final submission.
+- **Public X demo post:** not published yet — required for final submission.
 - **Source provenance:** [commit history, CI evidence, and signature status](docs/PROVENANCE.md)
-- **Demo video:** not published yet — add a public demo recording and X post before submission.
+
+Official event: [NEAR HACKATHON](https://nearhackathon.com/) · [Builder instructions](https://nearhackathon.com/HACKATHON.md)
 
 ---
 
