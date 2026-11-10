@@ -3,11 +3,11 @@ import { Account, JsonRpcProvider, KeyPairSigner, actions } from "near-api-js";
 
 const RPC = "https://rpc.testnet.fastnear.com";
 const contractId = String(process.env.NEAR_PAYMENT_CONTRACT_ID || "").toLowerCase();
-const signerAccountId = String(process.env.NEAR_AGENT_SIGNER_ACCOUNT_ID || "").toLowerCase();
-const ownerId = String(process.env.NEAR_PAYMENT_CONTRACT_OWNER_ID || "").toLowerCase();
+const signerAccountId = String(process.env.NEAR_AGENT_SIGNER_ACCOUNT_ID || "freshnook5462.testnet").toLowerCase();
+const ownerId = String(process.env.NEAR_PAYMENT_CONTRACT_OWNER_ID || contractId).toLowerCase();
 const privateKey = process.env.NEAR_PAYMENT_CONTRACT_DEPLOYER_PRIVATE_KEY;
-const maxPaymentYocto = String(process.env.NEAR_PAYMENT_MAX_PAYMENT_YOCTO || "");
-const maxDailyPaymentYocto = String(process.env.NEAR_PAYMENT_MAX_DAILY_PAYMENT_YOCTO || "");
+const maxPaymentYocto = String(process.env.NEAR_PAYMENT_MAX_PAYMENT_YOCTO || "100000000000000000000000");
+const maxDailyPaymentYocto = String(process.env.NEAR_PAYMENT_MAX_DAILY_PAYMENT_YOCTO || "200000000000000000000000");
 
 const invalidConfig = [];
 if (!/^[a-z0-9._-]{2,64}\.testnet$/.test(contractId)) invalidConfig.push("NEAR_PAYMENT_CONTRACT_ID");
