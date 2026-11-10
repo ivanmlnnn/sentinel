@@ -50,9 +50,9 @@ Prompt injection, poisoned tool output and malicious destinations can trick an A
 - Privy email OTP is required for authenticated investigations, threat-report submission, and AI review. Guest users use a separate public investigation route with stricter rate limiting.
 - Optional NEAR wallet identity connection through HOT Labs NEAR Connect. Wallet connection is read-only in this dashboard and does not sign transactions.
 
-## AI agent pipeline (in progress)
+## AI agent pipeline (Testnet signer gated)
 
-This branch adds an authenticated Anthropic tool-calling endpoint at `POST /api/agent/run`, a deterministic Testnet-only payment policy, explicit receiver allowlisting, a spend cap, a fail-closed kill switch, and an audit table. **The signer is not implemented in this milestone:** policy-approved proposals return `AUTHORIZED_PENDING_SIGNER`; no wallet key is loaded and no real transfer is claimed. See [Secure Agent Pipeline](docs/SECURE_AGENT_PIPELINE.md) for configuration and the signer hardening gate.
+This branch adds an authenticated Anthropic tool-calling agent, deterministic Sentinel preflight, and an isolated server-side NEAR Testnet signer. The signer requires a dedicated Testnet full-access key, explicit receiver allowlist, kill switch, D1 execution ledger, idempotency key, and strict hard caps (0.1 NEAR per transfer / 0.2 NEAR per UTC day). The signing path is not considered verified until a real Testnet transaction hash is independently checked. See [Secure Agent Pipeline](docs/SECURE_AGENT_PIPELINE.md) for required secrets, migrations, and verification steps.
 
 ## Run it
 
