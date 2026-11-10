@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { verifyInternalRequest, default as signerWorker } from "../signer-worker/src/index.mjs";
+import { verifyInternalRequest, reserveNonce, nearToMicro, default as signerWorker } from "../signer-worker/src/index.mjs";
 
 async function signedRequest({ secret, body, timestamp = String(Math.floor(Date.now() / 1000)), nonce = "123e4567-e89b-42d3-a456-426614174000" }) {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret),
@@ -37,4 +37,25 @@ test("isolated signer endpoint rejects requests without internal authentication"
   }), { DB: {} });
   assert.equal(response.status, 401);
   assert.equal((await response.json()).error, "INVALID_INTERNAL_AUTH");
+});
+
+test("isolated signer converts only exact microNEAR precision", () => {
+  assert.equal(nearToMicro("0.01"), 10000);
+  assert.equal(nearToMicro("0.000001"), 1);
+  assert.equal(nearToMicro("0.0000001"), null);
+  assert.equal(nearToMicro("1e-6"), null);
+  assert.equal(nearToMicro("-0.1"), null);
+});
+
+test("nonce ledger rejects a duplicate internal request nonce", async () => {
+  const seen = new Set();
+  const env = { DB: { prepare() {
+    return { bind(nonce) { return { async run() {
+      if (seen.has(nonce)) throw new Error("UNIQUE constraint");
+      seen.add(nonce);
+      return { meta: { changes: 1 } };
+    } }; } };
+  } } };
+  assert.equal(await reserveNonce(env, "123e4567-e89b-42d3-a456-426614174000"), true);
+  assert.equal(await reserveNonce(env, "123e4567-e89b-42d3-a456-426614174000"), false);
 });
