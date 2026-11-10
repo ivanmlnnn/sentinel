@@ -1,4 +1,4 @@
-import { json, verifyPrivyAccessToken } from "./_shared.js";
+import { json, verifyPrivyAccessToken, readTextLimited } from "./_shared.js";
 import { evaluateAgentAuthorization, validatePaymentIntent } from "../../src/agent-policy.mjs";
 import { onRequestPost as investigatePost } from "./investigate.js";
 
@@ -47,8 +47,9 @@ export async function onRequestPost({ request, env }) {
   if (!UUID_RE.test(idempotencyKey)) return json({ error: "IDEMPOTENCY_KEY_REQUIRED" }, 400);
   const prior = await env.DB.prepare("SELECT idempotency_key FROM agent_execution WHERE idempotency_key=?").bind(idempotencyKey).first();
   if (prior) return json({ error: "IDEMPOTENCY_KEY_REUSED" }, 409);
-  const raw = await request.text();
-  if (raw.length > 2000) return json({ error: "REQUEST_TOO_LARGE" }, 413);
+  const boundedBody = await readTextLimited(request, 2000);
+  if (!boundedBody.ok) return json({ error: boundedBody.reason === "BODY_TOO_LARGE" ? "REQUEST_TOO_LARGE" : "INVALID_BODY" }, boundedBody.reason === "BODY_TOO_LARGE" ? 413 : 400);
+  const raw = boundedBody.text;
   let body;
   try { body = JSON.parse(raw); } catch { return json({ error: "INVALID_JSON" }, 400); }
   const approvalId = String(body?.approval_id || "");
