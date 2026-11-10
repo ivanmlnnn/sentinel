@@ -33,11 +33,11 @@ This branch implements a two-Worker signing architecture and a mandatory human a
 
 - Separate Worker deployment, configured with `workers_dev=false` and `preview_urls=false`.
 - Holds `NEAR_AGENT_SIGNER_PRIVATE_KEY` and the matching `AGENT_SIGNER_HMAC_SECRET` as Worker secrets.
-- Uses the same D1 database for the spend ledger, pending approvals, and replay nonce ledger.
+- Reads pending approvals from Main Worker's D1 database through `DB` and stores nonce, approval-claim, and spend ledgers in its separate D1 database through `DB2`.
 - Has no browser assets or public route configured.
 - Re-runs the authenticated Sentinel investigation using `SENTINEL_PREFLIGHT_URL`.
 
-A shared HMAC secret protects the internal service request but does not make the main Worker a fully trusted authorization oracle. The signer still enforces its own hard-coded caps, actor identity, receiver allowlist, kill switch, and independent investigation. Keep the signer key low-balance and Testnet-only.
+A shared HMAC secret protects the internal service request but does not make the main Worker a fully trusted authorization oracle. The Main Worker has no binding to DB2, so it cannot directly alter the signer's nonce, approval-claim, or spend ledgers. The signer does have a `DB` binding to DB1 so it can read pending approvals; Cloudflare D1 bindings are not read-only in this configuration, even though the current signer code only performs a SELECT against DB1. A compromised Main Worker can still create or alter pending-approval rows and can use its HMAC secret to call the signer. The application approval is therefore not independent cryptographic authorization. The signer still enforces its own hard-coded caps, actor identity, receiver allowlist, kill switch, and independent investigation. Keep the signer key low-balance and Testnet-only.
 
 ## Hard limits
 
@@ -81,14 +81,16 @@ Generate the HMAC secret locally (never send it in chat or commit it), then set 
 
 ### D1 migration gate
 
-**Important:** the legacy `migrations/` directory contains PostgreSQL-specific SQL and is not used by Wrangler D1. Both Worker configs now point to `migrations-d1/`, which contains SQLite-compatible migrations `0001`–`0007`, including private investigation ownership. CI executes the complete sequence against an in-memory SQLite database. Do not apply the legacy PostgreSQL files to D1. Before applying D1 migrations to the remote database:
+**Important:** the legacy `migrations/` directory contains PostgreSQL-specific SQL and is not used by Wrangler D1. Main Worker DB1 (`sentinel-db`, ID `f3fa44b2-2b49-4af1-8687-2346cb336b22`) uses `migrations-d1/` (`0001`–`0007`). Signer DB2 (`db2`, ID `80a08a93-4353-4dba-914d-a436afd040c9`) uses `migrations-signer/` (`0001_signer_ledger.sql`). CI validates both migration sets independently against in-memory SQLite, including the signer indexes. Do not apply the legacy PostgreSQL files to D1.
 
-1. Confirm the database ID in `wrangler.jsonc` is the intended Sentinel D1 database.
-2. Export/backup the database.
-3. Run `npm run check:d1` and inspect the generated SQLite schema.
-4. Run `npx wrangler d1 migrations list f3fa44b2-2b49-4af1-8687-2346cb336b22 --remote`.
-5. Compare existing production tables and migration history. Take a backup/export before any change.
-6. Only after confirming the target D1 and pending migration list, apply with `npx wrangler d1 migrations apply f3fa44b2-2b49-4af1-8687-2346cb336b22 --remote`.
+The three signer tables were manually created in DB2 through the dashboard Console. That did not create Wrangler's `d1_migrations` history and the initial manual SQL did not create the three indexes from the migration file. The migration uses `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS`, so after confirming the target ID and taking a backup, apply it with Wrangler to add the missing indexes and record migration history:
+
+1. Confirm DB2 ID `80a08a93-4353-4dba-914d-a436afd040c9` in Cloudflare.
+2. Export/backup DB2.
+3. Run `npm run check:d1` on the reviewed branch.
+4. Inspect `npx wrangler d1 migrations list db2 --remote --config signer-worker/wrangler.jsonc`.
+5. If `0001_signer_ledger.sql` is pending, apply it with `npx wrangler d1 migrations apply db2 --remote --config signer-worker/wrangler.jsonc`.
+6. Separately inspect and apply Main DB1 migrations only if the production migration history confirms they are pending.
 
 Do not apply migrations against a different database or from an unreviewed branch.
 
@@ -96,7 +98,7 @@ Do not apply migrations against a different database or from an unreviewed branc
 
 - [ ] CI passes on the exact commit being deployed.
 - [ ] Both Worker bundles pass Wrangler dry-run.
-- [ ] D1 backup exists and the SQLite migrations in `migrations-d1/` are applied to the intended database.
+- [ ] Backups exist and both migration histories are reconciled: Main DB1 uses `migrations-d1/`; signer DB2 uses `migrations-signer/`.
 - [ ] Signer Worker is deployed separately and is not publicly addressable.
 - [ ] Main Worker service binding points to the signer Worker.
 - [ ] HMAC secret matches between Workers; private key exists only in signer Worker.
@@ -118,4 +120,4 @@ See [Judge demo guide](JUDGE_DEMO.md) for a short walkthrough and submission che
 
 ## Residual security limitation
 
-The five-minute approval is an authenticated, actor-bound application approval backed by D1 and a one-time signer claim. It is **not yet a cryptographic wallet-signed approval**. The main Worker and signer Worker currently share the Sentinel D1 database and an HMAC secret for the private service call. This isolates the NEAR private key and adds defense in depth, but a fully compromised main Worker with its D1 write access and a valid user token could attempt to forge an application approval within the signer's independent policy limits. A production-grade next step is a user-signed approval challenge (for example, a NEAR wallet message signature bound to the exact receiver, amount, network, expiry, and nonce) or a separately controlled approval service. Do not describe the current web confirmation as protection against a fully compromised application Worker.
+The five-minute approval is an authenticated, actor-bound application approval backed by Main DB1 and a one-time claim in signer DB2. It is **not yet a cryptographic wallet-signed approval**. The Main Worker cannot directly access DB2, but it can write the pending-approval rows in DB1 and holds the HMAC secret used to call the signer. The signer also has a write-capable DB1 binding in its runtime, although current code only reads the pending approval row. A fully compromised Main Worker can therefore attempt to forge an application approval within the signer's independent policy limits. A production-grade next step is a user-signed approval challenge (for example, a NEAR wallet message signature bound to the exact receiver, amount, network, expiry, and nonce) or a separately controlled approval service. Do not describe the current web confirmation as protection against a fully compromised application Worker.
