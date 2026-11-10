@@ -57,27 +57,14 @@ test("public investigation has a stricter per-IP limit than other API routes", a
   assert.deepEqual(apiLimiter.calls[0], { key: "203.0.113.11" });
 });
 
-test("authenticated investigation rejects a missing Privy token after valid Turnstile and rate-limit checks", async t => {
-  t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({
-    success: true,
-    hostname: "sentinel.ivmaladin.workers.dev",
-    action: "track_wallet"
-  }), { status: 200, headers: { "content-type": "application/json" } }));
+test("authenticated investigation uses Privy authentication instead of the guest Turnstile challenge", async () => {
   const response = await worker.fetch(
     new Request("https://sentinel.ivmaladin.workers.dev/api/investigate", {
       method: "POST",
       headers: { "content-type": "application/json", "CF-Connecting-IP": "203.0.113.12" },
-      body: JSON.stringify({
-        receiver_account: "merchant.testnet",
-        amount_near: 0.1,
-        turnstile_token: "test-turnstile-token"
-      })
+      body: JSON.stringify({ receiver_account: "merchant.testnet", amount_near: 0.1 })
     }),
-    {
-      API_RATE_LIMITER: limiter(true),
-      INVESTIGATION_RATE_LIMITER: limiter(true),
-      TURNSTILE_SECRET: "test-only-secret"
-    },
+    { API_RATE_LIMITER: limiter(true), INVESTIGATION_RATE_LIMITER: limiter(true) },
     {}
   );
   assert.equal(response.status, 401);
