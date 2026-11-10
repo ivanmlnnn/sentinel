@@ -27,6 +27,8 @@ Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verifi
 
 **Gemini migration validation in [PR #13](https://github.com/ivanmlnnn/sentinel/pull/13):** 135/135 automated tests passed, including five Gemini adapter tests; Main and Signer D1 migrations validated; NEAR payment-contract WASM release build passed; [Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42906396166) and [CodeQL JavaScript analysis](https://github.com/ivanmlnnn/sentinel/actions/runs/42906396384) passed; both Cloudflare Worker preview builds passed. See the [Gemini migration verification record](docs/END_TO_END_VERIFICATION.md#9-gemini-provider-migration--11-november-2026). Production activation requires the `GEMINI_API_KEY` secret on the Main Worker.
 
+**Merged-main release (commit `7e88eee64954dbf61ce6e28dc4c31530c3ce14b2`):** production deployment succeeded, 135/135 automated tests passed, NEAR payment-contract WASM release build passed, CodeQL and Security CI passed, and production HTTP smoke checks passed 8/8. See [Deploy run #42907136456](https://github.com/ivanmlnnn/sentinel/actions/runs/42907136456) and the [end-to-end verification record](docs/END_TO_END_VERIFICATION.md#10-merged-main-gemini-production-release--11-november-2026). Live Gemini conversations still require `GEMINI_API_KEY` to be configured on the production Main Worker.
+
 ## What is implemented
 
 - NEAR account-state checks through FastNear JSON-RPC.
