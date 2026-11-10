@@ -8,6 +8,8 @@ on:
 
 permissions:
   contents: read
+  id-token: write
+  attestations: write
 
 jobs:
   test:
@@ -23,3 +25,18 @@ jobs:
         run: npm test
       - name: Run offline prompt-injection demo
         run: npm run demo:attack
+      - name: Package exact source revision
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        run: git archive --format=tar.gz --output=sentinel-source.tar.gz "$GITHUB_SHA"
+      - name: Upload source snapshot
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sentinel-source-${{ github.sha }}
+          path: sentinel-source.tar.gz
+          if-no-files-found: error
+      - name: Attest source snapshot provenance
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: sentinel-source.tar.gz
