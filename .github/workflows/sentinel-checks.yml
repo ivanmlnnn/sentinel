@@ -29,6 +29,7 @@ jobs:
           node --check functions/api/_shared.js
           node --check functions/api/agent.js
           node --check src/agent-policy.mjs
+          node --check src/near-agent-signer.mjs
       - name: Run test suite
         run: npm test
       - name: Run offline prompt-injection demo
