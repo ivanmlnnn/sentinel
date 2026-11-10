@@ -15,8 +15,14 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout full history for secret scanning
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan repository history for exposed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -31,6 +37,8 @@ jobs:
           node --check functions/api/_shared.js
           node --check functions/api/agent.js
           node --check functions/api/agent-approve.js
+          node --check src/index.js
+          node --check src/http-security.mjs
           node --check signer-worker/src/index.mjs
           node --check src/agent-policy.mjs
           node --check src/near-agent-signer.mjs
