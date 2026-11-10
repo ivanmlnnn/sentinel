@@ -130,8 +130,6 @@ This repository has pre-existing history and earlier project assets. The submiss
 
 - **Live dashboard:** https://sentinel.ivmaladin.workers.dev
 - **Repository:** https://github.com/ivanmlnnn/sentinel
-- **Demo video:** not yet linked in this repository; publish a real browser recording before final submission.
-- **Public X demo post:** not yet linked in this repository; publish the required public demo post before final submission.
 - **Source provenance:** [commit history, CI evidence, and signature status](docs/PROVENANCE.md)
 
 Official event: [NEAR HACKATHON](https://nearhackathon.com/) · [Builder instructions](https://nearhackathon.com/HACKATHON.md)
