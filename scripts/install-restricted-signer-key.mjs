@@ -27,21 +27,15 @@ if (adminPublicKey === oldPublicKey || adminPublicKey === restrictedPublicKey ||
 
 const provider = new JsonRpcProvider({ url: RPC });
 const account = new Account(accountId, provider);
-const accessKey = {
-  nonce: 0,
-  permission: {
-    FunctionCall: {
-      allowance: "250000000000000000000000",
-      receiver_id: contractId,
-      method_names: ["pay"]
-    }
-  }
-};
-
 const tx = await account.createTransaction({
   receiverId: accountId,
   actions: [
-    actions.addKey(restrictedSigner.getPublicKey(), accessKey),
+    actions.addFunctionCallAccessKey(
+      restrictedSigner.getPublicKey(),
+      contractId,
+      ["pay"],
+      250_000_000_000_000_000_000_000n
+    ),
     actions.deleteKey(oldSigner.getPublicKey())
   ],
   publicKey: adminSigner.getPublicKey()
