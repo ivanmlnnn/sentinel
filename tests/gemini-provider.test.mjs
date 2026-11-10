@@ -148,6 +148,32 @@ test("does not retry permanent Gemini authentication or model errors", async () 
   }
 });
 
+test("falls back to Gemini Flash Lite after persistent primary-model 503 overload", async () => {
+  const originalFetch = globalThis.fetch;
+  const requested = [];
+  globalThis.fetch = async (url) => {
+    requested.push(String(url));
+    if (requested.length <= 3) return new Response(JSON.stringify({ error: { message: "high demand" } }), {
+      status: 503, headers: { "content-type": "application/json" }
+    });
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: "Fallback recovered." }] } }] }), {
+      status: 200, headers: { "content-type": "application/json" }
+    });
+  };
+  try {
+    const result = await callGemini({ GEMINI_API_KEY: "test-secret" }, {
+      system: "system", messages: [{ role: "user", content: "hello" }]
+    });
+    assert.equal(requested.length, 4);
+    assert.match(requested[0], /models\\/gemini-3\\.8-flash:generateContent$/);
+    assert.match(requested[3], /models\\/gemini-3\\.5-flash-lite:generateContent$/);
+    assert.equal(result.ok, true);
+    assert.equal(result.data.content[0].text, "Fallback recovered.");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("returns a stable upstream error after bounded Gemini overload retries", async () => {
   const originalFetch = globalThis.fetch;
   let calls = 0;
