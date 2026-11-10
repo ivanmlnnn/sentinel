@@ -1,6 +1,6 @@
 # Sentinel — Website, Explorer & Restricted Function-Call Signer
 
-This document is the implementation and judge guide for the Sentinel website and the NEAR AI Security & Defense track requirement. It supersedes older statements in earlier notes that described the runtime signer as a FullAccess signer: the current branch source has been changed to a contract-scoped FunctionCall payment flow. A live Testnet deployment is still required before claiming the new flow is active.
+This document is the implementation and judge guide for the Sentinel website and the NEAR AI Security & Defense track. The runtime signer uses a contract-scoped FunctionCall payment flow. Successful private Signer Worker and Main Worker deployment records are linked below; the deployment logs do not independently expose the runtime public key's on-chain permission or prove a Sentinel-originated payout.
 
 ## Verified deployment record — 10 November 2026
 
@@ -167,14 +167,9 @@ After successful one-time rotation, remove NEAR_AGENT_SIGNER_OLD_PRIVATE_KEY fro
 
 The repository now contains the contract source, deploy script, restricted-key installation script, contract-call signer implementation, receipt-level verification, and manual workflow targets. This is source-level implementation.
 
-It is not yet proof that:
-- the payment contract has been deployed and initialized on Testnet;
-- the restricted key has been added to the actual signer account and the old runtime key revoked;
-- the Cloudflare private Signer Worker has the new restricted key and contract ID;
-- the manual GitHub Actions deploy has completed successfully;
-- a real Sentinel payment has succeeded and been independently matched in Explorer.
+The current evidence establishes successful Worker deployment, runtime secret-upload events, automated permission/receipt regression coverage, and production HTTP smoke checks. It does not independently establish the runtime public key's current on-chain permission because the deployment logs mask the key. The maintainer reports that the payment contract and existing signer configuration were provisioned previously; the cited deployment run reused that setup rather than redeploying the contract or rotating the key. No Sentinel-originated payment is claimed until a real transaction hash and matching successful native Transfer receipt are independently checked in Explorer/API.
 
-Only the corresponding successful workflow output, RPC permission query, and real transaction/receipt hash can close those items.
+See [End-to-End Verification Report](END_TO_END_VERIFICATION.md) for the exact 124-test and 8/8 production smoke results and the remaining live gates.
 
 ## 6. Explorer and provider references
 
