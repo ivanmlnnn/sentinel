@@ -16,7 +16,7 @@
 | Cloudflare Turnstile | Browser widget + server-side Siteverify request; action and hostname checks; fail-closed behavior | A real browser challenge on the current production hostname has not been demonstrated by a mocked unit test |
 | Privy | Server-side JWT signature verification against the app's Privy JWKS, plus issuer/audience/subject/time checks | A successful login in the current production browser, or proof that every API route requires Privy (Guest/read-only routes are intentionally public) |
 | Cloudflare rate limits | Worker bindings for API, investigation and agent routes | DDoS protection beyond configured per-IP limits or a separate external load test |
-| Isolated signer | Private Worker configuration, service binding, HMAC, replay ledger, human approval and spending policy | NEAR restricted function-call key compliance: current code explicitly requires FullAccess for its dedicated Testnet signer key |
+| Isolated signer | Private Worker configuration, service binding, HMAC, replay ledger, human approval, spending policy, and source-level contract-scoped FunctionCall key enforcement | Live Testnet contract deployment, restricted-key installation, Worker secret rotation, and successful contract payout still require the manual workflow |
 
 ## 2. NEAR FastNear JSON-RPC — account and transaction evidence
 
@@ -34,28 +34,13 @@ This is a real external chain-state lookup, not a locally fabricated wallet fixt
 
 ### 2.2 Signer permission is queried on-chain
 
-Before signing, the isolated signer calls `query / view_access_key` for the signer account and public key. The code requires:
+Before signing, the current branch signer calls query / view_access_key for the runtime signer account and public key. It requires a FunctionCall permission whose receiver_id exactly matches NEAR_PAYMENT_CONTRACT_ID and whose only allowed method is pay. A FullAccess key, a key scoped to another contract, a key allowing extra methods, or a missing contract ID is rejected with SIGNER_REQUIRES_CONTRACT_SCOPED_FUNCTION_CALL_KEY or PAYMENT_CONTRACT_NOT_CONFIGURED.
 
-```js
-data.result.permission === "FullAccess"
-```
-
-If that condition is not met, it stops with `SIGNER_REQUIRES_FULL_ACCESS_TESTNET_KEY`.
-
-**Security/track limitation:** this is a dedicated Testnet FullAccess key, isolated inside the private Signer Worker. It is not a contract-scoped function-call access key. Do not describe it as satisfying the track's restricted function-call-key requirement. A function-call key cannot directly make a native NEAR transfer; a compliant native-payment design needs a payment/escrow contract and a key scoped to the required contract methods.
+The runtime transaction is a FunctionCall to the payment contract. The contract emits the native NEAR payout as a separate transfer receipt. This is necessary because a FunctionCall key cannot directly issue a native Transfer action. The contract source is payment-contract/src/lib.rs; the one-time key installer is scripts/install-restricted-signer-key.mjs. The offline administrator key is separate from the restricted runtime key.
 
 ### 2.3 A submitted transaction is not yet a verified transaction
 
-After the signer submits a transaction, it obtains the transaction hash and then calls the FastNear `tx` JSON-RPC method. The final verification function checks all of the following against the RPC response:
-
-- hash has the expected Base58 shape;
-- RPC lookup succeeded and returned a transaction;
-- final status contains `SuccessValue` or `SuccessReceiptId`;
-- `transaction.signer_id` exactly matches the configured signer account;
-- `transaction.receiver_id` exactly matches the approved receiver;
-- the native `Transfer.deposit` exactly matches the approved yoctoNEAR amount.
-
-Only then does the function return `verified: true`, with the hash, signer, receiver, amount, block hash and final status. If the RPC lookup fails or any field mismatches, execution is not reported as verified; the ledger state is set to `UNKNOWN` where appropriate.
+After the signer submits a transaction, it obtains the transaction hash and calls the FastNear tx JSON-RPC method. The final verification checks the top-level transaction's signer, payment-contract receiver, successful status, FunctionCall method pay, and exact encoded receiver, amount and approval ID. It then checks receipt outcomes and calls EXPERIMENTAL_receipt for the receipt IDs. It requires a successful native Transfer receipt whose receiver and deposit exactly match the approved recipient and yoctoNEAR amount. Only then does the function return verified: true, including the transaction hash, signer, contract, final receiver, amount, payout receipt ID, block hash and final status. If the RPC lookup fails or any field mismatches, execution is not reported as verified; the ledger state is set to `UNKNOWN` where appropriate.
 
 The signer response constructs this Testnet Explorer URL from the returned hash:
 
@@ -307,15 +292,9 @@ These are configured application controls, not proof of an external penetration 
 
 ## 9. Manual GitHub Actions deployment evidence
 
-The deployment workflow is intentionally `workflow_dispatch` only. It requires the operator to type:
+The deployment workflow is intentionally workflow_dispatch only. It requires the operator to type DEPLOY_SENTINEL_TESTNET and choose payment-contract, signer, main or both. The verify job installs dependencies, runs Gitleaks, CodeQL, syntax checks, D1 migration validation, Wrangler dry-runs for both Workers, automated tests, the offline attack regression demo and a Rust/Wasm build of the payment contract. Only if verification succeeds and the exact confirmation input is present does the deploy job proceed.
 
-```text
-DEPLOY_SENTINEL_TESTNET
-```
-
-The workflow's verify job installs dependencies, runs Gitleaks, CodeQL, syntax checks, D1 migration validation, Wrangler dry-runs for both Workers, automated tests and the offline attack regression demo. Only if verification succeeds and the exact confirmation input is present does the deploy job proceed.
-
-The deploy job checks the GitHub Actions secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, applies remote migrations, deploys the private Signer Worker first, deploys the Main Worker, and runs production fail-closed HTTP smoke tests.
+The deploy job checks the Cloudflare credentials. The payment-contract target deploys and initializes the NEAR Testnet contract using its dedicated deployment key. The signer target can perform a one-time restricted-key installation/revocation, updates the private Worker runtime key and contract ID, applies DB2 migrations and deploys Signer Worker. The main target applies DB1 migrations, deploys Main Worker and runs HTTP smoke checks. The both target deploys Signer Worker before Main Worker. See docs/WEBSITE_EXPLORER_AND_RESTRICTED_SIGNER.md for the required one-time order and secrets.
 
 A smoke-test pass checks HTTP behavior (dashboard HTML, missing Turnstile rejection, unauthenticated protected routes, missing HMAC rejection). It explicitly is **not** a real browser/Privy UI test and does not send a Testnet payment.
 
@@ -348,14 +327,18 @@ Do not put actual JWTs, Turnstile tokens, private keys, HMAC secrets, Cloudflare
 
 The code contains real integration paths for FastNear Testnet RPC, NearBlocks Testnet API, Cloudflare Turnstile Siteverify, Privy JWKS verification, and the private Signer Worker. The source also contains unit/regression tests and an HTTP smoke-test script.
 
-The following must remain **NOT VERIFIED** until a live run produces evidence:
+The maintainer confirms that the production dashboard already displays NearBlocks Explorer links in Track Wallet results and that the authentication flows are working. Those existing website features should not be described as missing or unimplemented.
 
-- current production deployment commit and Cloudflare Worker versions;
-- production Turnstile challenge completion and live Siteverify success;
-- production Privy login and protected route round-trip;
-- successful live agent-to-guard-to-human-approval-to-signer flow;
-- an actual Sentinel-originated Testnet transaction independently matched against FastNear RPC and NearBlocks Explorer/API;
-- compliance with the track's restricted function-call access key requirement (current signer requires FullAccess).
+The following still require fresh deployment/chain evidence before they can be called independently verified for the current branch revision:
+
+- exact production commit and Cloudflare Worker versions;
+- current production Turnstile Siteverify and Privy API round-trip evidence tied to that deployed commit;
+- payment contract deployed, initialized and funded on Testnet;
+- restricted FunctionCall key installed on the actual signer account, with the old runtime FullAccess key revoked and the key scope confirmed by view_access_key;
+- private Signer Worker deployed with the restricted key and payment contract ID;
+- a Sentinel-originated native payout verified from the top-level FunctionCall and successful transfer receipt, then independently cross-checked in NearBlocks Explorer/API.
+
+The source code no longer accepts a FullAccess runtime signer. However, source implementation is not proof that the new key and contract have been provisioned or deployed.
 
 Do not replace these labels with "verified" based only on source code, local tests, mocked tests, screenshots of configuration, or a successful dry-run.
 
