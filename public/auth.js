@@ -50,6 +50,13 @@ function buildWayangAvatar(seed) {
     React.createElement('circle',{cx:25,cy:eyeY-1,r:'1',fill:'#102b2d'}),
     React.createElement('path',{d:'M20 39 Q28 43 38 39',fill:'none',stroke:palette[2],strokeWidth:'1.2',strokeLinecap:'round'}),
     React.createElement('path',{d:'M14 49 Q28 43 48 50',fill:'none',stroke:palette[1],strokeWidth:'1',opacity:'.85'}),
+    React.createElement('path',{d:'M8 52 Q13 47 19 47 M45 47 Q52 47 56 53',fill:'none',stroke:palette[1],strokeWidth:'1.2',opacity:'.85'}),
+    React.createElement('path',{d:'M'+(12+(hash%5))+' 31 Q'+(7+(hash%4))+' 35 '+(14+(hash%5))+' 41',fill:'none',stroke:palette[1],strokeWidth:'1.5',strokeLinecap:'round'}),
+    React.createElement('path',{d:'M'+(48-(hash%5))+' 30 Q'+(56-(hash%4))+' 35 '+(49-(hash%5))+' 41',fill:'none',stroke:palette[0],strokeWidth:'1.5',strokeLinecap:'round'}),
+    React.createElement('path',{d:'M'+(25+(hash%5))+' 25 l3 -'+(2+(hash%4))+' l3 '+(2+(hash%4)),fill:'none',stroke:palette[1],strokeWidth:'1.1',strokeLinecap:'round'}),
+    React.createElement('circle',{cx:32+(hash%9)-4,cy:23+((hash>>>12)%5),r:1.7+(hash%3)*.45,fill:palette[1],stroke:palette[0],strokeWidth:'.7'}),
+    React.createElement('path',{d:'M'+(23+(hash%4))+' 45 Q32 '+(48+((hash>>>16)%5))+' '+(41-(hash%4))+' 44',fill:'none',stroke:palette[1],strokeWidth:'.9',opacity:'.9'}),
+    React.createElement('path',{d:'M16 54 Q32 '+(48+((hash>>>20)%5))+' 48 54',fill:'none',stroke:palette[2],strokeWidth:'1.2'}),
     React.createElement('circle',{cx:32,cy:32,r:30,fill:'none',stroke:palette[1],strokeOpacity:'.45',strokeWidth:'.8'})
   );
 }
@@ -183,15 +190,21 @@ function AuthGate() {
   }
   if (!profileSeed) profileSeed = 'sentinel-user';
   const profileHash = wayangHash(String(profileSeed));
-  const profileLabel = window.SENTINEL_GUEST ? 'GUEST' : 'PRIVY USER';
+  const profileCode = profileHash.toString(36).toUpperCase().padStart(7, '0').slice(-7);
+  const emailIdentity = user?.email?.address || user?.google?.email || '';
+  const phoneIdentity = user?.phone?.number || '';
+  const identityName = window.SENTINEL_GUEST
+    ? 'GUEST ' + profileCode.slice(-4)
+    : (emailIdentity ? emailIdentity.split('@')[0] : (phoneIdentity || ('USER ' + profileCode.slice(-4))));
+  const profileLabel = window.SENTINEL_GUEST ? 'GUEST PROFILE' : 'PRIVY PROFILE';
   const sessionControl = React.createElement('div', { className: 'sentinel-session-control' },
-    React.createElement('div', { className: 'sentinel-profile-chip', title: window.SENTINEL_GUEST ? 'Read-only guest profile' : 'Authenticated Privy profile' },
+    React.createElement('div', { className: 'sentinel-profile-chip', title: (window.SENTINEL_GUEST ? 'Read-only guest profile · ' : 'Authenticated Privy profile · ') + identityName },
       React.createElement('span', { className: 'sentinel-session-avatar', role: 'img', 'aria-label': profileLabel + ' wayang profile' },
         buildWayangAvatar(profileSeed)
       ),
       React.createElement('span', { className: 'sentinel-profile-meta' },
-        React.createElement('strong', null, profileLabel),
-        React.createElement('small', null, 'WAYANG ID · ' + profileHash.toString(16).slice(-5).toUpperCase())
+        React.createElement('strong', null, identityName),
+        React.createElement('small', null, profileLabel + ' · ' + profileCode)
       )
     ),
     React.createElement('button', {
