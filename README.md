@@ -14,107 +14,47 @@ Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verifi
 - **[End-to-End Verification Report](docs/END_TO_END_VERIFICATION.md)** — exact test counts, production HTTP smoke results, deployment scope and provenance attestation.
 - **[Merged security architecture — PR #3](https://github.com/ivanmlnnn/sentinel/pull/3)** — isolated signer, actor-bound approval and replay protections.
 - **[Live dashboard](https://sentinel.ivmaladin.workers.dev)** · **[Judge Demo](docs/JUDGE_DEMO.md)** · **[Secure Agent Pipeline](docs/SECURE_AGENT_PIPELINE.md)**.
-- **Deployment proof:** [Signer Worker run #15](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536), [Main Worker run](https://github.com/ivanmlnnn/sentinel/actions/runs/42871954699), and [later Main Worker run #209](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638).
+- **Deployment proof:** [Signer Worker run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536), [Main Worker run 42871954699](https://github.com/ivanmlnnn/sentinel/actions/runs/42871954699), and [later Main Worker run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638).
 - **Security proof:** [Sentinel checks](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243801), [CodeQL](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243329), and [Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243623).
 
-**Latest recorded results:** 124/124 automated tests passed; the prompt-injection regression returned `DENIED - SENTINEL_BLOCK` with `Signer invoked: NO`; all 8 production HTTP smoke checks passed; both Worker deployment jobs and the later Main Worker deployment succeeded. See the [End-to-End Verification Report](docs/END_TO_END_VERIFICATION.md) for exact outputs and scope.
-
-<p align="center">
-  <a href="https://sentinel.ivmaladin.workers.dev"><strong>⚡ OPEN LIVE DASHBOARD</strong></a> ·
-  <a href="https://github.com/ivanmlnnn/sentinel"><strong>SOURCE CODE</strong></a> ·
-  <a href="docs/SECURE_AGENT_PIPELINE.md"><strong>SECURE AGENT PIPELINE</strong></a> ·
-  <a href="docs/JUDGE_DEMO.md"><strong>JUDGE DEMO GUIDE</strong></a> ·
-  <a href="docs/DEPLOYMENT_STATUS_AND_AI_PROVIDER.md"><strong>DEPLOYMENT STATUS & AI PROVIDER RECOVERY</strong></a> ·
-  <a href="docs/MANUAL_DEPLOYMENT_AND_CHAIN_VERIFICATION.md"><strong>MANUAL DEPLOY & CHAIN VERIFICATION</strong></a> ·
-  <a href="docs/REAL_INTEGRATION_VERIFICATION.md"><strong>REAL INTEGRATION VERIFICATION</strong></a> ·
-  <a href="docs/WEBSITE_EXPLORER_AND_RESTRICTED_SIGNER.md"><strong>WEBSITE, EXPLORER & RESTRICTED SIGNER</strong></a> ·
-  <a href="docs/SECURITY_HARDENING.md"><strong>SECURITY HARDENING</strong></a> ·
-  <a href="docs/SIGNED_VERDICT.md"><strong>SIGNED VERDICT ATTESTATION</strong></a>
-</p>
-
-| Builder | Network | Track direction | Stack |
-|---|---|---|---|
-| Ivan Maulana Alaudin · IVTECH | NEAR Testnet | **AI Security & Defense** | Cloudflare Workers · NEAR · Privy · Anthropic · NearBlocks |
-
-## Why Sentinel
-
-AI agents can be manipulated into proposing payments to unsafe destinations. A language model's confidence is not authorization. Sentinel adds deterministic on-chain evidence checks, a human approval checkpoint, and a separate key-owning Testnet Worker before a payment can be signed.
-
-## 30-second judge walkthrough
-
-1. Open the [currently deployed dashboard](https://sentinel.ivmaladin.workers.dev) and run the read-only wallet scan.
-2. Inspect the evidence behind the verdict and open the NEAR Explorer link.
-3. The private Signer Worker deployment is evidenced by [successful Testnet deployment run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536): Worker `sentinel-signer` was uploaded successfully, its runtime signer and contract-ID secrets were set, and its Worker version was `45194350-5fb8-4aec-8418-45b742147f35`.
-4. The merged Main Worker was redeployed successfully from `main` in [run 42871954699](https://github.com/ivanmlnnn/sentinel/actions/runs/42871954699); its production smoke test passed. The later tested source revision passed [Sentinel checks](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243801), [CodeQL](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243329), and [Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243623).
-5. Show a real Testnet transaction only after its hash is independently verified; otherwise show the fail-closed gate and state the limitation.
-
-The repository's automated attack demo is an offline regression test. It is not proof of a live transaction. See [Judge demo guide](docs/JUDGE_DEMO.md).
-
-### Verified deployment record — 10 November 2026
-
-- **Signer Worker:** successful deployment in [GitHub Actions run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536), source `989964e8f967120d61e94bec61e7d09d4049bb4c`. The logs confirm successful upload of the runtime signer and contract-ID secrets, deployment of `sentinel-signer`, and Worker version `45194350-5fb8-4aec-8418-45b742147f35`.
-- **Main Worker:** successful deployment from merged `main` commit `67c2b00007190e98c2038110c7bb0749b3a6f5c2` in [run 42871954699](https://github.com/ivanmlnnn/sentinel/actions/runs/42871954699), including a passing production smoke test. The later README/docs revision also passed [Cloudflare deployment run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638).
-- **CI:** Sentinel checks, CodeQL, and Security CI for the merged commit all completed successfully.
-- The signer account configured by source defaults to `freshnook5462.testnet`; `rawvest6817.testnet` is the tracked/recipient account. GitHub masks private-key values, so deployment logs alone do not reveal the wallet identity represented by the installed secret.
+**Latest recorded results:** 124/124 baseline automated tests passed; the prompt-injection regression returned `DENIED - SENTINEL_BLOCK` with `Signer invoked: NO`; all 8 production HTTP smoke checks passed. The signed-verdict PR branch additionally passed its Sentinel checks and Security CI workflows (run IDs 42880798027 and 42880798227). CodeQL run 42880798201 was still in progress at the time this README was updated. See the [End-to-End Verification Report](docs/END_TO_END_VERIFICATION.md) for the baseline release evidence and the [PR #10 workflow run](https://github.com/ivanmlnnn/sentinel/pull/10) for the branch-specific change.
 
 ## What is implemented
 
 - NEAR account-state checks through FastNear JSON-RPC.
-- Live read-only NEAR Testnet account state through FastNear JSON-RPC and indexed native transaction, receipt, and fungible-token transfer evidence through the NearBlocks Testnet API. These are external Testnet data sources, not locally fabricated transaction fixtures; provider coverage and pagination can still be incomplete.
+- Live read-only NEAR Testnet account state and indexed native transaction, receipt, and fungible-token transfer evidence through NearBlocks Testnet API; provider coverage and pagination are surfaced rather than assumed complete.
 - Evidence completeness tracking; missing or unavailable data is not treated as safe.
 - First-seen indexed activity proxy, explicitly not account creation age.
 - Contract code-hash comparison against earlier Sentinel scans.
 - Deployment-local D1 threat registry; only verified reports can trigger `BLOCK`.
 - Privy-authenticated investigation, AI review, and agent routes.
 - Anthropic tool-calling agent whose output is treated as an untrusted proposal.
-- Actor-bound, exact-intent, five-minute human approval plus a signer-side one-time approval claim before payment execution.
-- Separate signer Worker, private service binding, signer-owned D1 ledger (DB2), HMAC-SHA256 timestamp/nonce protection, replay ledger, exact pending-approval claim, NEP-413 wallet signature verification, receiver allowlist, spend caps, kill switch, and conservative `UNKNOWN` handling.
-- Ed25519-signed, short-lived preflight verdicts binding the exact sender, receiver, microNEAR amount, nonce, expiry, decision, and assessment ID. The isolated Signer Worker verifies the signature and exact intent before policy evaluation or payment execution.
-- Contract-scoped NEAR FunctionCall signer path: signer code checks the runtime key against the configured payment contract and the single `pay` method; native NEAR payouts are emitted by the payment contract, which enforces per-payment and UTC-day caps plus one-time approval IDs. The signer checks the exact payout receipt. The maintainer reports that the payment contract was previously deployed; linked Actions runs independently establish successful Worker deployments and runtime secret-upload events.
+- Actor-bound, exact-intent, five-minute human approval plus signer-side one-time approval claim.
+- Separate signer Worker, private service binding, signer-owned D1 ledger, HMAC-SHA256 timestamp/nonce protection, replay ledger, NEP-413 wallet signature verification, receiver allowlist, spend caps, kill switch, and conservative `UNKNOWN` handling.
+- Ed25519-signed, short-lived preflight verdicts on PR #10's feature branch. The payload binds sender, receiver, exact microNEAR amount, nonce, expiry, decision, risk score, assessment status, and assessment ID; the isolated signer verifies the signature and exact intent before policy evaluation and payment execution.
+- Contract-scoped NEAR FunctionCall signer path and final transaction/receipt verification, as documented in the existing deployment evidence.
 - Legacy in-process signing path disabled.
-- Aggregate-only public metrics, private admin report handling, per-investigation owner checks for AI review, bounded JSON parsing, same-origin API mutation checks, security response headers, and CodeQL/secret-scanning CI.
+- Aggregate-only public metrics, private admin report handling, per-investigation owner checks for AI review, bounded JSON parsing, same-origin API mutation checks, security response headers, and CI security checks.
 
-## Security boundary and honest status
+## Signed verdict attestation — PR #10
 
-The signer implementation is in a separate Worker project under `signer-worker/`; the main Worker does not import the signing key. The signer is configured without a public `workers.dev` endpoint and is intended to be invoked only through a Cloudflare service binding.
+The implementation is available on [`feat/signed-verdict-attestation`](https://github.com/ivanmlnnn/sentinel/tree/feat/signed-verdict-attestation) and proposed in [PR #10](https://github.com/ivanmlnnn/sentinel/pull/10). The Main Worker signs trusted assessment payloads with Ed25519; the isolated Signer Worker verifies the signature, expiry, and exact sender/receiver/amount/nonce binding before policy evaluation or payment execution.
 
-**Deployment evidence and source evidence are kept separate.** GitHub Actions records a successful private Signer Worker deployment (version `45194350-5fb8-4aec-8418-45b742147f35`) and successful Main Worker deployments, including a later Main Worker version `455d1be0-150c-4de0-84f7-c9040c99c615`; see the [Judge Evidence Pack](docs/JUDGE_EVIDENCE_PACK.md) for exact run links and scope. The Signer deployment log records runtime secret uploads and the service binding, while the Main deployment log records successful production HTTP smoke checks. The maintainer reports the payment contract was previously deployed and existing restricted signer configuration was reused.
+- Format, key provisioning, and verification order: [Signed Verdict documentation](docs/SIGNED_VERDICT.md).
+- Regression tests: [`tests/signed-verdict.test.mjs`](tests/signed-verdict.test.mjs).
+- Main Worker secret: `SENTINEL_VERDICT_PRIVATE_KEY` (base64 PKCS#8).
+- Private Signer Worker secret: `SENTINEL_VERDICT_PUBLIC_KEY` (base64 raw public key).
+- **Branch CI evidence:** [Sentinel checks run 42880798027](https://github.com/ivanmlnnn/sentinel/actions/runs/42880798027) — success; [Security CI run 42880798227](https://github.com/ivanmlnnn/sentinel/actions/runs/42880798227) — success; [CodeQL run 42880798201](https://github.com/ivanmlnnn/sentinel/actions/runs/42880798201) — in progress when checked.
 
-See [Signed Verdict](docs/SIGNED_VERDICT.md) for the attestation format and key provisioning. See [Secure Agent Pipeline](docs/SECURE_AGENT_PIPELINE.md) for the trust boundary, [Security Hardening](docs/SECURITY_HARDENING.md) for the access model and Burp Suite test plan, and [SECURITY.md](SECURITY.md) for responsible disclosure.
+**Release boundary:** the branch-specific automated workflows above passed where marked successful. This does not establish that the new verdict keypair has been provisioned in Cloudflare, that the feature branch has been deployed, or that a live Privy-to-Testnet payment has exercised this new attestation path. Do not present those deployment/runtime steps as complete until independently verified. The existing production deployment and E2E evidence elsewhere in this README applies to its recorded revisions.
 
-## End-to-end verification results
+## Security scope
 
-- **124/124 tests passed** in [Sentinel checks run 42873243801](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243801).
-- **Prompt-injection regression passed:** `DENIED - SENTINEL_BLOCK`; `Signer invoked: NO`.
-- **8/8 production HTTP smoke checks passed** in [Main Worker deployment run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638): dashboard HTTP 200; missing Turnstile rejected with HTTP 400; missing bearer/HMAC credentials rejected with HTTP 401.
-- **Signer and Main Worker deployment jobs passed** in [run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536); later Main Worker deployment and smoke passed in [run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638).
-- **Source provenance attestation:** [Sigstore/Rekor attestation #65936142](https://github.com/ivanmlnnn/sentinel/attestations/65936142).
+This change addresses signed assessment integrity and exact-intent binding at the isolated signer boundary. It does not claim a seeded public threat registry, typosquat detection, dedicated new-account-age detection, tool-output-injection detection, a labeled precision/recall benchmark, or an LLM suspicious-intent signal. Those capabilities are not described as implemented.
 
-These results are documented with their corresponding workflow runs in the [full End-to-End Verification Report](docs/END_TO_END_VERIFICATION.md).
+## Existing deployment and E2E evidence
 
-## Signed verdict attestation
-
-The `feat/signed-verdict-attestation` pull request adds Ed25519 signing to the authenticated Main Worker preflight and signature verification to the isolated Signer Worker. The signed payload binds the signer account, receiver, exact microNEAR amount, nonce, issue time, expiry, decision, risk score, and assessment ID. The signer rejects expired, tampered, or intent-mismatched attestations before entering the payment path.
-
-- Implementation and key provisioning: [Signed Verdict documentation](docs/SIGNED_VERDICT.md).
-- Regression coverage: [signed-verdict.test.mjs](tests/signed-verdict.test.mjs).
-- Required secrets: `SENTINEL_VERDICT_PRIVATE_KEY` on Main Worker and the matching `SENTINEL_VERDICT_PUBLIC_KEY` on the private Signer Worker.
-
-**Release evidence boundary:** this code is present on the feature branch and proposed in [PR #10](https://github.com/ivanmlnnn/sentinel/pull/10). The focused test file has been added, but this branch's test run and live Worker key provisioning/deployment have not yet been verified. The existing deployment and E2E results elsewhere in this README refer to previously recorded revisions, not this feature branch. Do not interpret them as proof that signed verdicts are live.
-
-## Security verification evidence
-
-The latest linked verification records are collected in [Judge Evidence Pack](docs/JUDGE_EVIDENCE_PACK.md): [Sentinel checks run 42873243801](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243801), [CodeQL run 42873243329](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243329), and [Security CI run 42873243623](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243623). Open each run to inspect the exact workflow jobs and logs. Successful CI establishes that the corresponding automated workflow completed; it is not a zero-alert certificate, independent penetration test, proof of live wallet sign-in, or proof of a successful Sentinel-originated Testnet transfer.
-
-## Deployment and on-chain verification
-
-**Release deployment is manual through GitHub Actions only.** Use [Actions → Deploy Sentinel Testnet](https://github.com/ivanmlnnn/sentinel/actions/workflows/deploy-testnet.yml), select the reviewed branch, and enter `DEPLOY_SENTINEL_TESTNET`. The workflow must pass source validation before it applies remote D1 migrations, deploys the private Signer Worker, deploys the Main Worker, and runs production smoke checks. Do not treat a Wrangler dry-run or Cloudflare preview build as a production deployment.
-
-The Signer Worker checks the final transaction against NEAR Testnet FastNear JSON-RPC for signer, receiver, exact amount, payment-contract call and successful native Transfer receipt. Its response includes a Testnet NearBlocks Explorer link when a transaction is actually verified. Independently compare that same hash with the [NearBlocks Testnet API](https://api-testnet.nearblocks.io/api-docs) and [Testnet Explorer](https://testnet.nearblocks.io/) before presenting it to judges. The Explorer cross-check is a manual evidence step; the signer currently uses FastNear RPC as its automated final gate.
-
-See [manual deployment and chain-verification procedure](docs/MANUAL_DEPLOYMENT_AND_CHAIN_VERIFICATION.md) for required GitHub secrets, DB1/DB2 bindings, exact workflow steps, and the evidence checklist. See [Website vs Explorer and Restricted Signer](docs/WEBSITE_EXPLORER_AND_RESTRICTED_SIGNER.md) for the difference between the dashboard and Explorer, the contract-call/receipt model, and the one-time key rotation. No transaction hash is claimed here unless it has actually been produced and checked.
-
-**Track security boundary:** the current signer source rejects FullAccess and requires a FunctionCall key scoped to the configured payment contract and the single `pay` method. Native NEAR payouts are emitted by the contract, not by a direct transfer action from the restricted key. The maintainer reports that the payment contract and existing restricted signer configuration were previously provisioned; the successful Worker deployment log records secret-upload events. Because those logs mask the key and do not expose its public key or on-chain permission response, do not treat the deployment record alone as independent proof of the live key scope. A Sentinel-originated payout still requires its own transaction hash and matching successful receipt.
+The repository's previous release evidence includes successful private Signer Worker and Main Worker deployments, a 124/124 automated test run, 8/8 production HTTP smoke checks, and a prompt-injection regression that denied execution without invoking the signer. These are linked in the [Judge Evidence Pack](docs/JUDGE_EVIDENCE_PACK.md) and [End-to-End Verification Report](docs/END_TO_END_VERIFICATION.md). They are historical evidence for the referenced revisions, not proof that PR #10's new Cloudflare secrets or signed-verdict deployment are live.
 
 ## Run it locally
 
@@ -125,6 +65,7 @@ git clone https://github.com/ivanmlnnn/sentinel.git
 cd sentinel
 npm install
 npm test
+node --test tests/signed-verdict.test.mjs
 npm run demo:attack
 ```
 
@@ -136,21 +77,8 @@ npx wrangler@4.159.0 deploy --config signer-worker/wrangler.jsonc --dry-run
 
 ## Hackathon provenance
 
-This repository has pre-existing history and earlier project assets. The submission does not claim the entire repository was created during the hackathon. The event-period work is recorded in Git history; judges should evaluate the changes authored during the official build window. See [provenance and development timeline](docs/TECHNICAL_DETAILS.md#12-development-timeline-and-pre-existing-repository-history).
-
-## Submission assets
-
-- **Live dashboard:** https://sentinel.ivmaladin.workers.dev
-- **Repository:** https://github.com/ivanmlnnn/sentinel
-- **Source provenance:** [commit history, CI evidence, and signature status](docs/PROVENANCE.md)
-
-Official event: [NEAR HACKATHON](https://nearhackathon.com/) · [Builder instructions](https://nearhackathon.com/HACKATHON.md)
+This repository has pre-existing history and earlier project assets. The submission does not claim the entire repository was created during the hackathon. See [provenance and development timeline](docs/TECHNICAL_DETAILS.md#12-development-timeline-and-pre-existing-repository-history).
 
 ---
 
 Built by **Ivan Maulana Alaudin · IVTECH**.
-
-
-## Latest deployment and AI provider recovery
-
-The coordinated deployment procedure, current successful workflow records, exact GitHub Actions targets, required secrets, and Anthropic credit-exhaustion recovery steps are documented in [Deployment Status and AI Provider Recovery](docs/DEPLOYMENT_STATUS_AND_AI_PROVIDER.md). For routine redeployment of both Workers, choose `deploy_target=both` and keep `rotate_signer_key=false`; the existing payment contract is reused.
