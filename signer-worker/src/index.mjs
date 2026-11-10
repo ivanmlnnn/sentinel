@@ -118,7 +118,8 @@ export async function assertRestrictedFunctionCallKey(accountId, publicKey, cont
       !Array.isArray(permission.method_names) ||
       permission.method_names.length !== 1 ||
       permission.method_names[0] !== "pay" ||
-      allowance !== 250_000_000_000_000_000_000_000n) {
+      allowance <= 0n ||
+      allowance > 250_000_000_000_000_000_000_000n) {
     throw new Error("SIGNER_REQUIRES_CONTRACT_SCOPED_FUNCTION_CALL_KEY");
   }
   return { receiver_id: permission.receiver_id, method_names: permission.method_names };
