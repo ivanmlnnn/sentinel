@@ -10,17 +10,15 @@ const HARD_MAX_DAILY_MICRO = 200_000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
-  });
+  return new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
 }
 function hexToBytes(value) {
-  if (!/^(?:[0-9a-f]{2})+$/i.test(value)) return null;
+  if (typeof value !== "string" || !/^(?:[0-9a-f]{2}){32}$/i.test(value)) return null;
   return Uint8Array.from(value.match(/.{2}/g), byte => parseInt(byte, 16));
 }
 export function nearToMicro(value) {
   const raw = typeof value === "number" ? String(value) : String(value ?? "");
-  if (!/^(?:0|[1-9][0-9]*)(?:\.[0-9]{1,6})?$/.test(raw)) return null;
+  if (!/^(?:0|[1-9][0-9]*)(?:\\.[0-9]{1,6})?$/.test(raw)) return null;
   const [whole, fraction = ""] = raw.split(".");
   const micro = BigInt(whole) * 1_000_000n + BigInt((fraction + "000000").slice(0, 6));
   if (micro <= 0n || micro > BigInt(Number.MAX_SAFE_INTEGER)) return null;
@@ -31,17 +29,17 @@ function microToNearString(micro) {
   const fraction = String(micro % 1_000_000).padStart(6, "0").replace(/0+$/, "");
   return fraction ? whole + "." + fraction : String(whole);
 }
-function deny(reason, status = "DENIED") {
-  return { executed: false, status, reason, transaction_hash: null };
-}
+function deny(reason, status = "DENIED") { return { executed: false, status, reason, transaction_hash: null }; }
+
 export async function readBoundedSignerBody(request, maxBytes = 8000) {
-  const contentType = (request.headers.get("content-type") || "").toLowerCase();
-  if (!contentType.startsWith("application/json")) {
-    return { ok: false, status: 415, reason: "JSON_CONTENT_TYPE_REQUIRED" };
-  }
+  const contentType = (request.headers.get("content-type") || "").split(";", 1)[0].trim().toLowerCase();
+  if (contentType !== "application/json") return { ok: false, status: 415, reason: "JSON_CONTENT_TYPE_REQUIRED" };
+  const encoding = (request.headers.get("content-encoding") || "identity").trim().toLowerCase();
+  if (encoding !== "identity") return { ok: false, status: 415, reason: "CONTENT_ENCODING_NOT_SUPPORTED" };
   const declaredLength = request.headers.get("content-length");
-  if (declaredLength && /^\d+$/.test(declaredLength) && Number(declaredLength) > maxBytes) {
-    return { ok: false, status: 413, reason: "REQUEST_TOO_LARGE" };
+  if (declaredLength !== null) {
+    if (!/^\\d+$/.test(declaredLength) || !Number.isSafeInteger(Number(declaredLength))) return { ok: false, status: 400, reason: "INVALID_CONTENT_LENGTH" };
+    if (Number(declaredLength) > maxBytes) return { ok: false, status: 413, reason: "REQUEST_TOO_LARGE" };
   }
   if (!request.body) return { ok: false, status: 400, reason: "INVALID_BODY" };
   const reader = request.body.getReader();
@@ -52,25 +50,18 @@ export async function readBoundedSignerBody(request, maxBytes = 8000) {
       const { done, value } = await reader.read();
       if (done) break;
       total += value.byteLength;
-      if (total > maxBytes) {
-        await reader.cancel();
-        return { ok: false, status: 413, reason: "REQUEST_TOO_LARGE" };
-      }
+      if (total > maxBytes) { await reader.cancel(); return { ok: false, status: 413, reason: "REQUEST_TOO_LARGE" }; }
       chunks.push(value);
     }
     const bytes = new Uint8Array(total);
     let offset = 0;
-    for (const chunk of chunks) {
-      bytes.set(chunk, offset);
-      offset += chunk.byteLength;
-    }
+    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
     return { ok: true, text: new TextDecoder("utf-8", { fatal: true }).decode(bytes) };
   } catch {
     try { await reader.cancel(); } catch {}
     return { ok: false, status: 400, reason: "INVALID_BODY" };
   }
 }
-
 export async function verifyInternalRequest(request, rawBody, env) {
   const secret = env.AGENT_SIGNER_HMAC_SECRET;
   const timestamp = request.headers.get("x-sentinel-timestamp") || "";
