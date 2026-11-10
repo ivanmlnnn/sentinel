@@ -1,103 +1,136 @@
 # NEAR HACKATHON — Sentinel Judge Demo
 
+> **Judge entry point:** use the [Judge Evidence Pack](JUDGE_EVIDENCE_PACK.md) for the consolidated evidence index, exact workflow links, reproducible commands and verification boundaries.
+
 ## One-line pitch
 
-**NEAR Sentinel is a pre-sign security checkpoint for AI agents: it checks a NEAR payment destination with on-chain evidence, requires human approval of the exact intent, and isolates the Testnet signing key from the application Worker.**
+**NEAR Sentinel is a pre-sign security checkpoint for AI agents on NEAR: AI proposes a payment, Sentinel checks on-chain evidence and deterministic policy, the wallet owner approves the exact intent, and an isolated signer enforces the final limits.**
 
-## Track positioning
+## Track fit: AI Security & Defense
 
-Primary track: **AI Security & Defense**. The official track explicitly calls for spending limits, policy engines, sandboxed wallets, reputation, and scam detection. Sentinel's core contribution is a pre-sign policy checkpoint that treats AI output as untrusted, evaluates on-chain evidence, requires exact-intent human approval, and isolates a Testnet signer. Do not position Open Innovation as the primary track, and do not claim a complete autonomous business or NEAR Intents integration.
+The official track calls for agent security, spending limits, policy engines, sandboxed wallets, reputation and scam detection. Sentinel's primary contribution is a deterministic pre-sign authorization boundary that treats model output as untrusted, makes evidence uncertainty explicit, binds approval to the exact receiver and amount, and separates the application Worker from the key-owning signer.
 
-## Deployment and transaction evidence
+Do not claim that Sentinel implements NEAR Intents, a complete autonomous business, an independent security audit, or a guarantee that a wallet is safe.
 
-The release path is the manual [Deploy Sentinel Testnet GitHub Actions workflow](https://github.com/ivanmlnnn/sentinel/actions/workflows/deploy-testnet.yml), not a local Wrangler deploy. Select the reviewed branch, choose the target (payment-contract, signer, main or both), and enter `DEPLOY_SENTINEL_TESTNET`; the deploy job only runs after source validation passes. Show the exact successful workflow run and deployed commit SHA. A preview build or dry-run is not production deployment evidence.
+## Verified repository and deployment evidence
 
-For a real payout, show the Signer Worker's FastNear verification of the top-level FunctionCall to the payment contract and the successful native Transfer receipt to the final recipient. Open the same transaction hash in [NEAR Testnet Explorer](https://testnet.nearblocks.io/) and cross-check the call and receipt. The dashboard's Track Wallet Explorer links are for inspecting tracked account activity; they are distinct from proof of a Sentinel-originated payment.
-
-The current branch signer source requires a dedicated Testnet FunctionCall key scoped to the payment contract and only the pay method. The contract holds the payout balance and emits native transfer receipts. This design is not live until the contract, key rotation and private Worker deployment are completed and verified on Testnet.
-
-## 2:45 demo sequence
-
-Record the real browser and working application. The public URL is the scanner entry point. The maintainer reports manually deploying both Main and Signer Workers; before recording the Agent Lab as live, confirm the active Cloudflare Worker versions, service binding, secrets, remote D1 migration state, and a successful smoke test. A source branch or Wrangler dry-run alone is not deployment proof. Keep the recording concise; do not use slides as a substitute for the working product.
-
-| Time | What the judge sees | What to say |
+| Area | Evidence | What a judge can verify |
 |---|---|---|
-| 0:00–0:20 | Dashboard landing page | “AI agents can propose payments faster than people can inspect destinations. Sentinel adds an evidence-based checkpoint before value moves.” |
-| 0:20–0:55 | Complete the visible Cloudflare Turnstile challenge, enter a public NEAR Testnet account, and run Wallet Tracker | “This is read-only. Cloudflare verifies this browser challenge server-side before Sentinel queries NEAR account state and indexed transaction, receipt, and token-transfer evidence.” |
-| 0:55–1:20 | Expand verdict and evidence | “ALLOW is not a guarantee. WARN, BLOCK, and INCOMPLETE have distinct meanings; missing evidence is never described as safe.” |
-| 1:20–1:50 | Sign in and use Agent Lab with a small proposal | “Anthropic can propose one payment. Its output is untrusted and cannot authorize a transfer.” |
-| 1:50–2:15 | Show exact receiver/amount approval prompt | “The user must approve this exact destination and amount. The proposal expires after five minutes and cannot be reused.” |
-| 2:15–2:35 | Show signer architecture and the latest CI evidence | “The main Worker does not hold the NEAR key. A separate private Worker verifies NEP-413 approval, repeats policy checks, enforces caps, replay protection, and a kill switch.” |
-| 2:35–2:45 | Show verified explorer transaction only if available | “This hash is shown only after the Testnet transaction is independently confirmed.” |
+| Merged implementation | [PR #3](https://github.com/ivanmlnnn/sentinel/pull/3) | Isolated signer, NEP-413 approval and replay protections are merged. |
+| Signer deployment | [Actions run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536) | Private Worker `sentinel-signer` deployed; version `45194350-5fb8-4aec-8418-45b742147f35`; runtime secret upload events are visible in job logs. |
+| Main deployment | [Actions run 42871954699](https://github.com/ivanmlnnn/sentinel/actions/runs/42871954699) | Merged-main deployment and production smoke test succeeded. |
+| Later Main deployment | [Actions run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638) | Later Main Worker deployment succeeded; version `455d1be0-150c-4de0-84f7-c9040c99c615`; HTTP smoke checks passed. |
+| Sentinel checks | [Actions run 42873243801](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243801) | Automated checks completed successfully; inspect job logs for test assertions. |
+| CodeQL | [Actions run 42873243329](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243329) | Static-analysis workflow completed successfully; review Security alerts separately. |
+| Security CI | [Actions run 42873243623](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243623) | Security regression workflow completed successfully. |
 
-### If the live signer flow or transfer cannot be independently verified
+These are separate workflow runs. The Signer Worker deployment run and later Main Worker deployment run must not be represented as a single simultaneous deployment of identical source revisions.
 
-Stop the demo at the approval screen and show the fail-closed response. Say clearly: **“The source and automated tests validate the signer controls, but I am not presenting an unverified deployment or transaction as live.”** Never display a mock hash or imply a simulated transaction is real.
+## 5-minute judge walkthrough
 
-## Judge test cases
+1. **Open the product:** https://sentinel.ivmaladin.workers.dev
+2. **Run a read-only wallet scan:** use a public NEAR Testnet account. Inspect the verdict and its supporting account/transaction/receipt/token-transfer evidence.
+3. **Explain uncertainty:** show the difference between `ALLOW`, `WARN`, `BLOCK`, and `INCOMPLETE`. A provider failure or incomplete history must not be described as a safe wallet.
+4. **Inspect the code:** open [PR #3](https://github.com/ivanmlnnn/sentinel/pull/3), then review `functions/api/agent-approve.js`, `signer-worker/src/index.mjs`, and `payment-contract/src/lib.rs`.
+5. **Inspect deployment logs:** open the Signer Worker and Main Worker workflow runs above. Check the deployment version, secret-upload events, service binding, and production smoke-test output.
+6. **Reproduce tests:** clone the repository and run the commands below.
+7. **Do not invent a payout:** only show a Sentinel-originated transaction as successful if a real hash and matching final native Transfer receipt can be opened independently in the Testnet Explorer.
 
-Prepare these short cases after the corresponding branch deployment and show the observed result, not an expected result you have not run:
+## Reproduce the checks
 
-1. Valid receiver with complete evidence and no verified threat: policy may return `ALLOW`; user approval is still required.
-2. Verified threat match: `BLOCK`; no signer invocation.
-3. Suspicious behavior: `WARN`; no signer invocation.
-4. Missing evidence or provider outage: `INCOMPLETE`; no signer invocation.
-5. Receiver changed after proposal: reject exact-intent mismatch.
-6. Reuse an approval ID: reject because approval is one-time.
-7. Stale or replayed internal signer request: reject.
-8. Kill switch enabled: signer denies.
+Requirements: Node.js 22+.
 
-## Latest reproducible CI evidence
+```bash
+git clone https://github.com/ivanmlnnn/sentinel.git
+cd sentinel
+npm ci
+npm test
+npm run demo:attack
+```
 
-The current feature branch head [`31a71a4`](https://github.com/ivanmlnnn/sentinel/commit/31a71a44964bffdb990bc7072ad86168b6072002) passed [Sentinel Security CI run 42857959405](https://github.com/ivanmlnnn/sentinel/actions/runs/42857959405) and [CodeQL run 42857959683](https://github.com/ivanmlnnn/sentinel/actions/runs/42857959683). The security CI includes Gitleaks, JavaScript syntax checks, regression tests, and D1 migration validation. CodeQL completed successfully; inspect the Security tab for individual findings.
+Expected output for the offline prompt-injection regression demo:
 
-These results apply only to the exact commit above. They do not prove a live Cloudflare deployment, remote D1 migration state, real Privy browser sign-in, or a successful Testnet signer transaction. The deploy workflow is manual and must complete its deployment and production smoke-test jobs before the dashboard or Signer Worker can be described as updated.
+```text
+DENIED - SENTINEL_BLOCK
+Signer invoked: NO
+PASS
+```
+
+This is an offline regression simulation. It demonstrates the application-level guard's expected fail-closed behavior; it is not a live LLM red-team exercise, does not invoke the deployed signer, and does not send a NEAR transaction.
+
+## What the security controls mean
+
+- **AI proposal is untrusted:** a model response is not a signature or authorization.
+- **Evidence-driven verdict:** verified threat matches can block; suspicious signals warn; missing evidence is incomplete.
+- **Exact-intent approval:** approval binds the authenticated actor, receiver, amount and expiry.
+- **NEP-413 verification:** the signer validates the wallet-signed approval message.
+- **Replay resistance:** one-time approval claims, nonce tracking, HMAC timestamp/nonce checks and idempotency state prevent reuse of stale or duplicated requests.
+- **Signer isolation:** Main Worker calls the private Signer Worker through the Cloudflare service binding; the signing key is not imported into Main Worker source.
+- **Restricted key policy:** signer code checks on-chain access-key permission for the configured payment contract and only the `pay` method; FullAccess and broader permissions are rejected.
+- **Spending controls:** receiver allowlist, per-payment/daily caps, contract approval IDs and kill switch constrain execution.
+- **Receipt verification:** the signer checks the exact contract call and successful native Transfer receipt for the approved recipient and amount.
+
+Automated test assertions include pay-only FunctionCall scope, rejection of FullAccess/other contracts/extra methods, forged or invalid approval rejection, replay/nonce rejection, stale or tampered HMAC rejection, kill-switch denial, fail-closed evidence handling, and exact payout-receipt verification requirements. See the [Judge Evidence Pack](JUDGE_EVIDENCE_PACK.md) for the linked CI runs.
+
+## Deployment, contract and transaction status — read carefully
+
+- GitHub Actions provides successful deployment evidence for the private Signer Worker and Main Worker, including deployment versions and successful production HTTP smoke checks.
+- The Signer deployment log records runtime secret-upload events and the service binding. Secret values are masked; logs do not reveal private keys.
+- The maintainer reports that the payment contract was previously deployed and existing runtime signer configuration was reused.
+- The linked deployment logs do not, by themselves, independently prove the public key's live on-chain permission scope or a successful Sentinel-originated payout.
+- No transaction hash is claimed in this guide. A payout is proven only by a real transaction hash with matching signer, payment-contract call, recipient, amount, successful final status and native Transfer receipt, independently cross-checked in [NEAR Testnet Explorer](https://testnet.nearblocks.io/).
+
+This is not a product failure statement. It is a strict distinction between successful Worker deployment, source/test evidence, maintainer-reported existing chain setup, and an independently verifiable payment transaction.
+
+## AI provider availability
+
+Agent, Guest Agent and AI Review routes currently use Anthropic's Messages API and tool-call schema. The observed credit-balance error is an upstream provider billing issue and is classified in the application as `AI_PROVIDER_BILLING_ERROR`. That classification improves diagnostics; it does not add provider credits.
+
+Do not substitute a Qwen key into an Anthropic configuration. A provider migration needs a tested adapter for authentication, model IDs, tool schemas, tool-call parsing, follow-up messages and errors across the agent routes. Demonstrate the live Agent Lab only after a real model response is observed. The read-only scanner and repository security checks are separate and can be reviewed independently.
 
 ## Judge questions and concise answers
 
 **Does the LLM decide whether a wallet is safe?**  
-No. Anthropic proposes a structured intent. Sentinel applies deterministic rules to verified evidence. The signer repeats the investigation and policy checks.
+No. The model can propose an intent or explain evidence. Deterministic Sentinel policy evaluates evidence and the signer repeats the security checks.
 
-**Can prompt injection make the agent transfer funds?**  
-A prompt can influence the proposal, but cannot bypass the allowlist, evidence checks, actor-bound one-time approval, signer limits, or kill switch.
+**Can prompt injection itself authorize a transfer?**  
+No. A prompt is not a wallet signature. The flow requires exact-intent human approval, NEP-413 verification, signer policy, replay checks and contract constraints.
 
-**Where is the private key?**  
-Only in the separate signer Worker secret store. The main app Worker has no signing key and no in-process signing fallback.
+**Where is the signing key?**  
+In the separate Signer Worker runtime secret store, not imported into the Main Worker. GitHub logs mask secret values.
 
-**Does ALLOW mean safe?**  
+**Does ALLOW mean the account is safe?**  
 No. It means the configured checks completed without a verified blocking signal. It is a risk screen, not a guarantee.
 
-**Is the live transaction proven?**  
-Answer only from the explorer and D1 evidence. If no real hash is verified, say the signer remains gated.
+**Does a green deployment prove a successful payout?**  
+No. Deployment proves Worker release and the checks recorded by that workflow. A payout requires its own transaction hash and matching successful receipt.
 
 **What existed before the hackathon?**  
-The repository has pre-existing history and assets. The README and provenance document identify this honestly; the submission does not claim the whole project was created during the event.
+The repository has pre-existing history and assets. See [provenance and development timeline](TECHNICAL_DETAILS.md#12-development-timeline-and-pre-existing-repository-history). The submission does not claim the whole repository was created during the event.
 
 ## Submission checklist
 
-The current official NEAR Hackathon page says the final submission must include a public repository and a public X demo post. The post must say the project was built at NEAR HACKATHON, tag `@NEARProtocol`, use `#NEARHackathon`, and attach a demo video or screenshots. Submit both the repository URL and demo-post URL before **14 November 2026, 23:59 UTC**.
+The official event requires a public repository and a public X demo post that says the project was built at NEAR HACKATHON, tags `@NEARProtocol`, uses `#NEARHackathon`, and includes a demo video or screenshots. Submit both links before **14 November 2026, 23:59 UTC**.
 
-- [ ] Public repository: https://github.com/ivanmlnnn/sentinel
-- [ ] Public live dashboard: https://sentinel.ivmaladin.workers.dev
-- [ ] Public X post includes “Built at NEAR HACKATHON”, `@NEARProtocol`, and `#NEARHackathon`
-- [ ] Attach a clear product demo video or screenshots
-- [ ] README explains how to run, architecture, limits, and known gaps
-- [ ] CI and CodeQL are green on the exact submitted commit
-- [ ] Record both Cloudflare Worker versions, D1 remote migration status, and production smoke-test output
-- [ ] Capture a live Turnstile challenge and a controlled NEAR wallet approval/transaction if enabled
-- [ ] No secrets, private keys, tokens, or personal wallet recovery data in Git history
-- [ ] Submission form contains both repository and X post links
-- [ ] Keep the PR and provenance disclosure transparent
+- [x] Public repository: https://github.com/ivanmlnnn/sentinel
+- [x] Public live dashboard: https://sentinel.ivmaladin.workers.dev
+- [x] Merged security architecture PR: https://github.com/ivanmlnnn/sentinel/pull/3
+- [x] Deployment and CI evidence linked in [Judge Evidence Pack](JUDGE_EVIDENCE_PACK.md)
+- [ ] Public X demo post includes “Built at NEAR HACKATHON”, `@NEARProtocol`, and `#NEARHackathon`
+- [ ] Attach a real screen recording or screenshots
+- [ ] Submit both repository and X post links in the official form
+- [ ] Ensure the submitted branch/commit is the one used for the final demo
 
 ## Suggested X post
 
 > Built at **NEAR HACKATHON**: **NEAR Sentinel** — a pre-sign security checkpoint for AI agents on NEAR.
 >
-> AI proposes. Sentinel checks on-chain evidence. A human approves the exact payment intent. A separate Testnet signer enforces the final limits.
+> AI proposes. Sentinel checks on-chain evidence and deterministic policy. A human approves the exact payment intent. An isolated signer enforces the final limits.
 >
-> Live demo + open source: https://sentinel.ivmaladin.workers.dev  
-> Repo: https://github.com/ivanmlnnn/sentinel
+> Live demo: https://sentinel.ivmaladin.workers.dev  
+> Open-source repo: https://github.com/ivanmlnnn/sentinel  
+> Evidence pack: https://github.com/ivanmlnnn/sentinel/blob/main/docs/JUDGE_EVIDENCE_PACK.md
 >
 > @NEARProtocol #NEARHackathon
 
-Publish only after attaching a real screen recording or screenshots. Do not claim a live signer transfer unless its hash has been independently verified.
+Attach a real recording or screenshots before publishing. Do not claim a live AI response or payout unless it has actually been observed and verified.
