@@ -61,6 +61,19 @@ async function assertFullAccessKey(accountId, publicKey) {
   const data = await response.json();
   if (data.error || data.result?.permission !== "FullAccess") throw new Error("SIGNER_REQUIRES_FULL_ACCESS_TESTNET_KEY");
 }
+async function claimApproval(env, { approvalId, idempotencyKey, actor, receiver, amountMicro }) {
+  const pending = await env.DB.prepare(
+    "SELECT id, actor, receiver_account, amount_micro, status FROM agent_pending_approvals " +
+    "WHERE id=? AND actor=? AND status='APPROVING' AND expires_at > CURRENT_TIMESTAMP"
+  ).bind(approvalId, actor).first();
+  if (!pending || pending.receiver_account !== receiver || Number(pending.amount_micro) !== amountMicro) {
+    throw new Error("HUMAN_APPROVAL_NOT_VERIFIED");
+  }
+  await env.DB.prepare(
+    "INSERT INTO signer_approval_claims (approval_id, idempotency_key, actor, receiver_account, amount_micro, claimed_at) " +
+    "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"
+  ).bind(approvalId, idempotencyKey, actor, receiver, amountMicro).run();
+}
 async function reserveSpend(env, { idempotencyKey, actor, receiver, amountMicro, dailyCapMicro }) {
   const result = await env.DB.prepare(
     "INSERT INTO agent_execution (idempotency_key, actor, receiver_account, amount_micro, status, created_at, updated_at) " +
@@ -89,8 +102,9 @@ async function investigate(intent, authorizationHeader, env) {
   return data;
 }
 export async function execute(payload, authorizationHeader, identity, env) {
-  const { intent, idempotency_key: idempotencyKey } = payload;
+  const { intent, idempotency_key: idempotencyKey, approval_id: approvalId } = payload;
   if (!UUID_RE.test(String(idempotencyKey || ""))) return deny("INVALID_IDEMPOTENCY_KEY");
+  if (!UUID_RE.test(String(approvalId || ""))) return deny("INVALID_APPROVAL_ID");
   if (env.NEAR_NETWORK !== "testnet") return deny("TESTNET_ONLY");
   if (env.NEAR_AGENT_KILL_SWITCH !== "false") return deny("KILL_SWITCH_ACTIVE");
   if (!env.NEAR_AGENT_SIGNER_PRIVATE_KEY || !env.NEAR_AGENT_SIGNER_ACCOUNT_ID) return deny("SIGNER_NOT_CONFIGURED");
