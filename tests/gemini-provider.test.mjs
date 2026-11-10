@@ -187,7 +187,8 @@ test("returns a stable upstream error after bounded Gemini overload retries", as
     const result = await callGemini({ GEMINI_API_KEY: "test-secret" }, {
       system: "system", messages: [{ role: "user", content: "hello" }]
     });
-    assert.equal(calls, 3);
+    // Three primary attempts plus one bounded fallback attempt.
+    assert.equal(calls, 4);
     assert.equal(result.ok, false);
     assert.equal(result.status, 503);
     assert.equal(result.error, "AI_PROVIDER_UPSTREAM_ERROR");
