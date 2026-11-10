@@ -75,10 +75,10 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
   <p class="agent-lab-intro">Tell Sentinel the security task. It can run live wallet forensics, query verified threat intelligence, analyze anomalies, and explain evidence. Guest tools are strictly read-only.</p>
   <form id="agentForm">
    <div id="agentResult" class="agent-result hidden" aria-live="polite"></div>
-   <label for="agentPrompt">AGENT INSTRUCTION</label>
-   <textarea id="agentPrompt" maxlength="4000" required placeholder="Example: Propose a 0.01 NEAR Testnet payment to merchant.testnet for a demo."></textarea>
+   <label for="agentPrompt">MESSAGE SENTINEL</label>
+   <textarea id="agentPrompt" maxlength="4000" required placeholder="Message Sentinel… Ask a question or investigate a NEAR account."></textarea>
    <div class="agent-lab-warning"><b>TESTNET SAFETY LIMITS</b><span>Maximum 0.1 NEAR per transfer · 0.2 NEAR per UTC day · explicit receiver allowlist · kill switch.</span></div>
-   <div class="agent-lab-submit"><span>AI proposal ≠ authorization</span><button class="primary-btn" id="agentRunBtn" type="submit">Run secure agent <b>↗</b></button></div>
+   <div class="agent-lab-submit"><span>AI proposal ≠ authorization</span><button class="primary-btn" id="agentRunBtn" type="submit">Send message <b>↗</b></button></div>
   </form>
  </div>
  <aside class="panel agent-policy-panel">
