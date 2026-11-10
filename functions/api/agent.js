@@ -1,5 +1,6 @@
 import { json, readJson, verifyPrivyAccessToken } from "./_shared.js";
 import { evaluateAgentAuthorization, validatePaymentIntent } from "../../src/agent-policy.mjs";
+import { onRequestPost as investigatePost } from "./investigate.js";
 
 const MAX_PROMPT_LENGTH = 4000;
 const MODEL_TOOL = [{
@@ -89,11 +90,12 @@ export async function onRequestPost({ request, env }) {
     });
   }
 
-  const base = new URL(request.url);
   let assessment = null;
   let investigationError = null;
   try {
-    const response = await fetch(new URL("/api/investigate", base.origin), {
+    // Call the authenticated investigation handler in-process. This avoids a
+    // recursive public Worker request and keeps the identity boundary explicit.
+    const preflightRequest = new Request(request.url, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -102,9 +104,9 @@ export async function onRequestPost({ request, env }) {
       body: JSON.stringify({
         receiver_account: intent.receiver_account,
         amount_near: intent.amount_near
-      }),
-      signal: AbortSignal.timeout(12000)
+      })
     });
+    const response = await investigatePost({ request: preflightRequest, env });
     assessment = await response.json().catch(() => null);
     if (!response.ok) investigationError = assessment?.error || "SENTINEL_PREFLIGHT_FAILED";
   } catch {
