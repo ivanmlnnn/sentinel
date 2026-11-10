@@ -1,52 +1,113 @@
 # Secure AI Agent Pipeline
 
-## Current implementation status
+## Security status
 
-This branch adds an authenticated Anthropic tool-calling agent, a deterministic payment policy, and an isolated server-side Testnet signer module. The signer is disabled unless all required Worker secrets, limits, D1 migrations, and allowlist configuration are present. No live transfer has been claimed or verified by CI; the real signing path must be tested with a dedicated, low-balance Testnet account before enabling it.
+This branch implements a two-Worker signing architecture and a mandatory human approval step. The main Sentinel Worker does not import or hold the NEAR signing key. The key-owning Worker is configured with `workers_dev=false` and `preview_urls=false`; it is intended to be reached only through the main Worker's Cloudflare service binding.
 
-## Flow
+**This code is not yet a verified live signing deployment.** No production D1 migrations, signer secrets, or live Testnet transfer are claimed by CI. Keep the signer kill switch enabled until the deployment checklist is completed.
 
-1. A Privy-authenticated user submits a bounded prompt to `POST /api/agent/run`.
-2. The configured Anthropic provider may call exactly one `request_near_payment` tool.
-3. The server validates the proposed receiver and amount independently of the model.
-4. The server calls Sentinel's authenticated investigation endpoint using the same bearer token.
-5. Only a complete, exact-intent `ALLOW` plus Testnet-only configuration, explicit receiver allowlist, spend cap, and disabled kill switch can reach the pending-signer state.
-6. The signer repeats the Sentinel assessment inside its own boundary, checks a full-access Testnet key, enforces hard caps (0.1 NEAR per transfer and 0.2 NEAR per UTC day), and reserves spend in D1 before signing.
-7. Each execution requires a UUID `Idempotency-Key`. A duplicate key cannot execute twice. Ambiguous RPC outcomes stay reserved as `UNKNOWN` for manual reconciliation.
-8. Every proposal is recorded in `agent_audit`; execution reservations and transaction hashes are recorded in `agent_execution`. Prompts, tokens, provider payloads, and secrets are not stored.
+## Request flow
 
-## Required Worker configuration
+1. A Privy-authenticated user asks the Anthropic agent to propose an action.
+2. Anthropic may return one `request_near_payment` tool proposal. Model output is untrusted.
+3. Main Sentinel validates the exact receiver and amount, then performs a complete deterministic Sentinel investigation.
+4. An `ALLOW` creates an actor-bound pending approval with the exact receiver and amount. It expires after five minutes. **No funds move at this stage.**
+5. The user sees the exact receiver and amount and must click **Approve this exact payment** and confirm the browser prompt.
+6. The approval endpoint claims the pending approval once, checks the authenticated actor, re-runs Sentinel against the exact intent, and calls the signer only through a private Cloudflare service binding.
+7. Main Worker signs the internal request with HMAC-SHA256 over timestamp, one-time nonce, and exact body. The signer rejects stale signatures, invalid signatures, and replayed nonces.
+8. The signer independently verifies the Privy token, actor binding, Testnet-only account, allowlist, limits, kill switch, and fresh Sentinel verdict. It reserves daily spend in D1 before signing.
+9. The signer uses only the fixed NEAR Testnet RPC. Ambiguous post-submit outcomes remain `UNKNOWN` and are not automatically retried.
+10. Audit proposals, approvals, reservations, and transaction hashes are stored in D1. Prompts, JWTs, provider payloads, and private keys are not stored.
+
+## Worker separation
+
+### Main Worker: `sentinel`
+
+- Serves the dashboard, Privy authentication, Anthropic agent, investigation API, and approval UI.
+- Holds `ANTHROPIC_API_KEY` and `AGENT_SIGNER_HMAC_SECRET` as Worker secrets.
+- Does **not** hold `NEAR_AGENT_SIGNER_PRIVATE_KEY`.
+- Calls `sentinel-signer` through the `SIGNER_SERVICE` service binding.
+- Must not have an in-process signing fallback. The legacy module now returns `LEGACY_IN_PROCESS_SIGNER_DISABLED`.
+
+### Signer Worker: `sentinel-signer`
+
+- Separate Worker deployment, configured with `workers_dev=false` and `preview_urls=false`.
+- Holds `NEAR_AGENT_SIGNER_PRIVATE_KEY` and the matching `AGENT_SIGNER_HMAC_SECRET` as Worker secrets.
+- Uses the same D1 database for the spend ledger, pending approvals, and replay nonce ledger.
+- Has no browser assets or public route configured.
+- Re-runs the authenticated Sentinel investigation using `SENTINEL_PREFLIGHT_URL`.
+
+A shared HMAC secret protects the internal service request but does not make the main Worker a fully trusted authorization oracle. The signer still enforces its own hard-coded caps, actor identity, receiver allowlist, kill switch, and independent investigation. Keep the signer key low-balance and Testnet-only.
+
+## Hard limits
+
+- Network: Testnet only; RPC URL is fixed to `https://rpc.testnet.fastnear.com`.
+- Per-transfer hard cap: 0.1 NEAR.
+- Daily hard cap: 0.2 NEAR, counted in microNEAR using D1 UTC dates.
+- Receiver: exact allowlist match; account must end in `.testnet`.
+- Key: dedicated Testnet full-access key; runtime permission check is mandatory for native NEAR transfer.
+- Approval: actor-bound, exact receiver and amount, one-time, five-minute expiry.
+- Kill switch: signer denies unless `NEAR_AGENT_KILL_SWITCH=false`. Keep it `true` during setup.
+
+## Deployment configuration
+
+Do not run these deployment steps until CI is green and the branch has been reviewed. Deploy the signer Worker first, then the main Worker.
+
+### Main Worker variables
 
 - `NEAR_NETWORK=testnet`
-- `NEAR_AGENT_KILL_SWITCH=false` (all other values keep the kill switch active)
-- `NEAR_AGENT_ALLOWED_RECEIVERS=merchant.testnet` (comma-separated exact account IDs)
-- `NEAR_AGENT_MAX_PAYMENT_NEAR=0.1` (positive numeric cap, never above 0.1)
-- `NEAR_AGENT_MAX_DAILY_NEAR=0.2` (positive numeric cap, never above 0.2)
-- `NEAR_AGENT_SIGNER_ACCOUNT_ID=sentinel-agent.testnet` (dedicated Testnet account)
-- `NEAR_AGENT_SIGNER_PRIVATE_KEY` as a Worker secret containing the account's registered `ed25519:` secret key
-- Apply D1 migrations `004_agent_security.sql` and `005_agent_execution.sql` before enabling the endpoint
+- `NEAR_AGENT_ALLOWED_RECEIVERS=rawvest6817.testnet`
+- `NEAR_AGENT_MAX_PAYMENT_NEAR=0.01`
+- `NEAR_AGENT_MAX_DAILY_NEAR=0.02`
+- `ANTHROPIC_MODEL=claude-haiku-5-5` (optional; current default)
 - `ANTHROPIC_API_KEY` as a Worker secret
-- Existing Privy and D1 configuration
+- `AGENT_SIGNER_HMAC_SECRET` as a Worker secret
 
-Do not put provider credentials or wallet keys in `wrangler.jsonc`, source control, browser code, or frontend build variables.
+### Signer Worker variables
 
-## Signer deployment and verification gate
+- `NEAR_NETWORK=testnet`
+- `NEAR_AGENT_KILL_SWITCH=true` (keep enabled until final controlled test)
+- `NEAR_AGENT_SIGNER_ACCOUNT_ID=freshnook5462.testnet`
+- `NEAR_AGENT_ALLOWED_RECEIVERS=rawvest6817.testnet`
+- `NEAR_AGENT_MAX_PAYMENT_NEAR=0.01`
+- `NEAR_AGENT_MAX_DAILY_NEAR=0.02`
+- `SENTINEL_PREFLIGHT_URL=https://sentinel.ivmaladin.workers.dev`
+- `AGENT_SIGNER_HMAC_SECRET` as the same secret used by the main Worker
+- `NEAR_AGENT_SIGNER_PRIVATE_KEY` as a Worker secret, only after all gates pass
+- Existing Privy app ID configuration if the project uses a non-default Privy app ID
 
-The signing service must be a separate trust boundary with a dedicated low-balance Testnet account and its own Worker secret. It must independently:
-- reject mainnet and unknown networks;
-- validate the exact receiver, amount, account ID, and action type;
-- enforce a server-side receiver allowlist, per-transaction cap, daily spend cap, and kill switch;
-- bind authorization to a one-time transaction intent (nonce/idempotency key and payload hash);
-- re-check Sentinel policy inside the signer boundary rather than trusting a client-supplied verdict;
-- never expose key material or signing capability to the model/browser;
-- record the transaction hash and verify final execution via NEAR RPC.
+Generate the HMAC secret locally (never send it in chat or commit it), then set it as a Secret in both Workers. Do not put any key in `wrangler.jsonc`, GitHub Actions, frontend code, or `.env` committed to Git.
 
-A native NEAR transfer requires a full-access key. The signer checks the registered key permission at runtime. Keep the dedicated Testnet account balance minimal, never reuse its key on mainnet, and do not enable the secret until the migration and allowlist are in place.
+### D1 migration gate
 
-## Tests
+The migrations are additive: `004_agent_security.sql`, `005_agent_execution.sql`, `006_signer_nonces.sql`, and `007_agent_pending_approvals.sql`. Before applying them to the shared database:
 
-Run `npm test`. The tests cover Testnet-only operation, kill-switch defaults, explicit allowlisting, spend caps, exact receiver/amount binding, malformed values, denial of BLOCK/WARN/INCOMPLETE decisions, exact microNEAR conversion, and missing signer configuration. CI does not possess the private key and cannot prove a live Testnet transaction.
+1. Confirm the database ID in `wrangler.jsonc` is the intended Sentinel D1 database.
+2. Export/backup the database.
+3. Run `npx wrangler d1 migrations list f3fa44b2-2b49-4af1-8687-2346cb336b22 --remote`.
+4. Review pending migrations, then apply them with `npx wrangler d1 migrations apply f3fa44b2-2b49-4af1-8687-2346cb336b22 --remote`.
 
-## Honest demo statement
+Do not apply migrations against a different database or from an unreviewed branch.
 
-The AI provider can propose a payment; Sentinel re-assesses the target; the isolated signer can only use a configured Testnet full-access key under hard-coded caps, D1 reservations, and idempotency. Until a live Testnet transaction is observed and independently checked on the explorer, do not claim the end-to-end signing demo is verified.
+## Controlled verification checklist
+
+- [ ] CI passes on the exact commit being deployed.
+- [ ] Both Worker bundles pass Wrangler dry-run.
+- [ ] D1 backup exists and migrations 004–007 are applied to the intended database.
+- [ ] Signer Worker is deployed separately and is not publicly addressable.
+- [ ] Main Worker service binding points to the signer Worker.
+- [ ] HMAC secret matches between Workers; private key exists only in signer Worker.
+- [ ] Signer kill switch remains enabled during negative tests.
+- [ ] Unauthenticated, invalid-HMAC, stale-HMAC, and replayed-nonce requests are rejected.
+- [ ] BLOCK, WARN, INCOMPLETE, receiver substitution, expired approval, duplicate approval, and over-limit requests are rejected.
+- [ ] Approval UI displays the exact receiver and amount and requires a deliberate click plus confirmation.
+- [ ] Only after all checks pass: fund the dedicated signer with a minimal Testnet balance, temporarily disable the signer kill switch, and make one small transfer to `rawvest6817.testnet`.
+- [ ] Independently verify transaction hash, sender, receiver, amount, final status, and D1 audit; immediately re-enable the kill switch.
+
+Do not claim a real transaction or isolated deployment until the above evidence exists. CI cannot prove a live blockchain transfer because CI has no wallet secret.
+
+## Judge-facing demo
+
+The honest demo is: prompt → AI proposal → deterministic Sentinel evidence → exact-intent approval screen → isolated signer boundary → Testnet explorer hash. Show a BLOCK/WARN or incomplete-evidence case being denied as well. If live signing is not deployed, demonstrate the approval and fail-closed behavior and explicitly label the transfer step as gated—not live.
+
+See [Judge demo guide](JUDGE_DEMO.md) for a short walkthrough and submission checklist.
