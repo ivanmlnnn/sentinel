@@ -294,22 +294,18 @@ A submitted community report is not automatically trusted and must not trigger `
 
 The dashboard includes the required NearBlocks attribution: **“Powered by NearBlocks.io APIs.”**
 
-### Deploy the latest Worker changes
+### Deploy the latest Worker changes — manual GitHub Actions only
 
-From a trusted local checkout with Wrangler authenticated to the Cloudflare account:
+For the hackathon release, do **not** deploy from a local terminal with Wrangler. Use the manual [Deploy Sentinel Testnet workflow](https://github.com/ivanmlnnn/sentinel/actions/workflows/deploy-testnet.yml):
 
-```bash
-npx wrangler@latest secret put NEARBLOCKS_API_KEY
-npx wrangler@latest secret put THREAT_REVIEW_TOKEN
-# Optional, only if AI explanations are enabled:
-npx wrangler@latest secret put ANTHROPIC_API_KEY
-npx wrangler@latest deploy
-```
+1. Select **Run workflow** and choose the reviewed `feat/isolated-signer-worker` branch (or the release branch after PR #3 is merged).
+2. Enter `DEPLOY_SENTINEL_TESTNET` exactly.
+3. Wait for the verification job to pass before the deploy job can run.
+4. Confirm both D1 migration steps, private Signer Worker deployment, Main Worker deployment, and production smoke checks finish successfully.
 
-Use a long random value for `THREAT_REVIEW_TOKEN`; store it only as a Cloudflare Worker secret. Do not paste it into GitHub, README files, browser code, or chat. The public app ID is not a secret. If overriding the built-in Privy app ID, configure `PRIVY_APP_ID` in the Worker environment to match the Privy app used by the browser.
+The workflow needs `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in GitHub Actions secrets/environment. Runtime Worker secrets must already be configured in Cloudflare; the workflow does not create or reveal them. Never paste secret values into the repository or logs.
 
-The deployment workflow now validates Wrangler configuration, runs tests, deploys the Worker, and performs production HTTP smoke checks. The latest verified smoke checks confirm the dashboard returns HTTP 200, unauthenticated `POST /api/investigate` returns 401, the public Guest investigation returns a decision, and unauthenticated `POST /api/threats` and `POST /api/ai-review` return 401. A real Privy sign-in session and fresh-browser visual check still require manual verification.
-
+The workflow's verification and deployment semantics, DB1/DB2 bindings, and the RPC/Explorer transaction-evidence procedure are documented in [Manual Deployment and Chain Verification](MANUAL_DEPLOYMENT_AND_CHAIN_VERIFICATION.md). A successful dry-run is not a deployment, and a successful deployment is not proof of a Testnet payment. Only show a transaction after the Signer Worker's FastNear final verification and an independent NearBlocks Testnet Explorer/API cross-check.
 ## 12. Development timeline and pre-existing repository history
 
 The repository's earlier snapshot showed **212 commits in its overall history** before the latest November changes. That total is not the number of commits made during the 1–14 November 2026 work window, and older files/assets in the repository (including material dated June) are not being represented as newly created during November.
