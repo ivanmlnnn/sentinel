@@ -228,7 +228,7 @@ function AuthGate() {
           // GUEST_MODE / __SENTINEL_APP_STARTED flags before the next login or Guest session.
           window.SENTINEL_GUEST = false;
           try { sessionStorage.removeItem('sentinel_privy_guest'); } catch {}
-          window.location.reload();
+          window.location.replace(window.location.pathname + '?session_refresh=' + Date.now());
         } catch (error) {
           console.error('Privy logout failed:', error);
           setAuthError('Sign out could not be completed. Please retry.');
