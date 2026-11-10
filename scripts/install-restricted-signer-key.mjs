@@ -60,7 +60,8 @@ const data = await check.json();
 const permission = data.result?.permission?.FunctionCall;
 if (data.error || permission?.receiver_id !== contractId ||
     !Array.isArray(permission.method_names) ||
-    permission.method_names.length !== 1 || permission.method_names[0] !== "pay") {
+    permission.method_names.length !== 1 || permission.method_names[0] !== "pay" ||
+    BigInt(permission.allowance || "0") !== 250_000_000_000_000_000_000_000n) {
   throw new Error("RESTRICTED_KEY_POSTCHECK_FAILED");
 }
 
