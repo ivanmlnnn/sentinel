@@ -1,4 +1,5 @@
 import { json, readJson, verifyPrivyAccessToken, canReadInvestigation } from "./_shared.js";
+import { callGemini } from "./_gemini.js";
 
 export async function onRequestPost({ request, env }) {
   const identity = await verifyPrivyAccessToken(request, env);
@@ -13,25 +14,22 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "Investigation not found." }, 404);
   }
   if (item.ai_explanation) return json({ investigation_id: id, decision: item.decision, explanation: item.ai_explanation, cached: true });
-  if (!env.ANTHROPIC_API_KEY) return json({ error: "AI provider is not configured on Cloudflare.", setup_required: true }, 503);
+  if (!env.GEMINI_API_KEY) return json({ error: "AI provider is not configured on Cloudflare.", setup_required: true }, 503);
 
   const system = "You are NEAR Sentinel, a cautious blockchain security analyst. Explain only supplied structured evidence. Never invent transaction history, account age, ownership, exploit details, or malicious intent. Distinguish observed facts from limitations. Do not change the deterministic ALLOW/WARN/BLOCK decision. Give a concise explanation and safe next step.";
   const prompt = JSON.stringify({ decision: item.decision, risk_score: item.risk_score, receiver: item.receiver_account, amount_near: item.amount_near, risk_factors: JSON.parse(item.risk_factors || "[]"), evidence: JSON.parse(item.evidence || "{}") });
-  let response;
-  try {
-    response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: env.ANTHROPIC_MODEL || "claude-3-5-haiku-latest", max_tokens: 450, system, messages: [{ role: "user", content: prompt }] })
-    });
-  } catch { return json({ error: "AI provider request failed." }, 502); }
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const providerMessage = String(data?.error?.message || "The configured AI provider rejected the request.").slice(0, 240);
-    const billing = /credit balance|insufficient.{0,20}credit|plans\s*&\s*billing|purchase credits|billing/i.test(providerMessage);
-    return json({ error: billing ? "AI_PROVIDER_BILLING_ERROR" : "AI_PROVIDER_ERROR", provider_status: response.status, provider_message: providerMessage }, 502);
-  }
-  const explanation = (data.content || []).filter(x => x.type === "text").map(x => x.text).join("\n").trim();
+  const result = await callGemini(env, {
+    system,
+    messages: [{ role: "user", content: prompt }],
+    maxOutputTokens: 450,
+    timeoutMs: 15000
+  });
+  if (!result.ok) return json({
+    error: result.error,
+    provider_status: result.status || null,
+    provider_message: result.message
+  }, 502);
+  const explanation = (result.data.content || []).filter(x => x.type === "text").map(x => x.text).join("\\n").trim();
   if (!explanation) return json({ error: "AI provider returned an empty explanation." }, 502);
   await env.DB.prepare("UPDATE investigations SET ai_explanation = ? WHERE id = ?").bind(explanation, id).run();
   return json({ investigation_id: id, decision: item.decision, explanation });
