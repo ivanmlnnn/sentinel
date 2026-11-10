@@ -1,4 +1,4 @@
-import * as THREE from 'https://esm.sh/three@0.180.0';
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
 
 export function mountWayang3D(host) {
   if (!host || host.dataset.wayang3dMounted === '1') return () => {};
