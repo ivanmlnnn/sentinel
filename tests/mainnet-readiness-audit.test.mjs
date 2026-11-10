@@ -13,6 +13,9 @@ test("current Testnet-pinned implementation is explicitly blocked", async () => 
   const report = await auditMainnetReadiness(process.cwd());
   const blocked = new Set(report.checks.filter(x => x.status === "BLOCKED").map(x => x.id));
   assert.ok(blocked.has("NET-001"));
+  assert.ok(blocked.has("NET-002"));
+  assert.ok(blocked.has("NET-003"));
   assert.ok(blocked.has("ASSET-001"));
   assert.ok(blocked.has("ENV-001"));
+  assert.ok(blocked.has("ENV-002"));
 });
