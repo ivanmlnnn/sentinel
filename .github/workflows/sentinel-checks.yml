@@ -21,6 +21,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Install project dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
       - name: Check browser and API JavaScript syntax
         run: |
           node --check public/auth.js
