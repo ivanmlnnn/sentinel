@@ -26,7 +26,7 @@ const routes = {
 async function validateBoundedJsonBody(request) {
   const declaredLength = request.headers.get("content-length");
   if (declaredLength !== null) {
-    if (!/^\\d+$/.test(declaredLength) || !Number.isSafeInteger(Number(declaredLength))) {
+    if (!/^\d+$/.test(declaredLength) || !Number.isSafeInteger(Number(declaredLength))) {
       return { ok: false, status: 400, error: "INVALID_CONTENT_LENGTH" };
     }
     if (Number(declaredLength) > MAX_API_BODY_BYTES) return { ok: false, status: 413, error: "REQUEST_TOO_LARGE" };
