@@ -14,20 +14,14 @@ test("rejects zero, negative, exponent notation and precision beyond microNEAR",
   }
 });
 
-test("signer fails closed without explicit Testnet configuration and wallet secret", async () => {
-  const base = {
-    intent: { receiver_account: "merchant.testnet", amount_near: 0.01 },
+test("legacy in-process signer is permanently fail-closed", async () => {
+  const result = await executeTestnetPayment({
+    intent: { receiver_account: "rawvest6817.testnet", amount_near: 0.01 },
     actor: "did:privy:test",
     idempotencyKey: "123e4567-e89b-42d3-a456-426614174000",
-    authorizationHeader: "Bearer test",
-    env: {}
-  };
-  assert.equal((await executeTestnetPayment(base)).reason, "TESTNET_ONLY");
-  assert.equal((await executeTestnetPayment({
-    ...base, env: { NEAR_NETWORK: "testnet", NEAR_AGENT_KILL_SWITCH: "false" }
-  })).reason, "SIGNER_NOT_CONFIGURED");
-  assert.equal((await executeTestnetPayment({
-    ...base, idempotencyKey: "not-a-uuid",
-    env: { NEAR_NETWORK: "testnet", NEAR_AGENT_KILL_SWITCH: "false" }
-  })).reason, "INVALID_IDEMPOTENCY_KEY");
+    env: { NEAR_NETWORK: "testnet", NEAR_AGENT_KILL_SWITCH: "false",
+      NEAR_AGENT_SIGNER_PRIVATE_KEY: "must-never-be-used", NEAR_AGENT_SIGNER_ACCOUNT_ID: "freshnook5462.testnet" }
+  });
+  assert.equal(result.executed, false);
+  assert.equal(result.reason, "LEGACY_IN_PROCESS_SIGNER_DISABLED");
 });
