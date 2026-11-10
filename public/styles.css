@@ -2672,3 +2672,73 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
 @media(prefers-reduced-motion:reduce){
  .sentinel-auth-card:has(.sentinel-auth-mark) .sentinel-auth-mark{animation:none!important}
 }
+
+
+/* Login actions: clean paired controls, one clear primary action and one quiet demo action. */
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button,
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button{
+  position:relative!important;isolation:isolate!important;
+  width:100%!important;min-height:54px!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  padding:0 22px!important;margin-left:auto!important;margin-right:auto!important;
+  border-radius:8px!important;
+  font-family:"Manrope","Inter",ui-sans-serif,sans-serif!important;
+  font-size:13px!important;font-weight:800!important;letter-spacing:.015em!important;
+  line-height:1!important;text-transform:none!important;
+  overflow:hidden!important;
+  transition:transform .28s cubic-bezier(.2,.8,.2,1),background .28s ease,border-color .28s ease,box-shadow .28s ease,color .28s ease!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button{
+  margin-top:5px!important;
+  border:1px solid #a8e8f5!important;
+  border-left:1px solid #e8df78!important;
+  background:linear-gradient(105deg,#a6e3f2 0%,#8bd4ef 58%,#b4e7f0 100%)!important;
+  color:#102d30!important;
+  box-shadow:0 8px 24px rgba(76,177,207,.17),inset 0 1px 0 #ffffffa8!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button::after{
+  content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:linear-gradient(110deg,transparent 20%,#ffffff55 48%,transparent 72%);
+  transform:translateX(-130%);transition:transform .65s cubic-bezier(.2,.8,.2,1);
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button:hover:not(:disabled){
+  transform:translateY(-2px)!important;background:linear-gradient(105deg,#c0eff8,#9be0f4 60%,#d0f2f5)!important;
+  box-shadow:0 12px 30px rgba(76,177,207,.28),0 0 0 3px rgba(139,212,239,.1)!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button:hover::after{transform:translateX(130%)}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button{
+  margin-top:10px!important;min-height:49px!important;
+  border:1px solid rgba(139,212,239,.38)!important;
+  background:rgba(8,25,26,.34)!important;
+  color:#c8e1df!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035)!important;
+  font-size:12px!important;font-weight:700!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button:hover:not(:disabled){
+  transform:translateY(-2px)!important;
+  border-color:#8bd4ef!important;background:rgba(139,212,239,.10)!important;
+  color:#f1f8f4!important;box-shadow:0 8px 22px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.06)!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button:active,
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button:active{
+  transform:translateY(0) scale(.985)!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-footnote{
+  margin:10px 0 4px!important;font-size:9px!important;letter-spacing:.12em!important;
+  color:#a9c8c8!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-security{
+  margin-top:16px!important;max-width:320px!important;color:#a9c5c0!important;
+}
+/* Keep the previously approved continuous moving light-bar loader intact. */
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-loader{
+  animation:none!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-loader::before,
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-loader::after{
+  animation:sentinel-loading-sweep 1.45s cubic-bezier(.65,0,.35,1) infinite!important;
+}
+@media(max-width:520px){
+ .sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button{min-height:52px!important}
+ .sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button{min-height:48px!important}
+}
