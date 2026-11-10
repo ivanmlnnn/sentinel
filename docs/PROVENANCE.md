@@ -14,6 +14,7 @@ This page is an evidence index for reviewers. It separates repository history, a
   - [6a19bd4](https://github.com/ivanmlnnn/sentinel/commit/6a19bd4863db10891cc322fc4a19ec2ee2472c18) — required Privy verification for the authenticated investigation route.
   - [3424edc](https://github.com/ivanmlnnn/sentinel/commit/3424edc17b817ed3430c1c758109e88e5cd3fc43) — separated authenticated and Guest investigation routes.
   - [c4337c3](https://github.com/ivanmlnnn/sentinel/commit/c4337c3ba70dc161744a668929f6111729cbd1af) — removed an obsolete unauthenticated Hatchable AI-review endpoint.
+  - [1cbc598](https://github.com/ivanmlnnn/sentinel/commit/1cbc598f44c6a71c9b2d4bf1bab7619e4d983f00) — restricted the public threat feed to verified reports.
 
 ## Signature status
 
@@ -24,9 +25,12 @@ For stronger author-identity evidence, the repository owner should configure the
 ## Automated checks and deployment
 
 - CI checks: https://github.com/ivanmlnnn/sentinel/actions/workflows/sentinel-checks.yml
+- Latest successful CI run for the documented revision: [run 42734006722](https://github.com/ivanmlnnn/sentinel/actions/runs/42734006722) — JavaScript syntax checks, full test suite, offline attack demo, source archive upload, and provenance attestation all succeeded.
+- Source snapshot artifact: `sentinel-source-155c2badc1f93a54a8961226c9c48cd45b5380ed` (download it from the linked Actions run's Artifacts section).
 - Cloudflare deployment workflow: https://github.com/ivanmlnnn/sentinel/actions/workflows/deploy-cloudflare.yml
 - On pushes to main, CI packages the exact commit with git archive, uploads the source snapshot, and creates a GitHub build-provenance attestation. After the workflow completes, download the artifact and verify it with `gh attestation verify sentinel-source.tar.gz --repo ivanmlnnn/sentinel`. This attestation proves the archive was produced by the named GitHub workflow from the stated source revision; it does not prove who authored each commit.
 - A green test run proves the checked code passed the configured tests; it does not prove a real NEAR transaction or a browser-only flow works.
+- Latest deployment run for the same revision: [run 42734006183](https://github.com/ivanmlnnn/sentinel/actions/runs/42734006183). Check its final status before claiming the latest security changes are live.
 - A successful Worker deployment proves that Cloudflare accepted the deployment; it does not prove the UI was visually inspected or that a cryptographic signer boundary exists.
 
 ## License
