@@ -22,28 +22,24 @@ console.log(`Sentinel production smoke test: ${baseUrl}`);
 const home = await request("/");
 check("dashboard responds", home.status === 200 && home.contentType.includes("text/html"), `HTTP ${home.status}`);
 
-// Public Guest investigation. This creates one normal investigation record in D1.
-const protectedInvestigation = await request("/api/investigate", {
-  method: "POST",
-  body: JSON.stringify({ receiver_account: "merchant.testnet", amount_near: 0.1 })
-});
-check("POST /api/investigate rejects a missing bearer token", protectedInvestigation.status === 401, `HTTP ${protectedInvestigation.status}`);
-
-const investigation = await request("/api/guest/investigate", {
-  method: "POST",
-  body: JSON.stringify({
-    sender_account: "agent.testnet",
-    receiver_account: "merchant.testnet",
-    amount_near: 0.1
-  })
-});
-check(
-  "Guest investigation API responds with a decision",
-  investigation.status === 200 &&
-    investigation.body &&
-    ["ALLOW", "WARN", "BLOCK", "INCOMPLETE"].includes(investigation.body.decision),
-  `HTTP ${investigation.status}; decision=${investigation.body?.decision || "none"}; error=${investigation.body?.error || "none"}`
-);
+// Protected scan routes must fail closed without a fresh Turnstile token.
+// This smoke check intentionally does not create a scan record or consume provider quota.
+for (const path of ["/api/investigate", "/api/guest/investigate"]) {
+  const response = await request(path, {
+    method: "POST",
+    body: JSON.stringify({
+      sender_account: "agent.testnet",
+      receiver_account: "merchant.testnet",
+      amount_near: 0.1
+    })
+  });
+  check(
+    `POST ${path} rejects a missing Turnstile token before scanning`,
+    [400, 503].includes(response.status) &&
+      ["TURNSTILE_TOKEN_REQUIRED", "TURNSTILE_NOT_CONFIGURED"].includes(response.body?.error),
+    `HTTP ${response.status}; error=${response.body?.error || "none"}`
+  );
+}
 
 // These are write/AI actions. GET /api/threats is intentionally public/read-only.
 const threatWrite = await request("/api/threats", {
