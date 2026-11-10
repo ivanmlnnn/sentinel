@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { applySecurityHeaders, validateMutationRequest } from "../src/http-security.mjs";
-import { isSentinelAdmin, readJson, readTextLimited } from "../functions/api/_shared.js";
+import { isSentinelAdmin, canReadInvestigation, readJson, readTextLimited } from "../functions/api/_shared.js";
 import { onRequestGet as publicThreatFeed } from "../functions/api/threats.js";
 import { onRequestGet as publicMetrics } from "../functions/api/metrics.js";
 
@@ -90,4 +90,17 @@ test("public metrics contain aggregate counts but no individual wallet activity"
   assert.equal(body.totals.total, 7);
   assert.deepEqual(body.recent, []);
   assert.equal(body.threats.total, 2);
+});
+
+test("investigation evidence is visible only to its owner or configured admin", async () => {
+  const env = {
+    SENTINEL_ADMIN_DIDS: "did:privy:admin",
+    DB: { prepare() { return { bind(id) { return { async first() {
+      return id === "owned-1" ? { actor: "did:privy:owner" } : null;
+    } }; } }; } }
+  };
+  assert.equal(await canReadInvestigation(env, "owned-1", { sub: "did:privy:owner" }), true);
+  assert.equal(await canReadInvestigation(env, "owned-1", { sub: "did:privy:other" }), false);
+  assert.equal(await canReadInvestigation(env, "guest-scan", { sub: "did:privy:owner" }), false);
+  assert.equal(await canReadInvestigation(env, "guest-scan", { sub: "did:privy:admin" }), true);
 });
