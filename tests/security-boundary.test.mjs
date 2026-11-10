@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { applySecurityHeaders, validateMutationRequest } from "../src/http-security.mjs";
 import { isSentinelAdmin, readJson, readTextLimited } from "../functions/api/_shared.js";
+import { onRequestGet as publicThreatFeed } from "../functions/api/threats.js";
+import { onRequestGet as publicMetrics } from "../functions/api/metrics.js";
 
 test("security headers are applied without exposing API responses to caches", async () => {
   const url = new URL("https://sentinel.example/api/metrics");
@@ -49,4 +51,43 @@ test("admin role fails closed and matches exact Privy subject only", () => {
   assert.equal(isSentinelAdmin({ sub: "did:privy:admin-10" }, env), false);
   assert.equal(isSentinelAdmin({ sub: "did:privy:admin-1" }, {}), false);
   assert.equal(isSentinelAdmin({ sub: "user@example.com" }, env), false);
+});
+
+test("public threat feed never selects or returns free-form evidence", async () => {
+  let selectedSql = "";
+  const response = await publicThreatFeed({
+    request: new Request("https://sentinel.example/api/threats?status=verified"),
+    env: { DB: { prepare(sql) { selectedSql = sql; return { async all() {
+      return { results: [{ id: "report-1", account_id: "wallet.testnet", category: "phishing", status: "verified" }] };
+    } }; } } }
+  });
+  assert.equal(response.status, 200);
+  assert.doesNotMatch(selectedSql, /evidence/i);
+  const body = await response.json();
+  assert.equal("evidence" in body.reports[0], false);
+});
+
+test("unverified threat reports are denied to non-admin visitors", async () => {
+  const response = await publicThreatFeed({
+    request: new Request("https://sentinel.example/api/threats?status=unverified"),
+    env: { SENTINEL_ADMIN_DIDS: "did:privy:admin" }
+  });
+  assert.equal(response.status, 403);
+  assert.equal((await response.json()).error, "ADMIN_REQUIRED");
+});
+
+test("public metrics contain aggregate counts but no individual wallet activity", async () => {
+  const response = await publicMetrics({
+    env: { DB: { prepare(sql) {
+      return { async first() {
+        return sql.includes("FROM investigations")
+          ? { total: 7, allowed: 5, warned: 1, blocked: 1 }
+          : { total: 2, verified: 1 };
+      } };
+    } } }
+  });
+  const body = await response.json();
+  assert.equal(body.totals.total, 7);
+  assert.deepEqual(body.recent, []);
+  assert.equal(body.threats.total, 2);
 });
