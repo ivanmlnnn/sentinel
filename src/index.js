@@ -92,17 +92,6 @@ export default {
     if (handler) {
       try {
         let turnstileVerified = false;
-        if (request.method === "POST" && ["/api/investigate", "/api/guest/investigate"].includes(url.pathname)) {
-          let body;
-          try { body = await request.clone().json(); }
-          catch { return respond(new Response(JSON.stringify({ error: "INVALID_JSON" }), { status: 400, headers: { "content-type": "application/json; charset=utf-8" } })); }
-          const verification = await verifyTurnstileToken(body?.turnstile_token, request, env);
-          if (!verification.ok) return respond(new Response(JSON.stringify({ error: verification.reason }), {
-            status: verification.status,
-            headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
-          }));
-          turnstileVerified = true;
-        }
         if (url.pathname.startsWith("/api/")) {
           const ip = request.headers.get("CF-Connecting-IP") || "unknown";
           if (!env.API_RATE_LIMITER) return respond(serviceUnavailable("RATE_LIMIT_NOT_CONFIGURED"));
@@ -117,6 +106,17 @@ export default {
             if (!env.INVESTIGATION_RATE_LIMITER) return respond(serviceUnavailable("INVESTIGATION_RATE_LIMIT_NOT_CONFIGURED"));
             if (!await enforceRateLimit(env.INVESTIGATION_RATE_LIMITER, ip)) return respond(rateLimitResponse());
           }
+        }
+        if (request.method === "POST" && ["/api/investigate", "/api/guest/investigate"].includes(url.pathname)) {
+          let body;
+          try { body = await request.clone().json(); }
+          catch { return respond(new Response(JSON.stringify({ error: "INVALID_JSON" }), { status: 400, headers: { "content-type": "application/json; charset=utf-8" } })); }
+          const verification = await verifyTurnstileToken(body?.turnstile_token, request, env);
+          if (!verification.ok) return respond(new Response(JSON.stringify({ error: verification.reason }), {
+            status: verification.status,
+            headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
+          }));
+          turnstileVerified = true;
         }
         return respond(await handler({ request, env, ctx, params: {}, data: { turnstileVerified } }));
       } catch (error) {
