@@ -520,6 +520,11 @@ async function runInvestigation({ request, env, actor = null, turnstileVerified 
 }
 
 
+/** Trusted server-to-server preflight used only after the caller verifies the user or signer HMAC. */
+export async function runTrustedInvestigation({ request, env, actor = null }) {
+  return runInvestigation({ request, env, actor, turnstileVerified: true });
+}
+
 /** Authenticated investigation route for signed-in dashboard users. */
 export async function onRequestPost(context) {
   const identity = await verifyPrivyAccessToken(context.request, context.env);
