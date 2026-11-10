@@ -567,7 +567,7 @@ if (GUEST_MODE) {
   try {
     const saved = JSON.parse(sessionStorage.getItem(GUEST_CHAT_KEY) || '[]');
     if (Array.isArray(saved)) guestConversation = saved
-      .filter(item => item && ['user', 'assistant'].includes(item.role) && typeof item.content === 'string')
+      .filter(item => item && ['user', 'assistant'].includes(item.role) && typeof item.content === 'string' && !(item.role === 'assistant' && /^Alo!\\s*👋[\\s\\S]*(?:Here's what I can help with:|What would you like to do\\?)/i.test(item.content.trim())))
       .slice(-14);
   } catch { guestConversation = []; }
 }
