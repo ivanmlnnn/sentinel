@@ -88,7 +88,7 @@ async function investigate(intent, authorizationHeader, env) {
   if (!response.ok || !data) throw new Error("SIGNER_PREFLIGHT_FAILED");
   return data;
 }
-async function execute(payload, authorizationHeader, identity, env) {
+export async function execute(payload, authorizationHeader, identity, env) {
   const { intent, idempotency_key: idempotencyKey } = payload;
   if (!UUID_RE.test(String(idempotencyKey || ""))) return deny("INVALID_IDEMPOTENCY_KEY");
   if (env.NEAR_NETWORK !== "testnet") return deny("TESTNET_ONLY");
