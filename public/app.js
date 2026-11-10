@@ -358,40 +358,107 @@ function renderResult(data) {
   }
 }
 
+function setTrackWalletTurnstileStatus(message, state = 'loading') {
+  const status = $('turnstileTrackWalletStatus');
+  const retry = $('turnstileTrackWalletRetry');
+  if (status) {
+    status.textContent = message;
+    status.dataset.state = state;
+  }
+  if (retry) retry.hidden = state !== 'error';
+}
+function waitForTurnstileApi() {
+  if (window.turnstile && typeof window.turnstile.render === 'function') return Promise.resolve();
+  const script = document.querySelector('script[src*="challenges.cloudflare.com/turnstile/v0/api.js"]');
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (error) => {
+      if (settled) return;
+      settled = true;
+      window.clearInterval(poll);
+      window.clearTimeout(timeout);
+      script?.removeEventListener('load', check);
+      script?.removeEventListener('error', failed);
+      error ? reject(error) : resolve();
+    };
+    const check = () => {
+      if (window.turnstile && typeof window.turnstile.render === 'function') finish();
+    };
+    const failed = () => finish(new Error('Cloudflare Turnstile script could not be downloaded.'));
+    const poll = window.setInterval(check, 100);
+    const timeout = window.setTimeout(
+      () => finish(new Error('Cloudflare Turnstile did not load within 30 seconds. Check network filtering or browser content blockers.')),
+      30000
+    );
+    script?.addEventListener('load', check, { once: true });
+    script?.addEventListener('error', failed, { once: true });
+    check();
+  });
+}
 function getTrackWalletTurnstileToken() {
-  if (!window.turnstile || !window.__sentinelTurnstileWidgetId) {
-    throw new Error('Cloudflare verification is still loading. Please wait and retry.');
+  if (!window.turnstile || window.__sentinelTurnstileWidgetId === undefined || window.__sentinelTurnstileWidgetId === null) {
+    throw new Error('Cloudflare verification is not ready. Reload the page or retry the verification.');
   }
   const token = window.turnstile.getResponse(window.__sentinelTurnstileWidgetId);
   if (!token) throw new Error('Complete the Cloudflare verification before tracking this wallet.');
   return token;
 }
 function resetTrackWalletTurnstile() {
-  if (window.turnstile && window.__sentinelTurnstileWidgetId) {
-    window.turnstile.reset(window.__sentinelTurnstileWidgetId);
+  if (window.turnstile && window.__sentinelTurnstileWidgetId !== undefined && window.__sentinelTurnstileWidgetId !== null) {
+    try { window.turnstile.reset(window.__sentinelTurnstileWidgetId); } catch (error) {
+      console.warn('Could not reset Turnstile widget:', error);
+    }
   }
+  setTrackWalletTurnstileStatus('Complete Cloudflare verification before each wallet scan.', 'ready');
 }
-function initTrackWalletTurnstile() {
+async function initTrackWalletTurnstile() {
   const mount = $('turnstileTrackWallet');
   if (!mount) return;
-  const start = () => {
-    if (window.__sentinelTurnstileWidgetId || !window.turnstile) return;
-    window.__sentinelTurnstileWidgetId = window.turnstile.render(mount, {
-      sitekey: mount.dataset.sitekey,
+  const sitekey = String(mount.dataset.sitekey || '').trim();
+  if (!sitekey) {
+    setTrackWalletTurnstileStatus('Cloudflare site key is missing from this page configuration.', 'error');
+    return;
+  }
+  if (window.__sentinelTurnstileWidgetId !== undefined && window.__sentinelTurnstileWidgetId !== null) return;
+  setTrackWalletTurnstileStatus('Loading Cloudflare verification…', 'loading');
+  try {
+    await waitForTurnstileApi();
+    if (window.__sentinelTurnstileWidgetId !== undefined && window.__sentinelTurnstileWidgetId !== null) return;
+    const widgetId = window.turnstile.render(mount, {
+      sitekey,
       action: 'track_wallet',
       theme: 'auto',
-      'error-callback': () => toast('Cloudflare verification failed. Please retry.'),
-      'expired-callback': () => toast('Verification expired. Please verify again.')
+      size: 'normal',
+      appearance: 'always',
+      execution: 'render',
+      'refresh-expired': 'auto',
+      callback: () => setTrackWalletTurnstileStatus('Cloudflare verification complete. You can track this wallet.', 'verified'),
+      'error-callback': () => {
+        setTrackWalletTurnstileStatus('Cloudflare verification failed. Check the site key, allowed hostname, and browser network access.', 'error');
+        toast('Cloudflare verification failed. Please retry.');
+      },
+      'expired-callback': () => {
+        setTrackWalletTurnstileStatus('Verification expired. Complete Cloudflare verification again.', 'ready');
+        toast('Verification expired. Please verify again.');
+      },
+      'timeout-callback': () => setTrackWalletTurnstileStatus('Verification timed out. Please try again.', 'error')
     });
-  };
-  if (window.turnstile) start();
-  else {
-    const poll = window.setInterval(() => {
-      if (window.turnstile) { window.clearInterval(poll); start(); }
-    }, 150);
-    window.setTimeout(() => window.clearInterval(poll), 15000);
+    if (widgetId === undefined || widgetId === null) throw new Error('Cloudflare did not return a widget ID.');
+    window.__sentinelTurnstileWidgetId = widgetId;
+    setTrackWalletTurnstileStatus('Complete Cloudflare verification before each wallet scan.', 'ready');
+  } catch (error) {
+    console.error('Turnstile initialization failed:', error);
+    setTrackWalletTurnstileStatus(error?.message || 'Cloudflare verification could not be initialized.', 'error');
   }
 }
+$('turnstileTrackWalletRetry')?.addEventListener('click', () => {
+  if (window.turnstile && window.__sentinelTurnstileWidgetId !== undefined && window.__sentinelTurnstileWidgetId !== null) {
+    try { window.turnstile.reset(window.__sentinelTurnstileWidgetId); } catch {}
+    setTrackWalletTurnstileStatus('Complete Cloudflare verification before each wallet scan.', 'ready');
+  } else {
+    initTrackWalletTurnstile();
+  }
+});
 
 async function loadMetrics() {
   try {
