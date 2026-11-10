@@ -11,6 +11,7 @@ Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verifi
   <a href="https://github.com/ivanmlnnn/sentinel"><strong>SOURCE CODE</strong></a> ·
   <a href="docs/SECURE_AGENT_PIPELINE.md"><strong>SECURE AGENT PIPELINE</strong></a> ·
   <a href="docs/JUDGE_DEMO.md"><strong>JUDGE DEMO GUIDE</strong></a> ·
+  <a href="docs/DEPLOYMENT_STATUS_AND_AI_PROVIDER.md"><strong>DEPLOYMENT STATUS & AI PROVIDER RECOVERY</strong></a> ·
   <a href="docs/MANUAL_DEPLOYMENT_AND_CHAIN_VERIFICATION.md"><strong>MANUAL DEPLOY & CHAIN VERIFICATION</strong></a> ·
   <a href="docs/REAL_INTEGRATION_VERIFICATION.md"><strong>REAL INTEGRATION VERIFICATION</strong></a> ·
   <a href="docs/WEBSITE_EXPLORER_AND_RESTRICTED_SIGNER.md"><strong>WEBSITE, EXPLORER & RESTRICTED SIGNER</strong></a> ·
@@ -38,7 +39,7 @@ The repository's automated attack demo is an offline regression test. It is not 
 ### Verified deployment record — 10 November 2026
 
 - **Signer Worker:** successful deployment in [GitHub Actions run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536), source `989964e8f967120d61e94bec61e7d09d4049bb4c`. The logs confirm successful upload of the runtime signer and contract-ID secrets, deployment of `sentinel-signer`, and Worker version `45194350-5fb8-4aec-8418-45b742147f35`.
-- **Main Worker:** successful deployment from merged `main` commit `67c2b00007190e98c2038110c7bb0749b3a6f5c2` in [run 42871954699](https://github.com/ivanmlnnn/sentinel/actions/runs/42871954699), including a passing production smoke test.
+- **Main Worker:** successful deployment from merged `main` commit `67c2b00007190e98c2038110c7bb0749b3a6f5c2` in [run 42871954699](https://github.com/ivanmlnnn/sentinel/actions/runs/42871954699), including a passing production smoke test. The later README/docs revision also passed [Cloudflare deployment run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638).
 - **CI:** Sentinel checks, CodeQL, and Security CI for the merged commit all completed successfully.
 - The signer account configured by source defaults to `freshnook5462.testnet`; `rawvest6817.testnet` is the tracked/recipient account. GitHub masks private-key values, so deployment logs alone do not reveal the wallet identity represented by the installed secret.
 
@@ -122,3 +123,8 @@ Official event: [NEAR HACKATHON](https://nearhackathon.com/) · [Builder instruc
 ---
 
 Built by **Ivan Maulana Alaudin · IVTECH**.
+
+
+## Latest deployment and AI provider recovery
+
+The coordinated deployment procedure, current successful workflow records, exact GitHub Actions targets, required secrets, and Anthropic credit-exhaustion recovery steps are documented in [Deployment Status and AI Provider Recovery](docs/DEPLOYMENT_STATUS_AND_AI_PROVIDER.md). For routine redeployment of both Workers, choose `deploy_target=both` and keep `rotate_signer_key=false`; the existing payment contract is reused.
