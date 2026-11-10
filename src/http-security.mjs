@@ -29,7 +29,7 @@ export function validateMutationRequest(request, requestUrl) {
   const contentEncoding = (request.headers.get("content-encoding") || "identity").trim().toLowerCase();
   if (contentEncoding !== "identity") return "CONTENT_ENCODING_NOT_SUPPORTED";
   const declaredLength = request.headers.get("content-length");
-  if (declaredLength !== null && (!/^\\d+$/.test(declaredLength) || !Number.isSafeInteger(Number(declaredLength)))) {
+  if (declaredLength !== null && (!/^\d+$/.test(declaredLength) || !Number.isSafeInteger(Number(declaredLength)))) {
     return "INVALID_CONTENT_LENGTH";
   }
   const authorization = request.headers.get("authorization");
