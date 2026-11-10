@@ -47,7 +47,11 @@ const authenticatedPreflight = await request("/api/investigate", {
   method: "POST",
   body: JSON.stringify({ receiver_account: "merchant.testnet", amount_near: 0.1 })
 });
-check("POST /api/investigate uses Privy auth, not guest Turnstile", authenticatedPreflight.status === 401, `HTTP ${authenticatedPreflight.status}`);
+check(
+  "POST /api/investigate rejects a missing Turnstile token before auth or scanning",
+  authenticatedPreflight.status === 400 && authenticatedPreflight.body?.error === "TURNSTILE_TOKEN_REQUIRED",
+  `HTTP ${authenticatedPreflight.status}; error=${authenticatedPreflight.body?.error || "none"}`
+);
 
 // These are write/AI actions. GET /api/threats is intentionally public/read-only.
 const threatWrite = await request("/api/threats", {
