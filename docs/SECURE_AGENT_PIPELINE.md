@@ -12,11 +12,11 @@ This branch implements a two-Worker signing architecture and a mandatory human a
 2. Anthropic may return one `request_near_payment` tool proposal. Model output is untrusted.
 3. Main Sentinel validates the exact receiver and amount, then performs a complete deterministic Sentinel investigation.
 4. An `ALLOW` creates an actor-bound pending approval with the exact receiver and amount. It expires after five minutes. **No funds move at this stage.**
-5. The user sees the exact receiver and amount and must click **Approve this exact payment** and confirm the browser prompt.
+5. The user connects a NEAR Testnet wallet that supports NEP-413 and signs a domain-separated message binding the approval ID, wallet account, exact receiver, microNEAR amount, Testnet network, and persisted expiry. The wallet signature is not a blockchain transaction and does not spend funds.
 6. The approval endpoint claims the pending approval once, checks the authenticated actor, re-runs Sentinel against the exact intent, and calls the signer only through a private Cloudflare service binding.
 7. Main Worker signs the internal request with HMAC-SHA256 over timestamp, one-time nonce, and exact body. The signer rejects stale signatures, invalid signatures, and replayed nonces.
-8. The signer independently verifies the Privy token, actor binding, Testnet-only account, allowlist, limits, kill switch, fresh Sentinel verdict, and the exact unexpired approval row. A signer-only unique claim ledger prevents an approval ID from being claimed twice. It reserves daily spend in D1 before signing.
-9. The signer uses only the fixed NEAR Testnet RPC. Ambiguous post-submit outcomes remain `UNKNOWN` and are not automatically retried.
+8. The signer independently verifies the Privy token, actor binding, Testnet-only account, allowlist, limits, kill switch, fresh Sentinel verdict, and the exact unexpired approval row. It also verifies the NEP-413 signature against the NEAR RPC access-key state, exact approval message, recipient domain, and 32-byte nonce. A signer-only nonce ledger and unique claim ledger prevent signature replay and duplicate approval claims. It reserves daily spend in D1 before signing.
+9. The signer uses only the fixed NEAR Testnet RPC. After submission it queries the transaction by hash and signer account and verifies final success, signer, receiver, and exact yoctoNEAR transfer amount before returning `EXECUTED`. A NearBlocks Testnet Explorer link is returned only with this final-RPC verification evidence. Ambiguous post-submit outcomes remain `UNKNOWN` and are not automatically retried.
 10. Audit proposals, approvals, reservations, and transaction hashes are stored in D1. Prompts, JWTs, provider payloads, and private keys are not stored.
 
 ## Worker separation
@@ -37,7 +37,7 @@ This branch implements a two-Worker signing architecture and a mandatory human a
 - Has no browser assets or public route configured.
 - Re-runs the authenticated Sentinel investigation using `SENTINEL_PREFLIGHT_URL`.
 
-A shared HMAC secret protects the internal service request but does not make the main Worker a fully trusted authorization oracle. The Main Worker has no binding to DB2, so it cannot directly alter the signer's nonce, approval-claim, or spend ledgers. The signer does have a `DB` binding to DB1 so it can read pending approvals; Cloudflare D1 bindings are not read-only in this configuration, even though the current signer code only performs a SELECT against DB1. A compromised Main Worker can still create or alter pending-approval rows and can use its HMAC secret to call the signer. The application approval is therefore not independent cryptographic authorization. The signer still enforces its own hard-coded caps, actor identity, receiver allowlist, kill switch, and independent investigation. Keep the signer key low-balance and Testnet-only.
+A shared HMAC secret protects the internal service request but does not make the main Worker a fully trusted authorization oracle. The Main Worker has no binding to DB2, so it cannot directly alter the signer's nonce, approval-claim, or spend ledgers. The signer does have a `DB` binding to DB1 so it can read pending approvals; Cloudflare D1 bindings are not read-only in this configuration, even though the current signer code only performs a SELECT against DB1. A compromised Main Worker can still create or alter pending-approval rows and can use its HMAC secret to call the signer. The application approval is therefore not independent cryptographic authorization by itself. The current implementation additionally requires a NEP-413 signature from a connected NEAR Testnet full-access key, independently verified by the signer; this prevents a compromised Main Worker from substituting receiver, amount, wallet, expiry, or approval ID without a matching wallet signature. The signer still enforces its own hard-coded caps, actor identity, receiver allowlist, kill switch, and independent investigation. Keep the signer key low-balance and Testnet-only.
 
 ## Hard limits
 
@@ -121,7 +121,7 @@ Do not apply migrations against a different database or from an unreviewed branc
 - [ ] Only after all checks pass: fund the dedicated signer with a minimal Testnet balance, temporarily disable the signer kill switch, and make one small transfer to `rawvest6817.testnet`.
 - [ ] Independently verify transaction hash, sender, receiver, amount, final status, and D1 audit; immediately re-enable the kill switch.
 
-Do not claim a real transaction or isolated deployment until the above evidence exists. CI cannot prove a live blockchain transfer because CI has no wallet secret.
+Do not claim a real transaction or isolated deployment until the above evidence exists. Automated tests validate message binding and final-RPC matching; they do not replace an end-to-end wallet signature, deployed signer test, or actual Testnet transaction. CI cannot prove a live blockchain transfer because CI has no wallet secret.
 
 ## Judge-facing demo
 
