@@ -11,7 +11,8 @@ This is a verification baseline, not a certification or a claim that Sentinel is
 - HTTP responses receive MIME sniffing, clickjacking, referrer, permissions, HSTS, and limited CSP protections. A strict `script-src` CSP is deliberately not enabled until Privy and NEAR wallet connector origins and inline-script hashes are inventoried.
 - Provider error messages are no longer returned verbatim by the agent endpoint.
 - `.env`, `.dev.vars`, local Wrangler state, and common private-key file formats are excluded from Git.
-- CodeQL static analysis is added for JavaScript/TypeScript.
+- CodeQL static analysis and full-history Gitleaks scanning are added to CI.
+- Wrangler now points to a dedicated `migrations-d1/` directory containing SQLite-compatible schema migrations. Legacy `migrations/` files use PostgreSQL syntax and must not be applied to D1. The new sequence is executed against SQLite in CI.
 - The signer is a separate Worker with no public Workers.dev or preview URL. Its private key must not be configured in the browser-facing Worker.
 
 ## Access model: Cloudflare equivalent of least privilege
@@ -70,7 +71,7 @@ Record each finding with request/response evidence, severity, fix commit, and a 
 - [ ] Confirm Cloudflare account MFA and least-privilege team roles.
 - [ ] Configure secrets only in the dedicated Worker that needs them.
 - [ ] Keep signer kill switch enabled until preview negative tests pass.
-- [ ] Apply additive migrations only after confirming the intended D1 database and backup.
+- [ ] Review the remote D1 migration history and schema, back up the intended database, and apply only the SQLite-compatible `migrations-d1/` sequence.
 - [ ] Run CodeQL and the full CI suite on the exact submission commit.
 - [ ] Complete the Burp Suite plan against preview; attach a redacted report.
 - [ ] Obtain independent review of the shared-D1 and human-approval residual risks before enabling transfers.
