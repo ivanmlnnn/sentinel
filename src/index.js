@@ -67,6 +67,19 @@ export default {
             return rateLimitResponse();
           }
 
+          if (request.method === "POST" && url.pathname === "/api/agent/run") {
+            const agentAllowed = await enforceRateLimit(env.AGENT_RATE_LIMITER, ip);
+            if (!agentAllowed) {
+              if (!env.AGENT_RATE_LIMITER) {
+                return new Response(JSON.stringify({ error: "AGENT_RATE_LIMIT_NOT_CONFIGURED" }), {
+                  status: 503,
+                  headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
+                });
+              }
+              return rateLimitResponse();
+            }
+          }
+
           // Guest investigation stays public for the judge demo, but receives
           // a stricter per-IP budget because it fans out to several upstream APIs.
           if (request.method === "POST" && ["/api/investigate", "/api/guest/investigate"].includes(url.pathname)) {
