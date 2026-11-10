@@ -56,7 +56,7 @@ The following records are historical evidence for the revisions they identify:
 - [PR #10 CodeQL](https://github.com/ivanmlnnn/sentinel/actions/runs/42880798201) — success.
 - [Manual deployment run #220](https://github.com/ivanmlnnn/sentinel/actions/runs/42885750337) — Main Worker deployment and production smoke test succeeded. Its recorded job contains only one Worker deployment step; it does **not** prove that the PR #10 Signer Worker revision was deployed.
 
-The updated release workflow is designed to make a successful run prove both Worker deployment steps and both migration steps. That evidence must be added after the updated workflow has actually been run. A workflow file change or a successful Main-only deployment is not proof of Signer deployment.
+The merged release workflow has now completed both Worker deployment steps and both migration steps on the merged main revision. See the current [main deployment record](https://github.com/ivanmlnnn/sentinel/actions/runs/42900812519). A Main-only deployment record is not substituted for this dual-Worker evidence.
 
 A production HTTP smoke test is not itself a signed-verdict runtime test. Do not claim a live Privy-to-Testnet payment exercised Ed25519 unless a trace or test demonstrates a valid signed attestation was accepted and an invalid/expired/tampered attestation was rejected at the deployed Signer boundary. No secret values are committed.
 
