@@ -416,6 +416,68 @@ $('sendReport').addEventListener('click',async () => {
   finally { button.disabled = false; }
 });
 
+const agentForm = $('agentForm');
+if (agentForm && !GUEST_MODE) {
+  agentForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const button = $('agentRunBtn');
+    const prompt = $('agentPrompt').value.trim();
+    if (!prompt) return;
+    button.disabled = true;
+    button.textContent = 'Agent running · Sentinel checking…';
+    const result = $('agentResult');
+    result.classList.remove('hidden');
+    result.textContent = 'Calling the AI provider and evaluating the proposed action…';
+    try {
+      const data = await request('/agent/run', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': crypto.randomUUID() },
+        body: JSON.stringify({ prompt })
+      });
+      const status = String(data.status || 'UNKNOWN');
+      const verdict = data.sentinel?.decision || 'NOT_AVAILABLE';
+      const risk = Number.isFinite(Number(data.sentinel?.risk_score))
+        ? Number(data.sentinel.risk_score) + '/100' : 'Not scored';
+      const proposal = data.proposal || {};
+      const txHash = typeof data.transaction_hash === 'string' ? data.transaction_hash : '';
+      const txLink = data.execution_enabled === true && txHash
+        ? '<a class="agent-tx-link" href="https://testnet.nearblocks.io/txns/' + encodeURIComponent(txHash) + '" target="_blank" rel="noopener noreferrer">View verified Testnet transaction ↗</a>'
+        : '';
+      result.innerHTML =
+        '<div class="agent-result-head agent-result-' + escapeHtml(status.toLowerCase()) + '">' +
+          '<span>AGENT STATUS</span><b>' + escapeHtml(status.replaceAll('_', ' ')) + '</b>' +
+        '</div>' +
+        '<div class="agent-result-grid">' +
+          '<div><span>PROPOSED RECEIVER</span><b>' + escapeHtml(proposal.receiver_account || '—') + '</b></div>' +
+          '<div><span>AMOUNT</span><b>' + escapeHtml(proposal.amount_near == null ? '—' : String(proposal.amount_near) + ' NEAR') + '</b></div>' +
+          '<div><span>SENTINEL VERDICT</span><b>' + escapeHtml(verdict) + '</b></div>' +
+          '<div><span>RISK SCORE</span><b>' + escapeHtml(risk) + '</b></div>' +
+        '</div>' +
+        '<p class="agent-result-reason">' + escapeHtml(data.reason || data.message || 'No execution reason returned.') + '</p>' +
+        (data.agent_message ? '<p class="agent-result-message">' + escapeHtml(data.agent_message) + '</p>' : '') +
+        (txHash ? '<p class="agent-result-hash">TX HASH · ' + escapeHtml(txHash) + '</p>' : '') +
+        txLink;
+      if (data.execution_enabled === true) toast('NEAR Testnet transaction confirmed.');
+      else toast('Agent finished: ' + status.replaceAll('_', ' '));
+    } catch (error) {
+      result.textContent = error.message || 'Agent request failed. No transaction was confirmed.';
+      toast(error.message || 'Agent request failed.');
+    } finally {
+      button.disabled = false;
+      button.innerHTML = 'Run secure agent <b>↗</b>';
+    }
+  });
+} else {
+  const agentNav = $('agentNav');
+  const agentHeading = $('agentHeading');
+  const agentLab = $('agentLab');
+  if (GUEST_MODE) {
+    agentNav?.remove();
+    agentHeading?.remove();
+    agentLab?.remove();
+  }
+}
+
 // Wallet connection is independent from Privy login; Guest users may connect a NEAR wallet too.
 initWallet();
 loadMetrics();
