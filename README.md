@@ -41,8 +41,8 @@ The repository's automated attack demo is an offline regression test. It is not 
 - Deployment-local D1 threat registry; only verified reports can trigger `BLOCK`.
 - Privy-authenticated investigation, AI review, and agent routes.
 - Anthropic tool-calling agent whose output is treated as an untrusted proposal.
-- Actor-bound, exact-intent, five-minute human approval before payment execution.
-- Separate signer Worker, private service binding, HMAC timestamp/nonce protection, replay ledger, allowlist, spend caps, kill switch, and conservative `UNKNOWN` handling.
+- Actor-bound, exact-intent, five-minute human approval plus a signer-side one-time approval claim before payment execution.
+- Separate signer Worker, private service binding, HMAC timestamp/nonce protection, replay ledger, exact pending-approval claim, allowlist, spend caps, kill switch, and conservative `UNKNOWN` handling.
 - Legacy in-process signing path disabled.
 
 ## Security boundary and honest status
