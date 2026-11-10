@@ -51,12 +51,20 @@ export function mountWayang3D(host) {
 
   // One oversized, swept sky-blue wing, outlined in dark ink like the GitHub logo.
   const wingPivot=new THREE.Group();wingPivot.position.set(.42,.28,.05);puppet.add(wingPivot);
-  const wingPoints=[[0,-.05],[.28,.42],[.62,.91],[1.02,1.36],[1.52,1.67],[1.98,1.68],[2.12,1.43],[1.98,1.08],[1.78,.62],[1.55,.12],[1.25,-.28],[.88,-.48],[.46,-.34]];
-  const wingOutline=shapeMesh(wingPoints,dark,.27,.075);wingOutline.position.z=-.035;wingPivot.add(wingOutline);
-  const wing=shapeMesh(wingPoints,cyan,.22,.055);wing.position.z=.04;wingPivot.add(wing);
-  tube([[.43,.28,.34],[.78,.64,.35],[1.12,1.05,.35],[1.47,1.4,.34]],.045,dark,wingPivot);
-  tube([[.75,.16,.36],[1.04,.43,.36],[1.31,.76,.36],[1.48,1.02,.36]],.025,dark,wingPivot);
-  const wingMark=shapeMesh([[.55,.48],[.78,.59],[.98,.52],[.82,.39],[.64,.37]],paleGold,.07,.018);wingMark.position.z=.38;wingPivot.add(wingMark);
+  const wingShape=new THREE.Shape();
+  wingShape.moveTo(-.02,-.08);
+  wingShape.bezierCurveTo(.28,.52,.67,1.2,1.23,1.58);
+  wingShape.bezierCurveTo(1.62,1.88,2.08,1.86,2.22,1.56);
+  wingShape.bezierCurveTo(2.34,1.28,2.12,.94,1.98,.62);
+  wingShape.bezierCurveTo(1.78,.16,1.53,-.32,1.18,-.55);
+  wingShape.bezierCurveTo(.77,-.72,.27,-.44,-.02,-.08);
+  const wingGeometry=new THREE.ExtrudeGeometry(wingShape,{depth:.24,bevelEnabled:true,bevelSegments:5,steps:1,bevelSize:.065,bevelThickness:.065,curveSegments:28});
+  const wingOutline=new THREE.Mesh(wingGeometry,dark);wingOutline.position.z=-.035;wingPivot.add(wingOutline);
+  const innerWingGeo=new THREE.ExtrudeGeometry(wingShape,{depth:.19,bevelEnabled:true,bevelSegments:4,steps:1,bevelSize:.035,bevelThickness:.035,curveSegments:28});
+  const wing=new THREE.Mesh(innerWingGeo,cyan);wing.position.set(0,0,.07);wingPivot.add(wing);
+  tube([[.05,-.02,.34],[.48,.42,.36],[.94,.98,.37],[1.42,1.42,.36],[1.88,1.63,.34]],.052,dark,wingPivot);
+  tube([[.58,.2,.37],[.96,.45,.38],[1.35,.77,.38],[1.72,1.15,.37]],.025,dark,wingPivot);
+  const wingMark=shapeMesh([[.9,.5],[1.13,.62],[1.42,.56],[1.2,.4],[.99,.39]],paleGold,.07,.018);wingMark.position.z=.4;wingPivot.add(wingMark);
 
   // Body and shoulder armor.
   const torso=shapeMesh([[-.48,-2.02],[-.62,-1.48],[-.43,-.92],[-.28,-.48],[.27,-.48],[.48,-.92],[.62,-1.48],[.43,-2.02],[.16,-2.16],[-.16,-2.16]],teal,.32,.055);
@@ -74,6 +82,20 @@ export function mountWayang3D(host) {
   const pendant=sphere(0,-.64,.91,.12,.17,.07,gold); pendant.rotation.z=.2;
   sphere(-.45,-.56,.5,.34,.24,.2,gold);
   sphere(.45,-.56,.5,.34,.24,.2,gold);
+  // Long tapered batik/wayang lower costume, with layered gold lattice down to the hem.
+  const skirt=shapeMesh([[-.36,-1.28],[.36,-1.28],[.53,-2.42],[.28,-2.58],[0,-2.48],[-.28,-2.58],[-.53,-2.42]],dark,.3,.045);
+  skirt.position.z=.28;puppet.add(skirt);
+  const skirtEdge=shapeMesh([[-.53,-2.36],[-.28,-2.48],[0,-2.4],[.28,-2.48],[.53,-2.36],[.48,-2.53],[.25,-2.65],[0,-2.57],[-.25,-2.65],[-.48,-2.53]],gold,.09,.018);
+  skirtEdge.position.z=.62;puppet.add(skirtEdge);
+  for(let row=0;row<7;row++){
+    const y=-1.42-row*.15, width=.23+row*.035;
+    tube([[-width,y,.65],[0,y-.09,.68],[width,y,.65]],.018,row%2?gold:paleGold);
+    for(let col=-1;col<=1;col++){
+      const x=col*width*.48;
+      const diamond=shapeMesh([[x,y+.055],[x+.045,y],[x,y-.055],[x-.045,y]],row%2?paleGold:gold,.025,.004);
+      diamond.position.z=.69;puppet.add(diamond);
+    }
+  }
 
   // Mechanical wayang head in a right-facing profile, with a long muzzle and open red mouth.
   const silver=new THREE.MeshPhysicalMaterial({color:0xb9c9cf,metalness:.82,roughness:.24,clearcoat:.9});
@@ -93,6 +115,18 @@ export function mountWayang3D(host) {
   const templeCore=sphere(-.23,.43,.91,.12,.12,.06,steel);
   sphere(-.23,.43,.97,.045,.045,.025,cyan);
   tube([[-.48,.52,.82],[-.25,.7,.86],[.05,.72,.84],[.29,.61,.84]],.035,gold);
+  // Layered circular mechanical head cage and riveted temple plates from the reference helmet.
+  const helmetArc=new THREE.Mesh(new THREE.TorusGeometry(.58,.055,12,64,Math.PI*1.22),steel);
+  helmetArc.position.set(-.08,.45,.39);helmetArc.rotation.z=.22;puppet.add(helmetArc);
+  const helmetArc2=new THREE.Mesh(new THREE.TorusGeometry(.49,.025,10,64,Math.PI*1.18),gold);
+  helmetArc2.position.set(-.08,.46,.47);helmetArc2.rotation.z=.22;puppet.add(helmetArc2);
+  for(let i=0;i<8;i++){
+    const ang=Math.PI*.12+i*Math.PI*.105;
+    sphere(-.08+Math.cos(ang)*.57,.45+Math.sin(ang)*.57,.51,.035,.035,.03,jointMat);
+  }
+  const cheekPlate=shapeMesh([[-.4,.2],[-.28,.02],[.04,-.04],[.22,.12],[.12,.28],[-.2,.34]],gold,.09,.018);
+  cheekPlate.position.z=.86;puppet.add(cheekPlate);
+  for(let i=0;i<4;i++) sphere(-.28+i*.12,.16,.98,.025,.025,.02,paleGold);
   // Flat folded chef cap silhouette from the reference: angular cloth, not a puffed/bubble dome.
   const hatGroup=new THREE.Group();hatGroup.position.set(-.59,1.16,.73);hatGroup.rotation.z=.22;puppet.add(hatGroup);
   const hatCloth=new THREE.MeshStandardMaterial({color:0xe6cf57,metalness:.04,roughness:.88,side:THREE.DoubleSide});
@@ -123,10 +157,31 @@ export function mountWayang3D(host) {
   sphere(.32,.29,.82,.11,.07,.07,gold);
   // Neck ornaments and articulated arm/hand shapes.
   tube([[-.28,-.38,.56],[-.08,-.5,.7],[.2,-.42,.56]],.045,paleGold);
-  tube([[-.55,-.78,.54],[-.88,-1.03,.4],[-1.02,-1.34,.35]],.105,gold);
-  sphere(-1.02,-1.36,.36,.14,.18,.13,skin);
-  tube([[.53,-.8,.52],[.85,-1.04,.38],[.95,-1.33,.34]],.105,gold);
-  sphere(.95,-1.35,.36,.14,.18,.13,skin);
+  // Segmented mechanical arms: black carbon links, circular silver pivots and plated forearms.
+  const jointMat=new THREE.MeshPhysicalMaterial({color:0x899ba3,metalness:.9,roughness:.2});
+  const armPlate=new THREE.MeshStandardMaterial({color:0x202a30,metalness:.72,roughness:.3});
+  function linkBetween(a,b,r1,r2,material,parent=puppet){
+    const va=new THREE.Vector3(...a),vb=new THREE.Vector3(...b),d=new THREE.Vector3().subVectors(vb,va);
+    const mesh=new THREE.Mesh(new THREE.CylinderGeometry(r2,r1,d.length(),20,1),material);
+    mesh.position.copy(va).add(vb).multiplyScalar(.5);mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());parent.add(mesh);return mesh;
+  }
+  function robotArm(side){
+    const shoulder=[side*.53,-.82,.48],elbow=[side*.88,-1.12,.43],wrist=[side*1.02,-1.56,.4],hand=[side*1.04,-1.78,.42];
+    linkBetween(shoulder,elbow,.105,.075,armPlate);
+    sphere(elbow[0],elbow[1],elbow[2],.13,.13,.12,jointMat);
+    sphere(elbow[0],elbow[1],elbow[2]+.105,.055,.055,.035,gold);
+    linkBetween(elbow,wrist,.075,.055,silver);
+    const cuff=sphere(wrist[0],wrist[1],wrist[2],.09,.11,.09,armPlate);
+    linkBetween(wrist,hand,.055,.045,gold);
+    sphere(hand[0],hand[1],hand[2],.075,.105,.065,silver);
+    for(let f=0;f<3;f++){
+      const fx=hand[0]+(f-1)*.055;
+      linkBetween([fx,hand[1]-.04,hand[2]+.02],[fx+(f-1)*.018,hand[1]-.16,hand[2]+.02],.018,.012,jointMat);
+    }
+    // Decorative forearm inlay.
+    tube([[side*.93,-1.2,.51],[side*.99,-1.36,.51],[side*1.02,-1.51,.49]],.014,gold);
+  }
+  robotArm(-1);robotArm(1);
 
   // Shoulder tassels and layered costume details.
   for(let i=0;i<5;i++){
