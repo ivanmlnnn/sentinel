@@ -85,47 +85,47 @@ One-time contract deployment only:
 One-time restricted-key rotation only:
 - `NEAR_AGENT_SIGNER_ADMIN_PRIVATE_KEY`
 
-Keep each Worker's existing runtime secrets in the correct Cloudflare Worker secret store, including its HMAC secret, Privy configuration, and AI provider key. Never commit, paste, or print secret values. The private Signer Worker is not exposed through a public `workers.dev` URL; Main calls it through the `SIGNER_SERVICE` service binding.
+Keep each Worker's existing runtime secrets in the correct Cloudflare Worker secret store, including its HMAC secret, Privy configuration, and the Gemini `GEMINI_API_KEY` secret on the Main Worker. Never commit, paste, or print secret values. The private Signer Worker is not exposed through a public `workers.dev` URL; Main calls it through the `SIGNER_SERVICE` service binding.
 
-## AI error: Anthropic credit balance too low
+## Gemini AI provider
 
-Observed provider response:
+Sentinel's authenticated Agent, Guest Agent, and AI Review routes now use the Google Gemini API through the shared `functions/api/_gemini.js` adapter. The default model is `gemini-2.5-flash`; an optional `GEMINI_MODEL` Worker variable can select another model available to the API key.
 
-```text
-AI_PROVIDER_BAD_REQUEST: Your credit balance is too low to access the Anthropic API.
-Please go to Plans & Billing to upgrade or purchase credits.
+### Runtime secret setup
+
+The Gemini key is a **Main Worker runtime secret**, not a source-code value and not a Signer Worker secret. The Agent, Guest Agent, and AI Review routes execute in the Main Worker.
+
+1. Create an API key in [Google AI Studio](https://aistudio.google.com/apikey).
+2. In the repository's root directory, run `npx wrangler secret put GEMINI_API_KEY` and paste the key at the hidden prompt. Confirm the Wrangler target is the production `sentinel` Main Worker.
+3. Do not put the key in `wrangler.jsonc`, frontend JavaScript, Git history, README, or a GitHub Actions log. Do not configure it on the isolated Signer Worker.
+4. Deploy the Main Worker from the intended release commit, then verify the dashboard and protected API routes.
+5. Keep the existing Privy, Turnstile, D1, HMAC, and isolated Signer configuration unchanged.
+
+The previous `ANTHROPIC_API_KEY` and `ANTHROPIC_MODEL` variables are no longer read by these three routes. They can be retired from the Main Worker only after the Gemini deployment is confirmed healthy. Do not delete or change signer secrets as part of this provider migration.
+
+### Adapter behavior and security boundary
+
+The shared adapter handles Gemini API authentication, model selection, request timeouts, provider error classification, tool declaration schema conversion, function-call normalization, and multi-turn function-response mapping. It is used by all three routes:
+
+- **Authenticated Agent** — ordinary conversation, read-only wallet investigation, and payment proposal generation.
+- **Guest Agent** — bounded read-only skills with existing daily quota and tool-round limits.
+- **AI Review** — evidence-only explanation of a stored deterministic investigation.
+
+Gemini text and function calls remain untrusted model output. A function call can only invoke the route's explicitly allowlisted server-side tool. The deterministic Sentinel policy, exact receiver/amount binding, human NEP-413 approval, isolated signer checks, spend limits, kill switch, and payment-contract enforcement remain independent of the model provider. Gemini cannot authorize, sign, or execute a payment.
+
+### Verification
+
+Run:
+
+```bash
+npm ci
+npm test
+npm run demo:attack
+npm run check:d1
+cargo build --manifest-path payment-contract/Cargo.toml --target wasm32-unknown-unknown --release
 ```
 
-### Root cause
+The dedicated Gemini adapter regression suite is `tests/gemini-provider.test.mjs`. It covers conversation/tool-call conversion, response normalization, missing-secret fail-closed behavior, API request construction, and rate-limit classification. CI results for the migration must be checked on the exact PR head before describing the adapter, payment-contract WASM build, Security CI, or CodeQL as passing.
 
-This is an Anthropic account billing/credit exhaustion response. It is not evidence of a Sentinel wallet-investigation failure, signer deployment failure, NEAR RPC outage, or invalid Sentinel prompt. Anthropic rejected the model request because the API account associated with the configured key does not have enough available API credit.
+A successful build or mocked adapter test does not prove that the production Cloudflare secret is installed or that a live Gemini conversation has succeeded. Record the exact deployment run and perform a real authenticated Agent, Guest Agent, and AI Review smoke test after configuring the runtime secret.
 
-Anthropic may return this condition with HTTP 400, so older Sentinel code classified it generically as `AI_PROVIDER_BAD_REQUEST`. The API handlers now inspect the provider error message and return the clearer `AI_PROVIDER_BILLING_ERROR` classification, with a bounded provider message and status for diagnosis.
-
-### Restore Anthropic
-
-1. Open Anthropic Console → Plans & Billing for the account that owns the configured API key.
-2. Add API credits or upgrade the API plan as appropriate.
-3. Confirm the key belongs to that same funded organization/workspace.
-4. Update the `ANTHROPIC_API_KEY` secret in the Cloudflare Worker(s) that call Anthropic if the key changed. Do not paste the key into source code or GitHub.
-5. Keep `ANTHROPIC_MODEL` set to a model available to that account, if an override is configured.
-6. Redeploy the Worker(s) with the `both` target and test Guest Agent, authenticated Agent, and AI Review.
-
-### About switching to Qwen or another provider
-
-The current Agent, Guest Agent, and AI Review implementations call Anthropic's Messages API directly and use Anthropic's tool-call message schema. Replacing `ANTHROPIC_API_KEY` with a Qwen key will not work: a provider key is not interchangeable with another provider's API protocol.
-
-A Qwen/DashScope migration requires an explicit provider adapter for request authentication, model IDs, tool definitions, tool-call parsing, follow-up messages, and error handling across all three routes. Until that adapter is implemented and tested, the supported recovery is to restore credits for the configured Anthropic account. Do not claim Qwen support or configure a Qwen key as an Anthropic key.
-
-## Post-deployment verification
-
-- [ ] The exact `main` commit is recorded in the Actions run.
-- [ ] Source verification and security checks pass.
-- [ ] Signer Worker deploy succeeds.
-- [ ] Main Worker deploy succeeds after Signer.
-- [ ] Production smoke checks pass.
-- [ ] Dashboard loads at https://sentinel.ivmaladin.workers.dev.
-- [ ] Guest Agent, authenticated Agent, and AI Review return a normal model response after provider billing is restored.
-- [ ] For a real payment test, verify the transaction hash and final contract transfer receipt independently on NEAR Testnet Explorer.
-
-A green deployment is evidence that the software was deployed and smoke-tested. It does not by itself prove a Sentinel-originated payment; only a real transaction hash and matching successful receipt establish that.

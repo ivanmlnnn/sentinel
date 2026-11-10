@@ -1,5 +1,6 @@
 import { json, verifyPrivyAccessToken, readTextLimited } from "./_shared.js";
 import { runTrustedInvestigation } from "./investigate.js";
+import { callGemini } from "./_gemini.js";
 
 const MAX_PROMPT_LENGTH = 4000;
 const DAILY_LIMIT = 10;
@@ -149,58 +150,20 @@ async function runSkill(name, input, { request, env, identity }) {
   return { ok: false, error: "UNKNOWN_SKILL" };
 }
 
-async function callAnthropic(env, messages) {
-  let response;
-  try {
-    response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": env.ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01"
-      },
-      body: JSON.stringify({
-        model: env.ANTHROPIC_MODEL || "claude-haiku-4-5",
-        max_tokens: 1400,
-        system: SYSTEM_PROMPT,
-        tools: MODEL_TOOLS,
-        tool_choice: { type: "auto" },
-        messages
-      }),
-      signal: AbortSignal.timeout(20000)
-    });
-  } catch {
-    return { ok: false, status: 0, error: "AI_PROVIDER_UNAVAILABLE", message: "The AI provider could not be reached." };
-  }
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const providerError = data?.error || {};
-    const status = response.status;
-    const message = typeof providerError.message === "string" ? providerError.message.slice(0, 240) : "No provider error message";
-    console.error("guest_agent_provider_error", {
-      status,
-      type: typeof providerError.type === "string" ? providerError.type.slice(0, 80) : "unknown",
-      message,
-      request_id: response.headers.get("request-id") || data?.request_id || null
-    });
-    const billingMessage = /credit balance|insufficient.{0,20}credit|plans\s*&\s*billing|purchase credits|billing/i.test(message);
-    const code = billingMessage ? "AI_PROVIDER_BILLING_ERROR"
-      : status === 401 ? "AI_PROVIDER_AUTH_FAILED"
-      : status === 402 ? "AI_PROVIDER_BILLING_ERROR"
-      : status === 403 ? "AI_PROVIDER_PERMISSION_DENIED"
-      : status === 404 ? "AI_PROVIDER_MODEL_NOT_FOUND"
-      : status === 429 ? "AI_PROVIDER_RATE_LIMITED"
-      : status === 400 ? "AI_PROVIDER_BAD_REQUEST"
-      : status >= 500 ? "AI_PROVIDER_UPSTREAM_ERROR" : "AI_PROVIDER_ERROR";
-    return { ok: false, status, error: code, message };
-  }
-  return { ok: true, data };
+async function callGeminiProvider(env, messages) {
+  return callGemini(env, {
+    system: SYSTEM_PROMPT,
+    tools: MODEL_TOOLS,
+    messages,
+    maxOutputTokens: 1400,
+    timeoutMs: 20000
+  });
 }
 
 export async function onRequestPost({ request, env }) {
   const identity = await verifyPrivyAccessToken(request, env);
   if (!identity) return json({ error: "UNAUTHORIZED" }, 401);
-  if (!env.ANTHROPIC_API_KEY) return json({ error: "AI_PROVIDER_NOT_CONFIGURED" }, 503);
+  if (!env.GEMINI_API_KEY) return json({ error: "AI_PROVIDER_NOT_CONFIGURED" }, 503);
   if (!env.DB) return json({ error: "AGENT_QUOTA_DATABASE_UNAVAILABLE" }, 503);
 
   const bounded = await readTextLimited(request, 12000);
@@ -248,7 +211,7 @@ export async function onRequestPost({ request, env }) {
     message: "Batas 10 prompt AI Guest hari ini sudah tercapai. Coba lagi besok."
   }, 429);
 
-  let result = await callAnthropic(env, messages);
+  let result = await callGeminiProvider(env, messages);
   if (!result.ok) return json({
     error: result.error, provider_status: result.status || null,
     provider_message: result.message,
@@ -289,7 +252,7 @@ export async function onRequestPost({ request, env }) {
     messages.push({ role: "assistant", content: assistantContent });
     messages.push({ role: "user", content: toolResults });
     toolRounds++;
-    result = await callAnthropic(env, messages);
+    result = await callGeminiProvider(env, messages);
     if (!result.ok) return json({
       error: result.error, provider_status: result.status || null,
       provider_message: result.message,

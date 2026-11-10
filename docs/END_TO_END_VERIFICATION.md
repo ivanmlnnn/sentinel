@@ -154,3 +154,65 @@ The signed-verdict implementation was merged through [PR #10](https://github.com
 | CodeQL | **PASS** | [Run](https://github.com/ivanmlnnn/sentinel/actions/runs/42900812267) |
 
 The deployment job applied both D1 migration sets, deployed the isolated Signer Worker before the Main Worker, and completed the production smoke suite. The smoke suite confirms dashboard availability and the expected unauthenticated/missing-token rejection paths. It does not claim a live AI conversation, wallet connection, or Sentinel-originated NEAR payout.
+
+
+## 8. Latest main release and independent local stress lab — 11 November 2026
+
+The latest main release workflow records are:
+
+| Verification | Result | Evidence |
+|---|---|---|
+| Automated regression | **127 passed, 0 failed** | [Sentinel checks run 42901218667](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218667) |
+| Main D1 migration validation | **PASS — 8 migrations, 10 tables, 24 indexes** | Same run job log |
+| Signer D1 migration validation | **PASS — 1 migration, 3 tables, 7 indexes** | Same run job log |
+| Main and isolated Signer bundle validation | **PASS** | Same run |
+| Payment-contract WASM release build | **PASS** | Same run |
+| Prompt-injection regression | **PASS — BLOCK; signer invoked: NO** | Same run job log |
+| Main + isolated Signer deployment | **PASS** | [Deployment run 42901218870](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218870) |
+| Signer Worker version | `98dc36e1-f9ef-4f6e-b4a5-f28de4a59661` | Same deployment run |
+| Main Worker version | `df27ffb5-cafc-4ab0-bedc-b1ff8bf4cfa7` | Same deployment run |
+| Production HTTP smoke | **8/8 PASS** | Same deployment run |
+| Security CI | **PASS** | [Run 42901218721](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218721) |
+| CodeQL | **PASS** | [Run 42901218658](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218658) |
+
+The workflow logs show the Main and Signer D1 migration steps, deployment of the isolated Signer Worker before the Main Worker, and the eight production HTTP checks. The smoke checks cover dashboard availability and expected Turnstile, bearer-token, and internal-HMAC rejection behavior.
+
+A separate [Independent Local Stress Lab report](INDEPENDENT_LOCAL_STRESS_LAB.md) records nine local simulation checks, including concurrency, simulated multi-instance claims, local HTTP load, fault injection, policy-model fuzzing, and synthetic E2E state transitions. Those results are explicitly local-only: they do not establish distributed Cloudflare D1 behavior, deployed Worker p95/p99 latency, live NEAR RPC saturation handling, deployed Rust contract fuzzing, or real concurrent Testnet payouts.
+
+
+## 9. Gemini provider migration — 11 November 2026
+
+The authenticated Agent, Guest Agent, and AI Review routes have been migrated from Anthropic Messages API calls to the shared Google Gemini adapter in `functions/api/_gemini.js`.
+
+| Area | Implementation |
+|---|---|
+| Provider endpoint | Google Gemini `generateContent` API |
+| Default model | `gemini-2.5-flash` |
+| Runtime credential | `GEMINI_API_KEY`, stored only as a Cloudflare Main Worker secret |
+| Tool calling | Sentinel allowlisted tools are converted to Gemini function declarations |
+| Multi-turn tool results | Gemini function calls/responses are normalized to the route's internal conversation format |
+| Route coverage | Authenticated Agent, Guest Agent, and AI Review |
+| Regression suite | `tests/gemini-provider.test.mjs` |
+| Authorization boundary | Deterministic policy, human NEP-413 approval, isolated signer, and payment contract remain independent of model output |
+
+The Gemini adapter test suite covers schema/conversation conversion, response normalization, missing-secret fail-closed behavior, request construction, and provider rate-limit handling. These are deterministic tests with a mocked HTTP response; they do not establish production Gemini availability.
+
+**PR #13 source-code CI evidence — commit `4a44e5665dded3c0785d3d78fc2df53adf0b1bdf`:**
+
+| Check | Result | Evidence |
+|---|---|---|
+| Automated regression | **135 passed, 0 failed** | [Sentinel checks run 42906396916](https://github.com/ivanmlnnn/sentinel/actions/runs/42906396916) |
+| Gemini adapter tests | **5 passed** | Same run; tests 44–48 |
+| Main D1 migrations | **PASS — 8 migrations, 10 tables, 24 indexes** | Same run |
+| Signer D1 migration | **PASS — 1 migration, 3 tables, 7 indexes** | Same run |
+| NEAR payment-contract WASM release build | **PASS** | Same run; `cargo build --manifest-path payment-contract/Cargo.toml --target wasm32-unknown-unknown --release` |
+| Sentinel Security CI | **PASS** | [Run 42906396166](https://github.com/ivanmlnnn/sentinel/actions/runs/42906396166) |
+| CodeQL JavaScript analysis workflow | **PASS** | [Run 42906396384](https://github.com/ivanmlnnn/sentinel/actions/runs/42906396384) |
+| Main Worker Cloudflare preview build | **PASS** | [Build d91f166c](https://dash.cloudflare.com/70700c67711eb5444dd645c3612eacf2/workers/services/view/sentinel/production/previews/fix-signer-reservation-order-and-lab-evidence/builds/d91f166c-a845-4159-9f18-8013bbf858c1) |
+| Signer Worker Cloudflare preview build | **PASS** | [Build 354387f8](https://dash.cloudflare.com/70700c67711eb5444dd645c3612eacf2/workers/services/view/sentinel-signer/production/previews/fix-signer-reservation-order-and-lab-evidence/builds/354387f8-fd52-4fa2-8f05-ca9c2dd60e06) |
+
+These are PR preview/build and CI results, not a production deployment or proof that the production Gemini secret is installed.
+
+**Production activation:** configure `GEMINI_API_KEY` on the Cloudflare Main Worker and deploy the exact reviewed commit. Then test all three routes with a real authenticated session. The isolated Signer Worker does not need the Gemini key.
+
+**Release evidence boundary:** Payment-contract WASM build, CodeQL, Security CI, Sentinel checks, Worker deployment, and live AI route verification must be read from the GitHub Actions runs associated with the exact PR head. Do not reuse a green run from an earlier commit as proof for this migration.
