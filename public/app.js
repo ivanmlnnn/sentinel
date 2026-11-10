@@ -632,22 +632,24 @@ function renderAgentResult(data) {
     ? '<a class="agent-tx-link" href="' + escapeHtml(explorerUrl) + '" target="_blank" rel="noopener noreferrer">View RPC-verified Testnet transaction ↗</a>'
     : '';
   const approvalId = status === 'AWAITING_HUMAN_APPROVAL' ? String(data.approval_id || '') : '';
-  const agentCard =
-    '<div class="agent-result-head agent-result-' + escapeHtml(status.toLowerCase()) + '">' +
-      '<span>AGENT STATUS</span><b>' + escapeHtml(status.replaceAll('_', ' ')) + '</b></div>' +
-    '<div class="agent-result-grid">' +
-      '<div><span>PROPOSED RECEIVER</span><b>' + escapeHtml(proposal.receiver_account || '—') + '</b></div>' +
-      '<div><span>AMOUNT</span><b>' + escapeHtml(proposal.amount_near == null ? '—' : String(proposal.amount_near) + ' NEAR') + '</b></div>' +
-      '<div><span>SENTINEL VERDICT</span><b>' + escapeHtml(verdict) + '</b></div>' +
-      '<div><span>RISK SCORE</span><b>' + escapeHtml(risk) + '</b></div></div>' +
-    '<p class="agent-result-reason">' + escapeHtml(data.reason || data.message || 'No execution reason returned.') + '</p>' +
-    ((data.agent_message || data.message) ? '<p class="agent-result-message">' + escapeHtml(data.agent_message || data.message) + '</p>' : '') +
-    (txHash ? '<p class="agent-result-hash">TX HASH · ' + escapeHtml(txHash) + '</p>' : '') +
-    txLink +
-    (approvalId ? '<div class="agent-approval"><p>Connect a NEAR Testnet wallet with message-signing support. Your wallet will sign the exact receiver, amount, and expiry (NEP-413); this signature does not itself transfer funds. The proposal expires in five minutes.</p><button type="button" class="primary-btn" id="approveAgentPayment">Sign with NEAR wallet & approve</button></div>' : '');
+  const responseText = String(data.agent_message || data.message || data.reason || 'Sentinel completed the request.').trim();
+  const hasPaymentContext = Boolean(proposal.receiver_account || proposal.amount_near != null || approvalId || txHash);
+  const showStatusCard = status !== 'NO_PAYMENT_PROPOSED' && (hasPaymentContext || data.sentinel || data.investigation || status === 'DENIED');
+  const agentCard = showStatusCard
+    ? '<section class="telegram-agent-status">' +
+      '<div class="agent-result-head agent-result-' + escapeHtml(status.toLowerCase()) + '"><span>SECURITY STATUS</span><b>' + escapeHtml(status.replaceAll('_', ' ')) + '</b></div>' +
+      ((hasPaymentContext || data.sentinel) ? '<div class="agent-result-grid">' +
+        (proposal.receiver_account ? '<div><span>PROPOSED RECEIVER</span><b>' + escapeHtml(proposal.receiver_account) + '</b></div>' : '') +
+        (proposal.amount_near != null ? '<div><span>AMOUNT</span><b>' + escapeHtml(String(proposal.amount_near) + ' NEAR') + '</b></div>' : '') +
+        (data.sentinel?.decision ? '<div><span>SENTINEL VERDICT</span><b>' + escapeHtml(verdict) + '</b></div>' : '') +
+        (data.sentinel && Number.isFinite(Number(data.sentinel.risk_score)) ? '<div><span>RISK SCORE</span><b>' + escapeHtml(risk) + '</b></div>' : '') +
+      '</div>' : '') +
+      (txHash ? '<p class="agent-result-hash">TX HASH · ' + escapeHtml(txHash) + '</p>' : '') + txLink +
+      (approvalId ? '<div class="agent-approval"><p>Connect a NEAR Testnet wallet with message-signing support. Your wallet will sign the exact receiver, amount, and expiry (NEP-413); this signature does not itself transfer funds. The proposal expires in five minutes.</p><button type="button" class="primary-btn" id="approveAgentPayment">Sign with NEAR wallet & approve</button></div>' : '') +
+      '</section>' : '';
   result.innerHTML = '<div class="guest-chat-transcript telegram-chat-transcript" aria-label="Sentinel AI conversation">' +
     (authenticatedPrompt ? '<article class="guest-chat-message guest-chat-user"><span>YOU</span><p>' + escapeHtml(authenticatedPrompt) + '</p></article>' : '') +
-    '<article class="guest-chat-message guest-chat-assistant telegram-agent-bubble"><span>SENTINEL AI</span><div class="telegram-agent-card">' + agentCard + '</div></article></div>';
+    '<article class="guest-chat-message guest-chat-assistant telegram-agent-bubble"><span>SENTINEL AI</span><p class="telegram-agent-response">' + escapeHtml(responseText) + '</p>' + agentCard + '</article></div>';
   result.classList.remove('agent-result-enter');
   void result.offsetWidth;
   result.classList.add('agent-result-enter');
@@ -758,7 +760,7 @@ if (agentForm) {
         renderAgentResult(data);
         $('agentPrompt').value = '';
         if (data.status === 'AWAITING_HUMAN_APPROVAL') toast('Review the exact receiver and amount before approving.');
-        else toast('Agent finished: ' + String(data.status || 'UNKNOWN').replaceAll('_', ' '));
+        else toast('Sentinel replied.');
       }
     } catch (error) {
       if (GUEST_MODE) {
