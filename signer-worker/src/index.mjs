@@ -111,11 +111,14 @@ export async function assertRestrictedFunctionCallKey(accountId, publicKey, cont
     account_id: accountId, public_key: publicKey
   }, "sentinel-restricted-key-check");
   const permission = result.permission?.FunctionCall;
+  let allowance = 0n;
+  try { allowance = BigInt(permission?.allowance ?? "0"); } catch {}
   if (!permission ||
       permission.receiver_id !== contractId ||
       !Array.isArray(permission.method_names) ||
       permission.method_names.length !== 1 ||
-      permission.method_names[0] !== "pay") {
+      permission.method_names[0] !== "pay" ||
+      allowance !== 250_000_000_000_000_000_000_000n) {
     throw new Error("SIGNER_REQUIRES_CONTRACT_SCOPED_FUNCTION_CALL_KEY");
   }
   return { receiver_id: permission.receiver_id, method_names: permission.method_names };
