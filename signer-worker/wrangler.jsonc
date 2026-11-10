@@ -10,7 +10,7 @@
     {
       "binding": "DB",
       "database_id": "f3fa44b2-2b49-4af1-8687-2346cb336b22",
-      "migrations_dir": "../migrations"
+      "migrations_dir": "../migrations-d1"
     }
   ]
 }
