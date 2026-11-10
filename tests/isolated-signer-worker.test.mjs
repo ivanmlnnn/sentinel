@@ -64,7 +64,8 @@ test("signer kill switch denies before reading key material or touching D1", asy
   const result = await execute({
     intent: { receiver_account: "rawvest6817.testnet", amount_near: 0.01 },
     actor: "did:privy:test",
-    idempotency_key: "123e4567-e89b-42d3-a456-426614174000"
+    idempotency_key: "123e4567-e89b-42d3-a456-426614174000",
+    approval_id: "123e4567-e89b-42d3-a456-426614174001"
   }, "Bearer test", { sub: "did:privy:test" }, {
     NEAR_NETWORK: "testnet",
     NEAR_AGENT_KILL_SWITCH: "true"
