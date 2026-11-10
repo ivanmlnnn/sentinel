@@ -23,11 +23,11 @@ AI agents can be manipulated into proposing payments to unsafe destinations. A l
 
 ## 30-second judge walkthrough
 
-1. Open the [live dashboard](https://sentinel.ivmaladin.workers.dev) and sign in.
-2. Check a public NEAR Testnet account and inspect the evidence behind its verdict.
-3. Open Agent Lab and ask Anthropic to propose a small Testnet payment.
-4. Review the exact receiver and amount. The agent cannot spend automatically; a user must approve the exact proposal.
-5. Inspect the signer boundary, D1 audit trail, and Testnet transaction only if the separate signer deployment has been enabled and a real hash has been verified.
+1. Open the [currently deployed dashboard](https://sentinel.ivmaladin.workers.dev) and run the read-only wallet scan.
+2. Inspect the evidence behind the verdict and open the NEAR Explorer link.
+3. The isolated Agent Lab and approval flow are implemented on [Draft PR #3](https://github.com/ivanmlnnn/sentinel/pull/3), but are not yet confirmed on the live deployment.
+4. Do not ask judges to expect the Agent Lab on the live URL until the two Workers, migrations, and environment configuration are deployed and smoke-tested.
+5. Show a real Testnet transaction only after its hash is independently verified; otherwise show the fail-closed gate and state the limitation.
 
 The repository's automated attack demo is an offline regression test. It is not proof of a live transaction. See [Judge demo guide](docs/JUDGE_DEMO.md).
 
@@ -49,7 +49,7 @@ The repository's automated attack demo is an offline regression test. It is not 
 
 The signer implementation is in a separate Worker project under `signer-worker/`; the main Worker does not import the signing key. The signer is configured without a public `workers.dev` endpoint and is intended to be invoked only through a Cloudflare service binding.
 
-**A separate Worker in source code is not the same as a verified live deployment.** No live Testnet transfer is claimed until both Workers are deployed, the D1 migrations and secrets are configured, and the transaction hash is independently checked. The signer kill switch must remain enabled until the deployment checklist and negative tests pass.
+**The linked live dashboard is the currently deployed scanner; this branch's new Agent Lab and separate signer are not yet confirmed deployed.** A separate Worker in source code is not the same as a verified live deployment. No live Testnet transfer is claimed until both Workers are deployed, the D1 migrations and secrets are configured, and the transaction hash is independently checked. The signer kill switch must remain enabled until the deployment checklist and negative tests pass.
 
 See [Secure Agent Pipeline](docs/SECURE_AGENT_PIPELINE.md) for the complete trust boundary, setup, and verification gates.
 
