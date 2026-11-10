@@ -178,3 +178,25 @@ The latest main release workflow records are:
 The workflow logs show the Main and Signer D1 migration steps, deployment of the isolated Signer Worker before the Main Worker, and the eight production HTTP checks. The smoke checks cover dashboard availability and expected Turnstile, bearer-token, and internal-HMAC rejection behavior.
 
 A separate [Independent Local Stress Lab report](INDEPENDENT_LOCAL_STRESS_LAB.md) records nine local simulation checks, including concurrency, simulated multi-instance claims, local HTTP load, fault injection, policy-model fuzzing, and synthetic E2E state transitions. Those results are explicitly local-only: they do not establish distributed Cloudflare D1 behavior, deployed Worker p95/p99 latency, live NEAR RPC saturation handling, deployed Rust contract fuzzing, or real concurrent Testnet payouts.
+
+
+## 9. Gemini provider migration — 11 November 2026
+
+The authenticated Agent, Guest Agent, and AI Review routes have been migrated from Anthropic Messages API calls to the shared Google Gemini adapter in `functions/api/_gemini.js`.
+
+| Area | Implementation |
+|---|---|
+| Provider endpoint | Google Gemini `generateContent` API |
+| Default model | `gemini-2.5-flash` |
+| Runtime credential | `GEMINI_API_KEY`, stored only as a Cloudflare Main Worker secret |
+| Tool calling | Sentinel allowlisted tools are converted to Gemini function declarations |
+| Multi-turn tool results | Gemini function calls/responses are normalized to the route's internal conversation format |
+| Route coverage | Authenticated Agent, Guest Agent, and AI Review |
+| Regression suite | `tests/gemini-provider.test.mjs` |
+| Authorization boundary | Deterministic policy, human NEP-413 approval, isolated signer, and payment contract remain independent of model output |
+
+The Gemini adapter test suite covers schema/conversation conversion, response normalization, missing-secret fail-closed behavior, request construction, and provider rate-limit handling. These are deterministic tests with a mocked HTTP response; they do not establish production Gemini availability.
+
+**Production activation:** configure `GEMINI_API_KEY` on the Cloudflare Main Worker and deploy the exact reviewed commit. Then test all three routes with a real authenticated session. The isolated Signer Worker does not need the Gemini key.
+
+**Release evidence boundary:** Payment-contract WASM build, CodeQL, Security CI, Sentinel checks, Worker deployment, and live AI route verification must be read from the GitHub Actions runs associated with the exact PR head. Do not reuse a green run from an earlier commit as proof for this migration.
