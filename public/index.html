@@ -110,10 +110,10 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
 <footer><span>NEAR SENTINEL <b>·</b> NEAR SECURITY</span><span>TESTNET / READ-ONLY SCANNER + TESTNET AGENT / 2026 · <a href="https://testnet.nearblocks.io/" target="_blank" rel="noopener noreferrer">Powered by NearBlocks.io APIs</a></span></footer>
 </main>
 <div id="toast" class="toast"></div>
-<script src="/motion.js?v=20261110-wayang-logo-signout" defer></script>
+<script src="/motion.js?v=20261110-signout-turnstile-fix1" defer></script>
 <script type="module">
 const authRoot = document.getElementById('auth-root');
-import('/auth.js?v=20261110-turnstile-server-verify-guest-recovery').catch((error) => {
+import('/auth.js?v=20261110-signout-turnstile-fix1').catch((error) => {
   console.error('NEAR Sentinel authentication bootstrap failed:', error);
   if (!authRoot) return;
   authRoot.dataset.authBooted = '1';
