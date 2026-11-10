@@ -1,4 +1,4 @@
-import { json, readJson, verifyPrivyAccessToken } from "./_shared.js";
+import { json, verifyPrivyAccessToken } from "./_shared.js";
 import { evaluateAgentAuthorization, validatePaymentIntent } from "../../src/agent-policy.mjs";
 import { onRequestPost as investigatePost } from "./investigate.js";
 import { executeTestnetPayment } from "../../src/near-agent-signer.mjs";
@@ -41,7 +41,10 @@ export async function onRequestPost({ request, env }) {
   const priorExecution = await env.DB.prepare("SELECT idempotency_key FROM agent_execution WHERE idempotency_key = ?").bind(idempotencyKey).first();
   if (priorAudit || priorExecution) return json({ error: "IDEMPOTENCY_KEY_REUSED" }, 409);
 
-  const body = await readJson(request);
+  const rawBody = await request.text();
+  if (rawBody.length > 16000) return json({ error: "REQUEST_TOO_LARGE" }, 413);
+  let body;
+  try { body = JSON.parse(rawBody); } catch { return json({ error: "INVALID_JSON" }, 400); }
   const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
   if (!prompt || prompt.length > MAX_PROMPT_LENGTH) {
     return json({ error: "PROMPT_REQUIRED", detail: "Prompt must be 1–4000 characters." }, 400);
