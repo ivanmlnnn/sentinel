@@ -18,7 +18,7 @@ function hexToBytes(value) {
 }
 function nearToMicro(value) {
   const raw = typeof value === "number" ? String(value) : String(value ?? "");
-  if (!/^(?:0|[1-9][0-9]*)(?:\\.[0-9]{1,6})?$/.test(raw)) return null;
+  if (!/^(?:0|[1-9][0-9]*)(?:\.[0-9]{1,6})?$/.test(raw)) return null;
   const [whole, fraction = ""] = raw.split(".");
   const micro = BigInt(whole) * 1_000_000n + BigInt((fraction + "000000").slice(0, 6));
   if (micro <= 0n || micro > BigInt(Number.MAX_SAFE_INTEGER)) return null;
@@ -75,7 +75,8 @@ async function setState(env, key, state, hash = null) {
     .bind(state, hash, key).run();
 }
 async function investigate(intent, authorizationHeader, env) {
-  const base = String(env.SENTINEL_PREFLIGHT_URL || "").replace(/\\/$/, "");
+  const baseValue = String(env.SENTINEL_PREFLIGHT_URL || "");
+  const base = baseValue.endsWith("/") ? baseValue.slice(0, -1) : baseValue;
   if (!base.startsWith("https://")) throw new Error("PREFLIGHT_URL_NOT_CONFIGURED");
   const response = await fetch(base + "/api/investigate", {
     method: "POST", headers: { "content-type": "application/json", authorization: authorizationHeader },
@@ -95,7 +96,7 @@ async function execute(payload, authorizationHeader, identity, env) {
   if (payload.actor !== identity.sub) return deny("ACTOR_MISMATCH");
   if (!env.DB) return deny("EXECUTION_DATABASE_UNAVAILABLE");
   const signerAccountId = String(env.NEAR_AGENT_SIGNER_ACCOUNT_ID).toLowerCase();
-  if (!/^[a-z0-9._-]{2,64}\\.testnet$/.test(signerAccountId)) return deny("SIGNER_ACCOUNT_MUST_BE_TESTNET");
+  if (!/^[a-z0-9._-]{2,64}\.testnet$/.test(signerAccountId)) return deny("SIGNER_ACCOUNT_MUST_BE_TESTNET");
   const validated = validatePaymentIntent(intent, env);
   if (!validated.ok) return deny(validated.reason);
   const amountMicro = nearToMicro(intent.amount_near);
