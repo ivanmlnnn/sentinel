@@ -266,6 +266,14 @@ export async function execute(payload, authorizationHeader, identity, env) {
   if (!/^[a-z0-9._-]{2,64}\.testnet$/.test(signerAccountId)) return deny("SIGNER_ACCOUNT_MUST_BE_TESTNET");
   const validated = validatePaymentIntent(intent, env);
   if (!validated.ok) return deny(validated.reason);
+  const contractId = String(env.NEAR_PAYMENT_CONTRACT_ID || "").toLowerCase();
+  let signer;
+  try {
+    signer = KeyPairSigner.fromSecretKey(env.NEAR_AGENT_SIGNER_PRIVATE_KEY);
+    await assertRestrictedFunctionCallKey(signerAccountId, signer.getPublicKey().toString(), contractId);
+  } catch {
+    return deny("SIGNER_RESTRICTED_KEY_OR_CONTRACT_INVALID");
+  }
   const amountMicro = nearToMicro(intent.amount_near);
   const paymentCap = nearToMicro(env.NEAR_AGENT_MAX_PAYMENT_NEAR);
   const dailyCap = nearToMicro(env.NEAR_AGENT_MAX_DAILY_NEAR);
@@ -293,9 +301,6 @@ export async function execute(payload, authorizationHeader, identity, env) {
 
   let submitted = false;
   try {
-    const signer = KeyPairSigner.fromSecretKey(env.NEAR_AGENT_SIGNER_PRIVATE_KEY);
-    const contractId = String(env.NEAR_PAYMENT_CONTRACT_ID || "").toLowerCase();
-    await assertRestrictedFunctionCallKey(signerAccountId, signer.getPublicKey().toString(), contractId);
     const provider = new JsonRpcProvider({ url: RPC });
     const account = new Account(signerAccountId, provider);
     const paymentArgs = new TextEncoder().encode(JSON.stringify({
