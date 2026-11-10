@@ -211,18 +211,6 @@ async function investigate(intent, authorizationHeader, env) {
   if (!response.ok || !data) throw new Error("SIGNER_PREFLIGHT_FAILED");
   return data;
 }
-  const baseValue = String(env.SENTINEL_PREFLIGHT_URL || "");
-  const base = baseValue.endsWith("/") ? baseValue.slice(0, -1) : baseValue;
-  if (!base.startsWith("https://")) throw new Error("PREFLIGHT_URL_NOT_CONFIGURED");
-  const response = await fetch(base + "/api/investigate", {
-    method: "POST", headers: { "content-type": "application/json", authorization: authorizationHeader },
-    body: JSON.stringify({ receiver_account: intent.receiver_account, amount_near: intent.amount_near }),
-    signal: AbortSignal.timeout(20000)
-  });
-  const data = await response.json().catch(() => null);
-  if (!response.ok || !data) throw new Error("SIGNER_PREFLIGHT_FAILED");
-  return data;
-}
 export async function execute(payload, authorizationHeader, identity, env) {
   const { intent, idempotency_key: idempotencyKey, approval_id: approvalId, wallet_approval: walletApproval } = payload;
   if (!UUID_RE.test(String(idempotencyKey || ""))) return deny("INVALID_IDEMPOTENCY_KEY");
