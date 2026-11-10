@@ -3,8 +3,16 @@ name: Deploy Sentinel Testnet
 on:
   workflow_dispatch:
     inputs:
+      deploy_target:
+        description: "Choose which Worker to deploy. Both deploys Signer first, then Main."
+        required: true
+        type: choice
+        options:
+          - both
+          - main
+          - signer
       confirm_deploy:
-        description: "Type DEPLOY_SENTINEL_TESTNET to apply remote D1 migrations and deploy both Workers"
+        description: "Type DEPLOY_SENTINEL_TESTNET to continue"
         required: true
         type: string
 
@@ -28,6 +36,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Set up Rust and WebAssembly target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
       - name: Scan repository for secrets
@@ -50,6 +62,7 @@ jobs:
         run: |
           npm test
           npm run demo:attack
+          cargo build --manifest-path payment-contract/Cargo.toml --target wasm32-unknown-unknown --release
       - name: Analyze with CodeQL
         uses: github/codeql-action/analyze@v4
 
@@ -76,26 +89,31 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
       - name: Apply idempotent Main Worker D1 migrations
+        if: ${{ github.event.inputs.deploy_target == 'main' || github.event.inputs.deploy_target == 'both' }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler@4.159.0 d1 migrations apply sentinel-db --remote --config wrangler.jsonc
       - name: Apply idempotent Signer D1 migrations
+        if: ${{ github.event.inputs.deploy_target == 'signer' || github.event.inputs.deploy_target == 'both' }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler@4.159.0 d1 migrations apply db2 --remote --config signer-worker/wrangler.jsonc
-      - name: Deploy private signer first (kill switch remains fail-closed)
+      - name: Deploy private signer (deploy before Main when target is both)
+        if: ${{ github.event.inputs.deploy_target == 'signer' || github.event.inputs.deploy_target == 'both' }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler@4.159.0 deploy --config signer-worker/wrangler.jsonc
       - name: Deploy Main Worker and dashboard assets
+        if: ${{ github.event.inputs.deploy_target == 'main' || github.event.inputs.deploy_target == 'both' }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler@4.159.0 deploy --config wrangler.jsonc
       - name: Run production fail-closed smoke checks
+        if: ${{ github.event.inputs.deploy_target == 'main' || github.event.inputs.deploy_target == 'both' }}
         env:
           SENTINEL_BASE_URL: https://sentinel.ivmaladin.workers.dev
         run: npm run smoke:test
