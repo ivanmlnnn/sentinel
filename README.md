@@ -47,7 +47,7 @@ The repository's automated attack demo is an offline regression test. It is not 
 - Anthropic tool-calling agent whose output is treated as an untrusted proposal.
 - Actor-bound, exact-intent, five-minute human approval plus a signer-side one-time approval claim before payment execution.
 - Separate signer Worker, private service binding, signer-owned D1 ledger (DB2), HMAC-SHA256 timestamp/nonce protection, replay ledger, exact pending-approval claim, NEP-413 wallet signature verification, receiver allowlist, spend caps, kill switch, and conservative `UNKNOWN` handling.
-- Contract-scoped NEAR FunctionCall signer path: runtime key is checked on-chain for the exact payment contract and `pay` method; native NEAR payouts are emitted by the payment contract and checked at receipt level. The contract source and one-time key migration are in this branch; do not call the production flow live until the contract/key/Worker deployment sequence has completed.
+- Contract-scoped NEAR FunctionCall signer path: runtime key is checked on-chain for the exact payment contract and `pay` method; native NEAR payouts are emitted by the payment contract, which enforces per-payment and UTC-day caps plus one-time approval IDs. The signer checks the actual payout receipt. The contract source and one-time key migration are in this branch; do not call the production flow live until the contract/key/Worker deployment sequence has completed.
 - Legacy in-process signing path disabled.
 - Aggregate-only public metrics, private admin report handling, per-investigation owner checks for AI review, bounded JSON parsing, same-origin API mutation checks, security response headers, and CodeQL/secret-scanning CI.
 
