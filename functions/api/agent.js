@@ -1,4 +1,4 @@
-import { json, verifyPrivyAccessToken } from "./_shared.js";
+import { json, verifyPrivyAccessToken, readTextLimited } from "./_shared.js";
 import { evaluateAgentAuthorization, validatePaymentIntent } from "../../src/agent-policy.mjs";
 
 const MAX_PROMPT_LENGTH = 4000;
@@ -40,8 +40,9 @@ export async function onRequestPost({ request, env }) {
   const priorAudit = await env.DB.prepare("SELECT id FROM agent_audit WHERE id = ?").bind(idempotencyKey).first();
   const priorExecution = await env.DB.prepare("SELECT idempotency_key FROM agent_execution WHERE idempotency_key = ?").bind(idempotencyKey).first();
   if (priorAudit || priorExecution) return json({ error: "IDEMPOTENCY_KEY_REUSED" }, 409);
-  const rawBody = await request.text();
-  if (rawBody.length > 16000) return json({ error: "REQUEST_TOO_LARGE" }, 413);
+  const boundedBody = await readTextLimited(request, 16000);
+  if (!boundedBody.ok) return json({ error: boundedBody.reason === "BODY_TOO_LARGE" ? "REQUEST_TOO_LARGE" : "INVALID_BODY" }, boundedBody.reason === "BODY_TOO_LARGE" ? 413 : 400);
+  const rawBody = boundedBody.text;
   let body;
   try { body = JSON.parse(rawBody); } catch { return json({ error: "INVALID_JSON" }, 400); }
   const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
@@ -63,7 +64,7 @@ export async function onRequestPost({ request, env }) {
     });
   } catch { return json({ error: "AI_PROVIDER_UNAVAILABLE" }, 502); }
   const providerData = await providerResponse.json().catch(() => ({}));
-  if (!providerResponse.ok) return json({ error: "AI_PROVIDER_ERROR", detail: providerData.error?.message || "Provider request failed." }, 502);
+  if (!providerResponse.ok) return json({ error: "AI_PROVIDER_ERROR" }, 502);
   const toolUse = (providerData.content || []).find(item => item.type === "tool_use" && item.name === "request_near_payment");
   const agentText = (providerData.content || []).filter(item => item.type === "text").map(item => item.text).join("\n").slice(0, 3000);
   if (!toolUse) {
