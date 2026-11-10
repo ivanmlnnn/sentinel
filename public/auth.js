@@ -103,6 +103,10 @@ function AuthGate() {
 
     if (!ready) return () => { cancelled = true; disposeWayang(); };
 
+    // AuthGate stays mounted across logout, so clear any pending Guest-button
+    // state whenever the Privy authentication state changes.
+    setGuestLoading(false);
+
     if (authenticated) {
       document.body.classList.add('sentinel-authenticated');
       document.body.classList.toggle('sentinel-guest', Boolean(window.SENTINEL_GUEST));
