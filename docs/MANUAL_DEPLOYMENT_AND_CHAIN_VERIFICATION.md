@@ -2,6 +2,12 @@
 
 This repository intentionally deploys through GitHub Actions. Do not deploy either Worker from a local terminal for the hackathon release.
 
+## 0. Existing successful deployment record
+
+Do not repeat the initial Signer Worker deployment solely to establish whether it has ever been deployed. GitHub Actions run [42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536) completed successfully on 10 November 2026 from `feat/isolated-signer-worker` at `989964e8f967120d61e94bec61e7d09d4049bb4c`. Its logs confirm the private Worker `sentinel-signer` was deployed and received the existing restricted signer private-key secret and payment contract ID; Main Worker deployment and production smoke checks also passed. Signer Worker version: `45194350-5fb8-4aec-8418-45b742147f35`.
+
+The later merged `main` commit `67c2b00007190e98c2038110c7bb0749b3a6f5c2` was deployed to Cloudflare successfully in [run 42871954699](https://github.com/ivanmlnnn/sentinel/actions/runs/42871954699), with production smoke test passing. The payment-contract deployment and restricted-key rotation were not performed by run 42859362536; they were skipped while existing runtime secrets were uploaded. The workflow log masks private-key contents and does not establish the wallet address from the secret.
+
 ## 1. Select the exact source revision
 
 1. Open [Actions → Deploy Sentinel Testnet](https://github.com/ivanmlnnn/sentinel/actions/workflows/deploy-testnet.yml).
