@@ -35,8 +35,8 @@ for (const path of ["/api/guest/investigate"]) {
   });
   check(
     `POST ${path} rejects a missing Turnstile token before scanning`,
-    [400, 503].includes(response.status) &&
-      ["TURNSTILE_TOKEN_REQUIRED", "TURNSTILE_NOT_CONFIGURED"].includes(response.body?.error),
+    response.status === 400 &&
+      response.body?.error === "TURNSTILE_TOKEN_REQUIRED",
     `HTTP ${response.status}; error=${response.body?.error || "none"}`
   );
 }
