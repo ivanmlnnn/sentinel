@@ -60,6 +60,8 @@ jobs:
         run: |
           node --check src/index.js
           node --check signer-worker/src/index.mjs
+          node --check scripts/install-restricted-signer-key.mjs
+          node --check scripts/deploy-payment-contract.mjs
           node --check public/app.js
           npm run check:d1
           npx wrangler@4.159.0 deploy --dry-run
