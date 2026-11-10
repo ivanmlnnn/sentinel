@@ -26,7 +26,7 @@ export async function onRequestGet({ request, env }) {
 export async function onRequestPost({ request, env }) {
   const identity = await verifyPrivyAccessToken(request, env);
   if (!identity) return json({ error: "UNAUTHORIZED", detail: "A valid Privy app access token is required to submit a threat report." }, 401);
-  const body = await readJson(request);
+  const body = await readJson(request, 4096);
   if (!body) return json({ error: "Invalid JSON body." }, 400);
   const account = String(body.account_id || "").trim().toLowerCase();
   const category = String(body.category || "").trim().slice(0, 80);
