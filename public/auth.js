@@ -145,7 +145,7 @@ function AuthGate() {
           React.createElement('img', { src: '/IMG_20260629_220728_136.jpg?v=2', alt: 'NEAR Sentinel wayang emblem' })
         ),
         React.createElement('p', { className: 'sentinel-auth-kicker' }, 'NEAR PROTOCOL / WALLET RISK INTELLIGENCE'),
-        React.createElement('h1', null, 'NEAR SENTINEL'),
+        React.createElement('h1', { className: 'sentinel-login-wordmark' }, React.createElement('span', { className: 'sentinel-login-near' }, 'NEAR'), React.createElement('span', { className: 'sentinel-login-name' }, 'SENTINEL')),
         React.createElement('p', { className: 'sentinel-auth-copy' }, 'Preparing your NEAR security workspace.'),
         React.createElement('div', { className: 'sentinel-auth-loading-status' }, React.createElement('span', { className: 'sentinel-auth-status-dot' }), 'INITIALIZING PRIVY SESSION'),
         React.createElement('div', { className: 'sentinel-auth-loader', role: 'status', 'aria-label': 'Preparing secure session' })
