@@ -41,8 +41,9 @@ for (const path of ["/api/guest/investigate"]) {
   );
 }
 
-// Authenticated preflight is used by the isolated signer and must reach Privy auth
-// without a browser-only Turnstile token. Missing bearer token must still fail closed.
+// The public /api/investigate route is a browser-facing route and is gated by
+// Turnstile at the Worker edge before its handler checks Privy authentication.
+// The isolated signer uses /api/internal/investigate with HMAC + Privy instead.
 const authenticatedPreflight = await request("/api/investigate", {
   method: "POST",
   body: JSON.stringify({ receiver_account: "merchant.testnet", amount_near: 0.1 })
