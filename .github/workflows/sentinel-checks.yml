@@ -26,8 +26,8 @@ jobs:
       - name: Scan complete repository history
         shell: bash
         run: |
-          GITLEAKS_BIN="$(find /tmp -type f -name gitleaks -perm -u+x -print -quit)"
-          test -n "$GITLEAKS_BIN"
+          GITLEAKS_BIN="$(printf '%s\n' /tmp/gitleaks-*/gitleaks | head -n 1)"
+          test -x "$GITLEAKS_BIN"
           "$GITLEAKS_BIN" detect --source . --redact --exit-code 2
       - name: Set up Node.js
         uses: actions/setup-node@v4
