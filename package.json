@@ -7,5 +7,11 @@
     "test": "node --test",
     "demo:attack": "node examples/prompt-injection-attack-demo.mjs",
     "smoke:test": "node scripts/production-smoke.mjs"
+  },
+  "description": "A pre-sign security checkpoint for AI agents on NEAR.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ivanmlnnn/sentinel.git"
   }
 }
