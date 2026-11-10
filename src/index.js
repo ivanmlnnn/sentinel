@@ -26,6 +26,36 @@ async function enforceRateLimit(binding, key) {
   return result?.success === true;
 }
 
+async function verifyTurnstileToken(token, request, env) {
+  if (typeof env.TURNSTILE_SECRET !== "string" || !env.TURNSTILE_SECRET.trim()) {
+    return { ok: false, reason: "TURNSTILE_NOT_CONFIGURED", status: 503 };
+  }
+  if (typeof token !== "string" || token.length < 1 || token.length > 2048) {
+    return { ok: false, reason: "TURNSTILE_TOKEN_REQUIRED", status: 400 };
+  }
+  try {
+    const form = new URLSearchParams({ secret: env.TURNSTILE_SECRET, response: token });
+    const ip = request.headers.get("CF-Connecting-IP");
+    if (ip) form.set("remoteip", ip);
+    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: form,
+      signal: AbortSignal.timeout(5000)
+    });
+    if (!response.ok) throw new Error("Siteverify HTTP failure");
+    const result = await response.json();
+    const requestHostname = new URL(request.url).hostname.toLowerCase();
+    const verifiedHostname = String(result.hostname || "").toLowerCase();
+    if (result.success !== true || result.action !== "track_wallet" || verifiedHostname !== requestHostname) {
+      return { ok: false, reason: "TURNSTILE_VERIFICATION_FAILED", status: 403 };
+    }
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: "TURNSTILE_UNAVAILABLE", status: 503 };
+  }
+}
+
 function rateLimitResponse() {
   return new Response(JSON.stringify({ error: "RATE_LIMITED" }), {
     status: 429,
@@ -61,6 +91,18 @@ export default {
     const handler = routes[`${request.method} ${url.pathname}`];
     if (handler) {
       try {
+        let turnstileVerified = false;
+        if (request.method === "POST" && ["/api/investigate", "/api/guest/investigate"].includes(url.pathname)) {
+          let body;
+          try { body = await request.clone().json(); }
+          catch { return respond(new Response(JSON.stringify({ error: "INVALID_JSON" }), { status: 400, headers: { "content-type": "application/json; charset=utf-8" } })); }
+          const verification = await verifyTurnstileToken(body?.turnstile_token, request, env);
+          if (!verification.ok) return respond(new Response(JSON.stringify({ error: verification.reason }), {
+            status: verification.status,
+            headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
+          }));
+          turnstileVerified = true;
+        }
         if (url.pathname.startsWith("/api/")) {
           const ip = request.headers.get("CF-Connecting-IP") || "unknown";
           if (!env.API_RATE_LIMITER) return respond(serviceUnavailable("RATE_LIMIT_NOT_CONFIGURED"));
@@ -76,7 +118,7 @@ export default {
             if (!await enforceRateLimit(env.INVESTIGATION_RATE_LIMITER, ip)) return respond(rateLimitResponse());
           }
         }
-        return respond(await handler({ request, env, ctx, params: {}, data: {} }));
+        return respond(await handler({ request, env, ctx, params: {}, data: { turnstileVerified } }));
       } catch (error) {
         // Keep detailed exceptions in restricted Worker logs, never in API responses.
         console.error("NEAR Sentinel API error:", error);
