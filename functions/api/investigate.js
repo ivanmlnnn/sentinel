@@ -196,7 +196,7 @@ async function runInvestigation({ request, env }) {
       });
       const data = await response.json();
       if (data.result) account = data.result;
-      else rpcError = data.error?.message || "Account not found or RPC error";
+      else rpcError = "Account not found or RPC error";
     } catch (error) { rpcError = error?.message || "NEAR RPC unavailable"; }
 
     let txHistory = null;
