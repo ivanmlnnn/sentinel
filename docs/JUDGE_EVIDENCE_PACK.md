@@ -11,6 +11,8 @@
 - **Live dashboard:** https://sentinel.ivmaladin.workers.dev
 - **Public repository:** https://github.com/ivanmlnnn/sentinel
 - **Merged security architecture:** [PR #3](https://github.com/ivanmlnnn/sentinel/pull/3)
+- **NEAR-native integration:** [NEAR Ecosystem Integration & Wallet-to-Agent Flow](NEAR_ECOSYSTEM_INTEGRATION.md) — explains the actual NEAR integrations and separates Privy sign-in, NEP-413 wallet authorization, and the restricted runtime signer.
+- **Signed verdict integrity:** [Signed Verdict Attestation](SIGNED_VERDICT.md) — Ed25519-signed preflight decision bound to the exact intent.
 - **Architecture:** [Secure Agent Pipeline](SECURE_AGENT_PIPELINE.md)
 - **Interactive walkthrough:** [Judge Demo](JUDGE_DEMO.md)
 - **End-to-end results:** [End-to-End Verification Report](END_TO_END_VERIFICATION.md) — exact 124-test result, 8 production smoke checks, deploy job results and provenance attestation.
@@ -156,7 +158,7 @@ This classification improves diagnosis but does not replenish provider credits. 
 
 The wallet investigation and security controls are separate from the model provider. During a provider-credit outage, demonstrate the read-only scanner and automated security tests; do not claim a successful live AI conversation unless one is observed.
 
-## 8. Provenance and limitations
+## 8. Provenance and verification scope
 
 This repository has pre-existing history and project assets. The submission does not claim that the entire repository was created during the hackathon. Use the Git history and [provenance notes](PROVENANCE.md) to assess event-period work.
 
@@ -166,9 +168,9 @@ Sentinel is a risk-screening and authorization control, not a guarantee that an 
 
 1. Read this page's one-sentence pitch and four verdicts.
 2. Open the [live dashboard](https://sentinel.ivmaladin.workers.dev) and run a read-only Testnet wallet scan.
-3. Open [PR #3](https://github.com/ivanmlnnn/sentinel/pull/3) and inspect the agent approval, signer and contract source files.
-4. Open [Signer deployment run](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536) and [Main deployment run](https://github.com/ivanmlnnn/sentinel/actions/runs/42871954699); inspect job logs and deployed version details.
-5. Open [Sentinel checks](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243801), [CodeQL](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243329), and [Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243623).
+3. Read [NEAR Ecosystem Integration](NEAR_ECOSYSTEM_INTEGRATION.md), then inspect [PR #3](https://github.com/ivanmlnnn/sentinel/pull/3) and [merged PR #10](https://github.com/ivanmlnnn/sentinel/pull/10).
+4. Open the [current Main + isolated Signer deployment](https://github.com/ivanmlnnn/sentinel/actions/runs/42900812519); inspect both Worker versions and the production smoke output.
+5. Open the current [Sentinel checks](https://github.com/ivanmlnnn/sentinel/actions/runs/42900812426), [CodeQL](https://github.com/ivanmlnnn/sentinel/actions/runs/42900812267), and [Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42900812261).
 6. Clone and run the reproducible commands above.
 7. Treat any payout as verified only when a real transaction hash and matching successful receipt are available.
 
@@ -183,16 +185,16 @@ The official event page requires a public repository and a public X demo post th
 A strong repository helps screening, but it does not replace the required public demo post and submission form.
 
 
-## 11. Signed-verdict feature release evidence (PR #10)
+## 11. Merged Ed25519 signed-verdict implementation
 
-The Ed25519 signed-verdict implementation is proposed in [PR #10](https://github.com/ivanmlnnn/sentinel/pull/10). Its feature-branch deployment workflow completed successfully:
+The Ed25519 signed-verdict implementation was merged into `main` through [PR #10](https://github.com/ivanmlnnn/sentinel/pull/10), merge commit `2351fd39d8e272a721a00d6e7f9f8c82a9b43721`. It adds a signed assessment boundary between the Main Worker and isolated Signer Worker. The canonical verdict binds sender, receiver, exact microNEAR amount, nonce, issue time, expiry, decision, risk score, assessment status, and assessment ID. The signer verifies the signature and exact intent before authorization and payment execution.
 
-- [Dual-Worker deployment run #221](https://github.com/ivanmlnnn/sentinel/actions/runs/42887069411) — completed / success.
-- Both Main and isolated Signer Wrangler configurations validated.
-- Automated tests and both D1 migration steps passed.
-- The isolated `sentinel-signer` deployment step passed.
-- The Main `sentinel` deployment step passed.
-- Production HTTP smoke test passed.
-- [PR #10 Security CI run](https://github.com/ivanmlnnn/sentinel/actions/runs/42886719351) — success.
+### Current main release evidence — 11 November 2026
 
-The run is branch-specific evidence for commit `48e64d4be6152b168a0dd2a340cdc8d45fc6b4c4`. It establishes that both Worker deployment steps and the production smoke step completed. It does not prove that a live payment exercised the Ed25519 attestation, nor independently reveal/compare Cloudflare's secret values. Do not claim signed-verdict runtime acceptance/rejection or a live payout until a deployed trace demonstrates valid-signature acceptance and invalid/expired/tampered-signature rejection.
+- [Main + isolated Signer deployment run](https://github.com/ivanmlnnn/sentinel/actions/runs/42900812519) — completed successfully on the merged main commit. Signer version: `b093e1ca-d6c3-423b-b4e7-1b26d377aed2`; Main version: `d37e01df-6907-4b75-9e53-20a0300871ae`.
+- [Sentinel checks](https://github.com/ivanmlnnn/sentinel/actions/runs/42900812426) — 127 tests passed, 0 failed; D1 validation, both Worker bundle checks, prompt-injection regression, and payment-contract WASM build passed.
+- [Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42900812261) — success.
+- [CodeQL](https://github.com/ivanmlnnn/sentinel/actions/runs/42900812267) — success.
+- Production HTTP smoke suite — 8/8 passed in the same deployment run.
+
+The feature-branch dual-Worker release record is also available in [run #221](https://github.com/ivanmlnnn/sentinel/actions/runs/42887069411). The merged-main deployment above is the current release record. Deployment and automated signature tests establish implementation and release evidence; they are not a substitute for a transaction hash and receipt proving a live Sentinel-originated payment.

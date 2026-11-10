@@ -132,3 +132,25 @@ A dry-run validates the bundle only. It is not a deployment.
 | PR #10 Security CI | PASS | [Run #42886719351](https://github.com/ivanmlnnn/sentinel/actions/runs/42886719351) |
 
 **Evidence boundary:** this verifies the revised workflow deployed both Worker components and that the production HTTP smoke test passed. It does not by itself prove the exact Ed25519 keypair values match, nor prove that a live Privy-originated Testnet payment exercised the new signed-verdict path. Do not describe live signature acceptance/rejection or a signed-verdict payout as end-to-end verified until a deployed runtime trace demonstrates both positive and negative cases.
+
+
+## 7. Merged main release — 11 November 2026
+
+The signed-verdict implementation was merged through [PR #10](https://github.com/ivanmlnnn/sentinel/pull/10), producing main commit `2351fd39d8e272a721a00d6e7f9f8c82a9b43721`.
+
+| Verification | Result | Evidence |
+|---|---|---|
+| Automated regression | **127 passed, 0 failed** | [Sentinel checks run](https://github.com/ivanmlnnn/sentinel/actions/runs/42900812426) |
+| Prompt-injection regression | **PASS — BLOCK; signer invoked: NO** | Same run |
+| Main D1 migrations | **PASS — 8 migrations, 10 tables, 24 indexes** | Same run job log |
+| Signer D1 migrations | **PASS — 1 migration, 3 tables, 7 indexes** | Same run job log |
+| Main and Signer bundle validation | **PASS** | Same run |
+| Payment-contract WASM release build | **PASS** | Same run |
+| Main + isolated Signer deployment | **PASS** | [Deployment run](https://github.com/ivanmlnnn/sentinel/actions/runs/42900812519) |
+| Signer Worker version | `b093e1ca-d6c3-423b-b4e7-1b26d377aed2` | Same deployment run |
+| Main Worker version | `d37e01df-6907-4b75-9e53-20a0300871ae` | Same deployment run |
+| Production HTTP smoke | **8/8 PASS** | Same deployment run |
+| Security CI | **PASS** | [Run](https://github.com/ivanmlnnn/sentinel/actions/runs/42900812261) |
+| CodeQL | **PASS** | [Run](https://github.com/ivanmlnnn/sentinel/actions/runs/42900812267) |
+
+The deployment job applied both D1 migration sets, deployed the isolated Signer Worker before the Main Worker, and completed the production smoke suite. The smoke suite confirms dashboard availability and the expected unauthenticated/missing-token rejection paths. It does not claim a live AI conversation, wallet connection, or Sentinel-originated NEAR payout.
