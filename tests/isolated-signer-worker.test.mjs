@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
-import { verifyInternalRequest, reserveNonce, nearToMicro, claimApproval, execute, default as signerWorker } from "../signer-worker/src/index.mjs";
+import { verifyInternalRequest, readBoundedSignerBody, reserveNonce, nearToMicro, claimApproval, execute, default as signerWorker } from "../signer-worker/src/index.mjs";
 
 const TEST_SECRET = Buffer.from(webcrypto.getRandomValues(new Uint8Array(32))).toString("hex");
 
@@ -110,4 +110,33 @@ test("internal HMAC rejects short secrets and non-canonical timestamps", async (
   const longSecret = TEST_SECRET;
   const exponentTimestamp = await signedRequest({ secret: longSecret, body, timestamp: "1.78e9" });
   assert.equal(await verifyInternalRequest(exponentTimestamp, body, { AGENT_SIGNER_HMAC_SECRET: longSecret }), false);
+});
+
+test("signer body limit counts UTF-8 bytes and rejects non-JSON content types", async () => {
+  const multibyteBody = JSON.stringify({ prompt: "🛡".repeat(3000) });
+  const oversized = new Request("https://signer.internal/execute", {
+    method: "POST", headers: { "content-type": "application/json" }, body: multibyteBody
+  });
+  const tooLarge = await readBoundedSignerBody(oversized, 8000);
+  assert.equal(tooLarge.ok, false);
+  assert.equal(tooLarge.status, 413);
+  assert.equal(tooLarge.reason, "REQUEST_TOO_LARGE");
+
+  const wrongType = new Request("https://signer.internal/execute", {
+    method: "POST", headers: { "content-type": "text/plain" }, body: "{}"
+  });
+  const rejectedType = await readBoundedSignerBody(wrongType, 8000);
+  assert.equal(rejectedType.ok, false);
+  assert.equal(rejectedType.status, 415);
+  assert.equal(rejectedType.reason, "JSON_CONTENT_TYPE_REQUIRED");
+});
+
+test("signer endpoint rejects oversized UTF-8 payload before authentication work", async () => {
+  const oversized = new Request("https://signer.internal/execute", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ prompt: "🛡".repeat(3000) })
+  });
+  const response = await signerWorker.fetch(oversized, { DB: {} });
+  assert.equal(response.status, 413);
+  assert.equal((await response.json()).error, "REQUEST_TOO_LARGE");
 });
