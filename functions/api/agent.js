@@ -1,8 +1,10 @@
 import { json, readJson, verifyPrivyAccessToken } from "./_shared.js";
 import { evaluateAgentAuthorization, validatePaymentIntent } from "../../src/agent-policy.mjs";
 import { onRequestPost as investigatePost } from "./investigate.js";
+import { executeTestnetPayment } from "../../src/near-agent-signer.mjs";
 
 const MAX_PROMPT_LENGTH = 4000;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MODEL_TOOL = [{
   name: "request_near_payment",
   description: "Propose one NEAR Testnet payment for Sentinel policy inspection. This tool does not itself sign or transfer funds.",
@@ -30,6 +32,14 @@ export async function onRequestPost({ request, env }) {
   const identity = await verifyPrivyAccessToken(request, env);
   if (!identity) return json({ error: "UNAUTHORIZED" }, 401);
   if (!env.ANTHROPIC_API_KEY) return json({ error: "AI_PROVIDER_NOT_CONFIGURED" }, 503);
+  const idempotencyKey = request.headers.get("Idempotency-Key") || "";
+  if (!UUID_RE.test(idempotencyKey)) {
+    return json({ error: "IDEMPOTENCY_KEY_REQUIRED", detail: "Send a UUID in the Idempotency-Key header." }, 400);
+  }
+  if (!env.DB) return json({ error: "AGENT_AUDIT_DATABASE_UNAVAILABLE" }, 503);
+  const priorAudit = await env.DB.prepare("SELECT id FROM agent_audit WHERE id = ?").bind(idempotencyKey).first();
+  const priorExecution = await env.DB.prepare("SELECT idempotency_key FROM agent_execution WHERE idempotency_key = ?").bind(idempotencyKey).first();
+  if (priorAudit || priorExecution) return json({ error: "IDEMPOTENCY_KEY_REUSED" }, 409);
 
   const body = await readJson(request);
   const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
@@ -38,7 +48,7 @@ export async function onRequestPost({ request, env }) {
   }
   if (env.NEAR_NETWORK !== "testnet") return json({ error: "TESTNET_ONLY" }, 503);
 
-  const runId = crypto.randomUUID();
+  const runId = idempotencyKey;
   let providerResponse;
   try {
     providerResponse = await fetch("https://api.anthropic.com/v1/messages", {
@@ -117,10 +127,16 @@ export async function onRequestPost({ request, env }) {
     ? { authorized: false, reason: "PREFLIGHT_UNAVAILABLE" }
     : evaluateAgentAuthorization({ intent, assessment, env });
 
-  // This first milestone intentionally has no signer implementation. Even an
-  // ALLOW is not broadcast until the isolated signer is deployed and verified.
-  const status = authorization.authorized ? "AUTHORIZED_PENDING_SIGNER" : "DENIED";
-  const reason = authorization.authorized ? "SIGNER_NOT_CONFIGURED" : authorization.reason;
+  // The isolated signer repeats the Sentinel assessment and its own hard
+  // limits. A policy ALLOW from this earlier preflight is not enough to spend.
+  const execution = authorization.authorized
+    ? await executeTestnetPayment({
+        intent, actor: identity.sub, idempotencyKey: runId,
+        authorizationHeader: request.headers.get("authorization") || "", env
+      })
+    : { executed: false, status: "DENIED", reason: authorization.reason, transaction_hash: null };
+  const status = execution.status;
+  const reason = execution.reason;
   await writeAudit(env, {
     id: runId, actor: identity.sub, event: "AGENT_PAYMENT_PROPOSAL",
     receiver: typeof intent.receiver_account === "string" ? intent.receiver_account.slice(0, 64) : null,
@@ -143,7 +159,9 @@ export async function onRequestPost({ request, env }) {
       assessment_status: assessment.assessment_status || null
     } : null,
     agent_message: text,
-    transaction_hash: null,
-    execution_enabled: false
-  }, authorization.authorized ? 202 : 200);
+    transaction_hash: execution.transaction_hash || null,
+    signer_account: execution.signer_account || null,
+    network: execution.network || "testnet",
+    execution_enabled: execution.executed === true
+  }, execution.executed ? 200 : 200);
 }
