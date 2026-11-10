@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { verifyInternalRequest, reserveNonce, nearToMicro, execute, default as signerWorker } from "../signer-worker/src/index.mjs";
+import { verifyInternalRequest, reserveNonce, nearToMicro, claimApproval, execute, default as signerWorker } from "../signer-worker/src/index.mjs";
 
 async function signedRequest({ secret, body, timestamp = String(Math.floor(Date.now() / 1000)), nonce = "123e4567-e89b-42d3-a456-426614174000" }) {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret),
@@ -71,4 +71,29 @@ test("signer kill switch denies before reading key material or touching D1", asy
   });
   assert.equal(result.executed, false);
   assert.equal(result.reason, "KILL_SWITCH_ACTIVE");
+});
+
+test("signer requires an exact actor-bound pending approval and claims it once", async () => {
+  const inserted = new Set();
+  const env = { DB: { prepare(sql) {
+    return {
+      bind(...args) {
+        if (sql.startsWith("SELECT id, actor")) return { async first() {
+          return { id: args[0], actor: args[1], receiver_account: "rawvest6817.testnet",
+            amount_micro: 10000, status: "APPROVING" };
+        } };
+        return { async run() {
+          if (inserted.has(args[0])) throw new Error("UNIQUE constraint");
+          inserted.add(args[0]);
+          return { meta: { changes: 1 } };
+        } };
+      }
+    };
+  } } };
+  const claim = { approvalId: "123e4567-e89b-42d3-a456-426614174000",
+    idempotencyKey: "123e4567-e89b-42d3-a456-426614174001",
+    actor: "did:privy:test", receiver: "rawvest6817.testnet", amountMicro: 10000 };
+  await claimApproval(env, claim);
+  await assert.rejects(() => claimApproval(env, claim), /UNIQUE constraint/);
+  await assert.rejects(() => claimApproval(env, { ...claim, amountMicro: 20000 }), /HUMAN_APPROVAL_NOT_VERIFIED/);
 });
