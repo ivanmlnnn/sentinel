@@ -37,7 +37,7 @@ The public Guest entry is implemented as a read-only-with-respect-to-signing das
 
 - It starts before the Privy React module finishes loading, so judges can enter even if the sign-in UI is delayed.
 - It hides wallet connection and report-submission controls.
-- It can call the public read-only investigation and GET endpoints.
+- It can call the separate public Guest investigation endpoint and public GET endpoints. Guest scans are persisted in D1 but cannot submit reports, request AI review, or sign transactions.
 - It does not establish an authenticated identity or permit protected write/cost-bearing routes.
 
 ### 4. Submission polish
