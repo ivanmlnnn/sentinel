@@ -52,16 +52,14 @@ export function mountWayang3D(host) {
   medallion.rotation.x=Math.PI/2;medallion.position.z=-.55;puppet.add(medallion);
   const rimRing=new THREE.Mesh(new THREE.TorusGeometry(2.28,.035,12,100),gold);rimRing.position.z=-.43;puppet.add(rimRing);
 
-  // Swept wing: a thick, bevelled silhouette with individual feather blades and gold quills.
+  // One oversized, swept sky-blue wing, outlined in dark ink like the GitHub logo.
   const wingPivot=new THREE.Group();wingPivot.position.set(.42,.28,.05);puppet.add(wingPivot);
-  const wing=shapeMesh([[0,0],[.25,.55],[.58,1.12],[1.03,1.53],[1.55,1.65],[1.82,1.39],[1.67,.95],[1.43,.48],[1.14,.05],[.76,-.28],[.36,-.2]],cyan,.22,.055);
-  wingPivot.add(wing);
-  for(let i=0;i<7;i++){
-    const x=.28+i*.19, y=.18+i*.18;
-    const feather=shapeMesh([[x,y],[x+.17,y+.34],[x+.38,y+.67],[x+.31,y+.25],[x+.12,y-.04]],i%2?teal:gold,.12,.025);
-    feather.position.z=.25;wingPivot.add(feather);
-    tube([[x+.12,y,.4],[x+.25,y+.25,.4],[x+.34,y+.52,.4]],.018,paleGold,wingPivot);
-  }
+  const wingPoints=[[0,0],[.25,.55],[.58,1.12],[1.03,1.53],[1.55,1.65],[1.82,1.39],[1.67,.95],[1.43,.48],[1.14,.05],[.76,-.28],[.36,-.2]];
+  const wingOutline=shapeMesh(wingPoints,dark,.27,.075);wingOutline.position.z=-.035;wingPivot.add(wingOutline);
+  const wing=shapeMesh(wingPoints,cyan,.22,.055);wing.position.z=.04;wingPivot.add(wing);
+  tube([[.43,.28,.34],[.78,.64,.35],[1.12,1.05,.35],[1.47,1.4,.34]],.045,dark,wingPivot);
+  tube([[.75,.16,.36],[1.04,.43,.36],[1.31,.76,.36],[1.48,1.02,.36]],.025,dark,wingPivot);
+  const wingMark=shapeMesh([[.55,.48],[.78,.59],[.98,.52],[.82,.39],[.64,.37]],paleGold,.07,.018);wingMark.position.z=.38;wingPivot.add(wingMark);
 
   // Body and shoulder armor.
   const torso=shapeMesh([[-.68,-1.65],[-.82,-.95],[-.58,-.52],[-.2,-.34],[.32,-.43],[.62,-.86],[.55,-1.65]],teal,.32,.08);
@@ -70,29 +68,39 @@ export function mountWayang3D(host) {
   sphere(-.45,-.56,.5,.34,.24,.2,gold);
   sphere(.45,-.56,.5,.34,.24,.2,gold);
 
-  // Head in three dimensions, with a distinct side-profile nose and jaw.
-  const head=sphere(-.05,.34,.42,.56,.69,.43,skin);
-  const faceProfile=shapeMesh([[-.42,.64],[-.12,.47],[.22,.37],[.62,.30],[.34,.18],[.31,-.02],[.12,-.24],[-.28,-.18],[-.48,.12],[-.43,.58],[-.12,.9]],skin,.18,.035);
+  // Mechanical wayang head in a right-facing profile, with a long muzzle and open red mouth.
+  const silver=new THREE.MeshPhysicalMaterial({color:0xb9c9cf,metalness:.82,roughness:.24,clearcoat:.9});
+  const steel=new THREE.MeshStandardMaterial({color:0x536b76,metalness:.8,roughness:.28});
+  const red=new THREE.MeshStandardMaterial({color:0x9d2634,metalness:.28,roughness:.32});
+  sphere(-.08,.35,.42,.54,.62,.42,steel);
+  const faceProfile=shapeMesh([[-.43,.63],[-.22,.79],[.12,.68],[.43,.52],[.82,.42],[.99,.28],[.77,.18],[.52,.2],[.42,-.02],[.12,-.22],[-.3,-.16],[-.48,.15]],silver,.2,.04);
   faceProfile.position.z=.48;puppet.add(faceProfile);
-  sphere(.30,.48,.69,.10,.055,.035,dark);
-  tube([[.02,.25,.72],[.22,.19,.73],[.39,.24,.72]],.018,dark);
-  sphere(.25,-.02,.69,.055,.04,.035,gold);
-
-  // Tall, layered Javanese crown with pointed ornaments.
-  const crown=shapeMesh([[-.57,.75],[-.7,1.15],[-.42,1.03],[-.34,1.52],[-.08,1.18],[.18,1.62],[.32,1.16],[.62,1.32],[.48,.78],[.2,.68],[-.24,.68]],gold,.24,.045);
-  crown.position.z=.62;puppet.add(crown);
-  for(const [x,y,r] of [[-.36,1.05,.12],[-.08,1.26,.14],[.22,1.18,.12],[.39,.94,.1]]){
-    sphere(x,y,.93,r,r, .07,paleGold);
+  // Jaw, red mouth opening and small metallic teeth.
+  const jaw=shapeMesh([[.37,.12],[.91,.22],[.8,.02],[.48,-.08]],steel,.15,.025);jaw.position.z=.72;puppet.add(jaw);
+  const mouth=shapeMesh([[.55,.19],[.88,.25],[.76,.16],[.57,.12]],red,.06,.012);mouth.position.z=.9;puppet.add(mouth);
+  for(let i=0;i<3;i++) sphere(.61+i*.075,.235,.98,.025,.035,.018,paleGold);
+  sphere(.47,.49,.91,.085,.045,.035,dark);
+  tube([[.34,.34,.91],[.58,.31,.94],[.79,.34,.93]],.018,dark);
+  // Circular temple hardware and layered ear mechanisms.
+  const temple=sphere(-.23,.43,.78,.24,.23,.12,gold);
+  const templeCore=sphere(-.23,.43,.91,.12,.12,.06,steel);
+  sphere(-.23,.43,.97,.045,.045,.025,cyan);
+  tube([[-.48,.52,.82],[-.25,.7,.86],[.05,.72,.84],[.29,.61,.84]],.035,gold);
+  // Chef toque: unmistakable pleated band and soft, puffed crown in warm yellow.
+  const hatGroup=new THREE.Group();hatGroup.position.set(-.12,1.03,.7);puppet.add(hatGroup);
+  const hatBand=new THREE.Mesh(new THREE.CylinderGeometry(.43,.48,.2,48,1,false),gold);
+  hatBand.scale.set(1.22,1,0.72);hatBand.rotation.z=-.12;hatGroup.add(hatBand);
+  const hatPuffs=[[-.36,.19,0,.35,.38,.29],[-.12,.36,0,.39,.48,.31],[.18,.35,0,.39,.47,.31],[.43,.17,0,.3,.35,.27]];
+  for(const [x,y,z,sx,sy,sz] of hatPuffs) sphere(x,y,z,sx,sy,sz,paleGold,hatGroup);
+  // Fine stitched folds and curved top seam make the toque read as fabric, not a crown.
+  for(let i=0;i<5;i++){
+    const x=-.39+i*.19;
+    tube([[x,-.01,.23],[x-.035,.2,.27],[x+.015,.42,.22],[x+.09,.58,.14]],.012,gold,hatGroup);
   }
-  tube([[-.44,.82,.91],[-.18,.91,.98],[.12,.9,.98],[.39,.82,.9]],.025,paleGold);
-  // Large swept golden feather crest, matching the logo silhouette.
-  const crest=shapeMesh([[-.62,1.24],[-.94,1.55],[-.78,1.94],[-.48,2.12],[-.12,2.02],[.04,1.78],[-.18,1.55],[-.43,1.42]],paleGold,.18,.045);
-  crest.position.set(-.05,0,.72);puppet.add(crest);
-  for(let i=0;i<4;i++) tube([[-.72+i*.12,1.55+i*.035,.94],[-.48+i*.09,1.77+i*.045,.96],[-.22+i*.07,1.92-i*.025,.94]],.014,gold);
-
-  const ear=sphere(.45,.34,.62,.16,.2,.12,gold);
-  sphere(.46,.34,.76,.055,.08,.04,teal);
-
+  tube([[-.48,.12,.24],[-.22,.08,.29],[.08,.08,.29],[.39,.13,.23]],.022,gold,hatGroup);
+  // Small ornamental forehead plate keeps the Javanese wayang identity.
+  const brow=shapeMesh([[-.34,.73],[-.23,.92],[-.08,.78],[.08,.88],[.22,.69],[0,.63]],gold,.12,.025);brow.position.z=.94;puppet.add(brow);
+  sphere(.32,.29,.82,.11,.07,.07,gold);
   // Neck ornaments and articulated arm/hand shapes.
   tube([[-.28,-.38,.56],[-.08,-.5,.7],[.2,-.42,.56]],.045,paleGold);
   tube([[-.55,-.78,.54],[-.88,-1.03,.4],[-1.02,-1.34,.35]],.105,gold);
