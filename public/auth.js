@@ -108,18 +108,7 @@ function AuthGate() {
     }
   }, [ready, authenticated, getAccessToken]);
 
-  useEffect(() => {
-    if (!ready || authenticated) return;
-    let cleanup = () => {};
-    let cancelled = false;
-    import('./wayang-3d.js?v=20261110-sculpted-relief')
-      .then(({ mountWayang3D }) => {
-        if (cancelled) return;
-        cleanup = mountWayang3D(document.querySelector('.sentinel-auth-mark'));
-      })
-      .catch((error) => console.error('Sentinel 3D wayang failed to initialize:', error));
-    return () => { cancelled = true; cleanup(); };
-  }, [ready, authenticated]);
+
 
   const startGuestSession = async () => {
     setGuestLoading(true);
@@ -141,7 +130,7 @@ function AuthGate() {
   if (!ready) {
     return React.createElement('main', { className: 'sentinel-auth-screen' },
       React.createElement('section', { className: 'sentinel-auth-card' },
-        React.createElement('button', { className: 'sentinel-auth-mark', type: 'button', 'aria-label': 'Drag to rotate the three-dimensional Sentinel wayang' },
+        React.createElement('div', { className: 'sentinel-auth-mark', 'aria-label': 'NEAR Sentinel wayang' },
           React.createElement('img', { src: '/IMG_20260629_220728_136.jpg?v=2', alt: 'NEAR Sentinel wayang emblem' })
         ),
         React.createElement('p', { className: 'sentinel-auth-kicker' }, 'NEAR PROTOCOL / WALLET RISK INTELLIGENCE'),
@@ -156,7 +145,7 @@ function AuthGate() {
   if (!authenticated) {
     return React.createElement('main', { className: 'sentinel-auth-screen' },
       React.createElement('section', { className: 'sentinel-auth-card' },
-        React.createElement('button', { className: 'sentinel-auth-mark', type: 'button', 'aria-label': 'Drag to rotate the Sentinel wayang emblem' },
+        React.createElement('div', { className: 'sentinel-auth-mark', 'aria-label': 'NEAR Sentinel wayang' },
           React.createElement('img', { src: '/IMG_20260629_220728_136.jpg?v=1', alt: 'NEAR Sentinel wayang emblem' })
         ),
         React.createElement('p', { className: 'sentinel-auth-kicker' }, 'NEAR PROTOCOL / ACCOUNT INTELLIGENCE'),
