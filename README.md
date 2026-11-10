@@ -28,7 +28,8 @@ Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verifi
   <a href="docs/MANUAL_DEPLOYMENT_AND_CHAIN_VERIFICATION.md"><strong>MANUAL DEPLOY & CHAIN VERIFICATION</strong></a> ·
   <a href="docs/REAL_INTEGRATION_VERIFICATION.md"><strong>REAL INTEGRATION VERIFICATION</strong></a> ·
   <a href="docs/WEBSITE_EXPLORER_AND_RESTRICTED_SIGNER.md"><strong>WEBSITE, EXPLORER & RESTRICTED SIGNER</strong></a> ·
-  <a href="docs/SECURITY_HARDENING.md"><strong>SECURITY HARDENING</strong></a>
+  <a href="docs/SECURITY_HARDENING.md"><strong>SECURITY HARDENING</strong></a> ·
+  <a href="docs/SIGNED_VERDICT.md"><strong>SIGNED VERDICT ATTESTATION</strong></a>
 </p>
 
 | Builder | Network | Track direction | Stack |
@@ -90,6 +91,16 @@ See [Signed Verdict](docs/SIGNED_VERDICT.md) for the attestation format and key 
 - **Source provenance attestation:** [Sigstore/Rekor attestation #65936142](https://github.com/ivanmlnnn/sentinel/attestations/65936142).
 
 These results are documented with their corresponding workflow runs in the [full End-to-End Verification Report](docs/END_TO_END_VERIFICATION.md).
+
+## Signed verdict attestation
+
+The `feat/signed-verdict-attestation` pull request adds Ed25519 signing to the authenticated Main Worker preflight and signature verification to the isolated Signer Worker. The signed payload binds the signer account, receiver, exact microNEAR amount, nonce, issue time, expiry, decision, risk score, and assessment ID. The signer rejects expired, tampered, or intent-mismatched attestations before entering the payment path.
+
+- Implementation and key provisioning: [Signed Verdict documentation](docs/SIGNED_VERDICT.md).
+- Regression coverage: [signed-verdict.test.mjs](tests/signed-verdict.test.mjs).
+- Required secrets: `SENTINEL_VERDICT_PRIVATE_KEY` on Main Worker and the matching `SENTINEL_VERDICT_PUBLIC_KEY` on the private Signer Worker.
+
+**Release evidence boundary:** this code is present on the feature branch and proposed in [PR #10](https://github.com/ivanmlnnn/sentinel/pull/10). The focused test file has been added, but this branch's test run and live Worker key provisioning/deployment have not yet been verified. The existing deployment and E2E results elsewhere in this README refer to previously recorded revisions, not this feature branch. Do not interpret them as proof that signed verdicts are live.
 
 ## Security verification evidence
 
