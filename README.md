@@ -12,6 +12,7 @@ Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verifi
   <a href="docs/SECURE_AGENT_PIPELINE.md"><strong>SECURE AGENT PIPELINE</strong></a> ·
   <a href="docs/JUDGE_DEMO.md"><strong>JUDGE DEMO GUIDE</strong></a> ·
   <a href="docs/MANUAL_DEPLOYMENT_AND_CHAIN_VERIFICATION.md"><strong>MANUAL DEPLOY & CHAIN VERIFICATION</strong></a> ·
+  <a href="docs/REAL_INTEGRATION_VERIFICATION.md"><strong>REAL INTEGRATION VERIFICATION</strong></a> ·
   <a href="docs/SECURITY_HARDENING.md"><strong>SECURITY HARDENING</strong></a>
 </p>
 
