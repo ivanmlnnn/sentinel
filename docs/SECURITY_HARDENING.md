@@ -92,3 +92,16 @@ Record each finding with request/response evidence, severity, fix commit, and a 
 - [ ] Run CodeQL and the full CI suite on the exact submission commit.
 - [ ] Complete the Burp Suite plan against preview; attach a redacted report.
 - [ ] Obtain independent review of the remaining DB1 approval trust boundary and signer-side NEP-413 verification before enabling transfers.
+
+
+## Latest request and navigation hardening (10 November 2026)
+
+The current branch adds layered request validation:
+
+- Main Worker: bounded JSON body reads, object-only JSON parsing, content-length validation, and API rate-limit enforcement.
+- Shared HTTP security: mutation method/origin/content-type checks, request header limits, and security response headers.
+- Isolated Signer Worker: independent bounded body parsing and exact JSON payload schema validation.
+- Payment policy: strict NEAR account and decimal amount validation; invalid, malformed, or out-of-range payment intents fail closed.
+- Browser URL cleanup: ordinary HTML document navigations with query parameters are redirected to the same path without a query string. API and authentication/OAuth/callback paths are excluded because they may require query parameters for protocol correctness.
+
+Latest exact-head checks: [Sentinel Security CI run 42857959405](https://github.com/ivanmlnnn/sentinel/actions/runs/42857959405) and [CodeQL run 42857959683](https://github.com/ivanmlnnn/sentinel/actions/runs/42857959683) completed successfully for commit [`31a71a4`](https://github.com/ivanmlnnn/sentinel/commit/31a71a44964bffdb990bc7072ad86168b6072002). These checks are not a penetration-test report and do not prove production deployment. The manual deployment workflow and production smoke checks remain required.
