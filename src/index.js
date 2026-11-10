@@ -27,16 +27,16 @@ async function enforceRateLimit(binding, key) {
 }
 
 function rateLimitResponse() {
-  return new Response(JSON.stringify({
-    error: "RATE_LIMITED",
-    detail: "Too many API requests. Wait before retrying."
-  }), {
+  return new Response(JSON.stringify({ error: "RATE_LIMITED" }), {
     status: 429,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      "cache-control": "no-store",
-      "retry-after": "60"
-    }
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "retry-after": "60" }
+  });
+}
+
+function serviceUnavailable(code) {
+  return new Response(JSON.stringify({ error: code }), {
+    status: 503,
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
   });
 }
 
@@ -47,16 +47,13 @@ export default {
     const mutationError = validateMutationRequest(request, url);
     if (mutationError) {
       return respond(new Response(JSON.stringify({ error: mutationError }), {
-        status: 403, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
+        status: 403,
+        headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
       }));
     }
 
-    // Remove only ChatGPT's tracking parameter from browser navigation.
-    // Preserve all other query parameters and avoid redirecting API mutations.
-    if (
-      (request.method === "GET" || request.method === "HEAD") &&
-      url.searchParams.get("utm_source") === "chatgpt.com"
-    ) {
+    if ((request.method === "GET" || request.method === "HEAD") &&
+        url.searchParams.get("utm_source") === "chatgpt.com") {
       url.searchParams.delete("utm_source");
       return respond(Response.redirect(url.toString(), 302));
     }
@@ -66,59 +63,32 @@ export default {
       try {
         if (url.pathname.startsWith("/api/")) {
           const ip = request.headers.get("CF-Connecting-IP") || "unknown";
-          const allowed = await enforceRateLimit(env.API_RATE_LIMITER, ip);
-          if (!allowed) {
-            if (!env.API_RATE_LIMITER) {
-              return respond(new Response(JSON.stringify({ error: "RATE_LIMIT_NOT_CONFIGURED" }), {
-                status: 503,
-                headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
-              }));
-            }
-            return respond(rateLimitResponse());
-          }
+          if (!env.API_RATE_LIMITER) return respond(serviceUnavailable("RATE_LIMIT_NOT_CONFIGURED"));
+          if (!await enforceRateLimit(env.API_RATE_LIMITER, ip)) return respond(rateLimitResponse());
 
           if (request.method === "POST" && ["/api/agent/run", "/api/agent/approve"].includes(url.pathname)) {
-            const agentAllowed = await enforceRateLimit(env.AGENT_RATE_LIMITER, ip);
-            if (!agentAllowed) {
-              if (!env.AGENT_RATE_LIMITER) {
-                return respond(new Response(JSON.stringify({ error: "AGENT_RATE_LIMIT_NOT_CONFIGURED" }), {
-                  status: 503,
-                  headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
-                });
-              }
-              return rateLimitResponse();
-            }
+            if (!env.AGENT_RATE_LIMITER) return respond(serviceUnavailable("AGENT_RATE_LIMIT_NOT_CONFIGURED"));
+            if (!await enforceRateLimit(env.AGENT_RATE_LIMITER, ip)) return respond(rateLimitResponse());
           }
 
-          // Guest investigation stays public for the judge demo, but receives
-          // a stricter per-IP budget because it fans out to several upstream APIs.
           if (request.method === "POST" && ["/api/investigate", "/api/guest/investigate"].includes(url.pathname)) {
-            const investigationAllowed = await enforceRateLimit(env.INVESTIGATION_RATE_LIMITER, ip);
-            if (!investigationAllowed) {
-              if (!env.INVESTIGATION_RATE_LIMITER) {
-                return respond(new Response(JSON.stringify({ error: "INVESTIGATION_RATE_LIMIT_NOT_CONFIGURED" }), {
-                  status: 503,
-                  headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
-                });
-              }
-              return rateLimitResponse();
-            }
+            if (!env.INVESTIGATION_RATE_LIMITER) return respond(serviceUnavailable("INVESTIGATION_RATE_LIMIT_NOT_CONFIGURED"));
+            if (!await enforceRateLimit(env.INVESTIGATION_RATE_LIMITER, ip)) return respond(rateLimitResponse());
           }
         }
-
         return respond(await handler({ request, env, ctx, params: {}, data: {} }));
       } catch (error) {
+        // Keep detailed exceptions in restricted Worker logs, never in API responses.
         console.error("NEAR Sentinel API error:", error);
-        return respond(new Response(JSON.stringify({ error: "Internal server error." }), {
+        return respond(new Response(JSON.stringify({ error: "INTERNAL_SERVER_ERROR" }), {
           status: 500,
           headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
         }));
       }
     }
     if (url.pathname.startsWith("/api/")) {
-      return respond(new Response(JSON.stringify({ error: "API route not found." }), {
-        status: 404,
-        headers: { "content-type": "application/json; charset=utf-8" }
+      return respond(new Response(JSON.stringify({ error: "NOT_FOUND" }), {
+        status: 404, headers: { "content-type": "application/json; charset=utf-8" }
       }));
     }
     return respond(await env.ASSETS.fetch(request));
