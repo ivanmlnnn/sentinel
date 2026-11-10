@@ -638,7 +638,7 @@ function renderAgentResult(data) {
   const walletCanApprove = Boolean(connectedAccount && connectedAccount.endsWith('.testnet'));
   const agentCard = showStatusCard
     ? '<section class="telegram-agent-status">' +
-      '<div class="agent-proposal-top"><div class="agent-proposal-brand"><span class="agent-proposal-icon">◈</span><span>PAYMENT PROPOSAL · SENTINEL</span></div>' +
+      '<div class="agent-proposal-top"><div class="agent-proposal-brand"><span class="agent-proposal-icon">◈</span><span>' + (hasPaymentContext ? 'PAYMENT PROPOSAL · SENTINEL' : 'SENTINEL SECURITY RESULT') + '</span></div>' +
       '<span class="agent-state-pill ' + (data.execution_enabled === true ? 'is-success' : '') + '">' + escapeHtml(status.replaceAll('_', ' ')) + '</span></div>' +
       ((hasPaymentContext || data.sentinel) ? '<div class="agent-proposal-values">' +
         (proposal.receiver_account ? '<div class="agent-proposal-field"><span>RECIPIENT ACCOUNT</span><b>' + escapeHtml(proposal.receiver_account) + '</b></div>' : '') +
