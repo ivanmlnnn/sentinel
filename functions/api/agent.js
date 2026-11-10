@@ -19,7 +19,7 @@ const MODEL_TOOL = [{
 }];
 
 async function writeAudit(env, row) {
-  if (!env.DB) return;
+  if (!env.DB) throw new Error("AGENT_AUDIT_DATABASE_UNAVAILABLE");
   await env.DB.prepare(
     "INSERT INTO agent_audit (id, actor, event, receiver_account, amount_near, decision, reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"
   ).bind(row.id, row.actor, row.event, row.receiver || null, row.amount ?? null,
