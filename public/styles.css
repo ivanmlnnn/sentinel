@@ -3294,3 +3294,17 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
 @media(prefers-reduced-motion:reduce){
  #agentRunBtn,#agentRunBtn:before,.agent-result,.agent-result-enter,.agent-result-grid>div{animation:none!important;transition:none!important;transform:none!important;filter:none!important}
 }
+
+
+/* Conversational Guest AI interface */
+.guest-chat-transcript{display:flex;flex-direction:column;gap:12px;max-height:520px;overflow:auto;padding:2px 2px 12px}
+.guest-chat-message{max-width:92%;border:1px solid var(--line);border-radius:8px;padding:12px 14px;background:#0c141b;overflow-wrap:anywhere}
+.guest-chat-user{align-self:flex-end;background:rgba(80,190,170,.08);border-color:rgba(80,190,170,.25)}
+.guest-chat-assistant{align-self:flex-start}
+.guest-chat-message>span{display:block;font:9px var(--mono);letter-spacing:.12em;color:var(--mint);margin-bottom:7px}
+.guest-chat-user>span{color:var(--amber)}
+.guest-chat-message p{margin:0;color:var(--text);font-size:12px;line-height:1.75;white-space:pre-wrap}
+.guest-chat-pending p{color:var(--muted);animation:guestThinking 1.2s ease-in-out infinite alternate}
+.guest-chat-meta{padding-top:10px;border-top:1px solid var(--line);font:9px var(--mono);letter-spacing:.08em;color:var(--muted)}
+.guest-chat-error{margin:12px 0 0;padding:10px;border:1px solid rgba(255,170,80,.3);border-radius:6px;color:var(--amber);font:11px/1.6 var(--mono);overflow-wrap:anywhere}
+@keyframes guestThinking{from{opacity:.45}to{opacity:1}}
