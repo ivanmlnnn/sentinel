@@ -44,6 +44,15 @@ export function isSentinelAdmin(identity, env = {}) {
   return admins.includes(identity.sub);
 }
 
+export async function canReadInvestigation(env, investigationId, identity) {
+  if (isSentinelAdmin(identity, env)) return true;
+  if (!env.DB || typeof identity?.sub !== "string") return false;
+  const owner = await env.DB.prepare(
+    "SELECT actor FROM investigation_owners WHERE investigation_id = ?"
+  ).bind(investigationId).first();
+  return owner?.actor === identity.sub;
+}
+
 export function validAccountId(value) {
   return typeof value === "string" && value.length >= 2 && value.length <= 64 &&
     /^[a-z0-9._-]+$/.test(value) && !value.startsWith(".") && !value.endsWith(".");
