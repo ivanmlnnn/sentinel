@@ -1,4 +1,4 @@
-import { Account, JsonRpcProvider, KeyPairSigner, actions } from "near-api-js";
+import { Account, JsonRpcProvider, KeyPairSigner, PublicKey, actions } from "near-api-js";
 
 const RPC = "https://rpc.testnet.fastnear.com";
 const accountId = String(process.env.NEAR_AGENT_SIGNER_ACCOUNT_ID || "").toLowerCase();
@@ -65,7 +65,7 @@ const tx = await account.createTransaction({
       ["pay"],
       250_000_000_000_000_000_000_000n
     ),
-    actions.deleteKey({ toString: () => oldRuntimePublicKey })
+    actions.deleteKey(PublicKey.fromString(oldRuntimePublicKey))
   ],
   publicKey: adminSigner.getPublicKey()
 });
