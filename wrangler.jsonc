@@ -4,6 +4,7 @@
   "main": "src/index.js",
   "compatibility_date": "2026-11-08",
   "compatibility_flags": ["nodejs_compat"],
+  "ai": { "binding": "AI" },
   "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": ["/*"] },
   "services": [
     { "binding": "SIGNER_SERVICE", "service": "sentinel-signer" }
