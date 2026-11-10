@@ -57,11 +57,11 @@ See [Secure Agent Pipeline](docs/SECURE_AGENT_PIPELINE.md) for the trust boundar
 
 ## Security verification evidence
 
-The following results are tied to the exact source revision [`67f1e53`](https://github.com/ivanmlnnn/sentinel/commit/67f1e53e201f56eb07088a38a8195a4b4bee778f), not a claim that every live deployment path has been penetration-tested:
+The following results are tied to the exact source revision [`67f1e53`](https://github.com/ivanmlnnn/sentinel/commit/67f1e53c67fa8706d79694a317311516289b56d6), not a claim that every live deployment path has been penetration-tested:
 
-- **116/116 automated tests passed; 0 failed** in [GitHub Actions run 42778335809](https://github.com/ivanmlnnn/sentinel/actions/runs/42778335809), on the exact PR head revision [`67f1e53`](https://github.com/ivanmlnnn/sentinel/commit/67f1e53c67fa8706d79694a317311516289b56d6).
+- **116/116 automated tests passed; 0 failed** in [GitHub Actions run 42778680965](https://github.com/ivanmlnnn/sentinel/actions/runs/42778335809), on the latest docs-updated PR head [`cd85b86`](https://github.com/ivanmlnnn/sentinel/commit/cd85b8692fd9dc766a996b220d17e832b7fa9ae8).
 - Gitleaks changed-file scan and full repository-history scan passed in that run.
-- CodeQL JavaScript analysis completed successfully for the same revision in [run 42778335865](https://github.com/ivanmlnnn/sentinel/actions/runs/42778335865). A successful workflow run is not represented here as a claim of zero findings; review the repository Security tab for individual alerts.
+- CodeQL completed successfully on the immediately preceding source revision [`67f1e53`](https://github.com/ivanmlnnn/sentinel/commit/67f1e53c67fa8706d79694a317311516289b56d6) in [run 42778335865](https://github.com/ivanmlnnn/sentinel/actions/runs/42778335865). CodeQL for the current docs-updated head is running separately. A successful workflow run is not represented here as a claim of zero findings; review the repository Security tab for individual alerts.
 - JavaScript syntax checks, both Wrangler Worker bundle dry-runs, D1 migration validation, and the offline prompt-injection regression demo passed.
 - Cloudflare Turnstile is integrated using the official browser widget and server-side Siteverify endpoint (`https://challenges.cloudflare.com/turnstile/v0/siteverify`). The wallet-scan UI remains disabled until a Turnstile token is received; the server validates `success`, the `track_wallet` action, and the hostname, and fails closed on missing configuration or verification outage.
 - The PR-triggered source-attestation job is skipped by workflow design; this is not a signed release artifact. These tests do **not** constitute a Burp Suite assessment, independent audit, proof of live Cloudflare deployment, or proof of a successful Sentinel-signed Testnet transfer.
