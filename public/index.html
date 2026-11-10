@@ -71,8 +71,8 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
 <div class="section-heading reveal" id="agentHeading"><div><span class="section-index">04 / AUTONOMOUS SECURITY</span><h2>AI agent lab</h2></div><span class="section-meta">PRIVY AUTH · NEAR TESTNET</span></div>
 <section class="agent-lab-grid reveal" id="agentLab">
  <div class="panel agent-lab-panel">
-  <div class="panel-top"><span>ANTHROPIC TOOL-CALLING AGENT</span><span class="panel-status"><i></i> SERVER-SIDE</span></div>
-  <p class="agent-lab-intro">Give the agent an instruction. Any proposed payment is re-checked by Sentinel before the isolated Testnet signer can act.</p>
+  <div class="panel-top"><span>AUTONOMOUS SECURITY SKILL ENGINE</span><span class="panel-status"><i></i> SERVER-SIDE</span></div>
+  <p class="agent-lab-intro">Tell Sentinel the security task. It can run live wallet forensics, query verified threat intelligence, analyze anomalies, and explain evidence. Guest tools are strictly read-only.</p>
   <form id="agentForm">
    <label for="agentPrompt">AGENT INSTRUCTION</label>
    <textarea id="agentPrompt" maxlength="4000" required placeholder="Example: Propose a 0.01 NEAR Testnet payment to merchant.testnet for a demo."></textarea>
@@ -82,12 +82,12 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
   <div id="agentResult" class="agent-result hidden" aria-live="polite"></div>
  </div>
  <aside class="panel agent-policy-panel">
-  <div class="panel-top"><span>ENFORCEMENT CHAIN</span><span class="section-meta">FAIL-CLOSED</span></div>
-  <div class="agent-policy-step"><b>01</b><div><strong>AI proposes</strong><span>Untrusted tool arguments</span></div></div>
-  <div class="agent-policy-step"><b>02</b><div><strong>Sentinel assesses</strong><span>Exact receiver + amount + evidence</span></div></div>
-  <div class="agent-policy-step"><b>03</b><div><strong>Signer re-checks</strong><span>Allowlist, caps, key permission, idempotency</span></div></div>
-  <div class="agent-policy-step"><b>04</b><div><strong>NEAR Testnet</strong><span>Transaction hash only after RPC success</span></div></div>
-  <p class="agent-policy-foot">No browser wallet key is used by this agent. Signing requires a dedicated Testnet Worker secret. Never configure a mainnet key.</p>
+  <div class="panel-top"><span>OPERATIONAL SKILLS</span><span class="section-meta">LIVE TOOLS</span></div>
+  <div class="agent-policy-step"><b>01</b><div><strong>Live wallet forensics</strong><span>NEAR RPC · transactions · receipts · token transfers</span></div></div>
+  <div class="agent-policy-step"><b>02</b><div><strong>Threat intelligence</strong><span>Exact matches against reviewed Sentinel reports</span></div></div>
+  <div class="agent-policy-step"><b>03</b><div><strong>Anomaly detection</strong><span>Transaction velocity · recipient clusters · spam signals</span></div></div>
+  <div class="agent-policy-step"><b>04</b><div><strong>Evidence-based triage</strong><span>Risk scoring · completeness · recommended actions</span></div></div>
+  <p class="agent-policy-foot">Skills run server-side. Guest mode is read-only: no payment proposals, signing, transfers, or threat-report changes. Incomplete evidence is never labeled safe.</p>
  </aside>
 </section>
 <section class="security-method reveal" id="protocol">
