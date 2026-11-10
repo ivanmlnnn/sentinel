@@ -2742,3 +2742,39 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
  .sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button{min-height:52px!important}
  .sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button{min-height:48px!important}
 }
+
+/* Final login CTA refinement: restrained Sentinel palette, crisp hierarchy. */
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button,
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button{
+ width:100%!important;min-height:52px!important;display:flex!important;align-items:center!important;justify-content:center!important;
+ border-radius:5px!important;padding:0 22px!important;font-family:"Manrope","Inter",ui-sans-serif,sans-serif!important;
+ font-size:13px!important;font-weight:750!important;letter-spacing:.01em!important;line-height:1.2!important;
+ box-shadow:none!important;overflow:hidden!important;
+ transition:background .24s ease,border-color .24s ease,color .24s ease,transform .24s ease,box-shadow .24s ease!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button{
+ margin-top:5px!important;border:1px solid rgba(139,212,239,.72)!important;border-bottom:2px solid #e8df78!important;
+ background:#1a4546!important;color:#f5f3e9!important;
+ box-shadow:0 5px 18px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.07)!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button::after{
+ content:"";position:absolute;inset:0;pointer-events:none;
+ background:linear-gradient(110deg,transparent 30%,rgba(139,212,239,.13) 50%,transparent 70%);
+ transform:translateX(-120%);transition:transform .55s ease;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button:hover:not(:disabled){
+ background:#20595a!important;border-color:#a8e8f5!important;color:#fff!important;transform:translateY(-2px)!important;
+ box-shadow:0 8px 22px rgba(0,0,0,.24),0 0 18px rgba(139,212,239,.12)!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button:hover::after{transform:translateX(120%)}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button{
+ margin-top:9px!important;min-height:47px!important;border:1px solid rgba(139,212,239,.28)!important;
+ background:rgba(7,22,23,.28)!important;color:#b9d5d2!important;font-size:12px!important;font-weight:650!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button:hover:not(:disabled){
+ background:rgba(139,212,239,.07)!important;border-color:rgba(139,212,239,.72)!important;
+ color:#eaf7f2!important;transform:translateY(-1px)!important;box-shadow:0 5px 16px rgba(0,0,0,.16)!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button:active,
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button:active{transform:scale(.99)!important;box-shadow:none!important}
+/* Keep the approved loading bar's original sweep untouched. */
