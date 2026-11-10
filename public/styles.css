@@ -2973,3 +2973,23 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
  .sentinel-auth-card:has(.sentinel-auth-loader)::after{animation:none!important}
  .sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-mark{animation:none!important}
 }
+
+
+/* Login wordmark: high-contrast premium NEAR SENTINEL typography */
+.sentinel-auth-card h1{
+  color:#fff !important;
+  font-family:"Manrope",Inter,system-ui,sans-serif !important;
+  font-size:clamp(36px,5.2vw,54px) !important;
+  font-weight:800 !important;
+  letter-spacing:-.065em !important;
+  line-height:1.04 !important;
+  text-align:left !important;
+  text-shadow:0 2px 0 rgba(255,255,255,.16),0 8px 28px rgba(220,255,244,.17),0 0 42px rgba(85,240,168,.13) !important;
+  -webkit-text-fill-color:#fff !important;
+  paint-order:stroke fill;
+  -webkit-text-stroke:.35px rgba(255,255,255,.45);
+}
+.sentinel-auth-card h1::selection{background:#55f0a8;color:#07120d}
+@media(max-width:760px){
+  .sentinel-auth-card h1{font-size:clamp(34px,9vw,46px) !important;letter-spacing:-.06em !important}
+}
