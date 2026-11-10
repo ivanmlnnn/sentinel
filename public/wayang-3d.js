@@ -61,7 +61,21 @@ export function mountWayang3D(button) {
     ctx.closePath(); ctx.fill(); ctx.restore();
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-    const portrait = new THREE.Mesh(new THREE.PlaneGeometry(4.55, 4.55), new THREE.MeshStandardMaterial({ map: texture, transparent: true, roughness: .52, metalness: .12, side: THREE.DoubleSide, alphaTest: .025 }));
+    // Turn the original artwork into a tessellated relief surface, not a CSS-rotated flat image.
+    const portraitGeometry = new THREE.PlaneGeometry(4.55, 4.55, 160, 160);
+    const vertices = portraitGeometry.attributes.position;
+    for (let v = 0; v < vertices.count; v++) {
+      const u = (vertices.getX(v) / 4.55) + .5;
+      const y = (vertices.getY(v) / 4.55) + .5;
+      const px = Math.max(0, Math.min(w - 1, Math.round(u * (w - 1))));
+      const py = Math.max(0, Math.min(h - 1, Math.round((1 - y) * (h - 1))));
+      const at = (py * w + px) * 4;
+      const alpha = pixels.data[at + 3] / 255;
+      const luminance = (pixels.data[at] * .2126 + pixels.data[at + 1] * .7152 + pixels.data[at + 2] * .0722) / 255;
+      vertices.setZ(v, alpha > .04 ? .10 + luminance * .30 : -.025);
+    }
+    portraitGeometry.computeVertexNormals();
+    const portrait = new THREE.Mesh(portraitGeometry, new THREE.MeshStandardMaterial({ map: texture, transparent: true, roughness: .48, metalness: .2, side: THREE.DoubleSide, alphaTest: .025 }));
     portrait.position.z = .13; pivot.add(portrait);
     source.remove();
 
