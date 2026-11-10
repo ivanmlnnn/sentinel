@@ -34,6 +34,8 @@ jobs:
           node --check src/near-agent-signer.mjs
       - name: Validate Cloudflare Worker bundle
         run: npx wrangler@4.159.0 deploy --dry-run
+      - name: Validate isolated signer Worker bundle
+        run: npx wrangler@4.159.0 deploy --config signer-worker/wrangler.jsonc --dry-run
       - name: Run test suite
         run: npm test
       - name: Run offline prompt-injection demo
