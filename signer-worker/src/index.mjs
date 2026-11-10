@@ -32,6 +32,43 @@ function microToNearString(micro) {
 function deny(reason, status = "DENIED") {
   return { executed: false, status, reason, transaction_hash: null };
 }
+export async function readBoundedSignerBody(request, maxBytes = 8000) {
+  const contentType = (request.headers.get("content-type") || "").toLowerCase();
+  if (!contentType.startsWith("application/json")) {
+    return { ok: false, status: 415, reason: "JSON_CONTENT_TYPE_REQUIRED" };
+  }
+  const declaredLength = request.headers.get("content-length");
+  if (declaredLength && /^\\d+$/.test(declaredLength) && Number(declaredLength) > maxBytes) {
+    return { ok: false, status: 413, reason: "REQUEST_TOO_LARGE" };
+  }
+  if (!request.body) return { ok: false, status: 400, reason: "INVALID_BODY" };
+  const reader = request.body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        return { ok: false, status: 413, reason: "REQUEST_TOO_LARGE" };
+      }
+      chunks.push(value);
+    }
+    const bytes = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return { ok: true, text: new TextDecoder("utf-8", { fatal: true }).decode(bytes) };
+  } catch {
+    try { await reader.cancel(); } catch {}
+    return { ok: false, status: 400, reason: "INVALID_BODY" };
+  }
+}
+
 export async function verifyInternalRequest(request, rawBody, env) {
   const secret = env.AGENT_SIGNER_HMAC_SECRET;
   const timestamp = request.headers.get("x-sentinel-timestamp") || "";
@@ -178,8 +215,9 @@ export default {
     const url = new URL(request.url);
     if (request.method !== "POST" || url.pathname !== "/execute") return json({ error: "NOT_FOUND" }, 404);
     if (!env.DB) return json({ error: "SIGNER_DATABASE_UNAVAILABLE" }, 503);
-    const rawBody = await request.text();
-    if (rawBody.length > 8000) return json({ error: "REQUEST_TOO_LARGE" }, 413);
+    const boundedBody = await readBoundedSignerBody(request, 8000);
+    if (!boundedBody.ok) return json({ error: boundedBody.reason }, boundedBody.status);
+    const rawBody = boundedBody.text;
     if (!await verifyInternalRequest(request, rawBody, env)) return json({ error: "INVALID_INTERNAL_AUTH" }, 401);
     const nonce = request.headers.get("x-sentinel-nonce");
     if (!await reserveNonce(env, nonce)) return json({ error: "INTERNAL_REPLAY_REJECTED" }, 409);
