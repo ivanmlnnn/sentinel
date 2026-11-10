@@ -18,7 +18,7 @@ function hexToBytes(value) {
 }
 export function nearToMicro(value) {
   const raw = typeof value === "number" ? String(value) : String(value ?? "");
-  if (!/^(?:0|[1-9][0-9]*)(?:\\.[0-9]{1,6})?$/.test(raw)) return null;
+  if (!/^(?:0|[1-9][0-9]*)(?:\.[0-9]{1,6})?$/.test(raw)) return null;
   const [whole, fraction = ""] = raw.split(".");
   const micro = BigInt(whole) * 1_000_000n + BigInt((fraction + "000000").slice(0, 6));
   if (micro <= 0n || micro > BigInt(Number.MAX_SAFE_INTEGER)) return null;
@@ -38,7 +38,7 @@ export async function readBoundedSignerBody(request, maxBytes = 8000) {
   if (encoding !== "identity") return { ok: false, status: 415, reason: "CONTENT_ENCODING_NOT_SUPPORTED" };
   const declaredLength = request.headers.get("content-length");
   if (declaredLength !== null) {
-    if (!/^\\d+$/.test(declaredLength) || !Number.isSafeInteger(Number(declaredLength))) return { ok: false, status: 400, reason: "INVALID_CONTENT_LENGTH" };
+    if (!/^\d+$/.test(declaredLength) || !Number.isSafeInteger(Number(declaredLength))) return { ok: false, status: 400, reason: "INVALID_CONTENT_LENGTH" };
     if (Number(declaredLength) > maxBytes) return { ok: false, status: 413, reason: "REQUEST_TOO_LARGE" };
   }
   if (!request.body) return { ok: false, status: 400, reason: "INVALID_BODY" };
