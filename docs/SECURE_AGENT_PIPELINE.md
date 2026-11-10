@@ -80,7 +80,7 @@ Generate the HMAC secret locally (never send it in chat or commit it), then set 
 
 ### D1 migration gate
 
-**Important:** the legacy `migrations/` directory contains PostgreSQL-specific SQL and is not used by Wrangler D1. Both Worker configs now point to `migrations-d1/`, which contains SQLite-compatible migrations `0001`–`0006`. CI executes the complete sequence against an in-memory SQLite database. Do not apply the legacy PostgreSQL files to D1. Before applying D1 migrations to the remote database:
+**Important:** the legacy `migrations/` directory contains PostgreSQL-specific SQL and is not used by Wrangler D1. Both Worker configs now point to `migrations-d1/`, which contains SQLite-compatible migrations `0001`–`0007`, including private investigation ownership. CI executes the complete sequence against an in-memory SQLite database. Do not apply the legacy PostgreSQL files to D1. Before applying D1 migrations to the remote database:
 
 1. Confirm the database ID in `wrangler.jsonc` is the intended Sentinel D1 database.
 2. Export/backup the database.
