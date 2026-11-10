@@ -142,7 +142,11 @@ export async function executeTestnetPayment({
     submitted = true;
     const outcome = await provider.sendTransaction(signed.signedTransaction);
     const transactionHash = outcome?.transaction?.hash || outcome?.transaction_outcome?.id || null;
-    if (!isSuccessfulOutcome(outcome) || !transactionHash) {
+    if (!transactionHash) {
+      await setExecutionState(env, idempotencyKey, "UNKNOWN", null);
+      return { executed: false, status: "UNKNOWN", reason: "TRANSACTION_HASH_UNAVAILABLE", transaction_hash: null };
+    }
+    if (!isSuccessfulOutcome(outcome)) {
       await setExecutionState(env, idempotencyKey, "FAILED", transactionHash);
       return {
         executed: false, status: "FAILED", reason: "NEAR_EXECUTION_NOT_SUCCESSFUL",
