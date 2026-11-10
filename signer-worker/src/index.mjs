@@ -165,6 +165,23 @@ async function setState(env, key, state, hash = null) {
   await env.DB2.prepare("UPDATE agent_execution SET status=?, transaction_hash=?, updated_at=CURRENT_TIMESTAMP WHERE idempotency_key=?")
     .bind(state, hash, key).run();
 }
+
+// Reserve spend capacity before consuming the one-time human approval.
+// If approval verification/claiming fails, release the reservation from the daily-cap ledger.
+export async function reserveExecution({ reserveSpendFn, claimApprovalFn, setStateFn, spend, approval }) {
+  try {
+    await reserveSpendFn(spend);
+  } catch (error) {
+    return { ok: false, stage: "spend", error };
+  }
+  try {
+    await claimApprovalFn(approval);
+  } catch (error) {
+    try { await setStateFn(spend.idempotencyKey, "FAILED"); } catch { /* retain conservative reservation if cleanup is unavailable */ }
+    return { ok: false, stage: "approval", error };
+  }
+  return { ok: true };
+}
 function isSuccessfulStatus(status) {
   return Boolean(status && (Object.hasOwn(status, "SuccessValue") || Object.hasOwn(status, "SuccessReceiptId")));
 }
@@ -287,17 +304,21 @@ export async function execute(payload, authorizationHeader, identity, env) {
   const authorization = evaluateAgentAuthorization({ intent, assessment, env });
   if (!authorization.authorized) return deny("SIGNER_" + authorization.reason);
 
-  try {
-    await claimApproval(env, { approvalId, idempotencyKey, actor: identity.sub,
-      receiver: validated.receiver_account, amountMicro, walletApproval });
-  } catch (error) {
-    return deny(error.message === "HUMAN_APPROVAL_NOT_VERIFIED" ? error.message : "APPROVAL_ALREADY_CLAIMED");
-  }
-  try {
-    await reserveSpend(env, { idempotencyKey, actor: identity.sub, receiver: validated.receiver_account,
-      amountMicro, dailyCapMicro: dailyCap });
-  } catch (error) {
-    return deny(error.message || "EXECUTION_RESERVATION_FAILED");
+  const reservation = await reserveExecution({
+    reserveSpendFn: details => reserveSpend(env, details),
+    claimApprovalFn: details => claimApproval(env, details),
+    setStateFn: (key, state) => setState(env, key, state),
+    spend: { idempotencyKey, actor: identity.sub, receiver: validated.receiver_account,
+      amountMicro, dailyCapMicro: dailyCap },
+    approval: { approvalId, idempotencyKey, actor: identity.sub,
+      receiver: validated.receiver_account, amountMicro, walletApproval }
+  });
+  if (!reservation.ok) {
+    if (reservation.stage === "approval") {
+      return deny(reservation.error?.message === "HUMAN_APPROVAL_NOT_VERIFIED"
+        ? "HUMAN_APPROVAL_NOT_VERIFIED" : "APPROVAL_ALREADY_CLAIMED");
+    }
+    return deny(reservation.error?.message || "EXECUTION_RESERVATION_FAILED");
   }
 
   let submitted = false;
