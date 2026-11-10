@@ -171,7 +171,7 @@ function normalizeFtTransfer(row, accountId) {
 
 async function runInvestigation({ request, env }) {
   try {
-    const body = await readJson(request);
+    const body = await readJson(request, 4096);
     if (!body) return json({ error: "Invalid JSON body." }, 400);
     const receiver = String(body.receiver_account || "").trim().toLowerCase();
     const sender = body.sender_account ? String(body.sender_account).trim().toLowerCase() : null;
