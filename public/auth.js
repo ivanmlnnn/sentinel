@@ -112,7 +112,7 @@ function AuthGate() {
     if (!ready || authenticated) return;
     let cleanup = () => {};
     let cancelled = false;
-    import('./wayang-3d.js?v=20261110-real-three-dimensional-wayang')
+    import('./wayang-3d.js?v=20261110-sculpted-relief')
       .then(({ mountWayang3D }) => {
         if (cancelled) return;
         cleanup = mountWayang3D(document.querySelector('.sentinel-auth-mark'));
