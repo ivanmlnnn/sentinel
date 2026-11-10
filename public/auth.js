@@ -85,7 +85,7 @@ function AuthGate() {
     const host = document.querySelector('.sentinel-auth-mark[data-wayang-3d]');
     let disposeWayang = () => {};
     if (host) {
-      import('./wayang-3d.js?v=20261110-sculpted-chef-toque').then(({ mountWayang3D }) => {
+      import('./wayang-3d.js?v=20261110-angular-folded-chef-cap').then(({ mountWayang3D }) => {
         if (host.isConnected) disposeWayang = mountWayang3D(host);
       }).catch((error) => console.error('Sentinel 3D wayang failed to load:', error));
     }
