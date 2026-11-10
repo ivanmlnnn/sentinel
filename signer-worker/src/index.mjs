@@ -298,7 +298,7 @@ export async function execute(payload, authorizationHeader, identity, env) {
     const account = new Account(signerAccountId, provider);
     const paymentArgs = new TextEncoder().encode(JSON.stringify({
       receiver_id: validated.receiver_account,
-      amount_yocto: nearToYocto(microToNearString(amountMicro)),
+      amount_yocto: nearToYocto(microToNearString(amountMicro)).toString(),
       approval_id: approvalId
     }));
     const tx = await account.createTransaction({
