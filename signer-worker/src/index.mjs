@@ -39,7 +39,7 @@ export async function verifyInternalRequest(request, rawBody, env) {
   const supplied = hexToBytes(request.headers.get("x-sentinel-signature") || "");
   const seconds = Number(timestamp);
   if (typeof secret !== "string" || new TextEncoder().encode(secret).byteLength < 32 ||
-      !/^\\d{10}$/.test(timestamp) || !Number.isSafeInteger(seconds) ||
+      !/^\d{10}$/.test(timestamp) || !Number.isSafeInteger(seconds) ||
       Math.abs(Date.now() / 1000 - seconds) > 60 || !UUID_RE.test(nonce) || !supplied) return false;
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
   return crypto.subtle.verify("HMAC", key, supplied, new TextEncoder().encode(timestamp + "." + nonce + "." + rawBody));
