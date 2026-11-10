@@ -29,11 +29,18 @@ AI agents can be manipulated into proposing payments to unsafe destinations. A l
 
 1. Open the [currently deployed dashboard](https://sentinel.ivmaladin.workers.dev) and run the read-only wallet scan.
 2. Inspect the evidence behind the verdict and open the NEAR Explorer link.
-3. The maintainer reports that both Cloudflare Workers (Main Sentinel and the private Signer Worker) were manually deployed. The source contains the service binding and separate signer configuration; this repository review does not independently verify the live Worker version or Cloudflare deployment IDs.
-4. The GitHub CI run validates both Worker bundles and D1 migrations, but a dry-run is not a deployment. Verify the live Worker versions, bindings, secrets, migrations, and smoke-test output before the judging session.
+3. The private Signer Worker deployment is evidenced by [successful Testnet deployment run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536): Worker `sentinel-signer` was uploaded successfully, its runtime signer and contract-ID secrets were set, and its Worker version was `45194350-5fb8-4aec-8418-45b742147f35`.
+4. The merged Main Worker was redeployed successfully from `main` in [run 42871954699](https://github.com/ivanmlnnn/sentinel/actions/runs/42871954699); its production smoke test passed. The current main revision also passed [Sentinel checks](https://github.com/ivanmlnnn/sentinel/actions/runs/42871954702), [CodeQL](https://github.com/ivanmlnnn/sentinel/actions/runs/42871954520), and [Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42871954519).
 5. Show a real Testnet transaction only after its hash is independently verified; otherwise show the fail-closed gate and state the limitation.
 
 The repository's automated attack demo is an offline regression test. It is not proof of a live transaction. See [Judge demo guide](docs/JUDGE_DEMO.md).
+
+### Verified deployment record — 10 November 2026
+
+- **Signer Worker:** successful deployment in [GitHub Actions run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536), source `989964e8f967120d61e94bec61e7d09d4049bb4c`. The logs confirm successful upload of the runtime signer and contract-ID secrets, deployment of `sentinel-signer`, and Worker version `45194350-5fb8-4aec-8418-45b742147f35`.
+- **Main Worker:** successful deployment from merged `main` commit `67c2b00007190e98c2038110c7bb0749b3a6f5c2` in [run 42871954699](https://github.com/ivanmlnnn/sentinel/actions/runs/42871954699), including a passing production smoke test.
+- **CI:** Sentinel checks, CodeQL, and Security CI for the merged commit all completed successfully.
+- The signer account configured by source defaults to `freshnook5462.testnet`; `rawvest6817.testnet` is the tracked/recipient account. GitHub masks private-key values, so deployment logs alone do not reveal the wallet identity represented by the installed secret.
 
 ## What is implemented
 
