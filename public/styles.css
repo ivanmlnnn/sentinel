@@ -2993,3 +2993,35 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
 @media(max-width:760px){
   .sentinel-auth-card h1{font-size:clamp(34px,9vw,46px) !important;letter-spacing:-.06em !important}
 }
+
+
+/* True Three.js wayang object: the canvas is the interactive 3D surface. */
+.sentinel-auth-mark.wayang-3d-host{
+  width:clamp(190px,24vw,246px)!important;height:clamp(190px,24vw,246px)!important;
+  margin:0 auto 24px!important;padding:0!important;display:grid!important;place-items:center!important;
+  overflow:visible!important;border:1px solid rgba(232,223,120,.72)!important;border-radius:50%!important;
+  background:radial-gradient(circle at 48% 42%,#235653 0%,#123b3d 58%,#071b1c 100%)!important;
+  box-shadow:0 4px 0 #235653,0 8px 0 #102f30,0 18px 34px #0009,0 0 36px #8bd4ef22,inset 0 2px 4px #ffffff22!important;
+  perspective:none!important;transform:none!important;animation:none!important;cursor:grab!important;
+  touch-action:none!important;user-select:none!important;-webkit-user-select:none!important;
+}
+.sentinel-auth-mark.wayang-3d-host::before{
+  content:""!important;position:absolute!important;inset:8px!important;border-radius:50%!important;
+  border:1px solid #8bd4ef77!important;transform:none!important;pointer-events:none!important;
+}
+.sentinel-auth-mark.wayang-3d-host::after{
+  content:""!important;position:absolute!important;inset:15px!important;border-radius:50%!important;
+  border:1px dashed #e8df7866!important;transform:none!important;pointer-events:none!important;
+}
+.sentinel-auth-mark.wayang-3d-host .wayang-3d-canvas{
+  display:block!important;width:100%!important;height:100%!important;position:relative!important;z-index:2!important;
+  border-radius:50%!important;cursor:grab!important;touch-action:none!important;outline:none!important;
+}
+.sentinel-auth-mark.wayang-3d-host .wayang-3d-canvas.is-grabbing{cursor:grabbing!important}
+.sentinel-auth-mark.wayang-3d-host:hover{transform:none!important;box-shadow:0 4px 0 #235653,0 8px 0 #102f30,0 22px 42px #000b,0 0 42px #8bd4ef44!important}
+@media(max-width:760px){
+ .sentinel-auth-mark.wayang-3d-host{width:clamp(180px,58vw,220px)!important;height:clamp(180px,58vw,220px)!important}
+}
+@media(prefers-reduced-motion:reduce){
+ .sentinel-auth-mark.wayang-3d-host{animation:none!important}
+}
