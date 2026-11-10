@@ -1,6 +1,6 @@
 import { json, verifyPrivyAccessToken, readTextLimited } from "./_shared.js";
 import { evaluateAgentAuthorization, validatePaymentIntent } from "../../src/agent-policy.mjs";
-import { onRequestPost as investigatePost } from "./investigate.js";
+import { runTrustedInvestigation } from "./investigate.js";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function bytesToHex(bytes) {
@@ -88,7 +88,7 @@ export async function onRequestPost({ request, env }) {
       method: "POST", headers: { "content-type": "application/json", authorization: request.headers.get("authorization") || "" },
       body: JSON.stringify({ receiver_account: intent.receiver_account, amount_near: intent.amount_near })
     });
-    const response = await investigatePost({ request: preflightRequest, env });
+    const response = await runTrustedInvestigation({ request: preflightRequest, env, actor: identity.sub });
     assessment = await response.json().catch(() => null);
     if (!response.ok) throw new Error("PREFLIGHT_FAILED");
   } catch {
