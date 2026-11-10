@@ -10,7 +10,7 @@ Recommended primary fit: **Open Innovation** — Sentinel is security infrastruc
 
 ## 2:45 demo sequence
 
-Record the real browser and live application. Keep the recording concise; do not use slides as a substitute for the working product.
+Record the real browser and working application. The existing public URL currently demonstrates the deployed scanner. The new Agent Lab flow is on Draft PR #3 and must be deployed to a preview or live environment before recording it as a working feature. Keep the recording concise; do not use slides as a substitute for the working product.
 
 | Time | What the judge sees | What to say |
 |---|---|---|
@@ -28,7 +28,7 @@ Stop the demo at the approval screen and show the fail-closed response. Say clea
 
 ## Judge test cases
 
-Prepare these short cases and show the observed result, not an expected result you have not run:
+Prepare these short cases after the corresponding branch deployment and show the observed result, not an expected result you have not run:
 
 1. Valid receiver with complete evidence and no verified threat: policy may return `ALLOW`; user approval is still required.
 2. Verified threat match: `BLOCK`; no signer invocation.
