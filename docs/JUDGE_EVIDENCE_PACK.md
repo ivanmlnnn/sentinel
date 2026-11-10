@@ -17,6 +17,24 @@
 - **Interactive walkthrough:** [Judge Demo](JUDGE_DEMO.md)
 - **End-to-end results:** [End-to-End Verification Report](END_TO_END_VERIFICATION.md) — exact 124-test result, 8 production smoke checks, deploy job results and provenance attestation.
 
+
+
+## Current merged-main release — 11 November 2026
+
+The current mainline release candidate is commit [`c7bf59d`](https://github.com/ivanmlnnn/sentinel/commit/c7bf59df0b5596e086f8011ef95057bf33bb1e3e). It contains the agent-result placement update and is deployed to the Main Worker.
+
+| Evidence | Result | Direct record |
+|---|---|---|
+| Automated regression | **136/136 passed** | [Sentinel checks](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399066) |
+| Remote Main D1 migration step | **PASS — no pending migrations** | [Production deployment](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399162) |
+| Remote Signer D1 migration step | **PASS — no pending migrations** | Same deployment record |
+| Main Worker | **DEPLOYED** — version `91d0798d-3af0-4853-a6ae-1e951e3eb8c7` | Same deployment record |
+| Signer Worker | **Unchanged** — no new target was required | Same deployment record |
+| Production HTTP smoke | **8/8 PASS** | Same deployment record |
+| Security CI / CodeQL | **PASS / PASS** | [Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399216) · [CodeQL](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399079) |
+
+The [independent local stress lab](INDEPENDENT_LOCAL_STRESS_LAB.md) separately records nine passing local simulation checks, including shared-store nonce, approval, idempotency, spend-cap and multi-instance claim races. The report preserves the exact environment and does not label local simulation as production D1 testing.
+
 ## 2. What problem Sentinel solves
 
 An LLM can be manipulated by malicious prompts, untrusted tool output, or a substituted payment destination. Model confidence is not authorization. Sentinel places a deterministic checkpoint between an agent's proposal and the signing path.
@@ -154,6 +172,6 @@ Do not mistake a successful Worker deployment for proof of a successful blockcha
 
 The Agent, Guest Agent, and AI Review routes use Google Gemini through a shared server-side adapter. The adapter translates Sentinel's allowlisted tool declarations and multi-turn tool results to Gemini function-calling format. The model remains an untrusted proposer and evidence explainer; deterministic policy and the isolated signer remain the authorization boundary.
 
-Runtime configuration: set `GEMINI_API_KEY` as a secret on the Cloudflare Main Worker. The default model is `gemini-2.5-flash`. See [Gemini AI Provider Setup](DEPLOYMENT_STATUS_AND_AI_PROVIDER.md#gemini-ai-provider) for deployment and verification steps.
+Runtime configuration: set `GEMINI_API_KEY` as a secret on the Cloudflare Main Worker. The default model is `gemini-3.8-flash`. See [Gemini AI Provider Setup](DEPLOYMENT_STATUS_AND_AI_PROVIDER.md#gemini-ai-provider) for deployment and verification steps.
 
 The provider migration is covered by `tests/gemini-provider.test.mjs` and the repository's CI workflows. A passing adapter test or build is not, by itself, proof that the production secret is configured or that a live model response has succeeded. Use the linked release workflow and live route smoke test as the evidence for production availability.
