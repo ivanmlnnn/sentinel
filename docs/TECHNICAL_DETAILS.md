@@ -328,3 +328,24 @@ Additional implementation commits recorded on 10 November include [Guest preview
 NEAR Sentinel is a hackathon prototype for **AI Security & Defense**. It currently demonstrates account investigation, deterministic policy outcomes, outgoing-activity attribution, fail-closed handling of incomplete assessments, an application-level pre-sign guard, automated tests, and an offline prompt-injection denial simulation.
 
 Privy tokens are verified server-side for authenticated investigations and protected write/cost-bearing routes. The maintainer confirms that the production website authentication flows are working and that Track Wallet results already link to NearBlocks Explorer. The current branch adds a contract-scoped FunctionCall signer path and receipt-level native payout verification; the contract/key/Worker deployment sequence and a real payment still require Testnet evidence. Exact account-creation age, pre-first-scan contract history, multi-hop agent graphs, and a federated cross-project threat feed remain outside the current implementation. These boundaries distinguish existing website functionality from the newly added deployment-dependent signer path.
+
+
+## 14. Latest agent API and browser-navigation behavior (10 November 2026)
+
+### Conversational AI agent
+
+The Agent Lab endpoint `POST /api/agent/run` calls the configured Anthropic Messages API using the server-side `ANTHROPIC_API_KEY`. The default model is read from `ANTHROPIC_MODEL` (currently defaults in code to `claude-haiku-5-5`). The browser does not call Anthropic directly and must not receive the API key.
+
+The agent supports ordinary conversation and Sentinel how-to guidance. For a wallet scan, it can invoke the server-side `investigate_near_account` tool. That tool calls Sentinel's trusted investigation routine and returns structured chain evidence to the model for explanation. The model must not fabricate current chain findings; incomplete evidence remains `INCOMPLETE`, not safe. Investigation is read-only and does not sign or transfer funds.
+
+Payment proposals are a separate tool and are created only when the user explicitly requests one. A proposal is not authorization. Execution remains subject to the exact receiver/amount policy, fresh complete investigation, human approval, wallet-signature verification, isolated signer checks, limits, replay protection, and the signer kill switch. No conversational response is proof of a sent payment; only a verified backend transaction receipt can establish execution.
+
+### Input and URL handling
+
+The Main Worker bounds JSON request bodies and validates request shape before API routing. The isolated Signer Worker separately enforces a smaller request-body limit and exact payload schema. Shared policy code validates NEAR account IDs and payment amounts before authorization.
+
+For ordinary browser HTML navigations, unexpected query strings are removed with a temporary redirect to the same clean path. API routes and authentication/OAuth/callback paths are excluded to avoid deleting protocol parameters required by those flows. This is URL hygiene, not an authentication or authorization control.
+
+### Latest source verification
+
+The current feature branch head `31a71a44964bffdb990bc7072ad86168b6072002` passed [Sentinel Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42857959405) and [CodeQL](https://github.com/ivanmlnnn/sentinel/actions/runs/42857959683). These runs validate the exact source revision; they do not prove Cloudflare deployment, remote migration completion, real Privy browser sign-in, or a completed Testnet payment.
