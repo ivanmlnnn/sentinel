@@ -13,6 +13,7 @@ Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verifi
   <a href="docs/JUDGE_DEMO.md"><strong>JUDGE DEMO GUIDE</strong></a> ·
   <a href="docs/MANUAL_DEPLOYMENT_AND_CHAIN_VERIFICATION.md"><strong>MANUAL DEPLOY & CHAIN VERIFICATION</strong></a> ·
   <a href="docs/REAL_INTEGRATION_VERIFICATION.md"><strong>REAL INTEGRATION VERIFICATION</strong></a> ·
+  <a href="docs/WEBSITE_EXPLORER_AND_RESTRICTED_SIGNER.md"><strong>WEBSITE, EXPLORER & RESTRICTED SIGNER</strong></a> ·
   <a href="docs/SECURITY_HARDENING.md"><strong>SECURITY HARDENING</strong></a>
 </p>
 
@@ -46,6 +47,7 @@ The repository's automated attack demo is an offline regression test. It is not 
 - Anthropic tool-calling agent whose output is treated as an untrusted proposal.
 - Actor-bound, exact-intent, five-minute human approval plus a signer-side one-time approval claim before payment execution.
 - Separate signer Worker, private service binding, signer-owned D1 ledger (DB2), HMAC-SHA256 timestamp/nonce protection, replay ledger, exact pending-approval claim, NEP-413 wallet signature verification, receiver allowlist, spend caps, kill switch, and conservative `UNKNOWN` handling.
+- Contract-scoped NEAR FunctionCall signer path: runtime key is checked on-chain for the exact payment contract and `pay` method; native NEAR payouts are emitted by the payment contract and checked at receipt level. The contract source and one-time key migration are in this branch; do not call the production flow live until the contract/key/Worker deployment sequence has completed.
 - Legacy in-process signing path disabled.
 - Aggregate-only public metrics, private admin report handling, per-investigation owner checks for AI review, bounded JSON parsing, same-origin API mutation checks, security response headers, and CodeQL/secret-scanning CI.
 
@@ -74,9 +76,9 @@ The reproducible results below are tied to the last fully evidenced CI revision 
 
 The Signer Worker checks the final transaction against NEAR Testnet FastNear JSON-RPC for signer, receiver, exact amount, and successful final status. Its response includes a Testnet NearBlocks Explorer link when a transaction is actually verified. Independently compare that same hash with the [NearBlocks Testnet API](https://api-testnet.nearblocks.io/api-docs) and [Testnet Explorer](https://testnet.nearblocks.io/) before presenting it to judges. The Explorer cross-check is a manual evidence step; the signer currently uses FastNear RPC as its automated final gate.
 
-See [manual deployment and chain-verification procedure](docs/MANUAL_DEPLOYMENT_AND_CHAIN_VERIFICATION.md) for required GitHub secrets, DB1/DB2 bindings, exact workflow steps, and the evidence checklist. No transaction hash is claimed here unless it has actually been produced and checked.
+See [manual deployment and chain-verification procedure](docs/MANUAL_DEPLOYMENT_AND_CHAIN_VERIFICATION.md) for required GitHub secrets, DB1/DB2 bindings, exact workflow steps, and the evidence checklist. See [Website vs Explorer and Restricted Signer](docs/WEBSITE_EXPLORER_AND_RESTRICTED_SIGNER.md) for the difference between the dashboard and Explorer, the contract-call/receipt model, and the one-time key rotation. No transaction hash is claimed here unless it has actually been produced and checked.
 
-**Security limitation:** the isolated Signer Worker currently requires a dedicated Testnet FullAccess key. It is isolated from the Main Worker and enforces application policy, but it is not a contract-scoped function-call key and therefore does not fully satisfy that explicit track requirement. Do not claim otherwise. Native NEAR transfer through a function-call key requires a purpose-built payment/escrow contract.
+**Track security boundary:** the current branch source no longer authorizes a FullAccess runtime signer. It requires a FunctionCall key scoped to the configured payment contract and the single `pay` method. Native NEAR payouts are executed by the contract, not by a direct transfer action from the restricted key. The payment contract must be deployed, initialized and funded, and the restricted key must be installed on the actual signer account before this design is live. A source commit alone is not deployment evidence.
 
 ## Run it locally
 
