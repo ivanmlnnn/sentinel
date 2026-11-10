@@ -47,6 +47,7 @@ jobs:
           node --check functions/api/_shared.js
           node --check functions/api/agent.js
           node --check functions/api/agent-approve.js
+          node --check functions/api/guest-agent.js
           node --check functions/api/privy-webhook.js
           node --check src/index.js
           node --check src/http-security.mjs
