@@ -15,14 +15,14 @@ async function signedRequest({ secret, body, timestamp = String(Math.floor(Date.
 }
 
 test("isolated signer accepts a fresh correctly signed internal request", async () => {
-  const secret = "test-only-shared-secret";
+  const secret = "test-only-shared-secret-with-at-least-256-bits-of-entropy-0001";
   const body = JSON.stringify({ actor: "did:privy:test" });
   const request = await signedRequest({ secret, body });
   assert.equal(await verifyInternalRequest(request, body, { AGENT_SIGNER_HMAC_SECRET: secret }), true);
 });
 
 test("isolated signer rejects stale, tampered, and unsigned internal requests", async () => {
-  const secret = "test-only-shared-secret";
+  const secret = "test-only-shared-secret-with-at-least-256-bits-of-entropy-0001";
   const body = JSON.stringify({ actor: "did:privy:test" });
   const stale = await signedRequest({ secret, body, timestamp: String(Math.floor(Date.now() / 1000) - 120) });
   assert.equal(await verifyInternalRequest(stale, body, { AGENT_SIGNER_HMAC_SECRET: secret }), false);
@@ -97,4 +97,14 @@ test("signer requires an exact actor-bound pending approval and claims it once",
   await claimApproval(env, claim);
   await assert.rejects(() => claimApproval(env, claim), /UNIQUE constraint/);
   await assert.rejects(() => claimApproval(env, { ...claim, amountMicro: 20000 }), /HUMAN_APPROVAL_NOT_VERIFIED/);
+});
+
+test("internal HMAC rejects short secrets and non-canonical timestamps", async () => {
+  const body = "{}";
+  const shortSecret = "not-a-256-bit-secret";
+  const signed = await signedRequest({ secret: shortSecret, body });
+  assert.equal(await verifyInternalRequest(signed, body, { AGENT_SIGNER_HMAC_SECRET: shortSecret }), false);
+  const longSecret = "test-only-shared-secret-with-at-least-256-bits-of-entropy-0001";
+  const exponentTimestamp = await signedRequest({ secret: longSecret, body, timestamp: "1.78e9" });
+  assert.equal(await verifyInternalRequest(exponentTimestamp, body, { AGENT_SIGNER_HMAC_SECRET: longSecret }), false);
 });
