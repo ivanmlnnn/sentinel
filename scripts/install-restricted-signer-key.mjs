@@ -6,10 +6,13 @@ const contractId = String(process.env.NEAR_PAYMENT_CONTRACT_ID || "").toLowerCas
 const admin = process.env.NEAR_AGENT_SIGNER_ADMIN_PRIVATE_KEY;
 const restricted = process.env.NEAR_AGENT_SIGNER_RESTRICTED_PRIVATE_KEY;
 
-if (!/^[a-z0-9._-]{2,64}\.testnet$/.test(accountId) ||
-    !/^[a-z0-9._-]{2,64}\.testnet$/.test(contractId) ||
-    !admin || !restricted) {
-  throw new Error("MISSING_OR_INVALID_SIGNER_KEY_SETUP_CONFIGURATION");
+const missingOrInvalid = [];
+if (!/^[a-z0-9._-]{2,64}\.testnet$/.test(accountId)) missingOrInvalid.push("NEAR_AGENT_SIGNER_ACCOUNT_ID");
+if (!/^[a-z0-9._-]{2,64}\.testnet$/.test(contractId)) missingOrInvalid.push("NEAR_PAYMENT_CONTRACT_ID");
+if (!admin) missingOrInvalid.push("NEAR_AGENT_SIGNER_ADMIN_PRIVATE_KEY");
+if (!restricted) missingOrInvalid.push("NEAR_AGENT_SIGNER_RESTRICTED_PRIVATE_KEY");
+if (missingOrInvalid.length) {
+  throw new Error("MISSING_OR_INVALID_SIGNER_CONFIG: " + missingOrInvalid.join(", "));
 }
 
 const adminSigner = KeyPairSigner.fromSecretKey(admin);
