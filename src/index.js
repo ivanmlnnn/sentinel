@@ -104,8 +104,16 @@ export default {
     const mutationError = validateMutationRequest(request, url);
     if (mutationError) return respond(apiError(mutationError, 400));
 
-    if ((request.method === "GET" || request.method === "HEAD") && url.searchParams.get("utm_source") === "chatgpt.com") {
-      url.searchParams.delete("utm_source");
+    // Strip unexpected query parameters from browser page navigations.
+    // Keep API requests and authentication/callback routes untouched because
+    // their query strings may carry required protocol or verification data.
+    const isDocumentNavigation =
+      (request.method === "GET" || request.method === "HEAD") &&
+      (request.headers.get("accept") || "").includes("text/html");
+    const isSensitiveFlow =
+      /^\/(?:api|auth|oauth|login|logout|callback|signin|signout)(?:\/|$)/i.test(url.pathname);
+    if (isDocumentNavigation && !isSensitiveFlow && url.search) {
+      url.search = "";
       return respond(Response.redirect(url.toString(), 302));
     }
 
