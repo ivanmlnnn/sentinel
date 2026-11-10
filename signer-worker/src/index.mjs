@@ -204,11 +204,12 @@ export async function verifyFinalTransfer(hash, signerAccountId, contractId, rec
   let matchingTransfer = null;
   for (const item of receipts) {
     const receiptResult = await rpc("EXPERIMENTAL_receipt", { receipt_id: item.id }, "sentinel-payment-receipt");
-    const receipt = receiptResult.receipt || receiptResult;
-    if (receipt.receiver_id !== receiverAccountId) continue;
-    const transfer = (receipt.actions || []).map(action => action.Transfer).find(Boolean);
+    const receiptActions = receiptResult.receipt?.Action?.actions ||
+      receiptResult.receipt?.action?.actions || [];
+    if (receiptResult.receiver_id !== receiverAccountId) continue;
+    const transfer = receiptActions.map(action => action.Transfer).find(Boolean);
     if (transfer && String(transfer.deposit) === String(amountYocto)) {
-      matchingTransfer = { receipt_id: item.id, receiver_id: receipt.receiver_id, amount_yocto: String(transfer.deposit) };
+      matchingTransfer = { receipt_id: item.id, receiver_id: receiptResult.receiver_id, amount_yocto: String(transfer.deposit) };
       break;
     }
   }
