@@ -1,3 +1,4 @@
+import { applySecurityHeaders, validateMutationRequest } from "./http-security.mjs";
 import { onRequestGet as metricsGet } from "../functions/api/metrics.js";
 import { onRequestGet as threatsGet, onRequestPost as threatsPost, onRequestVerifyPost as threatsVerifyPost } from "../functions/api/threats.js";
 import { onRequestPost as investigatePost, onRequestGuestPost as guestInvestigatePost } from "../functions/api/investigate.js";
@@ -42,6 +43,13 @@ function rateLimitResponse() {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    const respond = response => applySecurityHeaders(response, url);
+    const mutationError = validateMutationRequest(request, url);
+    if (mutationError) {
+      return respond(new Response(JSON.stringify({ error: mutationError }), {
+        status: 403, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
+      }));
+    }
 
     // Remove only ChatGPT's tracking parameter from browser navigation.
     // Preserve all other query parameters and avoid redirecting API mutations.
@@ -50,7 +58,7 @@ export default {
       url.searchParams.get("utm_source") === "chatgpt.com"
     ) {
       url.searchParams.delete("utm_source");
-      return Response.redirect(url.toString(), 302);
+      return respond(Response.redirect(url.toString(), 302));
     }
 
     const handler = routes[`${request.method} ${url.pathname}`];
@@ -61,19 +69,19 @@ export default {
           const allowed = await enforceRateLimit(env.API_RATE_LIMITER, ip);
           if (!allowed) {
             if (!env.API_RATE_LIMITER) {
-              return new Response(JSON.stringify({ error: "RATE_LIMIT_NOT_CONFIGURED" }), {
+              return respond(new Response(JSON.stringify({ error: "RATE_LIMIT_NOT_CONFIGURED" }), {
                 status: 503,
                 headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
-              });
+              }));
             }
-            return rateLimitResponse();
+            return respond(rateLimitResponse());
           }
 
           if (request.method === "POST" && ["/api/agent/run", "/api/agent/approve"].includes(url.pathname)) {
             const agentAllowed = await enforceRateLimit(env.AGENT_RATE_LIMITER, ip);
             if (!agentAllowed) {
               if (!env.AGENT_RATE_LIMITER) {
-                return new Response(JSON.stringify({ error: "AGENT_RATE_LIMIT_NOT_CONFIGURED" }), {
+                return respond(new Response(JSON.stringify({ error: "AGENT_RATE_LIMIT_NOT_CONFIGURED" }), {
                   status: 503,
                   headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
                 });
@@ -88,7 +96,7 @@ export default {
             const investigationAllowed = await enforceRateLimit(env.INVESTIGATION_RATE_LIMITER, ip);
             if (!investigationAllowed) {
               if (!env.INVESTIGATION_RATE_LIMITER) {
-                return new Response(JSON.stringify({ error: "INVESTIGATION_RATE_LIMIT_NOT_CONFIGURED" }), {
+                return respond(new Response(JSON.stringify({ error: "INVESTIGATION_RATE_LIMIT_NOT_CONFIGURED" }), {
                   status: 503,
                   headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
                 });
@@ -98,21 +106,21 @@ export default {
           }
         }
 
-        return await handler({ request, env, ctx, params: {}, data: {} });
+        return respond(await handler({ request, env, ctx, params: {}, data: {} }));
       } catch (error) {
         console.error("NEAR Sentinel API error:", error);
-        return new Response(JSON.stringify({ error: "Internal server error." }), {
+        return respond(new Response(JSON.stringify({ error: "Internal server error." }), {
           status: 500,
           headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
-        });
+        }));
       }
     }
     if (url.pathname.startsWith("/api/")) {
-      return new Response(JSON.stringify({ error: "API route not found." }), {
+      return respond(new Response(JSON.stringify({ error: "API route not found." }), {
         status: 404,
         headers: { "content-type": "application/json; charset=utf-8" }
-      });
+      }));
     }
-    return env.ASSETS.fetch(request);
+    return respond(await env.ASSETS.fetch(request));
   }
 };
