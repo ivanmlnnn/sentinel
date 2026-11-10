@@ -358,6 +358,41 @@ function renderResult(data) {
   }
 }
 
+function getTrackWalletTurnstileToken() {
+  if (!window.turnstile || !window.__sentinelTurnstileWidgetId) {
+    throw new Error('Cloudflare verification is still loading. Please wait and retry.');
+  }
+  const token = window.turnstile.getResponse(window.__sentinelTurnstileWidgetId);
+  if (!token) throw new Error('Complete the Cloudflare verification before tracking this wallet.');
+  return token;
+}
+function resetTrackWalletTurnstile() {
+  if (window.turnstile && window.__sentinelTurnstileWidgetId) {
+    window.turnstile.reset(window.__sentinelTurnstileWidgetId);
+  }
+}
+function initTrackWalletTurnstile() {
+  const mount = $('turnstileTrackWallet');
+  if (!mount) return;
+  const start = () => {
+    if (window.__sentinelTurnstileWidgetId || !window.turnstile) return;
+    window.__sentinelTurnstileWidgetId = window.turnstile.render(mount, {
+      sitekey: mount.dataset.sitekey,
+      action: 'track_wallet',
+      theme: 'auto',
+      'error-callback': () => toast('Cloudflare verification failed. Please retry.'),
+      'expired-callback': () => toast('Verification expired. Please verify again.')
+    });
+  };
+  if (window.turnstile) start();
+  else {
+    const poll = window.setInterval(() => {
+      if (window.turnstile) { window.clearInterval(poll); start(); }
+    }, 150);
+    window.setTimeout(() => window.clearInterval(poll), 15000);
+  }
+}
+
 async function loadMetrics() {
   try {
     const data = await request('/metrics'), totals = data.totals || {}, threats = data.threats || {};
@@ -386,14 +421,16 @@ $('investigateForm').addEventListener('submit', async event => {
   $('result').classList.add('hidden');
   try {
     const investigationPath = GUEST_MODE ? '/guest/investigate' : '/investigate';
+    const turnstileToken = getTrackWalletTurnstileToken();
     const data = await request(investigationPath,{method:'POST',body:JSON.stringify({
       receiver_account:$('receiver').value.trim(),
       sender_account:$('sender').value.trim() || null,
-      amount_near:0
+      amount_near:0,
+      turnstile_token: turnstileToken
     })});
     renderResult(data); await loadMetrics(); toast('Wallet tracking complete: '+data.decision);
   } catch (error) { toast(error.message); }
-  finally { button.disabled = false; button.innerHTML = 'Track wallet <b>↗</b>'; }
+  finally { resetTrackWalletTurnstile(); button.disabled = false; button.innerHTML = 'Track wallet <b>↗</b>'; }
 });
 $('pasteReceiver').addEventListener('click', async () => {
   try { $('receiver').value = await navigator.clipboard.readText(); }
@@ -505,6 +542,7 @@ if (agentForm && !GUEST_MODE) {
 }
 
 // Wallet connection is independent from Privy login; Guest users may connect a NEAR wallet too.
+initTrackWalletTurnstile();
 initWallet();
 loadMetrics();
 loadThreats();
