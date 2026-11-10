@@ -67,7 +67,8 @@ Source: payment-contract/src/lib.rs.
 
 - The payment contract account holds the payout balance.
 - pay accepts calls only when predecessor_account_id equals the configured signer account.
-- Each payment is bounded by the on-chain maximum.
+- Each payment is bounded by an on-chain per-payment maximum.
+- The contract independently enforces a UTC-day spending ceiling, even if the Worker is compromised.
 - An approval ID can be used only once.
 - The contract owner can pause payments or adjust the per-payment ceiling.
 - The contract emits the native NEAR transfer as a receipt.
@@ -116,7 +117,8 @@ NEAR payment contract deployment:
 - NEAR_PAYMENT_CONTRACT_ID — an already-created, funded Testnet account dedicated to the payment contract;
 - NEAR_PAYMENT_CONTRACT_OWNER_ID — owner account allowed to pause/change the cap;
 - NEAR_PAYMENT_CONTRACT_DEPLOYER_PRIVATE_KEY — FullAccess key belonging to the contract account; never use the signer runtime key;
-- NEAR_PAYMENT_MAX_PAYMENT_YOCTO — on-chain per-payment cap in yoctoNEAR, no more than the existing Sentinel hard cap of 0.1 NEAR.
+- NEAR_PAYMENT_MAX_PAYMENT_YOCTO — on-chain per-payment cap in yoctoNEAR, no more than the existing Sentinel hard cap of 0.1 NEAR;
+- NEAR_PAYMENT_MAX_DAILY_PAYMENT_YOCTO — on-chain UTC-day cap in yoctoNEAR, no more than the existing Sentinel hard cap of 0.2 NEAR.
 
 Signer key installation:
 - NEAR_AGENT_SIGNER_ACCOUNT_ID — existing Sentinel Testnet signer account;
