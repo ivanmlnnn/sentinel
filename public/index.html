@@ -47,7 +47,7 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
    <div class="account-input"><span>near://</span><input id="sender" placeholder="agent.testnet (optional)" autocomplete="off" maxlength="64"></div>
    <p class="wallet-connection-state">Enter the agent account to inspect its prior outgoing interactions with this receiver.</p>
    <p id="walletConnectionState" class="wallet-connection-state" aria-live="polite">Wallet not connected. Public account checks are still available.</p>
-   <div class="turnstile-wrap"><div id="turnstileTrackWallet" class="cf-turnstile" data-sitekey="0x4AAAAAAF61dFCiIYIOVwRj" data-action="track_wallet"></div><small>Complete Cloudflare verification before each wallet scan.</small></div>
+   <div class="turnstile-wrap" aria-label="Cloudflare wallet scan verification"><div id="turnstileTrackWallet" class="cf-turnstile" data-sitekey="0x4AAAAAAF61dFCiIYIOVwRj" data-action="track_wallet"></div><small id="turnstileTrackWalletStatus" role="status" aria-live="polite" data-state="loading">Loading Cloudflare verification…</small><button id="turnstileTrackWalletRetry" type="button" hidden>Retry verification</button></div>
   <div class="scan-submit"><span>◈ Explorer-indexed wallet activity · read-only</span><button class="primary-btn" id="scanBtn" type="submit">Track wallet <b>↗</b></button></div>
   </form>
   <div id="result" class="result hidden" aria-live="polite"></div>
