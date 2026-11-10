@@ -7,7 +7,7 @@ This document distinguishes working features from controls that still require im
 - **Privy email OTP sign-in:** the dashboard sends a one-time code to the email address entered by the user (including Gmail) and accepts the code through the Privy modal.
 - **Read-only investigation:** the dashboard can request an assessment and display its result; it does not sign or broadcast a NEAR transaction.
 - **Deterministic policy guard:** `src/agent-guard.mjs` denies BLOCK, requires explicit human approval for WARN, and fails closed for incomplete/invalid assessments or preflight errors.
-- **No-login Guest preview:** the dashboard has a public read-only entry path that skips Privy, disables wallet connection and report submission, and permits public account investigation.
+- **No-login Guest preview:** the dashboard has a public Guest entry path that skips Privy, disables wallet connection and report submission, and uses a separate rate-limited investigation endpoint. Guest scans persist an audit record in D1 but cannot sign transactions.
 - **Server-side Privy verification:** `POST /api/investigate`, `POST /api/threats`, and `POST /api/ai-review` require bearer access tokens verified against the Privy app JWKS (signature, issuer, audience, subject, issued-at, and expiry). Guest screening is isolated at `POST /api/guest/investigate` and receives a stricter Cloudflare rate limit. API traffic is capped at 60 requests/minute/IP and investigations at 12/minute/IP; these Cloudflare limits are approximate and location-local, not strict global quotas.
 - **Exportable verified threat feed:** `GET /api/threats?status=verified` returns verified records with evidence for consumers of this Sentinel deployment. Admin moderation is available at `POST /api/threats/verify` and requires the server-only `THREAT_REVIEW_TOKEN` secret.
 - **Automated token tests:** `tests/privy-auth.test.mjs` covers valid signatures, missing tokens, expired tokens, wrong audience, and tampered payloads.
@@ -33,7 +33,7 @@ The current guard is a policy wrapper. It cannot stop another code path from cal
 
 ### 3. Guest preview verification
 
-The public Guest entry is implemented as a read-only dashboard mode:
+The public Guest entry is implemented as a read-only-with-respect-to-signing dashboard mode:
 
 - It starts before the Privy React module finishes loading, so judges can enter even if the sign-in UI is delayed.
 - It hides wallet connection and report-submission controls.
