@@ -417,6 +417,54 @@ $('sendReport').addEventListener('click',async () => {
 });
 
 const agentForm = $('agentForm');
+function renderAgentResult(data) {
+  const result = $('agentResult');
+  const status = String(data.status || 'UNKNOWN');
+  const verdict = data.sentinel?.decision || 'NOT_AVAILABLE';
+  const risk = Number.isFinite(Number(data.sentinel?.risk_score)) ? Number(data.sentinel.risk_score) + '/100' : 'Not scored';
+  const proposal = data.proposal || {};
+  const txHash = typeof data.transaction_hash === 'string' ? data.transaction_hash : '';
+  const txLink = data.execution_enabled === true && txHash
+    ? '<a class="agent-tx-link" href="https://testnet.nearblocks.io/txns/' + encodeURIComponent(txHash) + '" target="_blank" rel="noopener noreferrer">View verified Testnet transaction ↗</a>'
+    : '';
+  const approvalId = status === 'AWAITING_HUMAN_APPROVAL' ? String(data.approval_id || '') : '';
+  result.innerHTML =
+    '<div class="agent-result-head agent-result-' + escapeHtml(status.toLowerCase()) + '">' +
+      '<span>AGENT STATUS</span><b>' + escapeHtml(status.replaceAll('_', ' ')) + '</b></div>' +
+    '<div class="agent-result-grid">' +
+      '<div><span>PROPOSED RECEIVER</span><b>' + escapeHtml(proposal.receiver_account || '—') + '</b></div>' +
+      '<div><span>AMOUNT</span><b>' + escapeHtml(proposal.amount_near == null ? '—' : String(proposal.amount_near) + ' NEAR') + '</b></div>' +
+      '<div><span>SENTINEL VERDICT</span><b>' + escapeHtml(verdict) + '</b></div>' +
+      '<div><span>RISK SCORE</span><b>' + escapeHtml(risk) + '</b></div></div>' +
+    '<p class="agent-result-reason">' + escapeHtml(data.reason || data.message || 'No execution reason returned.') + '</p>' +
+    ((data.agent_message || data.message) ? '<p class="agent-result-message">' + escapeHtml(data.agent_message || data.message) + '</p>' : '') +
+    (txHash ? '<p class="agent-result-hash">TX HASH · ' + escapeHtml(txHash) + '</p>' : '') +
+    txLink +
+    (approvalId ? '<div class="agent-approval"><p>Review the exact destination and amount. This proposal expires in five minutes.</p><button type="button" class="primary-btn" id="approveAgentPayment">Approve this exact payment</button></div>' : '');
+  if (approvalId) {
+    $('approveAgentPayment').addEventListener('click', async () => {
+      const receiver = String(proposal.receiver_account || '');
+      const amount = String(proposal.amount_near || '');
+      if (!window.confirm('Approve this NEAR Testnet payment?\n\nTo: ' + receiver + '\nAmount: ' + amount + ' NEAR\n\nOnly this exact proposal will be approved.')) return;
+      const approveButton = $('approveAgentPayment');
+      approveButton.disabled = true;
+      approveButton.textContent = 'Re-checking · awaiting signer…';
+      try {
+        const approved = await request('/agent/approve', {
+          method: 'POST',
+          headers: { 'Idempotency-Key': crypto.randomUUID() },
+          body: JSON.stringify({ approval_id: approvalId })
+        });
+        renderAgentResult(approved);
+        toast(approved.execution_enabled ? 'NEAR Testnet transaction confirmed.' : 'Approval result: ' + String(approved.status || 'UNKNOWN'));
+      } catch (error) {
+        approveButton.disabled = false;
+        approveButton.textContent = 'Retry approval check';
+        toast(error.message || 'Approval failed. No transfer was confirmed.');
+      }
+    });
+  }
+}
 if (agentForm && !GUEST_MODE) {
   agentForm.addEventListener('submit', async event => {
     event.preventDefault();
@@ -434,31 +482,9 @@ if (agentForm && !GUEST_MODE) {
         headers: { 'Idempotency-Key': crypto.randomUUID() },
         body: JSON.stringify({ prompt })
       });
-      const status = String(data.status || 'UNKNOWN');
-      const verdict = data.sentinel?.decision || 'NOT_AVAILABLE';
-      const risk = Number.isFinite(Number(data.sentinel?.risk_score))
-        ? Number(data.sentinel.risk_score) + '/100' : 'Not scored';
-      const proposal = data.proposal || {};
-      const txHash = typeof data.transaction_hash === 'string' ? data.transaction_hash : '';
-      const txLink = data.execution_enabled === true && txHash
-        ? '<a class="agent-tx-link" href="https://testnet.nearblocks.io/txns/' + encodeURIComponent(txHash) + '" target="_blank" rel="noopener noreferrer">View verified Testnet transaction ↗</a>'
-        : '';
-      result.innerHTML =
-        '<div class="agent-result-head agent-result-' + escapeHtml(status.toLowerCase()) + '">' +
-          '<span>AGENT STATUS</span><b>' + escapeHtml(status.replaceAll('_', ' ')) + '</b>' +
-        '</div>' +
-        '<div class="agent-result-grid">' +
-          '<div><span>PROPOSED RECEIVER</span><b>' + escapeHtml(proposal.receiver_account || '—') + '</b></div>' +
-          '<div><span>AMOUNT</span><b>' + escapeHtml(proposal.amount_near == null ? '—' : String(proposal.amount_near) + ' NEAR') + '</b></div>' +
-          '<div><span>SENTINEL VERDICT</span><b>' + escapeHtml(verdict) + '</b></div>' +
-          '<div><span>RISK SCORE</span><b>' + escapeHtml(risk) + '</b></div>' +
-        '</div>' +
-        '<p class="agent-result-reason">' + escapeHtml(data.reason || data.message || 'No execution reason returned.') + '</p>' +
-        ((data.agent_message || data.message) ? '<p class="agent-result-message">' + escapeHtml(data.agent_message || data.message) + '</p>' : '') +
-        (txHash ? '<p class="agent-result-hash">TX HASH · ' + escapeHtml(txHash) + '</p>' : '') +
-        txLink;
-      if (data.execution_enabled === true) toast('NEAR Testnet transaction confirmed.');
-      else toast('Agent finished: ' + status.replaceAll('_', ' '));
+      renderAgentResult(data);
+      if (data.status === 'AWAITING_HUMAN_APPROVAL') toast('Review the exact receiver and amount before approving.');
+      else toast('Agent finished: ' + String(data.status || 'UNKNOWN').replaceAll('_', ' '));
     } catch (error) {
       result.textContent = error.message || 'Agent request failed. No transaction was confirmed.';
       toast(error.message || 'Agent request failed.');
