@@ -15,3 +15,8 @@ test("Guest session is set before Privy creates the guest account", () => {
 test("email login clears any previous Guest session flag", () => {
   assert.match(auth, /window\.SENTINEL_GUEST = false;[\s\S]*sessionStorage\.removeItem\('sentinel_privy_guest'\);[\s\S]*login\(\);/);
 });
+
+
+test("Guest loading state resets when Privy auth state changes after logout", () => {
+  assert.match(auth, /setGuestLoading\(false\);[\s\S]*if \(authenticated\)/);
+});
