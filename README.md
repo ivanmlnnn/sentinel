@@ -80,6 +80,7 @@ Official event: [NEAR HACKATHON](https://nearhackathon.com/) · [Official builde
 
 - **Live dashboard:** https://sentinel.ivmaladin.workers.dev
 - **Repository:** https://github.com/ivanmlnnn/sentinel
+- **Source provenance:** [commit history, CI evidence, and signature status](docs/PROVENANCE.md)
 - **Demo video:** not published yet — add a public demo recording and X post before submission.
 
 ---
