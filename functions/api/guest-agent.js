@@ -58,7 +58,34 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "AI_PROVIDER_UNAVAILABLE", remaining: Math.max(0, DAILY_LIMIT - Number(quota.prompt_count)) }, 502);
   }
   const data = await providerResponse.json().catch(() => ({}));
-  if (!providerResponse.ok) return json({ error: "AI_PROVIDER_ERROR", remaining: Math.max(0, DAILY_LIMIT - Number(quota.prompt_count)) }, 502);
+  if (!providerResponse.ok) {
+    const providerError = data?.error || {};
+    const providerStatus = providerResponse.status;
+    const providerErrorType = typeof providerError.type === "string" ? providerError.type.slice(0, 80) : "unknown";
+    const providerMessage = typeof providerError.message === "string" ? providerError.message.slice(0, 240) : "No provider error message";
+    const providerRequestId = providerResponse.headers.get("request-id") || data?.request_id || null;
+    console.error("guest_agent_provider_error", {
+      status: providerStatus,
+      type: providerErrorType,
+      message: providerMessage,
+      request_id: providerRequestId
+    });
+    const errorCode = providerStatus === 401 ? "AI_PROVIDER_AUTH_FAILED"
+      : providerStatus === 402 ? "AI_PROVIDER_BILLING_ERROR"
+      : providerStatus === 403 ? "AI_PROVIDER_PERMISSION_DENIED"
+      : providerStatus === 404 ? "AI_PROVIDER_MODEL_NOT_FOUND"
+      : providerStatus === 429 ? "AI_PROVIDER_RATE_LIMITED"
+      : providerStatus === 400 ? "AI_PROVIDER_BAD_REQUEST"
+      : providerStatus >= 500 ? "AI_PROVIDER_UPSTREAM_ERROR"
+      : "AI_PROVIDER_ERROR";
+    return json({
+      error: errorCode,
+      provider_status: providerStatus,
+      provider_error_type: providerErrorType,
+      provider_request_id: providerRequestId,
+      remaining: Math.max(0, DAILY_LIMIT - Number(quota.prompt_count))
+    }, 502);
+  }
   const message = Array.isArray(data.content)
     ? data.content.filter(item => item.type === "text").map(item => item.text).join("\n").slice(0, 4000)
     : "";
