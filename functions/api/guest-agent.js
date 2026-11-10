@@ -82,6 +82,7 @@ export async function onRequestPost({ request, env }) {
       error: errorCode,
       provider_status: providerStatus,
       provider_error_type: providerErrorType,
+      provider_message: providerMessage,
       provider_request_id: providerRequestId,
       remaining: Math.max(0, DAILY_LIMIT - Number(quota.prompt_count))
     }, 502);
