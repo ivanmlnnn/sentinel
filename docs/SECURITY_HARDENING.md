@@ -13,7 +13,7 @@ This is a verification baseline, not a certification or a claim that Sentinel is
 - Provider error messages are no longer returned verbatim by the agent endpoint.
 - `.env`, `.dev.vars`, local Wrangler state, and common private-key file formats are excluded from Git.
 - CodeQL static analysis and full-history Gitleaks scanning are added to CI.
-- Wrangler now points to a dedicated `migrations-d1/` directory containing SQLite-compatible schema migrations. Legacy `migrations/` files use PostgreSQL syntax and must not be applied to D1. The new sequence is executed against SQLite in CI.
+- Main Worker DB1 uses SQLite-compatible `migrations-d1/`; signer DB2 uses `migrations-signer/`. CI validates both migration sets independently against SQLite, including signer indexes. Legacy `migrations/` files use PostgreSQL syntax and must not be applied to D1.
 - The signer is a separate Worker with no public Workers.dev or preview URL. Its private key must not be configured in the browser-facing Worker.
 
 ## Access model: Cloudflare equivalent of least privilege
@@ -33,7 +33,7 @@ Set `SENTINEL_ADMIN_DIDS` to a comma-separated allowlist of Privy subject IDs fo
 
 ## Residual risks — do not conceal these from judges
 
-1. The main Worker and signer Worker currently share the same D1 database. The signer checks a pending approval row written by the main Worker. A fully compromised main Worker with write access to that database can attempt to forge that application-level approval.
+1. Main Worker DB1 and signer ledger DB2 are separate; the Main Worker has no DB2 binding. The signer still binds DB1 to read pending approvals, and that binding is write-capable at the platform level even though current signer code only uses SELECT. The Main Worker also holds the shared HMAC secret and can write pending approvals. A fully compromised Main Worker can still attempt to forge an application-level approval. This split isolates signer ledgers from direct Main Worker writes; it does not create an independent approval authority.
 2. Human approval is an authenticated application confirmation, not yet a cryptographic wallet-signed or passkey-backed approval bound to the exact transfer.
 3. The signer uses a dedicated Testnet FullAccess key. Keep it low-balance, Testnet-only, allowlisted, and kill-switched until live negative tests pass. Do not reuse a personal or Mainnet key.
 4. Strict `script-src` CSP is not yet enforced because external Privy/NEAR wallet dependencies and inline bootstrapping have not been fully inventoried. The current CSP is intentionally limited and is not a complete XSS boundary.
@@ -72,7 +72,7 @@ Record each finding with request/response evidence, severity, fix commit, and a 
 - [ ] Confirm Cloudflare account MFA and least-privilege team roles.
 - [ ] Configure secrets only in the dedicated Worker that needs them.
 - [ ] Keep signer kill switch enabled until preview negative tests pass.
-- [ ] Review the remote D1 migration history and schema, back up the intended database, and apply only the SQLite-compatible `migrations-d1/` sequence (0001–0007).
+- [ ] Back up both databases and reconcile migration history: Main DB1 uses `migrations-d1/` (0001–0007); signer DB2 uses `migrations-signer/` (0001).
 - [ ] Run CodeQL and the full CI suite on the exact submission commit.
 - [ ] Complete the Burp Suite plan against preview; attach a redacted report.
-- [ ] Obtain independent review of the shared-D1 and human-approval residual risks before enabling transfers.
+- [ ] Obtain independent review of the remaining DB1 approval trust boundary and human-approval residual risk before enabling transfers.
