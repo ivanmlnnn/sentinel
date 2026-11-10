@@ -368,7 +368,7 @@ async function loadMetrics() {
     const recent = Array.isArray(data.recent) ? data.recent : [];
     $('recentList').innerHTML = recent.length ? recent.map(x =>
       '<div class="recent-item"><div><div class="recent-address">'+escapeHtml(x.receiver_account)+'</div><div class="recent-meta">'+new Date(x.created_at).toLocaleString()+' · '+Number(x.amount_near||0).toLocaleString()+' NEAR</div></div><span class="pill '+escapeHtml(x.decision)+'">'+escapeHtml(x.decision)+'</span><span class="recent-score">'+(Number(x.risk_score)||0)+'/100</span></div>'
-    ).join('') : '<div class="empty-state">No checks yet. Try your first address above.</div>';
+    ).join('') : '<div class="empty-state">Individual wallet scan activity is private. Aggregate security metrics are shown above.</div>';
   } catch (error) { const apiStatus = $('apiStatus'); if (apiStatus) apiStatus.textContent = 'OFFLINE'; $('recentList').innerHTML = '<div class="empty-state">Activity is temporarily unavailable.</div>'; }
 }
 async function loadThreats() {
