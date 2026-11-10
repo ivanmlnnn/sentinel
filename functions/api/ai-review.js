@@ -22,7 +22,7 @@ export async function onRequestPost({ request, env }) {
     });
   } catch { return json({ error: "AI provider request failed." }, 502); }
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) return json({ error: data.error?.message || "AI provider rejected the request." }, 502);
+  if (!response.ok) return json({ error: "AI_PROVIDER_ERROR" }, 502);
   const explanation = (data.content || []).filter(x => x.type === "text").map(x => x.text).join("\n").trim();
   if (!explanation) return json({ error: "AI provider returned an empty explanation." }, 502);
   await env.DB.prepare("UPDATE investigations SET ai_explanation = ? WHERE id = ?").bind(explanation, id).run();
