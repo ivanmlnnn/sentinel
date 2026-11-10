@@ -79,21 +79,23 @@ test("signer kill switch denies before reading key material or touching D1", asy
 
 test("signer requires an exact actor-bound pending approval and claims it once", async () => {
   const inserted = new Set();
-  const env = { DB: { prepare(sql) {
-    return {
-      bind(...args) {
-        if (sql.startsWith("SELECT id, actor")) return { async first() {
-          return { id: args[0], actor: args[1], receiver_account: "rawvest6817.testnet",
-            amount_micro: 10000, status: "APPROVING" };
-        } };
-        return { async run() {
-          if (inserted.has(args[0])) throw new Error("UNIQUE constraint");
-          inserted.add(args[0]);
-          return { meta: { changes: 1 } };
-        } };
-      }
-    };
-  } } };
+  const env = {
+    DB: { prepare(sql) {
+      assert.match(sql, /^SELECT id, actor/);
+      return { bind(...args) { return { async first() {
+        return { id: args[0], actor: args[1], receiver_account: "rawvest6817.testnet",
+          amount_micro: 10000, status: "APPROVING" };
+      } }; } };
+    } },
+    DB2: { prepare(sql) {
+      assert.match(sql, /^INSERT INTO signer_approval_claims/);
+      return { bind(...args) { return { async run() {
+        if (inserted.has(args[0])) throw new Error("UNIQUE constraint");
+        inserted.add(args[0]);
+        return { meta: { changes: 1 } };
+      } }; } };
+    } }
+  };
   const claim = { approvalId: "123e4567-e89b-42d3-a456-426614174000",
     idempotencyKey: "123e4567-e89b-42d3-a456-426614174001",
     actor: "did:privy:test", receiver: "rawvest6817.testnet", amountMicro: 10000 };
@@ -136,7 +138,7 @@ test("signer endpoint rejects oversized UTF-8 payload before authentication work
     method: "POST", headers: { "content-type": "application/json" },
     body: JSON.stringify({ prompt: "🛡".repeat(3000) })
   });
-  const response = await signerWorker.fetch(oversized, { DB: {} });
+  const response = await signerWorker.fetch(oversized, { DB: {}, DB2: {} });
   assert.equal(response.status, 413);
   assert.equal((await response.json()).error, "REQUEST_TOO_LARGE");
 });
