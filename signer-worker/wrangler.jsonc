@@ -24,6 +24,10 @@
   "previews": {
     "d1_databases": [
       {
+        "binding": "DB",
+        "database_id": "f3fa44b2-2b49-4af1-8687-2346cb336b22"
+      },
+      {
         "binding": "DB2",
         "database_id": "80a08a93-4353-4dba-914d-a436afd040c9"
       }
