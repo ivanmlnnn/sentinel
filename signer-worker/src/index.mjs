@@ -38,7 +38,7 @@ export async function readBoundedSignerBody(request, maxBytes = 8000) {
     return { ok: false, status: 415, reason: "JSON_CONTENT_TYPE_REQUIRED" };
   }
   const declaredLength = request.headers.get("content-length");
-  if (declaredLength && /^\\d+$/.test(declaredLength) && Number(declaredLength) > maxBytes) {
+  if (declaredLength && /^\d+$/.test(declaredLength) && Number(declaredLength) > maxBytes) {
     return { ok: false, status: 413, reason: "REQUEST_TOO_LARGE" };
   }
   if (!request.body) return { ok: false, status: 400, reason: "INVALID_BODY" };
