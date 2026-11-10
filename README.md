@@ -12,7 +12,7 @@ Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verifi
 
 - **[Judge Evidence Pack](docs/JUDGE_EVIDENCE_PACK.md)** — project explanation, evidence index, reproducible commands and judge walkthrough.
 - **[End-to-End Verification Report](docs/END_TO_END_VERIFICATION.md)** — exact test counts, production HTTP smoke results, deployment scope and provenance attestation.
-- **[Independent Local Stress Lab](docs/INDEPENDENT_LOCAL_STRESS_LAB.md)** — nine local simulation checks, raw concurrency/load outcomes, and a strict boundary between simulated results and live D1/NEAR verification.
+- **[Independent Local Stress Lab](docs/INDEPENDENT_LOCAL_STRESS_LAB.md)** — nine local simulation checks, raw concurrency/load outcomes, and a strict boundary between simulated results and live D1/NEAR verification.\n- **[Gemini AI Provider Setup](docs/DEPLOYMENT_STATUS_AND_AI_PROVIDER.md#gemini-ai-provider)** — Gemini API integration, runtime secret setup, tool-calling compatibility, and verification steps.
 - **[NEAR Ecosystem Integration & Wallet-to-Agent Flow](docs/NEAR_ECOSYSTEM_INTEGRATION.md)** — the actual NEAR-native flow, identity separation, NEP-413 approval, restricted FunctionCall signer, and payment contract.
 - **[Signed Verdict Attestation](docs/SIGNED_VERDICT.md)** — Ed25519-signed assessment integrity at the isolated signer boundary; merged in [PR #10](https://github.com/ivanmlnnn/sentinel/pull/10).
 - **[Tracked recipient in NEAR Testnet Explorer](https://testnet.nearblocks.io/address/rawvest6817.testnet)** — inspect the public account activity for `rawvest6817.testnet` independently.
@@ -32,8 +32,8 @@ Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verifi
 - First-seen indexed activity proxy, explicitly not account creation age.
 - Contract code-hash comparison against earlier Sentinel scans.
 - Deployment-local D1 threat registry; only verified reports can trigger `BLOCK`.
-- Privy-authenticated investigation, AI review, and agent routes.
-- Anthropic tool-calling agent whose output is treated as an untrusted proposal.
+- Privy-authenticated investigation, Gemini-powered AI review, and authenticated/guest agent routes.
+- Google Gemini tool-calling agent whose output is treated as an untrusted proposal.
 - Actor-bound, exact-intent, five-minute human approval plus signer-side one-time approval claim.
 - Separate signer Worker, private service binding, signer-owned D1 ledger, HMAC-SHA256 timestamp/nonce protection, replay ledger, Ed25519-signed preflight verdict verification, NEP-413 wallet signature verification, receiver allowlist, spend caps, kill switch, and conservative `UNKNOWN` handling.
 - Ed25519-signed, short-lived preflight verdicts on PR #10's feature branch. The payload binds sender, receiver, exact microNEAR amount, nonce, expiry, decision, risk score, assessment status, and assessment ID; the isolated signer verifies the signature and exact intent before policy evaluation and payment execution.
