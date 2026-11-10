@@ -54,6 +54,7 @@ jobs:
           node --check signer-worker/src/index.mjs
           node --check scripts/install-restricted-signer-key.mjs
           node --check scripts/deploy-payment-contract.mjs
+          node --check scripts/generate-restricted-signer-key.mjs
           node --check src/agent-policy.mjs
           node --check src/near-agent-signer.mjs
       - name: Validate D1 migration SQL against SQLite
