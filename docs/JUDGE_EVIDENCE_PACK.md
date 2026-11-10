@@ -13,6 +13,7 @@
 - **Merged security architecture:** [PR #3](https://github.com/ivanmlnnn/sentinel/pull/3)
 - **Architecture:** [Secure Agent Pipeline](SECURE_AGENT_PIPELINE.md)
 - **Interactive walkthrough:** [Judge Demo](JUDGE_DEMO.md)
+- **End-to-end results:** [End-to-End Verification Report](END_TO_END_VERIFICATION.md) — exact 124-test result, 8 production smoke checks, deploy job results, provenance attestation and remaining live gates.
 
 ## 2. What problem Sentinel solves
 
@@ -61,6 +62,18 @@ These are real deployment workflow records, not Wrangler dry-runs. The Signer de
 | Security CI | [Run #45](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243623) | Security regression workflow completed successfully. |
 
 The logged test assertions include rejection of FullAccess and over-broad FunctionCall keys, exact pay-only FunctionCall scope, forged/invalid NEP-413 approval rejection, nonce/replay rejection, stale/tampered HMAC rejection, kill-switch denial, fail-closed behavior when evidence is incomplete, and exact payout-receipt verification requirements. These are automated test results; they are not an independent penetration-test certification.
+
+## 3.4 End-to-end verification result
+
+The full test and production evidence is itemized in [End-to-End Verification Report](END_TO_END_VERIFICATION.md).
+
+- **Automated regression:** 124 passed, 0 failed in [run 42873243801](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243801).
+- **Prompt-injection demo:** `DENIED - SENTINEL_BLOCK`; `Signer invoked: NO`.
+- **Production HTTP smoke:** 8/8 checks passed in [run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638), including dashboard HTTP 200 and expected Turnstile, bearer-token and HMAC denials.
+- **Deployment:** Signer + Main deployment jobs passed in [run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536); later Main release and smoke passed in [run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638).
+- **Source provenance:** [Sigstore/Rekor attestation #65936142](https://github.com/ivanmlnnn/sentinel/attestations/65936142).
+
+The live preflight workflow has not yet been dispatched; a fresh-browser Guest journey, live Anthropic agent response and Sentinel-originated payment are not claimed as verified. The report explicitly distinguishes those gates from the successful automated/deployment checks.
 
 ## 4. How to reproduce the repository checks
 

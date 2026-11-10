@@ -6,6 +6,9 @@ Updated: 11 November 2026
 
 ## Verified project status
 
+The full test-by-test and endpoint-by-endpoint results are in the [End-to-End Verification Report](END_TO_END_VERIFICATION.md). The recorded CI run reports 124/124 tests passed; the latest production smoke run reports 8/8 expected HTTP checks passed. These do not represent a successful live AI conversation or blockchain payout.
+
+
 The following deployment and CI records are successful:
 
 | Component / check | Evidence | Result |

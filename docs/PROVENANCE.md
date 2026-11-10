@@ -35,6 +35,12 @@ For stronger author-identity evidence, the repository owner should configure the
 - The branch's latest browser-navigation cleanup removes query strings from ordinary HTML page navigations, but excludes API and authentication/callback paths. It does not rewrite arbitrary query strings used by application protocols.
 - The older CI runs listed in the previous version of this document remain historical evidence for their respective commits only.
 
+## Build provenance attestation
+
+The [GitHub source attestation #65936142](https://github.com/ivanmlnnn/sentinel/attestations/65936142) was created by the successful `attest-source` job in [Sentinel checks run 42873243801](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243801). The job packaged source revision `34b4775737900e7bce2888541b68dfcbd1d13b59`, created a Sigstore-signed build provenance attestation, and uploaded its signature to the Rekor transparency log.
+
+This attests the source archive/build provenance for that exact revision. It does not attest the live Cloudflare deployment, the identity of a runtime secret, or a NEAR transaction. See [End-to-End Verification Report](END_TO_END_VERIFICATION.md) for the test and deployment matrix.
+
 ## License
 
 The repository contains the MIT License in the root LICENSE file.

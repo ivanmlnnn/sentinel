@@ -21,6 +21,18 @@ The signer account configured by source defaults to `freshnook5462.testnet`; `ra
 
 **Payment-contract and payout boundary:** the maintainer reports that the payment contract was previously deployed and existing signer configuration was reused. The cited Worker deployment logs establish Worker deployment and secret-upload events; they do not independently prove the contract's current on-chain state, the runtime public key's exact permission on the signer account, or a Sentinel-originated successful payout. The payout is only independently verified when a real transaction hash and matching successful native Transfer receipt are checked on Testnet Explorer/API.
 
+## 1.2 End-to-end verification results
+
+The exact current results are summarized in [End-to-End Verification Report](END_TO_END_VERIFICATION.md):
+
+- 124 automated tests passed and 0 failed in [run 42873243801](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243801).
+- Prompt-injection regression returned `DENIED - SENTINEL_BLOCK` and `Signer invoked: NO`.
+- 8 production HTTP smoke checks passed in [run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638): dashboard HTTP 200; expected HTTP 400 for missing Turnstile; expected HTTP 401 for missing bearer/HMAC authentication.
+- Signer and Main Worker deploy jobs passed in [run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536); the later Main Worker deployment and smoke test passed in [run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638).
+- Source archive provenance was attested and recorded in [GitHub attestation #65936142](https://github.com/ivanmlnnn/sentinel/attestations/65936142).
+
+The manual live API preflight has not yet been dispatched. Production smoke is an HTTP security check, not a successful authenticated browser journey or payout. No Sentinel-originated payment hash/receipt is claimed.
+
 ## 1. Verification status at a glance
 
 | Integration / control | What source code implements | What is not automatically proven |

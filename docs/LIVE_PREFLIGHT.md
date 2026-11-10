@@ -29,6 +29,12 @@ The script exits non-zero when preflight is unavailable or the assessment is inv
 It is an integration check of the live API and guard boundary, not proof of
 cryptographic enforcement in an actual wallet.
 
+## Current execution status
+
+As of 11 November 2026, the manual **Live Sentinel preflight** workflow is present in the repository, but no completed run is cited in the published evidence. Do not describe the live preflight as passed until a real workflow run has completed successfully.
+
+The production HTTP smoke test is a different check: it verifies the dashboard response and expected rejection of missing Turnstile, bearer-token and HMAC credentials. Its results are documented in [End-to-End Verification Report](END_TO_END_VERIFICATION.md).
+
 ## GitHub Actions
 
 Open Actions → **Live Sentinel preflight** → Run workflow. Supply a NEAR Testnet

@@ -4,7 +4,7 @@
 
 This branch implements a two-Worker signing architecture and a mandatory human approval step. The main Sentinel Worker does not import or hold the NEAR signing key. The key-owning Worker is configured with `workers_dev=false` and `preview_urls=false`; it is intended to be reached only through the main Worker's Cloudflare service binding.
 
-**This code is not yet a verified live signing deployment.** No production D1 migrations, signer secrets, or live Testnet transfer are claimed by CI. Keep the signer kill switch enabled until the deployment checklist is completed.
+**Deployment status:** the private Signer Worker and Main Worker have successful GitHub Actions deployment records, including D1 migrations, runtime secret-upload events, and production HTTP smoke checks. The deployment log does not expose the runtime public key or independently prove its current on-chain permission. No Sentinel-originated Testnet payout is claimed without a real transaction hash and matching native Transfer receipt. See [End-to-End Verification Report](END_TO_END_VERIFICATION.md).
 
 ## Request flow
 
@@ -121,7 +121,7 @@ Do not apply migrations against a different database or from an unreviewed branc
 - [ ] Only after all checks pass: fund the dedicated signer with a minimal Testnet balance, temporarily disable the signer kill switch, and make one small transfer to `rawvest6817.testnet`.
 - [ ] Independently verify transaction hash, sender, receiver, amount, final status, and D1 audit; immediately re-enable the kill switch.
 
-Do not claim a real transaction or isolated deployment until the above evidence exists. Automated tests validate message binding and final-RPC matching; they do not replace an end-to-end wallet signature, deployed signer test, or actual Testnet transaction. CI cannot prove a live blockchain transfer because CI has no wallet secret.
+The isolated Worker deployment is evidenced by [run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536), and the later Main Worker release plus production HTTP smoke checks are evidenced by [run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638). Automated tests validate message binding, permission checks and final-receipt matching logic; they do not replace a live NEP-413 wallet signature or actual Testnet transaction. No live payout is claimed in the current evidence set.
 
 ## Judge-facing demo
 
@@ -141,4 +141,4 @@ The Main Worker exposes a Privy-authenticated Agent Lab endpoint that calls the 
 
 The model is an explanation and proposal interface, not a policy authority. It cannot declare an account safe based on its own text, and it cannot override `BLOCK`, `WARN`, or `INCOMPLETE`. It may propose a payment only after an explicit user request. Proposal creation and payment approval remain separate operations with idempotency, exact receiver/amount binding, fresh preflight investigation, human wallet signature, signer-side policy, spend limits, replay protection, and kill-switch enforcement.
 
-The latest exact source revision [`31a71a4`](https://github.com/ivanmlnnn/sentinel/commit/31a71a44964bffdb990bc7072ad86168b6072002) passed [Sentinel Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42857959405) and [CodeQL](https://github.com/ivanmlnnn/sentinel/actions/runs/42857959683). Deployment is still a separate manual GitHub Actions operation; CI success alone does not make either Worker live.
+The later tested revision passed [Sentinel checks](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243801) with 124/124 tests, [CodeQL](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243329), and [Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243623). Worker deployment and 8/8 production HTTP smoke checks are separately evidenced by [run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638). The full scope and remaining live gates are in [End-to-End Verification Report](END_TO_END_VERIFICATION.md).
