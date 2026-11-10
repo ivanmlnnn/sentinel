@@ -14,7 +14,9 @@ if (!/^[a-z0-9._-]{2,64}\.testnet$/.test(contractId) ||
     !/^[a-z0-9._-]{2,64}\.testnet$/.test(ownerId) ||
     !privateKey || !/^[1-9][0-9]*$/.test(maxPaymentYocto) ||
     !/^[1-9][0-9]*$/.test(maxDailyPaymentYocto) ||
-    BigInt(maxDailyPaymentYocto) < BigInt(maxPaymentYocto)) {
+    BigInt(maxPaymentYocto) > 100_000_000_000_000_000_000_000n ||
+    BigInt(maxDailyPaymentYocto) < BigInt(maxPaymentYocto) ||
+    BigInt(maxDailyPaymentYocto) > 200_000_000_000_000_000_000_000n) {
   throw new Error("MISSING_OR_INVALID_PAYMENT_CONTRACT_DEPLOY_CONFIG");
 }
 
