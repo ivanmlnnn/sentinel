@@ -28,9 +28,9 @@ export async function onRequestPost({ request, env }) {
   if (!identity) return json({ error: "UNAUTHORIZED", detail: "A valid Privy app access token is required to submit a threat report." }, 401);
   const body = await readJson(request, 4096);
   if (!body) return json({ error: "Invalid JSON body." }, 400);
-  const account = String(body.account_id || "").trim().toLowerCase();
-  const category = String(body.category || "").trim().slice(0, 80);
-  const evidence = String(body.evidence || "").trim().slice(0, 2000);
+  const account = typeof body.account_id === "string" ? body.account_id.trim().toLowerCase() : "";
+  const category = typeof body.category === "string" ? body.category.trim().slice(0, 80) : "";
+  const evidence = typeof body.evidence === "string" ? body.evidence.trim().slice(0, 2000) : "";
   if (!validAccountId(account) || !category || evidence.length < 12) return json({ error: "Valid account_id, category, and evidence (at least 12 characters) are required." }, 400);
   const id = crypto.randomUUID();
   const createdAt = new Date().toISOString();
