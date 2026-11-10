@@ -117,7 +117,8 @@ export async function onRequestPost({ request, env }) {
     run_id: idempotencyKey, approval_id: approvalId, status: execution.status,
     reason: execution.reason, proposal: { receiver_account: intent.receiver_account, amount_near: intent.amount_near },
     sentinel: { decision: assessment.decision, risk_score: assessment.risk_score, assessment_status: assessment.assessment_status },
-    transaction_hash: execution.transaction_hash || null, signer_account: execution.signer_account || null,
+    transaction_hash: execution.transaction_hash || null, explorer_url: execution.explorer_url || null,
+    verification: execution.verification || null, signer_account: execution.signer_account || null,
     network: execution.network || "testnet", execution_enabled: execution.executed === true
   });
 }
