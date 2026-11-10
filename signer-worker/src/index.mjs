@@ -189,6 +189,7 @@ export async function verifyFinalTransfer(hash, signerAccountId, contractId, rec
   if (!tx || !isSuccessfulStatus(result.status) ||
       tx.signer_id !== signerAccountId ||
       tx.receiver_id !== contractId ||
+      !Array.isArray(tx.actions) || tx.actions.length !== 1 ||
       call?.method_name !== "pay" ||
       callArgs?.receiver_id !== receiverAccountId ||
       String(callArgs?.amount_yocto || "") !== String(amountYocto) ||
@@ -206,7 +207,8 @@ export async function verifyFinalTransfer(hash, signerAccountId, contractId, rec
     const receiptResult = await rpc("EXPERIMENTAL_receipt", { receipt_id: item.id }, "sentinel-payment-receipt");
     const receiptActions = receiptResult.receipt?.Action?.actions ||
       receiptResult.receipt?.action?.actions || [];
-    if (receiptResult.receiver_id !== receiverAccountId) continue;
+    if (receiptResult.predecessor_id !== contractId || receiptResult.receiver_id !== receiverAccountId ||
+        receiptActions.length !== 1) continue;
     const transfer = receiptActions.map(action => action.Transfer).find(Boolean);
     if (transfer && String(transfer.deposit) === String(amountYocto)) {
       matchingTransfer = { receipt_id: item.id, receiver_id: receiptResult.receiver_id, amount_yocto: String(transfer.deposit) };
