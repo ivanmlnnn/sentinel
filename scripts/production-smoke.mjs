@@ -24,7 +24,7 @@ check("dashboard responds", home.status === 200 && home.contentType.includes("te
 
 // Protected scan routes must fail closed without a fresh Turnstile token.
 // This smoke check intentionally does not create a scan record or consume provider quota.
-for (const path of ["/api/investigate", "/api/guest/investigate"]) {
+for (const path of ["/api/guest/investigate"]) {
   const response = await request(path, {
     method: "POST",
     body: JSON.stringify({
@@ -40,6 +40,14 @@ for (const path of ["/api/investigate", "/api/guest/investigate"]) {
     `HTTP ${response.status}; error=${response.body?.error || "none"}`
   );
 }
+
+// Authenticated preflight is used by the isolated signer and must reach Privy auth
+// without a browser-only Turnstile token. Missing bearer token must still fail closed.
+const authenticatedPreflight = await request("/api/investigate", {
+  method: "POST",
+  body: JSON.stringify({ receiver_account: "merchant.testnet", amount_near: 0.1 })
+});
+check("POST /api/investigate uses Privy auth, not guest Turnstile", authenticatedPreflight.status === 401, `HTTP ${authenticatedPreflight.status}`);
 
 // These are write/AI actions. GET /api/threats is intentionally public/read-only.
 const threatWrite = await request("/api/threats", {
