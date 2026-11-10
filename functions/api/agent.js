@@ -72,7 +72,7 @@ export async function onRequestPost({ request, env }) {
       "You may propose at most one payment using request_near_payment, and only when the user clearly asks to create or make a payment proposal. Do not call it for greetings, general questions, explanations, or how-to guidance.",
       "A tool proposal is not authorization. Never claim a payment was signed, broadcast, or sent. Do not invent evidence, bypass human approval, or override deterministic Sentinel policy.",
       "Keep answers direct and practical. If a backend security policy blocks a payment, explain the reason in plain language rather than presenting an internal error code as a conversational answer."
-    ].join("\\n"),
+    ].join("\n"),
     tools: MODEL_TOOL,
     messages: [{ role: "user", content: prompt }],
     maxOutputTokens: 700,
@@ -134,7 +134,7 @@ export async function onRequestPost({ request, env }) {
       if (!followupResult.ok) {
         return json({ run_id: idempotencyKey, status: followupResult.error, provider_status: followupResult.status || null, provider_message: followupResult.message, investigation: safeEvidence }, 502);
       }
-      agentText = (followupResult.data.content || []).filter(item => item.type === "text").map(item => item.text).join("\\n").slice(0, 4000);
+      agentText = (followupResult.data.content || []).filter(item => item.type === "text").map(item => item.text).join("\n").slice(0, 4000);
     } catch {
       return json({ run_id: idempotencyKey, status: "AI_PROVIDER_UNAVAILABLE", investigation: safeEvidence }, 502);
     }
