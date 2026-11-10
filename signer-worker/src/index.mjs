@@ -90,16 +90,35 @@ export async function reserveNonce(env, nonce) {
     return true;
   } catch { return false; }
 }
-async function assertFullAccessKey(accountId, publicKey) {
+async function rpc(method, params, id = "sentinel-rpc") {
   const response = await fetch(RPC, {
     method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: "sentinel-key-check", method: "query",
-      params: { request_type: "view_access_key", finality: "final", account_id: accountId, public_key: publicKey } }),
-    signal: AbortSignal.timeout(10000)
+    body: JSON.stringify({ jsonrpc: "2.0", id, method, params }),
+    signal: AbortSignal.timeout(15000)
   });
-  if (!response.ok) throw new Error("ACCESS_KEY_LOOKUP_FAILED");
+  if (!response.ok) throw new Error("NEAR_RPC_HTTP_ERROR");
   const data = await response.json();
-  if (data.error || data.result?.permission !== "FullAccess") throw new Error("SIGNER_REQUIRES_FULL_ACCESS_TESTNET_KEY");
+  if (data.error || !data.result) throw new Error("NEAR_RPC_RESULT_UNAVAILABLE");
+  return data.result;
+}
+
+export async function assertRestrictedFunctionCallKey(accountId, publicKey, contractId) {
+  if (!contractId || !/^[a-z0-9._-]{2,64}\.testnet$/.test(contractId)) {
+    throw new Error("PAYMENT_CONTRACT_NOT_CONFIGURED");
+  }
+  const result = await rpc("query", {
+    request_type: "view_access_key", finality: "final",
+    account_id: accountId, public_key: publicKey
+  }, "sentinel-restricted-key-check");
+  const permission = result.permission?.FunctionCall;
+  if (!permission ||
+      permission.receiver_id !== contractId ||
+      !Array.isArray(permission.method_names) ||
+      permission.method_names.length !== 1 ||
+      permission.method_names[0] !== "pay") {
+    throw new Error("SIGNER_REQUIRES_CONTRACT_SCOPED_FUNCTION_CALL_KEY");
+  }
+  return { receiver_id: permission.receiver_id, method_names: permission.method_names };
 }
 export async function claimApproval(env, { approvalId, idempotencyKey, actor, receiver, amountMicro, walletApproval }) {
   const pending = await env.DB.prepare(
@@ -150,40 +169,60 @@ async function setState(env, key, state, hash = null) {
   await env.DB2.prepare("UPDATE agent_execution SET status=?, transaction_hash=?, updated_at=CURRENT_TIMESTAMP WHERE idempotency_key=?")
     .bind(state, hash, key).run();
 }
-export async function verifyFinalTransfer(hash, signerAccountId, receiverAccountId, amountYocto) {
+function isSuccessfulStatus(status) {
+  return Boolean(status && (Object.hasOwn(status, "SuccessValue") || Object.hasOwn(status, "SuccessReceiptId")));
+}
+
+function decodeRpcArgs(value) {
+  if (typeof value !== "string") return null;
+  try { return JSON.parse(atob(value)); } catch { return null; }
+}
+
+export async function verifyFinalTransfer(hash, signerAccountId, contractId, receiverAccountId, amountYocto, approvalId) {
   if (typeof hash !== "string" || !/^[1-9A-HJ-NP-Za-km-z]{32,64}$/.test(hash)) {
     throw new Error("INVALID_TRANSACTION_HASH");
   }
-  const response = await fetch(RPC, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0", id: "sentinel-final-tx-verification", method: "tx",
-      params: [hash, signerAccountId]
-    }),
-    signal: AbortSignal.timeout(15000)
-  });
-  if (!response.ok) throw new Error("FINAL_TRANSACTION_LOOKUP_FAILED");
-  const data = await response.json();
-  const tx = data?.result?.transaction;
-  const status = data?.result?.status;
-  const transfer = tx?.actions?.find(action => action?.Transfer)?.Transfer;
-  const succeeded = Boolean(status && (
-    Object.hasOwn(status, "SuccessValue") || Object.hasOwn(status, "SuccessReceiptId")
-  ));
-  if (data?.error || !tx || !succeeded ||
+  const result = await rpc("tx", [hash, signerAccountId], "sentinel-final-payment-verification");
+  const tx = result.transaction;
+  const call = tx?.actions?.find(action => action?.FunctionCall)?.FunctionCall;
+  const callArgs = decodeRpcArgs(call?.args);
+  if (!tx || !isSuccessfulStatus(result.status) ||
       tx.signer_id !== signerAccountId ||
-      tx.receiver_id !== receiverAccountId ||
-      String(transfer?.deposit || "") !== String(amountYocto)) {
-    throw new Error("FINAL_TRANSACTION_MISMATCH_OR_FAILURE");
+      tx.receiver_id !== contractId ||
+      call?.method_name !== "pay" ||
+      callArgs?.receiver_id !== receiverAccountId ||
+      String(callArgs?.amount_yocto || "") !== String(amountYocto) ||
+      callArgs?.approval_id !== approvalId) {
+    throw new Error("FINAL_PAYMENT_CALL_MISMATCH_OR_FAILURE");
   }
+
+  const receipts = Array.isArray(result.receipts_outcome) ? result.receipts_outcome : [];
+  if (!receipts.length || receipts.some(item => !isSuccessfulStatus(item.outcome?.status))) {
+    throw new Error("PAYMENT_RECEIPT_NOT_SUCCESSFUL");
+  }
+
+  let matchingTransfer = null;
+  for (const item of receipts) {
+    const receiptResult = await rpc("EXPERIMENTAL_receipt", { receipt_id: item.id }, "sentinel-payment-receipt");
+    const receipt = receiptResult.receipt || receiptResult;
+    if (receipt.receiver_id !== receiverAccountId) continue;
+    const transfer = (receipt.actions || []).map(action => action.Transfer).find(Boolean);
+    if (transfer && String(transfer.deposit) === String(amountYocto)) {
+      matchingTransfer = { receipt_id: item.id, receiver_id: receipt.receiver_id, amount_yocto: String(transfer.deposit) };
+      break;
+    }
+  }
+  if (!matchingTransfer) throw new Error("NATIVE_PAYMENT_RECEIPT_NOT_FOUND");
+
   return {
     verified: true,
     transaction_hash: hash,
     signer_account: tx.signer_id,
-    receiver_account: tx.receiver_id,
-    amount_yocto: String(transfer.deposit),
-    block_hash: data.result.transaction_outcome?.block_hash || null,
+    payment_contract: tx.receiver_id,
+    receiver_account: matchingTransfer.receiver_id,
+    amount_yocto: matchingTransfer.amount_yocto,
+    payment_receipt_id: matchingTransfer.receipt_id,
+    block_hash: result.transaction_outcome?.block_hash || null,
     final_status: "SUCCESS"
   };
 }
@@ -252,12 +291,18 @@ export async function execute(payload, authorizationHeader, identity, env) {
   let submitted = false;
   try {
     const signer = KeyPairSigner.fromSecretKey(env.NEAR_AGENT_SIGNER_PRIVATE_KEY);
-    await assertFullAccessKey(signerAccountId, signer.getPublicKey().toString());
+    const contractId = String(env.NEAR_PAYMENT_CONTRACT_ID || "").toLowerCase();
+    await assertRestrictedFunctionCallKey(signerAccountId, signer.getPublicKey().toString(), contractId);
     const provider = new JsonRpcProvider({ url: RPC });
     const account = new Account(signerAccountId, provider);
+    const paymentArgs = new TextEncoder().encode(JSON.stringify({
+      receiver_id: validated.receiver_account,
+      amount_yocto: nearToYocto(microToNearString(amountMicro)),
+      approval_id: approvalId
+    }));
     const tx = await account.createTransaction({
-      receiverId: validated.receiver_account,
-      actions: [actions.transfer(nearToYocto(microToNearString(amountMicro)))],
+      receiverId: contractId,
+      actions: [actions.functionCall("pay", paymentArgs, 30_000_000_000_000n, 0n)],
       publicKey: signer.getPublicKey()
     });
     const signed = await signer.signTransaction(tx);
@@ -268,19 +313,19 @@ export async function execute(payload, authorizationHeader, identity, env) {
       await setState(env, idempotencyKey, "UNKNOWN");
       return deny("TRANSACTION_HASH_UNAVAILABLE", "UNKNOWN");
     }
-    const success = Boolean(outcome?.status && (Object.hasOwn(outcome.status, "SuccessValue") || Object.hasOwn(outcome.status, "SuccessReceiptId")));
-    if (!success) {
+    if (!isSuccessfulStatus(outcome?.status)) {
       await setState(env, idempotencyKey, "FAILED", hash);
-      return { ...deny("NEAR_EXECUTION_NOT_SUCCESSFUL", "FAILED"), transaction_hash: hash };
+      return { ...deny("NEAR_PAYMENT_CALL_NOT_SUCCESSFUL", "FAILED"), transaction_hash: hash };
     }
     let finalVerification;
     try {
       finalVerification = await verifyFinalTransfer(
-        hash, signerAccountId, validated.receiver_account, nearToYocto(microToNearString(amountMicro))
+        hash, signerAccountId, contractId, validated.receiver_account,
+        nearToYocto(microToNearString(amountMicro)), approvalId
       );
     } catch {
       await setState(env, idempotencyKey, "UNKNOWN", hash);
-      return { ...deny("FINAL_TRANSACTION_VERIFICATION_UNAVAILABLE", "UNKNOWN"), transaction_hash: hash };
+      return { ...deny("FINAL_PAYMENT_VERIFICATION_UNAVAILABLE", "UNKNOWN"), transaction_hash: hash };
     }
     await setState(env, idempotencyKey, "EXECUTED", hash);
     return { executed: true, status: "EXECUTED", reason: "TESTNET_TRANSACTION_FINAL_RPC_VERIFIED",
