@@ -43,7 +43,7 @@ The repository's automated attack demo is an offline regression test. It is not 
 - Privy-authenticated investigation, AI review, and agent routes.
 - Anthropic tool-calling agent whose output is treated as an untrusted proposal.
 - Actor-bound, exact-intent, five-minute human approval plus a signer-side one-time approval claim before payment execution.
-- Separate signer Worker, private service binding, HMAC timestamp/nonce protection, replay ledger, exact pending-approval claim, allowlist, spend caps, kill switch, and conservative `UNKNOWN` handling.
+- Separate signer Worker, private service binding, signer-owned D1 ledger (DB2), HMAC timestamp/nonce protection, replay ledger, exact pending-approval claim, allowlist, spend caps, kill switch, and conservative `UNKNOWN` handling.
 - Legacy in-process signing path disabled.
 - Aggregate-only public metrics, private admin report handling, per-investigation owner checks for AI review, bounded JSON parsing, same-origin API mutation checks, security response headers, and CodeQL/secret-scanning CI.
 
