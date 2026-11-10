@@ -3,6 +3,7 @@ import { verifyMessage } from "near-api-js/nep413";
 import { APPROVAL_RECIPIENT, buildWalletApprovalMessage, decodeBase64Bytes } from "../../src/agent-approval-signature.mjs";
 import { verifyPrivyAccessToken } from "../../functions/api/_shared.js";
 import { evaluateAgentAuthorization, validatePaymentIntent } from "../../src/agent-policy.mjs";
+import { verifyVerdict } from "../../src/signed-verdict.mjs";
 
 const RPC = "https://rpc.testnet.fastnear.com";
 const HARD_MAX_PAYMENT_MICRO = 100_000;
@@ -229,23 +230,28 @@ async function investigate(intent, authorizationHeader, env) {
   const baseValue = String(env.SENTINEL_PREFLIGHT_URL || "");
   const base = baseValue.endsWith("/") ? baseValue.slice(0, -1) : baseValue;
   const secret = env.AGENT_SIGNER_HMAC_SECRET;
-  if (!base.startsWith("https://") || typeof secret !== "string" || new TextEncoder().encode(secret).byteLength < 32) {
-    throw new Error("PREFLIGHT_AUTH_NOT_CONFIGURED");
-  }
-  const body = JSON.stringify({ receiver_account: intent.receiver_account, amount_near: intent.amount_near });
+  const publicKey = env.SENTINEL_VERDICT_PUBLIC_KEY;
+  const senderAccount = String(env.NEAR_AGENT_SIGNER_ACCOUNT_ID || "").toLowerCase();
+  if (!base.startsWith("https://") || typeof secret !== "string" || new TextEncoder().encode(secret).byteLength < 32 ||
+      typeof publicKey !== "string" || !publicKey || !senderAccount) throw new Error("PREFLIGHT_ATTESTATION_NOT_CONFIGURED");
+  const verdictNonce = crypto.randomUUID();
+  const body = JSON.stringify({ sender_account: senderAccount, receiver_account: intent.receiver_account, amount_near: intent.amount_near, nonce: verdictNonce });
   const timestamp = String(Math.floor(Date.now() / 1000));
-  const nonce = crypto.randomUUID();
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret),
-    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const signature = Array.from(new Uint8Array(await crypto.subtle.sign("HMAC", key,
-    new TextEncoder().encode(timestamp + "." + nonce + "." + body))), byte => byte.toString(16).padStart(2, "0")).join("");
+  const requestNonce = crypto.randomUUID();
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const signature = Array.from(new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(timestamp + "." + requestNonce + "." + body))), byte => byte.toString(16).padStart(2, "0")).join("");
   const response = await fetch(base + "/api/internal/investigate", {
     method: "POST", headers: { "content-type": "application/json", authorization: authorizationHeader,
-      "x-sentinel-timestamp": timestamp, "x-sentinel-nonce": nonce, "x-sentinel-signature": signature },
+      "x-sentinel-timestamp": timestamp, "x-sentinel-nonce": requestNonce, "x-sentinel-signature": signature },
     body, signal: AbortSignal.timeout(20000)
   });
   const data = await response.json().catch(() => null);
-  if (!response.ok || !data) throw new Error("SIGNER_PREFLIGHT_FAILED");
+  if (!response.ok || !data?.attestation) throw new Error("SIGNER_PREFLIGHT_FAILED");
+  const valid = await verifyVerdict(data.attestation, publicKey, {
+    sender_account: senderAccount, receiver_account: intent.receiver_account,
+    amount_micro: nearToMicro(intent.amount_near), nonce: verdictNonce
+  });
+  if (!valid) throw new Error("SIGNED_VERDICT_INVALID_OR_EXPIRED");
   return data;
 }
 export async function execute(payload, authorizationHeader, identity, env) {
