@@ -169,16 +169,17 @@ The reusable guard is in [`src/agent-guard.mjs`](src/agent-guard.mjs). Its polic
 
 See [`docs/AGENT_GUARD.md`](docs/AGENT_GUARD.md) for the example integration.
 
-### Security-track requirements still outstanding
+### Security-track implementation and deployment status
 
-The current repository contains a **wallet-agnostic application-level guard**, not a completed autonomous NEAR agent deployment.
+The branch now contains the purpose-built payment contract, restricted FunctionCall key installer, manual contract deployment target, and a signer that refuses FullAccess runtime keys. The contract is scoped to the Sentinel signer account, has a per-payment ceiling and one-time approval IDs, and emits the native payout as a transfer receipt. The signer verifies the exact contract call and the exact successful payout receipt.
 
-- No contract-scoped NEAR function-call access key has been provisioned and verified as the enforced signing authority.
-- No real autonomous agent has yet been demonstrated passing a transaction through this guard and a restricted signer on NEAR Testnet.
-- The offline prompt-injection demo tests the guard with simulated inputs only.
-- The guard can be bypassed by application code that has another direct path to the signer. It is not a cryptographic enforcement boundary.
+- Source implementation: present in this branch.
+- Testnet contract deployment and initialization: must be completed through the payment-contract workflow target.
+- Restricted FunctionCall key installation and old runtime key revocation: must be completed through the one-time signer workflow rotation.
+- Live signer Worker deployment and actual transaction: must be evidenced after those steps.
+- The offline prompt-injection demo still tests the guard with simulated inputs; it is not a live attack transaction.
 
-A production design needs a trusted signing service that checks the exact receiver, amount, network, and allowed method before signing, plus a restricted key scoped to the intended contract and methods where supported. A NEAR function-call key cannot directly transfer native NEAR. Native-asset payments require a purpose-built payment or escrow contract with explicit limits and authorization rules.
+Do not describe the new boundary as live until the Testnet permission query, Worker deployment and a real receipt-verified payout have been captured.
 
 ## 7. Privy authentication boundary
 
