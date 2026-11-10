@@ -121,6 +121,40 @@ export async function callGemini(env, { system, messages, tools = [], maxOutputT
   if (lastNetworkError || !response) {
     return { ok: false, status: 0, error: "AI_PROVIDER_UNAVAILABLE", message: "Gemini could not be reached after automatic retries." };
   }
+
+  // A 503 high-demand response is a capacity failure, not a prompt or auth
+  // failure. Try a separately configurable, stable lightweight model once.
+  // Do not fallback on 429: that commonly indicates project quota exhaustion.
+  const fallbackModel = typeof env.GEMINI_FALLBACK_MODEL === "string" &&
+    /^[a-zA-Z0-9._-]{1,80}$/.test(env.GEMINI_FALLBACK_MODEL)
+    ? env.GEMINI_FALLBACK_MODEL : "gemini-3.5-flash-lite";
+  if (response.status === 503 && fallbackModel !== model) {
+    try {
+      const fallbackResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(fallbackModel)}:generateContent`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(timeoutMs)
+        }
+      );
+      const fallbackData = await fallbackResponse.json().catch(() => ({}));
+      console.warn("gemini_capacity_fallback", {
+        primary_model: model, fallback_model: fallbackModel,
+        fallback_status: fallbackResponse.status
+      });
+      if (fallbackResponse.ok) {
+        response = fallbackResponse;
+        data = fallbackData;
+      }
+    } catch {
+      console.warn("gemini_capacity_fallback_unavailable", {
+        primary_model: model, fallback_model: fallbackModel
+      });
+    }
+  }
+
   if (!response.ok) {
     const message = String(data?.error?.message || "Gemini rejected the request.").slice(0, 240);
     const status = response.status;
