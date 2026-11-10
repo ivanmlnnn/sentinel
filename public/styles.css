@@ -2778,3 +2778,110 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
 .sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button:active,
 .sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button:active{transform:scale(.99)!important;box-shadow:none!important}
 /* Keep the approved loading bar's original sweep untouched. */
+
+
+/* Stronger 3D treatment for the actual wayang artwork, not just a tilted frame. */
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-mark{
+  width:176px!important;height:176px!important;
+  border:1px solid rgba(232,223,120,.78)!important;border-radius:50%!important;
+  background:radial-gradient(ellipse at 48% 38%,#245a58 0%,#123b3b 52%,#071b1c 100%)!important;
+  box-shadow:
+    0 2px 0 #8bd4ef,0 5px 0 #235653,0 8px 0 #102f30,
+    0 15px 28px rgba(0,0,0,.48),0 0 32px rgba(139,212,239,.14),
+    inset 0 2px 3px rgba(255,255,255,.22),inset 0 -9px 18px rgba(0,0,0,.42)!important;
+  transform-style:preserve-3d!important;perspective:1000px!important;
+  animation:sentinel-wayang-orbit 7s ease-in-out infinite!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-mark::before{
+  content:""!important;position:absolute!important;inset:8px!important;border-radius:50%!important;
+  border:1px solid rgba(139,212,239,.55)!important;
+  box-shadow:inset 0 0 18px rgba(139,212,239,.12),0 0 15px rgba(232,223,120,.12)!important;
+  transform:translateZ(8px)!important;pointer-events:none!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-mark::after{
+  content:""!important;position:absolute!important;inset:15px!important;border-radius:50%!important;
+  border:1px dashed rgba(232,223,120,.42)!important;
+  transform:translateZ(14px) rotate(-12deg)!important;pointer-events:none!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-mark img{
+  width:78%!important;height:78%!important;object-fit:contain!important;
+  border-radius:0!important;transform:translateZ(32px)!important;
+  filter:drop-shadow(0 5px 2px rgba(0,0,0,.65)) drop-shadow(0 12px 12px rgba(0,0,0,.5)) drop-shadow(0 0 9px rgba(232,223,120,.3))!important;
+  backface-visibility:visible!important;
+}
+@keyframes sentinel-wayang-orbit{
+  0%,100%{transform:perspective(1000px) rotateX(7deg) rotateY(-13deg) translateY(0)}
+  25%{transform:perspective(1000px) rotateX(-2deg) rotateY(0deg) translateY(-5px)}
+  50%{transform:perspective(1000px) rotateX(7deg) rotateY(13deg) translateY(0)}
+  75%{transform:perspective(1000px) rotateX(13deg) rotateY(0deg) translateY(-5px)}
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-mark:hover{
+  transform:perspective(1000px) rotateX(15deg) rotateY(-22deg) translateY(-8px) scale(1.045)!important;
+  box-shadow:0 3px 0 #8bd4ef,0 7px 0 #235653,0 11px 0 #102f30,0 24px 40px #000b,0 0 38px #8bd4ef55!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-mark.is-activated{
+  animation:sentinel-wayang-click-spin 1.5s cubic-bezier(.16,.82,.24,1) both!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-mark.is-activated img{
+  animation:sentinel-wayang-art-pop 1.5s cubic-bezier(.16,.82,.24,1) both!important;
+}
+@keyframes sentinel-wayang-click-spin{
+  0%{transform:perspective(1000px) rotateX(7deg) rotateY(-13deg) scale(1)}
+  35%{transform:perspective(1000px) rotateX(18deg) rotateY(180deg) translateY(-12px) scale(1.12)}
+  70%{transform:perspective(1000px) rotateX(-12deg) rotateY(390deg) translateY(-5px) scale(1.08)}
+  100%{transform:perspective(1000px) rotateX(7deg) rotateY(707deg) scale(1)}
+}
+@keyframes sentinel-wayang-art-pop{
+  0%,100%{transform:translateZ(32px) scale(1)}
+  35%{transform:translateZ(60px) scale(1.16)}
+  70%{transform:translateZ(46px) scale(1.08)}
+}
+/* A more deliberate, tactile motion language for both login actions. */
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button,
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button{
+  border-radius:7px!important;min-height:55px!important;
+  transform:translateZ(0)!important;
+  box-shadow:0 5px 0 rgba(4,23,25,.72),0 9px 18px rgba(0,0,0,.22)!important;
+  transition:transform .22s cubic-bezier(.2,.9,.25,1),box-shadow .22s ease,background .3s ease,border-color .3s ease!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button{
+  border:1px solid #b8eff8!important;border-bottom:2px solid #e8df78!important;
+  background:linear-gradient(120deg,#a9e5f2 0%,#80cce8 48%,#a6e5f0 100%)!important;
+  color:#0d3033!important;
+  box-shadow:0 5px 0 #286b70,0 9px 18px rgba(0,0,0,.24),inset 0 1px 0 #ffffffb0!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button::after{
+  content:""!important;position:absolute!important;inset:-30% auto -30% -45%!important;width:32%!important;
+  background:linear-gradient(90deg,transparent,#ffffffb8,transparent)!important;
+  transform:skewX(-22deg) translateX(-220%)!important;transition:none!important;z-index:0!important;
+  animation:sentinel-button-sheen 3.6s ease-in-out infinite!important;pointer-events:none!important;
+}
+@keyframes sentinel-button-sheen{
+  0%,55%{transform:skewX(-22deg) translateX(-220%)}
+  82%,100%{transform:skewX(-22deg) translateX(570%)}
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button:hover:not(:disabled){
+  transform:translateY(-3px)!important;
+  box-shadow:0 8px 0 #286b70,0 15px 25px rgba(0,0,0,.28),0 0 24px rgba(139,212,239,.22)!important;
+  background:linear-gradient(120deg,#c2f0f8,#9cdef1 50%,#c1f0f5)!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button{
+  border:1px solid rgba(139,212,239,.56)!important;border-bottom:2px solid rgba(139,212,239,.28)!important;
+  background:linear-gradient(120deg,rgba(28,75,75,.82),rgba(10,35,36,.94))!important;
+  color:#d9f0ed!important;
+  box-shadow:0 5px 0 #071c1e,0 9px 18px rgba(0,0,0,.2),inset 0 1px 0 #ffffff12!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button:hover:not(:disabled){
+  transform:translateY(-3px)!important;border-color:#e8df78!important;
+  background:linear-gradient(120deg,#245c59,#153d3e)!important;color:#fff9df!important;
+  box-shadow:0 8px 0 #071c1e,0 15px 24px rgba(0,0,0,.28),0 0 20px rgba(139,212,239,.12)!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button:active,
+.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button:active{
+  transform:translateY(3px) scale(.99)!important;
+  box-shadow:0 1px 0 rgba(4,23,25,.85),0 3px 8px rgba(0,0,0,.2)!important;
+}
+@media(prefers-reduced-motion:reduce){
+ .sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-mark{animation:none!important}
+ .sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button::after{animation:none!important}
+}
