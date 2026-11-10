@@ -14,6 +14,6 @@
     { "name": "AGENT_RATE_LIMITER", "namespace_id": "2026111003", "simple": { "limit": 5, "period": 60 } }
   ],
   "d1_databases": [
-    { "binding": "DB", "database_id": "f3fa44b2-2b49-4af1-8687-2346cb336b22", "migrations_dir": "migrations" }
+    { "binding": "DB", "database_id": "f3fa44b2-2b49-4af1-8687-2346cb336b22", "migrations_dir": "migrations-d1" }
   ]
 }
