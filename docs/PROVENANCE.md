@@ -25,8 +25,8 @@ For stronger author-identity evidence, the repository owner should configure the
 ## Automated checks and deployment
 
 - CI checks: https://github.com/ivanmlnnn/sentinel/actions/workflows/sentinel-checks.yml
-- Current PR-head CI for [`67f1e53`](https://github.com/ivanmlnnn/sentinel/commit/67f1e53c67fa8706d79694a317311516289b56d6): [Sentinel checks run 42778335809](https://github.com/ivanmlnnn/sentinel/actions/runs/42778335809) — 116/116 tests passed, Gitleaks scans passed, D1 migrations validated, both Worker dry-runs passed, and offline prompt-injection demo passed.
-- Current PR-head CodeQL: [run 42778335865](https://github.com/ivanmlnnn/sentinel/actions/runs/42778335865) completed successfully. Review GitHub Security > Code scanning for alert-level details; workflow success alone is not a zero-alert certificate.
+- Latest docs-updated PR-head CI for [`cd85b86`](https://github.com/ivanmlnnn/sentinel/commit/cd85b8692fd9dc766a996b220d17e832b7fa9ae8): [Sentinel checks run 42778680965](https://github.com/ivanmlnnn/sentinel/actions/runs/42778335809) — 116/116 tests passed, Gitleaks scans passed, D1 migrations validated, both Worker dry-runs passed, and offline prompt-injection demo passed.
+- CodeQL on preceding source revision 67f1e53: [run 42778335865](https://github.com/ivanmlnnn/sentinel/actions/runs/42778335865) completed successfully. CodeQL for the latest docs-updated head was still running when this evidence was refreshed. Review GitHub Security > Code scanning for alert-level details; workflow success alone is not a zero-alert certificate.
 - The source-attestation job is skipped on pull_request events by workflow design. No source attestation is claimed for this PR-head CI run.
 - Example successful CI run for source revision 155c2bad: [run 42734006722](https://github.com/ivanmlnnn/sentinel/actions/runs/42734006722) — JavaScript syntax checks, full test suite, offline attack demo, source archive upload, and provenance attestation all succeeded.
 - Source snapshot artifact: `sentinel-source-155c2badc1f93a54a8961226c9c48cd45b5380ed` (download it from the linked Actions run's Artifacts section).
