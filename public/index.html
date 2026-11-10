@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#123d3b"><meta name="description" content="NEAR Sentinel — on-chain security for NEAR Protocol.">
 <title>NEAR Sentinel — Account Risk Intelligence</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/styles.css?v=20261111-guest-agent-fix1">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/styles.css?v=20261111-agent-output-order1">
 <script type="importmap">{"imports":{"react":"https://esm.sh/react@18.3.1","react/":"https://esm.sh/react@18.3.1/","react-dom":"https://esm.sh/react-dom@18.3.1","react-dom/client":"https://esm.sh/react-dom@18.3.1/client"}}</script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 </head>
@@ -74,12 +74,12 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
   <div class="panel-top"><span>AUTONOMOUS SECURITY SKILL ENGINE</span><span class="panel-status"><i></i> SERVER-SIDE</span></div>
   <p class="agent-lab-intro">Tell Sentinel the security task. It can run live wallet forensics, query verified threat intelligence, analyze anomalies, and explain evidence. Guest tools are strictly read-only.</p>
   <form id="agentForm">
+   <div id="agentResult" class="agent-result hidden" aria-live="polite"></div>
    <label for="agentPrompt">AGENT INSTRUCTION</label>
    <textarea id="agentPrompt" maxlength="4000" required placeholder="Example: Propose a 0.01 NEAR Testnet payment to merchant.testnet for a demo."></textarea>
    <div class="agent-lab-warning"><b>TESTNET SAFETY LIMITS</b><span>Maximum 0.1 NEAR per transfer · 0.2 NEAR per UTC day · explicit receiver allowlist · kill switch.</span></div>
    <div class="agent-lab-submit"><span>AI proposal ≠ authorization</span><button class="primary-btn" id="agentRunBtn" type="submit">Run secure agent <b>↗</b></button></div>
   </form>
-  <div id="agentResult" class="agent-result hidden" aria-live="polite"></div>
  </div>
  <aside class="panel agent-policy-panel">
   <div class="panel-top"><span>OPERATIONAL SKILLS</span><span class="section-meta">LIVE TOOLS</span></div>
@@ -113,7 +113,7 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
 <script src="/motion.js?v=20261110-signout-turnstile-fix1" defer></script>
 <script type="module">
 const authRoot = document.getElementById('auth-root');
-import('/auth.js?v=20261111-guest-agent-fix1').catch((error) => {
+import('/auth.js?v=20261111-agent-output-order1').catch((error) => {
   console.error('NEAR Sentinel authentication bootstrap failed:', error);
   if (!authRoot) return;
   authRoot.dataset.authBooted = '1';
