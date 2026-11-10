@@ -31,7 +31,7 @@ The signer account configured by source defaults to `freshnook5462.testnet`; `ra
 | Cloudflare Turnstile | Browser widget + server-side Siteverify request; action and hostname checks; fail-closed behavior | A real browser challenge on the current production hostname has not been demonstrated by a mocked unit test |
 | Privy | Server-side JWT signature verification against the app's Privy JWKS, plus issuer/audience/subject/time checks | A successful login in the current production browser, or proof that every API route requires Privy (Guest/read-only routes are intentionally public) |
 | Cloudflare rate limits | Worker bindings for API, investigation and agent routes | DDoS protection beyond configured per-IP limits or a separate external load test |
-| Isolated signer | Private Worker configuration, service binding, HMAC, replay ledger, human approval, spending policy, and source-level contract-scoped FunctionCall key enforcement | Live Testnet contract deployment, restricted-key installation, Worker secret rotation, and successful contract payout still require the manual workflow |
+| Isolated signer | Source-level contract-scoped FunctionCall enforcement; successful private Worker deployment and runtime secret-upload events in [run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536); service-binding evidence | The masked deployment log does not independently identify the runtime public key or prove its live on-chain permission; no Sentinel-originated payout hash/receipt is published here |
 
 ## 2. NEAR FastNear JSON-RPC — account and transaction evidence
 
