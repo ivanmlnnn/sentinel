@@ -109,7 +109,7 @@ export default {
             if (!await enforceRateLimit(env.INVESTIGATION_RATE_LIMITER, ip)) return respond(rateLimitResponse());
           }
 
-          if (request.method === "POST" && url.pathname === "/api/guest/investigate") {
+          if (request.method === "POST" && ["/api/investigate", "/api/guest/investigate"].includes(url.pathname)) {
             let body;
             try { body = await request.clone().json(); }
             catch { return respond(new Response(JSON.stringify({ error: "INVALID_JSON" }), { status: 400, headers: { "content-type": "application/json; charset=utf-8" } })); }
