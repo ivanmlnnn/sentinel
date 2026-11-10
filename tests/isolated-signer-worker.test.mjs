@@ -37,7 +37,7 @@ test("isolated signer rejects stale, tampered, and unsigned internal requests", 
 test("isolated signer endpoint rejects requests without internal authentication", async () => {
   const response = await signerWorker.fetch(new Request("https://signer.internal/execute", {
     method: "POST", headers: { "content-type": "application/json" }, body: "{}"
-  }), { DB: {} });
+  }), { DB: {}, DB2: {} });
   assert.equal(response.status, 401);
   assert.equal((await response.json()).error, "INVALID_INTERNAL_AUTH");
 });
@@ -52,7 +52,7 @@ test("isolated signer converts only exact microNEAR precision", () => {
 
 test("nonce ledger rejects a duplicate internal request nonce", async () => {
   const seen = new Set();
-  const env = { DB: { prepare() {
+  const env = { DB2: { prepare() {
     return { bind(nonce) { return { async run() {
       if (seen.has(nonce)) throw new Error("UNIQUE constraint");
       seen.add(nonce);
