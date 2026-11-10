@@ -11,6 +11,7 @@ Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verifi
 **NEAR Sentinel protects NEAR payments from compromised or manipulated AI agents.** AI proposes an intent; Sentinel independently evaluates evidence and policy; the wallet owner approves the exact receiver and amount; a separate signer enforces the final boundary.
 
 - **[Judge Evidence Pack](docs/JUDGE_EVIDENCE_PACK.md)** — project explanation, evidence index, reproducible commands and judge walkthrough.
+- **[NEAR Ecosystem Integration & Wallet-to-Agent Flow](docs/NEAR_ECOSYSTEM_INTEGRATION.md)** — explains the real NEAR-specific security flow, the roles of Privy/NEP-413/the isolated signer/payment contract, and the exact boundaries of Chain Signatures, Intents and Aurora claims.
 - **[End-to-End Verification Report](docs/END_TO_END_VERIFICATION.md)** — exact test counts, production HTTP smoke results, deployment scope and provenance attestation.
 - **[Mainnet Readiness Preparation](docs/MAINNET_READINESS.md)** — staged readiness gates and evidence requirements.
 - **[Mainnet Deployment Readiness Pack](docs/MAINNET_DEPLOYMENT_READINESS.md)** — deployment audit, release gates, environment separation, rollback and operator runbook.
