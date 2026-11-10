@@ -15,11 +15,11 @@ Record the real browser and working application. The public URL is the scanner e
 | Time | What the judge sees | What to say |
 |---|---|---|
 | 0:00–0:20 | Dashboard landing page | “AI agents can propose payments faster than people can inspect destinations. Sentinel adds an evidence-based checkpoint before value moves.” |
-| 0:20–0:55 | Enter a public NEAR Testnet account and run Wallet Tracker | “This is read-only. Sentinel queries NEAR account state and indexed transaction, receipt, and token-transfer evidence.” |
+| 0:20–0:55 | Complete the visible Cloudflare Turnstile challenge, enter a public NEAR Testnet account, and run Wallet Tracker | “This is read-only. Cloudflare verifies this browser challenge server-side before Sentinel queries NEAR account state and indexed transaction, receipt, and token-transfer evidence.” |
 | 0:55–1:20 | Expand verdict and evidence | “ALLOW is not a guarantee. WARN, BLOCK, and INCOMPLETE have distinct meanings; missing evidence is never described as safe.” |
 | 1:20–1:50 | Sign in and use Agent Lab with a small proposal | “Anthropic can propose one payment. Its output is untrusted and cannot authorize a transfer.” |
 | 1:50–2:15 | Show exact receiver/amount approval prompt | “The user must approve this exact destination and amount. The proposal expires after five minutes and cannot be reused.” |
-| 2:15–2:35 | Show signer architecture and security test results | “The main Worker does not hold the NEAR key. A separate private Worker rechecks policy, enforces caps, replay protection, and a kill switch.” |
+| 2:15–2:35 | Show signer architecture and the latest CI evidence | “The main Worker does not hold the NEAR key. A separate private Worker verifies NEP-413 approval, repeats policy checks, enforces caps, replay protection, and a kill switch.” |
 | 2:35–2:45 | Show verified explorer transaction only if available | “This hash is shown only after the Testnet transaction is independently confirmed.” |
 
 ### If the live signer flow or transfer cannot be independently verified
@@ -38,6 +38,10 @@ Prepare these short cases after the corresponding branch deployment and show the
 6. Reuse an approval ID: reject because approval is one-time.
 7. Stale or replayed internal signer request: reject.
 8. Kill switch enabled: signer denies.
+
+## Latest reproducible CI evidence
+
+The exact PR head [67f1e53](https://github.com/ivanmlnnn/sentinel/commit/67f1e53c67fa8706d79694a317311516289b56d6) passed [116/116 automated tests](https://github.com/ivanmlnnn/sentinel/actions/runs/42778335809), Gitleaks scans, both Wrangler dry-runs, D1 migration validation, and the offline prompt-injection regression. [CodeQL analysis](https://github.com/ivanmlnnn/sentinel/actions/runs/42778335865) also completed successfully. This does not prove the live deployment, live CAPTCHA browser interaction, or a completed signer transaction.
 
 ## Judge questions and concise answers
 
@@ -68,7 +72,9 @@ The current official NEAR Hackathon page says the final submission must include 
 - [ ] Public X post includes “Built at NEAR HACKATHON”, `@NEARProtocol`, and `#NEARHackathon`
 - [ ] Attach a clear product demo video or screenshots
 - [ ] README explains how to run, architecture, limits, and known gaps
-- [ ] CI is green on the exact submitted commit
+- [ ] CI and CodeQL are green on the exact submitted commit
+- [ ] Record both Cloudflare Worker versions, D1 remote migration status, and production smoke-test output
+- [ ] Capture a live Turnstile challenge and a controlled NEAR wallet approval/transaction if enabled
 - [ ] No secrets, private keys, tokens, or personal wallet recovery data in Git history
 - [ ] Submission form contains both repository and X post links
 - [ ] Keep the PR and provenance disclosure transparent
