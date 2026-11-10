@@ -43,7 +43,7 @@ Do not convert PLANNED, BLOCKED, RUNNING or INCONCLUSIVE to PASS based on docume
 
 The audit itself returned **NO-GO: 6 blockers and 3 review-required items**. This is the correct security outcome for the currently Testnet-pinned implementation; successful CI means the audit executed successfully, not that Mainnet readiness passed.
 
-The bounded safe HTTP load harness and its three unit tests were added afterward in commit `b12b24b97c2e4466301abca93ae28d75da6c338e`. They are **not covered by the workflow run above** and must be verified by a subsequent CI run. No load profile has been executed.
+The bounded safe HTTP load harness and its three unit tests were added afterward in commit `b12b24b97c2e4466301abca93ae28d75da6c338e`. The harness source and its three unit tests were checked locally with Node.js: **3 passed, 0 failed**, and `node --check` passed. These checks were performed in an isolated scratch directory using the committed source contents; they are **not a GitHub Actions result** and are not covered by workflow run #3. No actual HTTP load profile has been executed.
 
 ## Register
 
@@ -58,7 +58,8 @@ The bounded safe HTTP load harness and its three unit tests were added afterward
 | MR-FAIL-001 | Resilience | RPC/D1/service-binding fault injection | Not run | — | PLANNED | — |
 | MR-FAIL-002 | Resilience | Ambiguous receipt reconciliation | Not run | — | PLANNED | — |
 | MR-AUDIT-001 | Readiness | Static source audit + build/dry-run pipeline | GitHub Actions | 1d955e5362816d40c58aae4827b27f17490f29f1 | PASS (audit execution) | [Run #3](https://github.com/ivanmlnnn/sentinel/actions/runs/42892535195); audit outcome NO-GO |
-| MR-LOAD-HTTP-001 | Load | Bounded read-only HTTP harness unit tests | Not run on latest commit | b12b24b97c2e4466301abca93ae28d75da6c338e | PLANNED | — |
+| MR-LOAD-HTTP-001 | Load | Bounded read-only HTTP harness unit tests | Local Node.js scratch validation | b12b24b97c2e4466301abca93ae28d75da6c338e | PASS (3/3 unit tests) | Local `node --test` + `node --check`; not a GitHub Actions run |
+| MR-LOAD-HTTP-002 | Load | Actual bounded HTTP load against local/staging target | Not run | — | PLANNED | — |
 
 ## Review sign-off
 
