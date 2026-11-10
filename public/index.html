@@ -15,7 +15,7 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
 <header class="topbar">
  <a class="brand" href="#overview"><span class="brand-icon brand-logo"><img src="/IMG_20260629_220728_136.jpg?v=1" alt="Wayang Tech and Kitchen Needs"></span><span class="brand-name">NEAR <b>SENTINEL</b></span></a>
  <nav class="main-nav" aria-label="Main navigation">
-  <a class="nav-item active" href="#overview">Overview</a><a class="nav-item" href="#investigate">Wallet tracker</a><a class="nav-item" href="#threats">Threat registry</a><a class="nav-item" href="#activity">Audit log</a><a class="nav-item" href="#protocol">Protocol</a>
+  <a class="nav-item active" href="#overview">Overview</a><a class="nav-item" href="#investigate">Wallet tracker</a><a class="nav-item" id="agentNav" href="#agentLab">AI agent</a><a class="nav-item" href="#threats">Threat registry</a><a class="nav-item" href="#activity">Audit log</a><a class="nav-item" href="#protocol">Protocol</a>
  </nav>
  <div class="top-actions"><span class="network-pill"><i></i> NEAR TESTNET</span><button id="walletBtn" class="wallet-btn" type="button">Connect NEAR Wallet <span>↗</span></button><a class="wallet-help-link" href="#wallet-guide">Wallet help</a></div>
 </header>
@@ -66,8 +66,30 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
  <div id="reportForm" class="report-form hidden"><input id="reportAccount" placeholder="Account ID"><input id="reportCategory" placeholder="Category"><textarea id="reportEvidence" placeholder="Evidence / transaction hash / source URL"></textarea><button class="primary-btn" id="sendReport">Submit unverified report ↗</button></div></div>
  <aside class="panel fingerprint-panel"><span class="section-index">SIGNAL SOURCES</span><div class="signal-line"><b>01</b><span>Account state</span><i>RPC</i></div><div class="signal-line"><b>02</b><span>Contract code hash</span><i>RPC</i></div><div class="signal-line"><b>03</b><span>Verified reports</span><i>DB</i></div><div class="signal-line"><b>04</b><span>Risk policy</span><i>RULES</i></div></aside>
 </section>
+<div class="section-heading reveal" id="agentHeading"><div><span class="section-index">04 / AUTONOMOUS SECURITY</span><h2>AI agent lab</h2></div><span class="section-meta">PRIVY AUTH · NEAR TESTNET</span></div>
+<section class="agent-lab-grid reveal" id="agentLab">
+ <div class="panel agent-lab-panel">
+  <div class="panel-top"><span>ANTHROPIC TOOL-CALLING AGENT</span><span class="panel-status"><i></i> SERVER-SIDE</span></div>
+  <p class="agent-lab-intro">Give the agent an instruction. Any proposed payment is re-checked by Sentinel before the isolated Testnet signer can act.</p>
+  <form id="agentForm">
+   <label for="agentPrompt">AGENT INSTRUCTION</label>
+   <textarea id="agentPrompt" maxlength="4000" required placeholder="Example: Propose a 0.01 NEAR Testnet payment to merchant.testnet for a demo."></textarea>
+   <div class="agent-lab-warning"><b>TESTNET SAFETY LIMITS</b><span>Maximum 0.1 NEAR per transfer · 0.2 NEAR per UTC day · explicit receiver allowlist · kill switch.</span></div>
+   <div class="agent-lab-submit"><span>AI proposal ≠ authorization</span><button class="primary-btn" id="agentRunBtn" type="submit">Run secure agent <b>↗</b></button></div>
+  </form>
+  <div id="agentResult" class="agent-result hidden" aria-live="polite"></div>
+ </div>
+ <aside class="panel agent-policy-panel">
+  <div class="panel-top"><span>ENFORCEMENT CHAIN</span><span class="section-meta">FAIL-CLOSED</span></div>
+  <div class="agent-policy-step"><b>01</b><div><strong>AI proposes</strong><span>Untrusted tool arguments</span></div></div>
+  <div class="agent-policy-step"><b>02</b><div><strong>Sentinel assesses</strong><span>Exact receiver + amount + evidence</span></div></div>
+  <div class="agent-policy-step"><b>03</b><div><strong>Signer re-checks</strong><span>Allowlist, caps, key permission, idempotency</span></div></div>
+  <div class="agent-policy-step"><b>04</b><div><strong>NEAR Testnet</strong><span>Transaction hash only after RPC success</span></div></div>
+  <p class="agent-policy-foot">No browser wallet key is used by this agent. Signing requires a dedicated Testnet Worker secret. Never configure a mainnet key.</p>
+ </aside>
+</section>
 <section class="security-method reveal" id="protocol">
- <div class="security-method-heading"><span class="section-index">04 / SECURITY PROCEDURE</span><h2>How Sentinel checks a wallet</h2><p>Every result follows the same read-only checks. No private keys, approvals, or transactions are requested.</p></div>
+ <div class="security-method-heading"><span class="section-index">05 / SECURITY PROCEDURE</span><h2>How Sentinel checks a wallet</h2><p>Every result follows the same read-only checks. No private keys, approvals, or transactions are requested.</p></div>
  <div class="security-steps">
   <article class="security-step"><span>01</span><div><b>Verify the account</b><p>Check whether the NEAR account exists and read its on-chain account state.</p><small>SOURCE · NEAR RPC</small></div></article>
   <article class="security-step"><span>02</span><div><b>Collect wallet activity</b><p>Retrieve indexed native transactions, receipts, and fungible-token transfers, including available pages.</p><small>SOURCE · NEARBLOCKS EXPLORER DATA</small></div></article>
@@ -83,7 +105,7 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
  </div>
  <p class="security-footnote">A missing contract code is normal for a standard wallet. A code hash is an identifier, not proof of malicious code. Sentinel is a read-only risk signal, not a security guarantee.</p>
 </section>
-<footer><span>NEAR SENTINEL <b>·</b> NEAR SECURITY</span><span>TESTNET / READ-ONLY MVP / 2026 · <a href="https://testnet.nearblocks.io/" target="_blank" rel="noopener noreferrer">Powered by NearBlocks.io APIs</a></span></footer>
+<footer><span>NEAR SENTINEL <b>·</b> NEAR SECURITY</span><span>TESTNET / READ-ONLY SCANNER + TESTNET AGENT / 2026 · <a href="https://testnet.nearblocks.io/" target="_blank" rel="noopener noreferrer">Powered by NearBlocks.io APIs</a></span></footer>
 </main>
 <div id="toast" class="toast"></div>
 <script src="/motion.js?v=20261110-wayang-logo-signout" defer></script>
