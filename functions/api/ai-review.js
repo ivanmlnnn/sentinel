@@ -1,4 +1,4 @@
-import { json, readJson, verifyPrivyAccessToken, isSentinelAdmin } from "./_shared.js";
+import { json, readJson, verifyPrivyAccessToken, canReadInvestigation } from "./_shared.js";
 
 export async function onRequestPost({ request, env }) {
   const identity = await verifyPrivyAccessToken(request, env);
@@ -8,8 +8,7 @@ export async function onRequestPost({ request, env }) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ error: "Valid investigation_id is required." }, 400);
   const item = await env.DB.prepare("SELECT id, receiver_account, amount_near, decision, risk_score, risk_factors, evidence, ai_explanation FROM investigations WHERE id = ?").bind(id).first();
   if (!item) return json({ error: "Investigation not found." }, 404);
-  const owner = await env.DB.prepare("SELECT actor FROM investigation_owners WHERE investigation_id = ?").bind(id).first();
-  if ((!owner || owner.actor !== identity.sub) && !isSentinelAdmin(identity, env)) {
+  if (!await canReadInvestigation(env, id, identity)) {
     // Use 404 to avoid confirming whether another user's investigation exists.
     return json({ error: "Investigation not found." }, 404);
   }
