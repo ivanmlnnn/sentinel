@@ -80,9 +80,12 @@ If any of these are missing or disagree, label the transaction **not verified** 
 
 The current branch source requires a restricted FunctionCall key scoped to the Sentinel payment contract and only the `pay` method. The payment contract emits the native NEAR transfer as a receipt, which is then checked against the exact recipient and amount. The contract source, deployment script, one-time restricted-key installer, and manual workflow targets are now in the branch.
 
-This is not yet proof that the contract and key have been provisioned on Testnet. Do not enable payment until the contract is deployed and initialized, the restricted key is installed and the old runtime FullAccess key revoked, and the private Worker is deployed with the restricted key and contract ID.
+The maintainer reports that the payment contract and existing restricted signer configuration were provisioned before this deployment. The successful Worker deployment log confirms runtime secret-upload events and Worker release, but it does not independently expose the secret's public key or prove the current on-chain permission attached to that key. Before enabling or presenting a payment as live, query the actual signer account's access key on Testnet and verify the exact payment-contract receiver and only the `pay` method; confirm that no runtime FullAccess key remains authorized for this path. The signer code enforces this check before signing. See the [End-to-End Verification Report](END_TO_END_VERIFICATION.md) for the exact test and smoke results and the remaining live gates.
 
 ## 6. Safe release checklist
+
+For exact automated and production HTTP results, see [End-to-End Verification Report](END_TO_END_VERIFICATION.md): 124/124 tests, prompt-injection denial, 8/8 production HTTP smoke checks, successful Worker deploy jobs, and source provenance attestation. The manual live preflight and a Sentinel-originated payout are not claimed as completed.
+
 
 - [ ] Review PR #3 and the exact branch head.
 - [ ] Confirm the intended D1 database IDs and Worker service binding.
