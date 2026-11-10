@@ -133,3 +133,12 @@ See [Judge demo guide](JUDGE_DEMO.md) for a short walkthrough and submission che
 ## Residual security limitation
 
 The five-minute approval is actor-bound in Main DB1 and is additionally protected by a NEP-413 wallet signature verified independently by the signer against the exact approval ID, wallet account, receiver, amount, network, expiry, recipient domain, and nonce. The Main Worker cannot directly access DB2, but it can write pending-approval rows in DB1 and holds the HMAC secret used to call the signer. The signer has a write-capable DB1 binding in its runtime, although current code only reads pending approval rows. A fully compromised Main Worker can attempt to create a forged pending approval, but it cannot substitute the transfer intent without a matching wallet signature. This is defense in depth, not a substitute for independent review of the DB1 trust boundary, signer key isolation, and wallet-signature verification. Do not describe the system as immune to a fully compromised application Worker.
+
+
+## Conversational agent and trusted investigation tool
+
+The Main Worker exposes a Privy-authenticated Agent Lab endpoint that calls the Anthropic Messages API server-side. The agent can answer greetings and product/how-to questions without requiring a payment request. Its `investigate_near_account` tool calls the trusted Sentinel investigation routine on the server and returns structured evidence for explanation. The tool is read-only: it cannot sign or transfer NEAR.
+
+The model is an explanation and proposal interface, not a policy authority. It cannot declare an account safe based on its own text, and it cannot override `BLOCK`, `WARN`, or `INCOMPLETE`. It may propose a payment only after an explicit user request. Proposal creation and payment approval remain separate operations with idempotency, exact receiver/amount binding, fresh preflight investigation, human wallet signature, signer-side policy, spend limits, replay protection, and kill-switch enforcement.
+
+The latest exact source revision [`31a71a4`](https://github.com/ivanmlnnn/sentinel/commit/31a71a44964bffdb990bc7072ad86168b6072002) passed [Sentinel Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42857959405) and [CodeQL](https://github.com/ivanmlnnn/sentinel/actions/runs/42857959683). Deployment is still a separate manual GitHub Actions operation; CI success alone does not make either Worker live.
