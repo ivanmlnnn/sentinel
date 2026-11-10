@@ -1,6 +1,6 @@
 import { json, verifyPrivyAccessToken, readTextLimited } from "./_shared.js";
 import { runTrustedInvestigation } from "./investigate.js";
-import { callGemini } from "./_gemini.js";
+import { callSentinelAI } from "./_ai.js";
 
 const MAX_PROMPT_LENGTH = 4000;
 const DAILY_LIMIT = 10;
@@ -31,6 +31,8 @@ const SYSTEM_PROMPT = [
   "You are Sentinel Security Agent, an expert operational security assistant embedded in the Sentinel NEAR security dashboard.",
   "You have real read-only tools. Use them to perform work, not merely tell the user how they could do it.",
   "AVAILABLE SKILLS:",
+  "5. SKILL GUIDE: If the user asks what you can do, how to use a skill, or asks for help, explain the relevant skill before running it. Explain prerequisites, exact example prompts, what Sentinel checks, what the result means, and what it cannot prove. Do not call a tool for a how-to question unless the user also explicitly asks you to perform the check.",
+  "Skill usage examples: investigate_near_account: \"Investigate alice.near\"; lookup_verified_threats: \"Check verified threat reports for alice.near\"; transaction anomaly analysis and security triage: \"Explain the anomalies and prioritize the evidence from this scan\".",
   "1. Live NEAR wallet investigation: account state, native transaction history, receipts, fungible-token transfers, first-seen indexed activity, contract code observations, counterparties, and data completeness.",
   "2. Threat intelligence lookup: exact matches against Sentinel's reviewed verified threat registry.",
   "3. Transaction anomaly analysis: interpret Sentinel's deterministic findings such as unusual transaction frequency, multiple recipients, incoming spam patterns, suspicious verified matches, and incomplete evidence.",
@@ -150,8 +152,8 @@ async function runSkill(name, input, { request, env, identity }) {
   return { ok: false, error: "UNKNOWN_SKILL" };
 }
 
-async function callGeminiProvider(env, messages) {
-  return callGemini(env, {
+async function callSentinelAIProvider(env, messages) {
+  return callSentinelAI(env, {
     system: SYSTEM_PROMPT,
     tools: MODEL_TOOLS,
     messages,
@@ -163,7 +165,7 @@ async function callGeminiProvider(env, messages) {
 export async function onRequestPost({ request, env }) {
   const identity = await verifyPrivyAccessToken(request, env);
   if (!identity) return json({ error: "UNAUTHORIZED" }, 401);
-  if (!env.GEMINI_API_KEY) return json({ error: "AI_PROVIDER_NOT_CONFIGURED" }, 503);
+  if (!env.AI || typeof env.AI.run !== "function") return json({ error: "AI_RUNTIME_NOT_CONFIGURED" }, 503);
   if (!env.DB) return json({ error: "AGENT_QUOTA_DATABASE_UNAVAILABLE" }, 503);
 
   const bounded = await readTextLimited(request, 12000);
@@ -211,7 +213,7 @@ export async function onRequestPost({ request, env }) {
     message: "Batas 10 prompt AI Guest hari ini sudah tercapai. Coba lagi besok."
   }, 429);
 
-  let result = await callGeminiProvider(env, messages);
+  let result = await callSentinelAIProvider(env, messages);
   if (!result.ok) return json({
     error: result.error, provider_status: result.status || null,
     provider_message: result.message,
