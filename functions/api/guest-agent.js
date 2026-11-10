@@ -254,7 +254,7 @@ export async function onRequestPost({ request, env }) {
     messages.push({ role: "assistant", content: assistantContent });
     messages.push({ role: "user", content: toolResults });
     toolRounds++;
-    result = await callGeminiProvider(env, messages);
+    result = await callSentinelAIProvider(env, messages);
     if (!result.ok) return json({
       error: result.error, provider_status: result.status || null,
       provider_message: result.message,

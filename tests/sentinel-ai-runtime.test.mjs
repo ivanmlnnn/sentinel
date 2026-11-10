@@ -83,3 +83,22 @@ test("maps runtime failures to stable provider-neutral errors", async () => {
   assert.equal(result.error, "AI_RUNTIME_UNAVAILABLE");
   assert.doesNotMatch(result.message, /upstream detail/);
 });
+
+
+test("normalizes OpenAI-compatible choice responses returned by Workers AI", () => {
+  const result = normalizeSentinelAIResponse({
+    choices: [{ message: { role: "assistant", content: "Halo, saya Sentinel AI." } }]
+  });
+  assert.equal(result.stop_reason, "end_turn");
+  assert.equal(result.content[0].text, "Halo, saya Sentinel AI.");
+});
+
+test("normalizes native Workers AI function calls without OpenAI function wrapper", () => {
+  const result = normalizeSentinelAIResponse({
+    response: "",
+    tool_calls: [{ name: "investigate_near_account", arguments: { account_id: "alice.near" } }]
+  });
+  assert.equal(result.stop_reason, "tool_use");
+  assert.equal(result.content[0].name, "investigate_near_account");
+  assert.deepEqual(result.content[0].input, { account_id: "alice.near" });
+});
