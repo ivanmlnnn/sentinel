@@ -1,5 +1,5 @@
 import { json, readJson, verifyPrivyAccessToken } from "./_shared.js";
-import { evaluateAgentAuthorization } from "../../src/agent-policy.mjs";
+import { evaluateAgentAuthorization, validatePaymentIntent } from "../../src/agent-policy.mjs";
 
 const MAX_PROMPT_LENGTH = 4000;
 const MODEL_TOOL = [{
@@ -71,6 +71,24 @@ export async function onRequestPost({ request, env }) {
   }
 
   const intent = toolUse.input || {};
+  const intentValidation = validatePaymentIntent(intent, env);
+  if (!intentValidation.ok) {
+    await writeAudit(env, {
+      id: runId, actor: identity.sub, event: "AGENT_PAYMENT_PROPOSAL",
+      receiver: typeof intent.receiver_account === "string" ? intent.receiver_account.slice(0, 64) : null,
+      amount: Number.isFinite(Number(intent.amount_near)) ? Number(intent.amount_near) : null,
+      reason: intentValidation.reason
+    });
+    return json({
+      run_id: runId, status: "DENIED", reason: intentValidation.reason,
+      proposal: {
+        receiver_account: typeof intent.receiver_account === "string" ? intent.receiver_account : null,
+        amount_near: Number.isFinite(Number(intent.amount_near)) ? Number(intent.amount_near) : null
+      },
+      transaction_hash: null, execution_enabled: false
+    });
+  }
+
   const base = new URL(request.url);
   let assessment = null;
   let investigationError = null;
