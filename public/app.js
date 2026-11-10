@@ -454,7 +454,7 @@ if (agentForm && !GUEST_MODE) {
           '<div><span>RISK SCORE</span><b>' + escapeHtml(risk) + '</b></div>' +
         '</div>' +
         '<p class="agent-result-reason">' + escapeHtml(data.reason || data.message || 'No execution reason returned.') + '</p>' +
-        (data.agent_message ? '<p class="agent-result-message">' + escapeHtml(data.agent_message) + '</p>' : '') +
+        ((data.agent_message || data.message) ? '<p class="agent-result-message">' + escapeHtml(data.agent_message || data.message) + '</p>' : '') +
         (txHash ? '<p class="agent-result-hash">TX HASH · ' + escapeHtml(txHash) + '</p>' : '') +
         txLink;
       if (data.execution_enabled === true) toast('NEAR Testnet transaction confirmed.');
