@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
-const TEST_SECRET = Buffer.from(webcrypto.getRandomValues(new Uint8Array(32))).toString("hex");
 import { verifyInternalRequest, reserveNonce, nearToMicro, claimApproval, execute, default as signerWorker } from "../signer-worker/src/index.mjs";
+
+const TEST_SECRET = Buffer.from(webcrypto.getRandomValues(new Uint8Array(32))).toString("hex");
 
 async function signedRequest({ secret, body, timestamp = String(Math.floor(Date.now() / 1000)), nonce = "123e4567-e89b-42d3-a456-426614174000" }) {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret),
