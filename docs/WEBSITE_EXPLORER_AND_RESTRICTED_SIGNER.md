@@ -113,12 +113,17 @@ Cloudflare:
 - CLOUDFLARE_API_TOKEN
 - CLOUDFLARE_ACCOUNT_ID
 
-NEAR payment contract deployment:
+NEAR payment contract deployment (only two required secrets):
 - NEAR_PAYMENT_CONTRACT_ID — an already-created, funded Testnet account dedicated to the payment contract;
-- NEAR_PAYMENT_CONTRACT_OWNER_ID — owner account allowed to pause/change the cap;
-- NEAR_PAYMENT_CONTRACT_DEPLOYER_PRIVATE_KEY — FullAccess key belonging to the contract account; never use the signer runtime key;
-- NEAR_PAYMENT_MAX_PAYMENT_YOCTO — on-chain per-payment cap in yoctoNEAR, no more than the existing Sentinel hard cap of 0.1 NEAR;
-- NEAR_PAYMENT_MAX_DAILY_PAYMENT_YOCTO — on-chain UTC-day cap in yoctoNEAR, no more than the existing Sentinel hard cap of 0.2 NEAR.
+- NEAR_PAYMENT_CONTRACT_DEPLOYER_PRIVATE_KEY — FullAccess key belonging to that contract account; never use the signer runtime key.
+
+Optional overrides (defaults are applied when these secrets are absent):
+- NEAR_AGENT_SIGNER_ACCOUNT_ID defaults to `freshnook5462.testnet`;
+- NEAR_PAYMENT_CONTRACT_OWNER_ID defaults to the payment contract account itself;
+- NEAR_PAYMENT_MAX_PAYMENT_YOCTO defaults to `100000000000000000000000` (0.1 NEAR);
+- NEAR_PAYMENT_MAX_DAILY_PAYMENT_YOCTO defaults to `200000000000000000000000` (0.2 NEAR).
+
+The contract account must already exist and be funded. The deployer private key must belong to that account and authorize deployment.
 
 Signer key installation:
 - NEAR_AGENT_SIGNER_ACCOUNT_ID — existing Sentinel Testnet signer account: `freshnook5462.testnet`;
