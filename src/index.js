@@ -26,39 +26,6 @@ async function enforceRateLimit(binding, key) {
   return result?.success === true;
 }
 
-const TURNSTILE_HOSTNAMES = new Set(["sentinel.ivmaladin.workers.dev"]);
-async function verifyTurnstileToken(token, request, env) {
-  if (typeof env.TURNSTILE_SECRET !== "string" || !env.TURNSTILE_SECRET.trim()) {
-    return { ok: false, reason: "TURNSTILE_NOT_CONFIGURED", status: 503 };
-  }
-  if (typeof token !== "string" || token.length < 1 || token.length > 2048) {
-    return { ok: false, reason: "TURNSTILE_TOKEN_REQUIRED", status: 400 };
-  }
-  let response;
-  try {
-    const form = new URLSearchParams({ secret: env.TURNSTILE_SECRET, response: token });
-    const ip = request.headers.get("CF-Connecting-IP");
-    if (ip) form.set("remoteip", ip);
-    response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: form,
-      signal: AbortSignal.timeout(5000)
-    });
-    if (!response.ok) throw new Error("Siteverify HTTP failure");
-    const result = await response.json();
-    const hostname = String(result.hostname || "").toLowerCase();
-    if (result.success !== true ||
-        result.action !== "track_wallet" ||
-        !TURNSTILE_HOSTNAMES.has(hostname)) {
-      return { ok: false, reason: "TURNSTILE_VERIFICATION_FAILED", status: 403 };
-    }
-    return { ok: true };
-  } catch {
-    return { ok: false, reason: "TURNSTILE_UNAVAILABLE", status: 503 };
-  }
-}
-
 function rateLimitResponse() {
   return new Response(JSON.stringify({ error: "RATE_LIMITED" }), {
     status: 429,
@@ -104,21 +71,7 @@ export default {
             if (!await enforceRateLimit(env.AGENT_RATE_LIMITER, ip)) return respond(rateLimitResponse());
           }
 
-          if (request.method === "POST" && ["/api/investigate", "/api/guest/investigate"].includes(url.pathname)) {
-            if (!env.INVESTIGATION_RATE_LIMITER) return respond(serviceUnavailable("INVESTIGATION_RATE_LIMIT_NOT_CONFIGURED"));
-            if (!await enforceRateLimit(env.INVESTIGATION_RATE_LIMITER, ip)) return respond(rateLimitResponse());
-          }
 
-          if (request.method === "POST" && ["/api/investigate", "/api/guest/investigate"].includes(url.pathname)) {
-            let body;
-            try { body = await request.clone().json(); }
-            catch { return respond(new Response(JSON.stringify({ error: "INVALID_JSON" }), { status: 400, headers: { "content-type": "application/json; charset=utf-8" } })); }
-            const verification = await verifyTurnstileToken(body?.turnstile_token, request, env);
-            if (!verification.ok) return respond(new Response(JSON.stringify({ error: verification.reason }), {
-              status: verification.status,
-              headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
-            }));
-          }
         }
         return respond(await handler({ request, env, ctx, params: {}, data: {} }));
       } catch (error) {
