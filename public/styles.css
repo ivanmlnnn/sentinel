@@ -3210,3 +3210,10 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
 .sentinel-guest #agentNav,.sentinel-guest #agentHeading,.sentinel-guest #agentLab{display:none!important}
 @media(max-width:850px){.agent-lab-grid{grid-template-columns:1fr}.agent-policy-panel{order:2}}
 @media(max-width:560px){.agent-lab-submit{align-items:stretch;flex-direction:column}.agent-lab-submit .primary-btn{width:100%}.agent-result-grid{grid-template-columns:1fr 1fr}}
+
+
+/* Explicit approval affordance for exact AI payment proposals. */
+.agent-approval{margin-top:18px;padding:16px;border:1px solid rgba(211,170,72,.38);border-radius:14px;background:rgba(211,170,72,.07)}
+.agent-approval p{margin:0 0 12px;color:var(--muted,#9aa6a1);font-size:13px;line-height:1.55}
+.agent-approval .primary-btn{width:100%;min-height:46px}
+.agent-approval .primary-btn:disabled{opacity:.55;cursor:wait}
