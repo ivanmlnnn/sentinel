@@ -10,7 +10,7 @@ export function validatePaymentIntent(input, env = {}) {
     ? input.receiver_account.trim().toLowerCase() : "";
   const amountRaw = typeof input?.amount_near === "number" ? String(input.amount_near)
     : typeof input?.amount_near === "string" ? input.amount_near.trim() : "";
-  if (!/^(?:0|[1-9][0-9]*)(?:\\.[0-9]{1,6})?$/.test(amountRaw)) {
+  if (!/^(?:0|[1-9][0-9]*)(?:\.[0-9]{1,6})?$/.test(amountRaw)) {
     return { ok: false, reason: "INVALID_AMOUNT" };
   }
   const amount = Number(amountRaw);
