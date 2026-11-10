@@ -72,11 +72,11 @@ export function mountWayang3D(host) {
 
   // Head in three dimensions, with a distinct side-profile nose and jaw.
   const head=sphere(-.05,.34,.42,.56,.69,.43,skin);
-  const faceProfile=shapeMesh([[-.42,.64],[-.64,.47],[-.91,.34],[-.63,.23],[-.55,-.02],[-.24,-.24],[.28,-.18],[.48,.12],[.43,.58],[.12,.9]],skin,.18,.035);
+  const faceProfile=shapeMesh([[-.42,.64],[-.12,.47],[.22,.37],[.62,.30],[.34,.18],[.31,-.02],[.12,-.24],[-.28,-.18],[-.48,.12],[-.43,.58],[-.12,.9]],skin,.18,.035);
   faceProfile.position.z=.48;puppet.add(faceProfile);
-  sphere(-.45,.48,.69,.10,.055,.035,dark);
-  tube([[-.55,.25,.72],[-.35,.19,.73],[-.19,.24,.72]],.018,dark);
-  sphere(-.26,-.02,.69,.055,.04,.035,gold);
+  sphere(.30,.48,.69,.10,.055,.035,dark);
+  tube([[.02,.25,.72],[.22,.19,.73],[.39,.24,.72]],.018,dark);
+  sphere(.25,-.02,.69,.055,.04,.035,gold);
 
   // Tall, layered Javanese crown with pointed ornaments.
   const crown=shapeMesh([[-.57,.75],[-.7,1.15],[-.42,1.03],[-.34,1.52],[-.08,1.18],[.18,1.62],[.32,1.16],[.62,1.32],[.48,.78],[.2,.68],[-.24,.68]],gold,.24,.045);
@@ -85,6 +85,11 @@ export function mountWayang3D(host) {
     sphere(x,y,.93,r,r, .07,paleGold);
   }
   tube([[-.44,.82,.91],[-.18,.91,.98],[.12,.9,.98],[.39,.82,.9]],.025,paleGold);
+  // Large swept golden feather crest, matching the logo silhouette.
+  const crest=shapeMesh([[-.62,1.24],[-.94,1.55],[-.78,1.94],[-.48,2.12],[-.12,2.02],[.04,1.78],[-.18,1.55],[-.43,1.42]],paleGold,.18,.045);
+  crest.position.set(-.05,0,.72);puppet.add(crest);
+  for(let i=0;i<4;i++) tube([[-.72+i*.12,1.55+i*.035,.94],[-.48+i*.09,1.77+i*.045,.96],[-.22+i*.07,1.92-i*.025,.94]],.014,gold);
+
   const ear=sphere(.45,.34,.62,.16,.2,.12,gold);
   sphere(.46,.34,.76,.055,.08,.04,teal);
 
