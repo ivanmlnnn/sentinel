@@ -75,7 +75,7 @@ jobs:
         uses: github/codeql-action/analyze@v4
 
   deploy:
-    name: Apply migrations and deploy Testnet Workers
+    name: Deploy selected Testnet component
     needs: verify
     if: ${{ github.event.inputs.confirm_deploy == 'DEPLOY_SENTINEL_TESTNET' }}
     runs-on: ubuntu-latest
@@ -98,6 +98,7 @@ jobs:
         if: ${{ github.event.inputs.deploy_target == 'payment-contract' }}
         run: cargo build --manifest-path payment-contract/Cargo.toml --target wasm32-unknown-unknown --release
       - name: Authenticate with Cloudflare
+        if: ${{ github.event.inputs.deploy_target != 'payment-contract' }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
