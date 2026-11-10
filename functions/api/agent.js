@@ -77,8 +77,7 @@ export async function onRequestPost({ request, env }) {
   const validation = validatePaymentIntent(intent, env);
   if (!validation.ok || !amountMicro) {
     const reason = validation.ok ? "AMOUNT_PRECISION_UNSUPPORTED" : validation.reason;
-    const savedApproval = await env.DB.prepare("SELECT expires_at FROM agent_pending_approvals WHERE id = ? AND actor = ?").bind(idempotencyKey, identity.sub).first();
-  await writeAudit(env, { id: idempotencyKey, actor: identity.sub, event: "AGENT_PAYMENT_PROPOSAL",
+    await writeAudit(env, { id: idempotencyKey, actor: identity.sub, event: "AGENT_PAYMENT_PROPOSAL",
       receiver: typeof intent.receiver_account === "string" ? intent.receiver_account.slice(0, 64) : null,
       amount: Number.isFinite(Number(intent.amount_near)) ? Number(intent.amount_near) : null, reason });
     return json({ run_id: idempotencyKey, status: "DENIED", reason,
@@ -125,6 +124,8 @@ export async function onRequestPost({ request, env }) {
   } catch {
     return json({ error: "PENDING_APPROVAL_CREATE_FAILED" }, 503);
   }
+  const savedApproval = await env.DB.prepare("SELECT expires_at FROM agent_pending_approvals WHERE id = ? AND actor = ?").bind(idempotencyKey, identity.sub).first();
+  if (!savedApproval?.expires_at) return json({ error: "PENDING_APPROVAL_EXPIRY_UNAVAILABLE" }, 503);
   await writeAudit(env, { id: idempotencyKey, actor: identity.sub, event: "AGENT_PAYMENT_PROPOSAL",
     receiver: validation.receiver_account, amount: Number(intent.amount_near),
     decision: assessment?.decision || null, reason: "AWAITING_EXPLICIT_HUMAN_APPROVAL" });
@@ -135,6 +136,6 @@ export async function onRequestPost({ request, env }) {
       rationale: typeof intent.rationale === "string" ? intent.rationale.slice(0, 500) : "" },
     sentinel: { decision: assessment.decision, risk_score: assessment.risk_score,
       assessment_status: assessment.assessment_status },
-    agent_message: agentText, transaction_hash: null, execution_enabled: false
+    agent_message: agentText, expires_at: savedApproval.expires_at, transaction_hash: null, execution_enabled: false
   });
 }
