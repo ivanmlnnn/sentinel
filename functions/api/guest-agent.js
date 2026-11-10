@@ -183,7 +183,9 @@ async function callAnthropic(env, messages) {
       message,
       request_id: response.headers.get("request-id") || data?.request_id || null
     });
-    const code = status === 401 ? "AI_PROVIDER_AUTH_FAILED"
+    const billingMessage = /credit balance|insufficient.{0,20}credit|plans\s*&\s*billing|purchase credits|billing/i.test(message);
+    const code = billingMessage ? "AI_PROVIDER_BILLING_ERROR"
+      : status === 401 ? "AI_PROVIDER_AUTH_FAILED"
       : status === 402 ? "AI_PROVIDER_BILLING_ERROR"
       : status === 403 ? "AI_PROVIDER_PERMISSION_DENIED"
       : status === 404 ? "AI_PROVIDER_MODEL_NOT_FOUND"
