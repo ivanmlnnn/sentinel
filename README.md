@@ -10,7 +10,8 @@ Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verifi
   <a href="https://sentinel.ivmaladin.workers.dev"><strong>⚡ OPEN LIVE DASHBOARD</strong></a> ·
   <a href="https://github.com/ivanmlnnn/sentinel"><strong>SOURCE CODE</strong></a> ·
   <a href="docs/SECURE_AGENT_PIPELINE.md"><strong>SECURE AGENT PIPELINE</strong></a> ·
-  <a href="docs/JUDGE_DEMO.md"><strong>JUDGE DEMO GUIDE</strong></a>
+  <a href="docs/JUDGE_DEMO.md"><strong>JUDGE DEMO GUIDE</strong></a> ·
+  <a href="docs/SECURITY_HARDENING.md"><strong>SECURITY HARDENING</strong></a>
 </p>
 
 | Builder | Network | Track direction | Stack |
@@ -44,6 +45,7 @@ The repository's automated attack demo is an offline regression test. It is not 
 - Actor-bound, exact-intent, five-minute human approval plus a signer-side one-time approval claim before payment execution.
 - Separate signer Worker, private service binding, HMAC timestamp/nonce protection, replay ledger, exact pending-approval claim, allowlist, spend caps, kill switch, and conservative `UNKNOWN` handling.
 - Legacy in-process signing path disabled.
+- Aggregate-only public metrics, private admin report handling, bounded JSON parsing, same-origin API mutation checks, security response headers, and CodeQL/secret-scanning CI.
 
 ## Security boundary and honest status
 
@@ -51,7 +53,7 @@ The signer implementation is in a separate Worker project under `signer-worker/`
 
 **The linked live dashboard is the currently deployed scanner; this branch's new Agent Lab and separate signer are not yet confirmed deployed.** A separate Worker in source code is not the same as a verified live deployment. No live Testnet transfer is claimed until both Workers are deployed, the D1 migrations and secrets are configured, and the transaction hash is independently checked. The signer kill switch must remain enabled until the deployment checklist and negative tests pass.
 
-See [Secure Agent Pipeline](docs/SECURE_AGENT_PIPELINE.md) for the complete trust boundary, setup, and verification gates.
+See [Secure Agent Pipeline](docs/SECURE_AGENT_PIPELINE.md) for the trust boundary, [Security Hardening](docs/SECURITY_HARDENING.md) for the access model and Burp Suite test plan, and [SECURITY.md](SECURITY.md) for responsible disclosure.
 
 ## Run it locally
 
