@@ -124,7 +124,7 @@ function AuthGate() {
 
       if (!dashboardStarted) {
         dashboardStarted = true;
-        import('./app.js?v=20261111-guest-agent-fix1').catch((error) => {
+        import('./app.js?v=20261111-authenticated-chat-fix2').catch((error) => {
           console.error('Sentinel dashboard failed to initialize:', error);
           dashboardStarted = false;
           setAuthError('Dashboard failed to load. Please reload and try again.');
