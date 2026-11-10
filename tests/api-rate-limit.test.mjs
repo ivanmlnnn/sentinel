@@ -57,16 +57,43 @@ test("public investigation has a stricter per-IP limit than other API routes", a
   assert.deepEqual(apiLimiter.calls[0], { key: "203.0.113.11" });
 });
 
-test("authenticated investigation rejects a missing Privy token after rate-limit checks", async () => {
+test("authenticated investigation rejects a missing Privy token after valid Turnstile and rate-limit checks", async t => {
+  t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({
+    success: true,
+    hostname: "sentinel.ivmaladin.workers.dev",
+    action: "track_wallet"
+  }), { status: 200, headers: { "content-type": "application/json" } }));
   const response = await worker.fetch(
-    new Request("https://sentinel.example/api/investigate", {
+    new Request("https://sentinel.ivmaladin.workers.dev/api/investigate", {
       method: "POST",
       headers: { "content-type": "application/json", "CF-Connecting-IP": "203.0.113.12" },
-      body: JSON.stringify({ receiver_account: "merchant.testnet", amount_near: 0.1 })
+      body: JSON.stringify({
+        receiver_account: "merchant.testnet",
+        amount_near: 0.1,
+        turnstile_token: "test-turnstile-token"
+      })
     }),
-    { API_RATE_LIMITER: limiter(true), INVESTIGATION_RATE_LIMITER: limiter(true) },
+    {
+      API_RATE_LIMITER: limiter(true),
+      INVESTIGATION_RATE_LIMITER: limiter(true),
+      TURNSTILE_SECRET: "test-only-secret"
+    },
     {}
   );
   assert.equal(response.status, 401);
   assert.equal((await response.json()).error, "UNAUTHORIZED");
+});
+
+test("wallet investigation fails closed when Turnstile is not configured", async () => {
+  const response = await worker.fetch(
+    new Request("https://sentinel.ivmaladin.workers.dev/api/guest/investigate", {
+      method: "POST",
+      headers: { "content-type": "application/json", "CF-Connecting-IP": "203.0.113.13" },
+      body: JSON.stringify({ receiver_account: "merchant.testnet", amount_near: 0.1, turnstile_token: "test-token" })
+    }),
+    { API_RATE_LIMITER: limiter(true), INVESTIGATION_RATE_LIMITER: limiter(true) },
+    {}
+  );
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error, "TURNSTILE_NOT_CONFIGURED");
 });
