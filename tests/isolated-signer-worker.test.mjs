@@ -36,7 +36,7 @@ test("isolated signer rejects stale, tampered, and unsigned internal requests", 
 
 test("isolated signer endpoint rejects requests without internal authentication", async () => {
   const response = await signerWorker.fetch(new Request("https://signer.internal/execute", {
-    method: "POST", body: "{}"
+    method: "POST", headers: { "content-type": "application/json" }, body: "{}"
   }), { DB: {} });
   assert.equal(response.status, 401);
   assert.equal((await response.json()).error, "INVALID_INTERNAL_AUTH");
