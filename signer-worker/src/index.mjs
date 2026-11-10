@@ -150,6 +150,44 @@ async function setState(env, key, state, hash = null) {
   await env.DB2.prepare("UPDATE agent_execution SET status=?, transaction_hash=?, updated_at=CURRENT_TIMESTAMP WHERE idempotency_key=?")
     .bind(state, hash, key).run();
 }
+export async function verifyFinalTransfer(hash, signerAccountId, receiverAccountId, amountYocto) {
+  if (typeof hash !== "string" || !/^[1-9A-HJ-NP-Za-km-z]{32,64}$/.test(hash)) {
+    throw new Error("INVALID_TRANSACTION_HASH");
+  }
+  const response = await fetch(RPC, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0", id: "sentinel-final-tx-verification", method: "tx",
+      params: [hash, signerAccountId]
+    }),
+    signal: AbortSignal.timeout(15000)
+  });
+  if (!response.ok) throw new Error("FINAL_TRANSACTION_LOOKUP_FAILED");
+  const data = await response.json();
+  const tx = data?.result?.transaction;
+  const status = data?.result?.status;
+  const transfer = tx?.actions?.find(action => action?.Transfer)?.Transfer;
+  const succeeded = Boolean(status && (
+    Object.hasOwn(status, "SuccessValue") || Object.hasOwn(status, "SuccessReceiptId")
+  ));
+  if (data?.error || !tx || !succeeded ||
+      tx.signer_id !== signerAccountId ||
+      tx.receiver_id !== receiverAccountId ||
+      String(transfer?.deposit || "") !== String(amountYocto)) {
+    throw new Error("FINAL_TRANSACTION_MISMATCH_OR_FAILURE");
+  }
+  return {
+    verified: true,
+    transaction_hash: hash,
+    signer_account: tx.signer_id,
+    receiver_account: tx.receiver_id,
+    amount_yocto: String(transfer.deposit),
+    block_hash: data.result.transaction_outcome?.block_hash || null,
+    final_status: "SUCCESS"
+  };
+}
+
 async function investigate(intent, authorizationHeader, env) {
   const baseValue = String(env.SENTINEL_PREFLIGHT_URL || "");
   const base = baseValue.endsWith("/") ? baseValue.slice(0, -1) : baseValue;
@@ -225,9 +263,19 @@ export async function execute(payload, authorizationHeader, identity, env) {
       await setState(env, idempotencyKey, "FAILED", hash);
       return { ...deny("NEAR_EXECUTION_NOT_SUCCESSFUL", "FAILED"), transaction_hash: hash };
     }
+    let finalVerification;
+    try {
+      finalVerification = await verifyFinalTransfer(
+        hash, signerAccountId, validated.receiver_account, nearToYocto(microToNearString(amountMicro))
+      );
+    } catch {
+      await setState(env, idempotencyKey, "UNKNOWN", hash);
+      return { ...deny("FINAL_TRANSACTION_VERIFICATION_UNAVAILABLE", "UNKNOWN"), transaction_hash: hash };
+    }
     await setState(env, idempotencyKey, "EXECUTED", hash);
-    return { executed: true, status: "EXECUTED", reason: "TESTNET_TRANSACTION_CONFIRMED",
-      transaction_hash: hash, signer_account: signerAccountId, receiver_account: validated.receiver_account,
+    return { executed: true, status: "EXECUTED", reason: "TESTNET_TRANSACTION_FINAL_RPC_VERIFIED",
+      transaction_hash: hash, explorer_url: "https://testnet.nearblocks.io/txns/" + encodeURIComponent(hash),
+      verification: finalVerification, signer_account: signerAccountId, receiver_account: validated.receiver_account,
       amount_near: microToNearString(amountMicro), network: "testnet", sentinel: { decision: assessment.decision, risk_score: assessment.risk_score } };
   } catch {
     try { await setState(env, idempotencyKey, submitted ? "UNKNOWN" : "FAILED"); } catch {}
