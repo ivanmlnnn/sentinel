@@ -29,7 +29,7 @@ export async function onRequestPost({ request, env }) {
     provider_status: result.status || null,
     provider_message: result.message
   }, 502);
-  const explanation = (result.data.content || []).filter(x => x.type === "text").map(x => x.text).join("\\n").trim();
+  const explanation = (result.data.content || []).filter(x => x.type === "text").map(x => x.text).join("\n").trim();
   if (!explanation) return json({ error: "AI provider returned an empty explanation." }, 502);
   await env.DB.prepare("UPDATE investigations SET ai_explanation = ? WHERE id = ?").bind(explanation, id).run();
   return json({ investigation_id: id, decision: item.decision, explanation });
