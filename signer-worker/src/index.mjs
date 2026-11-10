@@ -61,7 +61,7 @@ async function assertFullAccessKey(accountId, publicKey) {
   const data = await response.json();
   if (data.error || data.result?.permission !== "FullAccess") throw new Error("SIGNER_REQUIRES_FULL_ACCESS_TESTNET_KEY");
 }
-async function claimApproval(env, { approvalId, idempotencyKey, actor, receiver, amountMicro }) {
+export async function claimApproval(env, { approvalId, idempotencyKey, actor, receiver, amountMicro }) {
   const pending = await env.DB.prepare(
     "SELECT id, actor, receiver_account, amount_micro, status FROM agent_pending_approvals " +
     "WHERE id=? AND actor=? AND status='APPROVING' AND expires_at > CURRENT_TIMESTAMP"
