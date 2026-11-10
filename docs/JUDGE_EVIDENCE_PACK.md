@@ -181,3 +181,18 @@ The official event page requires a public repository and a public X demo post th
 - [Repository](https://github.com/ivanmlnnn/sentinel)
 
 A strong repository helps screening, but it does not replace the required public demo post and submission form.
+
+
+## 11. Signed-verdict feature release evidence (PR #10)
+
+The Ed25519 signed-verdict implementation is proposed in [PR #10](https://github.com/ivanmlnnn/sentinel/pull/10). Its feature-branch deployment workflow completed successfully:
+
+- [Dual-Worker deployment run #221](https://github.com/ivanmlnnn/sentinel/actions/runs/42887069411) — completed / success.
+- Both Main and isolated Signer Wrangler configurations validated.
+- Automated tests and both D1 migration steps passed.
+- The isolated `sentinel-signer` deployment step passed.
+- The Main `sentinel` deployment step passed.
+- Production HTTP smoke test passed.
+- [PR #10 Security CI run](https://github.com/ivanmlnnn/sentinel/actions/runs/42886719351) — success.
+
+The run is branch-specific evidence for commit `48e64d4be6152b168a0dd2a340cdc8d45fc6b4c4`. It establishes that both Worker deployment steps and the production smoke step completed. It does not prove that a live payment exercised the Ed25519 attestation, nor independently reveal/compare Cloudflare's secret values. Do not claim signed-verdict runtime acceptance/rejection or a live payout until a deployed trace demonstrates valid-signature acceptance and invalid/expired/tampered-signature rejection.

@@ -113,3 +113,22 @@ A dry-run validates the bundle only. It is not a deployment.
 ## 5. Source provenance
 
 [Source attestation #65936142](https://github.com/ivanmlnnn/sentinel/attestations/65936142) records a Sigstore-signed build provenance attestation for the source archive built from commit `34b4775737900e7bce2888541b68dfcbd1d13b59`; its signature was uploaded to the Rekor transparency log. 
+
+
+## 6. PR #10 signed-verdict release verification — 11 November 2026
+
+[Dual-Worker deployment run #221](https://github.com/ivanmlnnn/sentinel/actions/runs/42887069411) was manually dispatched against branch `feat/signed-verdict-attestation`, commit `48e64d4be6152b168a0dd2a340cdc8d45fc6b4c4`. GitHub reports **completed / success** for the workflow and its only job. The recorded job steps show successful credential validation, both Wrangler configuration validations, automated tests, Main and Signer D1 migrations, isolated Signer Worker deployment, Main Worker deployment, and production HTTP smoke test.
+
+| PR #10 release step | Result | Direct evidence |
+|---|---|---|
+| Main Worker configuration validation | PASS | [Run #221](https://github.com/ivanmlnnn/sentinel/actions/runs/42887069411) job steps |
+| Signer Worker configuration validation | PASS | Same run |
+| Automated test suite | PASS | Same run |
+| Main D1 migrations | PASS | Same run |
+| Signer D1 migrations | PASS | Same run |
+| Deploy `sentinel-signer` | PASS | Same run |
+| Deploy `sentinel` | PASS | Same run |
+| Production HTTP smoke test | PASS | Same run |
+| PR #10 Security CI | PASS | [Run #42886719351](https://github.com/ivanmlnnn/sentinel/actions/runs/42886719351) |
+
+**Evidence boundary:** this verifies the revised workflow deployed both Worker components and that the production HTTP smoke test passed. It does not by itself prove the exact Ed25519 keypair values match, nor prove that a live Privy-originated Testnet payment exercised the new signed-verdict path. Do not describe live signature acceptance/rejection or a signed-verdict payout as end-to-end verified until a deployed runtime trace demonstrates both positive and negative cases.

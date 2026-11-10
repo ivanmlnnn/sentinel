@@ -36,7 +36,11 @@ The committed Wrangler configurations bind:
 
 Check that these resource names/IDs still match the intended Cloudflare account before selecting Run workflow. Do not create replacement databases or change IDs as a deployment workaround.
 
-## 3. What the workflow verifies
+## 3. Signed-verdict key provisioning
+
+Provision `SENTINEL_VERDICT_PRIVATE_KEY` (base64 PKCS#8 Ed25519 private key) only to Main Worker and the matching `SENTINEL_VERDICT_PUBLIC_KEY` (base64 raw 32-byte public key) only to Signer Worker. Generate the pair offline. The signer rejects missing, invalid, expired, or intent-mismatched verdicts. See [Signed Verdict](SIGNED_VERDICT.md).
+
+## 4. What the workflow verifies
 
 | Stage | Evidence | What it does not prove |
 |---|---|---|
@@ -47,7 +51,7 @@ Check that these resource names/IDs still match the intended Cloudflare account 
 
 A workflow is considered deployed only when the **deploy job** and **production smoke** finish successfully. Keep the signer kill switch enabled until a controlled Testnet transaction has been verified.
 
-## 4. Transaction evidence: RPC + Explorer
+## 5. Transaction evidence: RPC + Explorer
 
 The Signer Worker currently performs a final transaction lookup against the NEAR Testnet FastNear JSON-RPC `tx` method. It checks:
 - transaction hash format and lookup success;
@@ -76,13 +80,13 @@ Record the evidence in the submission:
 
 The verification routine compares each of these fields before accepting the transaction as successful.
 
-## 5. Current security limitation — do not hide it
+## 6. Current security limitation — do not hide it
 
 The current branch source requires a restricted FunctionCall key scoped to the Sentinel payment contract and only the `pay` method. The payment contract emits the native NEAR transfer as a receipt, which is then checked against the exact recipient and amount. The contract source, deployment script, one-time restricted-key installer, and manual workflow targets are now in the branch.
 
 The payment flow uses a contract-scoped FunctionCall key limited to the payment contract's `pay` method. The signer enforces the permission check before signing. See the [End-to-End Verification Report](END_TO_END_VERIFICATION.md) for the exact automated test, production smoke and deployment results.
 
-## 6. Safe release checklist
+## 7. Safe release checklist
 
 For exact automated and production HTTP results, see [End-to-End Verification Report](END_TO_END_VERIFICATION.md): 124/124 tests, prompt-injection denial, 8/8 production HTTP smoke checks, successful Worker deploy jobs, and source provenance attestation.
 

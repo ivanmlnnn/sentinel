@@ -1,5 +1,6 @@
 import { json, readTextLimited, verifyPrivyAccessToken } from "./_shared.js";
 import { runTrustedInvestigation } from "./investigate.js";
+import { buildVerdictPayload, signVerdict } from "../../src/signed-verdict.mjs";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -48,5 +49,14 @@ export async function onRequestPost({ request, env }) {
     headers: { "content-type": "application/json", authorization: request.headers.get("authorization") || "" },
     body: JSON.stringify(body)
   });
-  return runTrustedInvestigation({ request: trustedRequest, env, actor: identity.sub });
+  const response = await runTrustedInvestigation({ request: trustedRequest, env, actor: identity.sub });
+  if (!response.ok) return response;
+  if (typeof env.SENTINEL_VERDICT_PRIVATE_KEY !== "string" || !env.SENTINEL_VERDICT_PRIVATE_KEY) return json({ error: "VERDICT_SIGNING_NOT_CONFIGURED" }, 503);
+  const assessment = await response.clone().json().catch(() => null);
+  if (!assessment) return json({ error: "INVALID_ASSESSMENT_RESPONSE" }, 502);
+  try {
+    const payload = buildVerdictPayload({ sender_account: body.sender_account, receiver_account: body.receiver_account,
+      amount_near: body.amount_near, nonce: body.nonce, assessment });
+    return json({ ...assessment, attestation: await signVerdict(payload, env.SENTINEL_VERDICT_PRIVATE_KEY) });
+  } catch { return json({ error: "VERDICT_ATTESTATION_FAILED" }, 502); }
 }

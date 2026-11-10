@@ -31,22 +31,35 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Validate Wrangler configuration
+      - name: Require Cloudflare deployment credentials
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::CLOUDFLARE_API_TOKEN is missing"; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::CLOUDFLARE_ACCOUNT_ID is missing"; exit 1; }
+
+      - name: Validate Main Worker configuration
         run: npx wrangler@4.159.0 deploy --dry-run
 
-      - name: Run test suite
+      - name: Validate isolated Signer Worker configuration
+        run: npx wrangler@4.159.0 deploy --config signer-worker/wrangler.jsonc --dry-run
+
+      - name: Run automated test suite
         run: npm test
 
-      - name: Apply pending D1 migrations
-        if: ${{ env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' }}
+      - name: Apply Main Worker D1 migrations
         run: npx wrangler@4.159.0 d1 migrations apply sentinel-db --remote
 
-      - name: Explain missing Cloudflare credentials
-        if: ${{ env.CLOUDFLARE_API_TOKEN == '' || env.CLOUDFLARE_ACCOUNT_ID == '' }}
-        run: echo "::warning::Deployment skipped. Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID as repository Actions secrets."
+      - name: Apply isolated Signer D1 migrations
+        run: npx wrangler@4.159.0 d1 migrations apply db2 --remote --config signer-worker/wrangler.jsonc
 
-      - name: Deploy Cloudflare Worker
-        if: ${{ env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' }}
+      - name: Deploy isolated Signer Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.159.0"
+          command: deploy --config signer-worker/wrangler.jsonc
+
+      - name: Deploy Main Worker
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
