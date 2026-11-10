@@ -216,3 +216,22 @@ These are PR preview/build and CI results, not a production deployment or proof 
 **Production activation:** configure `GEMINI_API_KEY` on the Cloudflare Main Worker and deploy the exact reviewed commit. Then test all three routes with a real authenticated session. The isolated Signer Worker does not need the Gemini key.
 
 **Release evidence boundary:** Payment-contract WASM build, CodeQL, Security CI, Sentinel checks, Worker deployment, and live AI route verification must be read from the GitHub Actions runs associated with the exact PR head. Do not reuse a green run from an earlier commit as proof for this migration.
+
+
+## 10. Merged-main Gemini production release — 11 November 2026
+
+PR #13 was squash-merged to `main` as commit `7e88eee64954dbf61ce6e28dc4c31530c3ce14b2`. The push-to-main production workflow completed successfully:
+
+| Check | Result | Evidence |
+|---|---|---|
+| Main + Signer Worker release workflow | **SUCCESS** | [Deploy run #42907136456](https://github.com/ivanmlnnn/sentinel/actions/runs/42907136456) |
+| Main Worker production deployment | **SUCCESS** | Same run; deployed `https://sentinel.ivmaladin.workers.dev` |
+| Signer Worker deployment step | **SUCCESS / no code changes to deploy** | Same run; Wrangler reported no targets deployed for unchanged Signer Worker |
+| Production HTTP smoke | **8/8 PASS** | Same run; dashboard HTTP 200; expected Turnstile, bearer-auth, and internal-HMAC rejection responses returned |
+| Automated tests | **135 passed, 0 failed** | [Sentinel checks #42907136315](https://github.com/ivanmlnnn/sentinel/actions/runs/42907136315) |
+| NEAR payment-contract WASM release build | **PASS** | Same Sentinel checks run; optimized `wasm32-unknown-unknown` release build completed |
+| CodeQL JavaScript analysis | **PASS** | [CodeQL run #42907136225](https://github.com/ivanmlnnn/sentinel/actions/runs/42907136225) |
+| Security CI | **PASS** | [Security CI run #42907136354](https://github.com/ivanmlnnn/sentinel/actions/runs/42907136354) |
+| Cloudflare Main Worker and Signer Worker build checks | **PASS** | Both Worker build checks on merged commit completed successfully |
+
+The production smoke suite validates public endpoint availability and fail-closed authentication behavior. It does not exercise a live Gemini completion or a new NEAR payment. Configure `GEMINI_API_KEY` on the production Main Worker, then run authenticated Agent, Guest Agent, and AI Review conversation tests before claiming live Gemini provider activation. No signer secret or NEAR payment-contract configuration is changed by the AI provider migration.
