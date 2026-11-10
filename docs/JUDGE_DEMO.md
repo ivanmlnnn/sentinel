@@ -10,11 +10,11 @@ Primary track: **AI Security & Defense**. The official track explicitly calls fo
 
 ## Deployment and transaction evidence
 
-The release path is the manual [Deploy Sentinel Testnet GitHub Actions workflow](https://github.com/ivanmlnnn/sentinel/actions/workflows/deploy-testnet.yml), not a local Wrangler deploy. Select the reviewed branch and enter `DEPLOY_SENTINEL_TESTNET`; the deploy job only runs after source validation passes. Show the exact successful workflow run and deployed commit SHA. A preview build or dry-run is not production deployment evidence.
+The release path is the manual [Deploy Sentinel Testnet GitHub Actions workflow](https://github.com/ivanmlnnn/sentinel/actions/workflows/deploy-testnet.yml), not a local Wrangler deploy. Select the reviewed branch, choose the target (payment-contract, signer, main or both), and enter `DEPLOY_SENTINEL_TESTNET`; the deploy job only runs after source validation passes. Show the exact successful workflow run and deployed commit SHA. A preview build or dry-run is not production deployment evidence.
 
-For a real transfer, show the Signer Worker's FastNear RPC verification result and open the exact hash in [NEAR Testnet Explorer](https://testnet.nearblocks.io/). Cross-check signer, receiver, amount, and execution status against the [NearBlocks Testnet API](https://api-testnet.nearblocks.io/api-docs). The current automated final gate checks FastNear RPC; the NearBlocks cross-check is an independent manual judge-evidence step, not an automated second oracle.
+For a real payout, show the Signer Worker's FastNear verification of the top-level FunctionCall to the payment contract and the successful native Transfer receipt to the final recipient. Open the same transaction hash in [NEAR Testnet Explorer](https://testnet.nearblocks.io/) and cross-check the call and receipt. The dashboard's Track Wallet Explorer links are for inspecting tracked account activity; they are distinct from proof of a Sentinel-originated payment.
 
-The current signer requires a dedicated Testnet FullAccess key. It is isolated in a private Worker but is not the contract-scoped function-call key requested by the track. State this limitation clearly. Do not imply that a native NEAR transfer was executed under a function-call key.
+The current branch signer source requires a dedicated Testnet FunctionCall key scoped to the payment contract and only the pay method. The contract holds the payout balance and emits native transfer receipts. This design is not live until the contract, key rotation and private Worker deployment are completed and verified on Testnet.
 
 ## 2:45 demo sequence
 
