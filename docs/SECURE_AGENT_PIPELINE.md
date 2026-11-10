@@ -16,7 +16,7 @@ This branch implements a two-Worker signing architecture and a mandatory human a
 6. The approval endpoint claims the pending approval once, checks the authenticated actor, re-runs Sentinel against the exact intent, and calls the signer only through a private Cloudflare service binding.
 7. Main Worker signs the internal request with HMAC-SHA256 over timestamp, one-time nonce, and exact body. The signer rejects stale signatures, invalid signatures, and replayed nonces.
 8. The signer independently verifies the Privy token, actor binding, Testnet-only account, allowlist, limits, kill switch, fresh Sentinel verdict, and the exact unexpired approval row. It also verifies the NEP-413 signature against the NEAR RPC access-key state, exact approval message, recipient domain, and 32-byte nonce. A signer-only nonce ledger and unique claim ledger prevent signature replay and duplicate approval claims. It reserves daily spend in D1 before signing.
-9. The signer uses only the fixed NEAR Testnet RPC. After submission it queries the transaction by hash and signer account and verifies final success, signer, receiver, and exact yoctoNEAR transfer amount before returning `EXECUTED`. A NearBlocks Testnet Explorer link is returned only with this final-RPC verification evidence. Ambiguous post-submit outcomes remain `UNKNOWN` and are not automatically retried.
+9. The signer uses only the fixed NEAR Testnet RPC. It requires a FunctionCall key scoped to the payment contract and the single pay method. It submits a contract call, then verifies the top-level transaction and the successful native Transfer receipt for exact recipient and yoctoNEAR amount before returning EXECUTED. A NearBlocks Testnet Explorer link is returned only with this receipt-level verification evidence. Ambiguous post-submit outcomes remain UNKNOWN and are not automatically retried.
 10. Audit proposals, approvals, reservations, and transaction hashes are stored in D1. Prompts, JWTs, provider payloads, and private keys are not stored.
 
 ## Worker separation
@@ -45,13 +45,13 @@ A shared HMAC secret protects the internal service request but does not make the
 - Per-transfer hard cap: 0.1 NEAR.
 - Daily hard cap: 0.2 NEAR, counted in microNEAR using D1 UTC dates.
 - Receiver: exact allowlist match; account must end in `.testnet`.
-- Key: dedicated Testnet full-access key; runtime permission check is mandatory for native NEAR transfer.
+- Key: dedicated Testnet FunctionCall key scoped to the payment contract and pay only. A separate offline administrator key is not installed in the runtime Worker.
 - Approval: actor-bound, exact receiver and amount, one-time, five-minute expiry.
 - Kill switch: signer denies unless `NEAR_AGENT_KILL_SWITCH=false`. Keep it `true` during setup.
 
 ## Gated GitHub deployment workflow
 
-The repository now includes `.github/workflows/deploy-testnet.yml`. It is manual-only and deploys only when the workflow input is exactly `DEPLOY_SENTINEL_TESTNET`. It reruns Gitleaks, CodeQL, migration validation, both Worker dry-runs, the full test suite, and the prompt-injection demo before it applies remote migrations and deploys the private signer followed by the Main Worker. It does not disable the signer's kill switch.
+The repository includes .github/workflows/deploy-testnet.yml. It is manual-only and deploys only when the confirmation input is exactly DEPLOY_SENTINEL_TESTNET. The target can be payment-contract, signer, main or both. It validates Gitleaks, CodeQL, migrations, both Worker dry-runs, tests, prompt-injection demo and Rust/Wasm contract build. The both target deploys Signer before Main. The workflow does not disable the signer's kill switch.
 
 Configure these GitHub repository Actions secrets before using the workflow:
 - `CLOUDFLARE_API_TOKEN`: scoped to the intended Cloudflare account with Workers Scripts Edit and D1 Edit permissions.
