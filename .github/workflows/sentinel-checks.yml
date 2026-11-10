@@ -21,6 +21,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Check browser and API JavaScript syntax
+        run: |
+          node --check public/auth.js
+          node --check public/app.js
+          node --check functions/api/investigate.js
+          node --check functions/api/_shared.js
       - name: Run test suite
         run: npm test
       - name: Run offline prompt-injection demo
