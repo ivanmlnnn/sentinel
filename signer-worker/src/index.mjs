@@ -82,9 +82,9 @@ export async function verifyInternalRequest(request, rawBody, env) {
   return crypto.subtle.verify("HMAC", key, supplied, new TextEncoder().encode(timestamp + "." + nonce + "." + rawBody));
 }
 export async function reserveNonce(env, nonce) {
-  try { await env.DB.prepare("DELETE FROM signer_nonces WHERE created_at < datetime('now', '-1 day')").run(); } catch { /* cleanup is best-effort; nonce insertion remains mandatory */ }
+  try { await env.DB2.prepare("DELETE FROM signer_nonces WHERE created_at < datetime('now', '-1 day')").run(); } catch { /* cleanup is best-effort; nonce insertion remains mandatory */ }
   try {
-    await env.DB.prepare("INSERT INTO signer_nonces (nonce, created_at) VALUES (?, CURRENT_TIMESTAMP)").bind(nonce).run();
+    await env.DB2.prepare("INSERT INTO signer_nonces (nonce, created_at) VALUES (?, CURRENT_TIMESTAMP)").bind(nonce).run();
     return true;
   } catch { return false; }
 }
@@ -107,23 +107,23 @@ export async function claimApproval(env, { approvalId, idempotencyKey, actor, re
   if (!pending || pending.receiver_account !== receiver || Number(pending.amount_micro) !== amountMicro) {
     throw new Error("HUMAN_APPROVAL_NOT_VERIFIED");
   }
-  await env.DB.prepare(
+  await env.DB2.prepare(
     "INSERT INTO signer_approval_claims (approval_id, idempotency_key, actor, receiver_account, amount_micro, claimed_at) " +
     "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"
   ).bind(approvalId, idempotencyKey, actor, receiver, amountMicro).run();
 }
 async function reserveSpend(env, { idempotencyKey, actor, receiver, amountMicro, dailyCapMicro }) {
-  const result = await env.DB.prepare(
+  const result = await env.DB2.prepare(
     "INSERT INTO agent_execution (idempotency_key, actor, receiver_account, amount_micro, status, created_at, updated_at) " +
     "SELECT ?, ?, ?, ?, 'PENDING', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP " +
     "WHERE (SELECT COALESCE(SUM(amount_micro), 0) FROM agent_execution WHERE date(created_at)=date('now') AND status IN ('PENDING','EXECUTED','UNKNOWN')) + ? <= ?"
   ).bind(idempotencyKey, actor, receiver, amountMicro, amountMicro, dailyCapMicro).run();
   if (result.meta?.changes === 1) return true;
-  const prior = await env.DB.prepare("SELECT idempotency_key FROM agent_execution WHERE idempotency_key = ?").bind(idempotencyKey).first();
+  const prior = await env.DB2.prepare("SELECT idempotency_key FROM agent_execution WHERE idempotency_key = ?").bind(idempotencyKey).first();
   throw new Error(prior ? "IDEMPOTENCY_KEY_REUSED" : "DAILY_SPEND_LIMIT_REACHED");
 }
 async function setState(env, key, state, hash = null) {
-  await env.DB.prepare("UPDATE agent_execution SET status=?, transaction_hash=?, updated_at=CURRENT_TIMESTAMP WHERE idempotency_key=?")
+  await env.DB2.prepare("UPDATE agent_execution SET status=?, transaction_hash=?, updated_at=CURRENT_TIMESTAMP WHERE idempotency_key=?")
     .bind(state, hash, key).run();
 }
 async function investigate(intent, authorizationHeader, env) {
@@ -147,7 +147,7 @@ export async function execute(payload, authorizationHeader, identity, env) {
   if (env.NEAR_AGENT_KILL_SWITCH !== "false") return deny("KILL_SWITCH_ACTIVE");
   if (!env.NEAR_AGENT_SIGNER_PRIVATE_KEY || !env.NEAR_AGENT_SIGNER_ACCOUNT_ID) return deny("SIGNER_NOT_CONFIGURED");
   if (payload.actor !== identity.sub) return deny("ACTOR_MISMATCH");
-  if (!env.DB) return deny("EXECUTION_DATABASE_UNAVAILABLE");
+  if (!env.DB || !env.DB2) return deny("EXECUTION_DATABASE_UNAVAILABLE");
   const signerAccountId = String(env.NEAR_AGENT_SIGNER_ACCOUNT_ID).toLowerCase();
   if (!/^[a-z0-9._-]{2,64}\.testnet$/.test(signerAccountId)) return deny("SIGNER_ACCOUNT_MUST_BE_TESTNET");
   const validated = validatePaymentIntent(intent, env);
@@ -214,7 +214,7 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (request.method !== "POST" || url.pathname !== "/execute") return json({ error: "NOT_FOUND" }, 404);
-    if (!env.DB) return json({ error: "SIGNER_DATABASE_UNAVAILABLE" }, 503);
+    if (!env.DB || !env.DB2) return json({ error: "SIGNER_DATABASE_UNAVAILABLE" }, 503);
     const boundedBody = await readBoundedSignerBody(request, 8000);
     if (!boundedBody.ok) return json({ error: boundedBody.reason }, boundedBody.status);
     const rawBody = boundedBody.text;
