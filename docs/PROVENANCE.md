@@ -25,6 +25,7 @@ For stronger author-identity evidence, the repository owner should configure the
 
 - CI checks: https://github.com/ivanmlnnn/sentinel/actions/workflows/sentinel-checks.yml
 - Cloudflare deployment workflow: https://github.com/ivanmlnnn/sentinel/actions/workflows/deploy-cloudflare.yml
+- On pushes to main, CI packages the exact commit with git archive, uploads the source snapshot, and creates a GitHub build-provenance attestation. After the workflow completes, download the artifact and verify it with `gh attestation verify sentinel-source.tar.gz --repo ivanmlnnn/sentinel`. This attestation proves the archive was produced by the named GitHub workflow from the stated source revision; it does not prove who authored each commit.
 - A green test run proves the checked code passed the configured tests; it does not prove a real NEAR transaction or a browser-only flow works.
 - A successful Worker deployment proves that Cloudflare accepted the deployment; it does not prove the UI was visually inspected or that a cryptographic signer boundary exists.
 
