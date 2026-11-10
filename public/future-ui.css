@@ -163,3 +163,25 @@ footer{border-top:1px solid var(--sf-line);margin-top:45px;padding-top:22px;colo
 }
 @media(max-width:390px){.agent-proposal-values{grid-template-columns:1fr}.section-meta{max-width:130px;text-align:right;line-height:1.5}}
 @media(prefers-reduced-motion:reduce){.agent-button-pulse{animation:none!important}.chain-node,.brand-cube{animation:none!important}html{scroll-behavior:auto}}
+
+/* Prompt Studio — skill-first control surface */
+.sentinel-prompt-studio{position:relative;margin:4px 0 19px;padding:17px;border:1px solid var(--sf-line);border-radius:15px;background:linear-gradient(145deg,rgba(20,31,22,.82),rgba(9,16,11,.78));box-shadow:inset 0 1px rgba(255,255,255,.025)}
+.prompt-studio-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:13px}
+.prompt-studio-head h3{font:750 17px/1.2 Manrope,sans-serif;letter-spacing:-.04em;color:#e7efe4;margin:7px 0 0}
+.prompt-studio-hint,.prompt-draft-label{font:800 8px Manrope,sans-serif;letter-spacing:.12em;color:#849783}
+.sentinel-skill-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.sentinel-skill-card{position:relative;display:grid;grid-template-columns:30px 1fr;column-gap:10px;align-items:center;text-align:left;min-width:0;padding:12px;border:1px solid var(--sf-line);border-radius:11px;background:rgba(255,255,255,.018);color:var(--sf-text);cursor:pointer;transition:border-color .2s,background .2s,transform .2s}
+.sentinel-skill-card:hover{border-color:var(--sf-line-strong);background:rgba(180,201,180,.055);transform:translateY(-1px)}
+.sentinel-skill-card.is-selected{border-color:rgba(180,201,180,.38);background:linear-gradient(130deg,rgba(180,201,180,.10),rgba(180,201,180,.025));box-shadow:inset 0 0 0 1px rgba(180,201,180,.04)}
+.skill-card-icon{grid-row:1/4;display:grid;place-items:center;width:29px;height:29px;border-radius:9px;background:rgba(180,201,180,.08);border:1px solid var(--sf-line);font:700 17px Manrope,sans-serif;color:#c6d7c1}
+.sentinel-skill-card b{font:800 10px Manrope,sans-serif;color:#e3ece0}
+.sentinel-skill-card small{font:500 9px/1.5 Manrope,sans-serif;color:#91a18f;margin-top:3px}
+.sentinel-skill-card i{font:800 7px Manrope,sans-serif;letter-spacing:.09em;color:#a9bea6;font-style:normal;margin-top:8px}
+.prompt-draft-row{border-top:1px solid var(--sf-line);margin-top:14px;padding-top:13px}
+.prompt-draft-fields{display:grid;grid-template-columns:1.1fr .65fr 1fr auto;gap:7px;margin-top:9px}
+.prompt-draft-fields input{min-width:0;width:100%;height:39px;padding:0 10px!important;font:500 10px Manrope,sans-serif!important}
+.prompt-draft-fields .secondary-btn{min-height:39px;padding:0 13px!important;font:800 9px Manrope,sans-serif!important;white-space:nowrap}
+.prompt-draft-row>small{display:block;margin-top:8px;color:#879786;font:500 9px/1.6 Manrope,sans-serif}
+#agentPrompt{margin-top:8px}
+@media(max-width:760px){.sentinel-prompt-studio{padding:13px}.prompt-studio-head{align-items:start;flex-direction:column;gap:5px}.sentinel-skill-grid{grid-template-columns:1fr 1fr}.sentinel-skill-card{padding:10px;grid-template-columns:26px 1fr;column-gap:8px}.skill-card-icon{width:26px;height:26px}.sentinel-skill-card b{font-size:9px}.sentinel-skill-card small{font-size:8px}.prompt-draft-fields{grid-template-columns:1fr 1fr}.prompt-draft-fields input:nth-child(3){grid-column:1/-1}.prompt-draft-fields .secondary-btn{grid-column:1/-1;width:100%}}
+@media(max-width:390px){.sentinel-skill-grid{grid-template-columns:1fr}.sentinel-skill-card{grid-template-columns:30px 1fr}.skill-card-icon{width:29px;height:29px}}
