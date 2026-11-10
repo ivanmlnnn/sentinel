@@ -23,3 +23,9 @@ The regression suite includes a mocked request assertion that the default endpoi
 
 - [Gemini 3.8 Flash model documentation](https://ai.google.dev/gemini-api/docs/latest-model)
 - [Gemini Interactions API overview](https://ai.google.dev/gemini-api/docs/interactions-overview)
+
+## Capacity fallback
+
+The shared adapter retries transient provider failures and, after persistent HTTP 503 capacity overload on the primary model, makes one bounded request using `GEMINI_FALLBACK_MODEL` or the default `gemini-3.5-flash-lite`. This fallback is deliberately not used for HTTP 429 because that commonly indicates project quota exhaustion; switching model names does not reliably repair exhausted project quota. Authentication and model-not-found errors are not retried as capacity failures.
+
+The fallback path is covered by a mocked regression test. It verifies request routing and response recovery under a simulated 503; it does not establish that Google's live fallback capacity is always available. Live production verification must confirm a successful agent response with the deployed Worker and configured API key.
