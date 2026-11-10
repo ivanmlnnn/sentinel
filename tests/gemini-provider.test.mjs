@@ -38,6 +38,26 @@ test("fails closed when the Gemini secret is not configured", async () => {
   assert.equal(result.error, "AI_PROVIDER_NOT_CONFIGURED");
 });
 
+test("defaults to the currently recommended Gemini 3.8 Flash model", async () => {
+  const originalFetch = globalThis.fetch;
+  let requestedUrl;
+  globalThis.fetch = async (url) => {
+    requestedUrl = String(url);
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: "ready" }] } }] }), {
+      status: 200, headers: { "content-type": "application/json" }
+    });
+  };
+  try {
+    const result = await callGemini({ GEMINI_API_KEY: "test-secret" }, {
+      system: "system", messages: [{ role: "user", content: "hello" }]
+    });
+    assert.equal(result.ok, true);
+    assert.match(requestedUrl, /models\/gemini-3\.8-flash:generateContent$/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("calls Gemini with server-side API key and function declarations", async () => {
   const originalFetch = globalThis.fetch;
   let captured;
