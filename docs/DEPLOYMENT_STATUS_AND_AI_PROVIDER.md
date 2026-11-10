@@ -85,7 +85,7 @@ One-time contract deployment only:
 One-time restricted-key rotation only:
 - `NEAR_AGENT_SIGNER_ADMIN_PRIVATE_KEY`
 
-Keep each Worker's existing runtime secrets in the correct Cloudflare Worker secret store, including its HMAC secret, Privy configuration, and AI provider key. Never commit, paste, or print secret values. The private Signer Worker is not exposed through a public `workers.dev` URL; Main calls it through the `SIGNER_SERVICE` service binding.
+Keep each Worker's existing runtime secrets in the correct Cloudflare Worker secret store, including its HMAC secret, Privy configuration, and the Gemini `GEMINI_API_KEY` secret on the Main Worker. Never commit, paste, or print secret values. The private Signer Worker is not exposed through a public `workers.dev` URL; Main calls it through the `SIGNER_SERVICE` service binding.
 
 ## Gemini AI provider
 
