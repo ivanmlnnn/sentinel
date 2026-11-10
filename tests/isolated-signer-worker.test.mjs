@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
-import { verifyInternalRequest, readBoundedSignerBody, reserveNonce, nearToMicro, claimApproval, execute, default as signerWorker } from "../signer-worker/src/index.mjs";
+import { verifyInternalRequest, readBoundedSignerBody, reserveNonce, nearToMicro, claimApproval, execute, assertRestrictedFunctionCallKey, verifyFinalTransfer, default as signerWorker } from "../signer-worker/src/index.mjs";
 
 const TEST_SECRET = Buffer.from(webcrypto.getRandomValues(new Uint8Array(32))).toString("hex");
 
@@ -132,4 +132,92 @@ test("signer endpoint rejects oversized UTF-8 payload before authentication work
   const response = await signerWorker.fetch(oversized, { DB: {}, DB2: {} });
   assert.equal(response.status, 413);
   assert.equal((await response.json()).error, "REQUEST_TOO_LARGE");
+});
+
+
+test("signer accepts only the exact pay-only FunctionCall key scope", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => new Response(JSON.stringify({ result: {
+      permission: { FunctionCall: {
+        receiver_id: "sentinel-pay.testnet",
+        method_names: ["pay"],
+        allowance: "250000000000000000000000"
+      } }
+    } }), { status: 200, headers: { "content-type": "application/json" } });
+    const scope = await assertRestrictedFunctionCallKey(
+      "sentinel-signer.testnet", "ed25519:11111111111111111111111111111111", "sentinel-pay.testnet"
+    );
+    assert.deepEqual(scope, { receiver_id: "sentinel-pay.testnet", method_names: ["pay"] });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("signer rejects FullAccess, another contract, and extra FunctionCall methods", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    for (const permission of [
+      "FullAccess",
+      { FunctionCall: { receiver_id: "other.testnet", method_names: ["pay"] } },
+      { FunctionCall: { receiver_id: "sentinel-pay.testnet", method_names: ["pay", "withdraw"] } }
+    ]) {
+      globalThis.fetch = async () => new Response(JSON.stringify({ result: { permission } }), {
+        status: 200, headers: { "content-type": "application/json" }
+      });
+      await assert.rejects(() => assertRestrictedFunctionCallKey(
+        "sentinel-signer.testnet", "ed25519:11111111111111111111111111111111", "sentinel-pay.testnet"
+      ), /SIGNER_REQUIRES_CONTRACT_SCOPED_FUNCTION_CALL_KEY/);
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("final payout verification requires exact contract call and successful native transfer receipt", async () => {
+  const originalFetch = globalThis.fetch;
+  const args = Buffer.from(JSON.stringify({
+    receiver_id: "receiver.testnet",
+    amount_yocto: "10000000000000000000000",
+    approval_id: "approval-123"
+  })).toString("base64");
+  try {
+    globalThis.fetch = async (_url, init) => {
+      const request = JSON.parse(init.body);
+      if (request.method === "tx") {
+        return new Response(JSON.stringify({ result: {
+          transaction: {
+            signer_id: "sentinel-signer.testnet",
+            receiver_id: "sentinel-pay.testnet",
+            actions: [{ FunctionCall: { method_name: "pay", args } }]
+          },
+          status: { SuccessValue: "" },
+          transaction_outcome: { block_hash: "block-hash" },
+          receipts_outcome: [{ id: "payout-receipt", outcome: { status: { SuccessValue: "" } } }]
+        } }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (request.method === "EXPERIMENTAL_receipt") {
+        return new Response(JSON.stringify({ result: {
+          predecessor_id: "sentinel-pay.testnet",
+          receiver_id: "receiver.testnet",
+          receipt: { Action: { actions: [{ Transfer: { deposit: "10000000000000000000000" } }] } }
+        } }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      throw new Error("Unexpected RPC method");
+    };
+    const verified = await verifyFinalTransfer(
+      "11111111111111111111111111111111",
+      "sentinel-signer.testnet",
+      "sentinel-pay.testnet",
+      "receiver.testnet",
+      "10000000000000000000000",
+      "approval-123"
+    );
+    assert.equal(verified.verified, true);
+    assert.equal(verified.receiver_account, "receiver.testnet");
+    assert.equal(verified.amount_yocto, "10000000000000000000000");
+    assert.equal(verified.payment_receipt_id, "payout-receipt");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
