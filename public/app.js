@@ -752,6 +752,47 @@ function renderAgentResult(data) {
     });
   }
 }
+const skillCards = Array.from(document.querySelectorAll('.sentinel-skill-card'));
+function selectSentinelSkill(card) {
+  if (!card) return;
+  skillCards.forEach(item => item.classList.toggle('is-selected', item === card));
+  const prompt = $('agentPrompt');
+  if (prompt) {
+    prompt.value = card.dataset.prompt || '';
+    prompt.focus();
+    prompt.setSelectionRange(prompt.value.length, prompt.value.length);
+  }
+}
+skillCards.forEach(card => card.addEventListener('click', () => selectSentinelSkill(card)));
+
+const paymentDraftButton = $('usePaymentDraft');
+paymentDraftButton?.addEventListener('click', () => {
+  const receiver = String($('draftReceiver')?.value || '').trim().toLowerCase();
+  const amountText = String($('draftAmount')?.value || '').trim();
+  const amount = Number(amountText);
+  const reason = String($('draftReason')?.value || '').trim();
+  const accountPattern = /^(?:[a-z0-9]+(?:[-_.][a-z0-9]+)*\.)*(?:testnet|near)$/;
+  if (!accountPattern.test(receiver) || receiver.length < 2 || receiver.length > 64) {
+    toast('Enter a valid NEAR recipient account, such as alice.testnet.');
+    $('draftReceiver')?.focus();
+    return;
+  }
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 0.1 || !/^\d+(?:\.\d{1,6})?$/.test(amountText)) {
+    toast('Enter an amount from 0.000001 to 0.1 NEAR (up to 6 decimals).');
+    $('draftAmount')?.focus();
+    return;
+  }
+  const prompt = 'Create a payment proposal to ' + receiver + ' for ' + amountText + ' NEAR.' +
+    (reason ? ' Reason: ' + reason + '.' : '') +
+    ' Run Sentinel policy checks and show the exact proposal for my human approval. Do not execute until I explicitly approve with my connected NEAR Testnet wallet.';
+  const input = $('agentPrompt');
+  input.value = prompt;
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+  skillCards.forEach(card => card.classList.toggle('is-selected', card.dataset.skill === 'payment'));
+  toast('Payment draft ready. Review the prompt, then send it to Sentinel.');
+});
+
 if (agentForm) {
   agentForm.addEventListener('submit', async event => {
     event.preventDefault();
@@ -810,7 +851,7 @@ if (agentForm) {
     } finally {
       button.disabled = false;
       button.classList.remove('agent-running');
-      button.innerHTML = 'Run secure agent <b>↗</b>';
+      button.innerHTML = 'Send message <b>↗</b>';
     }
   });
 } 
