@@ -6,7 +6,8 @@
   "scripts": {
     "test": "node --test",
     "demo:attack": "node examples/prompt-injection-attack-demo.mjs",
-    "smoke:test": "node scripts/production-smoke.mjs"
+    "smoke:test": "node scripts/production-smoke.mjs",
+    "check:d1": "node --experimental-sqlite scripts/check-d1-migrations.mjs"
   },
   "description": "A pre-sign security checkpoint for AI agents on NEAR.",
   "license": "MIT",
