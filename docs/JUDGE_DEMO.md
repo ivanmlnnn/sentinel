@@ -6,7 +6,7 @@
 
 ## Track positioning
 
-Recommended primary fit: **Open Innovation** — Sentinel is security infrastructure for AI-driven money movement. If the submission form allows multiple tracks, consider **Autonomous Business** as a secondary fit because the product protects agent treasury/payment workflows. Do not claim Sentinel is a complete autonomous business or NEAR Intents integration.
+Primary track: **AI Security & Defense**. The official track explicitly calls for spending limits, policy engines, sandboxed wallets, reputation, and scam detection. Sentinel's core contribution is a pre-sign policy checkpoint that treats AI output as untrusted, evaluates on-chain evidence, requires exact-intent human approval, and isolates a Testnet signer. Do not position Open Innovation as the primary track, and do not claim a complete autonomous business or NEAR Intents integration.
 
 ## 2:45 demo sequence
 
