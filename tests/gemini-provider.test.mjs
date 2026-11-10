@@ -165,8 +165,8 @@ test("falls back to Gemini Flash Lite after persistent primary-model 503 overloa
       system: "system", messages: [{ role: "user", content: "hello" }]
     });
     assert.equal(requested.length, 4);
-    assert.match(requested[0], /models\\/gemini-3\\.8-flash:generateContent$/);
-    assert.match(requested[3], /models\\/gemini-3\\.5-flash-lite:generateContent$/);
+    assert.match(requested[0], /models\/gemini-3\.8-flash:generateContent$/);
+    assert.match(requested[3], /models\/gemini-3\.5-flash-lite:generateContent$/);
     assert.equal(result.ok, true);
     assert.equal(result.data.content[0].text, "Fallback recovered.");
   } finally {
