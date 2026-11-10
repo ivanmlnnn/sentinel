@@ -121,7 +121,7 @@ NEAR payment contract deployment:
 - NEAR_PAYMENT_MAX_DAILY_PAYMENT_YOCTO — on-chain UTC-day cap in yoctoNEAR, no more than the existing Sentinel hard cap of 0.2 NEAR.
 
 Signer key installation:
-- NEAR_AGENT_SIGNER_ACCOUNT_ID — existing Sentinel Testnet signer account;
+- NEAR_AGENT_SIGNER_ACCOUNT_ID — existing Sentinel Testnet signer account: `freshnook5462.testnet`;
 - NEAR_AGENT_SIGNER_ADMIN_PRIVATE_KEY — separate administrator FullAccess key for the signer account; keep it offline and do not install it in a Worker;
 - NEAR_AGENT_SIGNER_OLD_PRIVATE_KEY — the old runtime FullAccess key to revoke during the one-time rotation;
 - NEAR_AGENT_SIGNER_RESTRICTED_PRIVATE_KEY — the new restricted FunctionCall key private key.
@@ -132,7 +132,7 @@ After successful one-time rotation, remove NEAR_AGENT_SIGNER_OLD_PRIVATE_KEY fro
 
 ### Required one-time sequence
 
-1. Create and fund the dedicated payment-contract Testnet account. Create the signer Testnet account and keep its administrator FullAccess key offline.
+1. Use the existing Sentinel signer account `freshnook5462.testnet`. The existing `rawvest6817.testnet` is the previously used recipient/tracked account, not the payment contract. Create and fund a separate dedicated payment-contract Testnet account, and keep the signer's administrator FullAccess key offline.
 2. Generate a new keypair for the runtime signer in a trusted local terminal using `node scripts/generate-restricted-signer-key.mjs`. Store its public key for later RPC checks. Put its private key in GitHub secret NEAR_AGENT_SIGNER_RESTRICTED_PRIVATE_KEY; retain the old runtime key temporarily as NEAR_AGENT_SIGNER_OLD_PRIVATE_KEY. Never run the generator in CI or share its private-key output.
 3. Add all required GitHub Actions secrets above.
 4. Run the workflow with deploy_target=payment-contract and rotate_signer_key=false. Confirm the deployment/init transaction in Testnet Explorer.
