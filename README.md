@@ -26,8 +26,8 @@ AI agents can be manipulated into proposing payments to unsafe destinations. A l
 
 1. Open the [currently deployed dashboard](https://sentinel.ivmaladin.workers.dev) and run the read-only wallet scan.
 2. Inspect the evidence behind the verdict and open the NEAR Explorer link.
-3. The isolated Agent Lab and approval flow are implemented on [Draft PR #3](https://github.com/ivanmlnnn/sentinel/pull/3), but are not yet confirmed on the live deployment.
-4. Do not ask judges to expect the Agent Lab on the live URL until the two Workers, migrations, and environment configuration are deployed and smoke-tested.
+3. The maintainer reports that both Cloudflare Workers (Main Sentinel and the private Signer Worker) were manually deployed. The source contains the service binding and separate signer configuration; this repository review does not independently verify the live Worker version or Cloudflare deployment IDs.
+4. The GitHub CI run validates both Worker bundles and D1 migrations, but a dry-run is not a deployment. Verify the live Worker versions, bindings, secrets, migrations, and smoke-test output before the judging session.
 5. Show a real Testnet transaction only after its hash is independently verified; otherwise show the fail-closed gate and state the limitation.
 
 The repository's automated attack demo is an offline regression test. It is not proof of a live transaction. See [Judge demo guide](docs/JUDGE_DEMO.md).
@@ -35,7 +35,7 @@ The repository's automated attack demo is an offline regression test. It is not 
 ## What is implemented
 
 - NEAR account-state checks through FastNear JSON-RPC.
-- Indexed native transaction, receipt, and fungible-token transfer evidence through NearBlocks.
+- Live read-only NEAR Testnet account state through FastNear JSON-RPC and indexed native transaction, receipt, and fungible-token transfer evidence through the NearBlocks Testnet API. These are external Testnet data sources, not locally fabricated transaction fixtures; provider coverage and pagination can still be incomplete.
 - Evidence completeness tracking; missing or unavailable data is not treated as safe.
 - First-seen indexed activity proxy, explicitly not account creation age.
 - Contract code-hash comparison against earlier Sentinel scans.
@@ -43,7 +43,7 @@ The repository's automated attack demo is an offline regression test. It is not 
 - Privy-authenticated investigation, AI review, and agent routes.
 - Anthropic tool-calling agent whose output is treated as an untrusted proposal.
 - Actor-bound, exact-intent, five-minute human approval plus a signer-side one-time approval claim before payment execution.
-- Separate signer Worker, private service binding, signer-owned D1 ledger (DB2), HMAC timestamp/nonce protection, replay ledger, exact pending-approval claim, allowlist, spend caps, kill switch, and conservative `UNKNOWN` handling.
+- Separate signer Worker, private service binding, signer-owned D1 ledger (DB2), HMAC-SHA256 timestamp/nonce protection, replay ledger, exact pending-approval claim, NEP-413 wallet signature verification, receiver allowlist, spend caps, kill switch, and conservative `UNKNOWN` handling.
 - Legacy in-process signing path disabled.
 - Aggregate-only public metrics, private admin report handling, per-investigation owner checks for AI review, bounded JSON parsing, same-origin API mutation checks, security response headers, and CodeQL/secret-scanning CI.
 
@@ -51,9 +51,20 @@ The repository's automated attack demo is an offline regression test. It is not 
 
 The signer implementation is in a separate Worker project under `signer-worker/`; the main Worker does not import the signing key. The signer is configured without a public `workers.dev` endpoint and is intended to be invoked only through a Cloudflare service binding.
 
-**The linked live dashboard is the currently deployed scanner; this branch's new Agent Lab and separate signer are not yet confirmed deployed.** A separate Worker in source code is not the same as a verified live deployment. No live Testnet transfer is claimed until both Workers are deployed, the D1 migrations and secrets are configured, and the transaction hash is independently checked. The signer kill switch must remain enabled until the deployment checklist and negative tests pass.
+**Deployment evidence and source evidence are kept separate.** The maintainer reports manually deploying both Workers to Cloudflare. This review verifies the repository configuration (Main Worker service binding to `sentinel-signer`, private Signer Worker config, DB1/DB2 bindings) and successful CI dry-runs; it does not independently inspect the Cloudflare account's active deployment versions, live secrets, or remote migration history. No Sentinel-originated Testnet transfer is claimed in this README until its transaction hash is supplied and independently matched to signer, receiver, amount, and final status. Keep the Signer Worker kill switch enabled until live negative tests and a controlled transaction are evidenced.
 
 See [Secure Agent Pipeline](docs/SECURE_AGENT_PIPELINE.md) for the trust boundary, [Security Hardening](docs/SECURITY_HARDENING.md) for the access model and Burp Suite test plan, and [SECURITY.md](SECURITY.md) for responsible disclosure.
+
+## Security verification evidence
+
+The following results are tied to the exact source revision [`28e924d`](https://github.com/ivanmlnnn/sentinel/commit/28e924de201f56eb07088a38a8195a4b4bee778f), not a claim that every live deployment path has been penetration-tested:
+
+- **116/116 automated tests passed; 0 failed** in [GitHub Actions run 42778165533](https://github.com/ivanmlnnn/sentinel/actions/runs/42778165533).
+- Gitleaks changed-file scan and full repository-history scan passed in that run.
+- JavaScript syntax checks, both Wrangler Worker bundle dry-runs, D1 migration validation, and the offline prompt-injection regression demo passed.
+- Cloudflare Turnstile is integrated using the official browser widget and server-side Siteverify endpoint (`https://challenges.cloudflare.com/turnstile/v0/siteverify`). The wallet-scan UI remains disabled until a Turnstile token is received; the server validates `success`, the `track_wallet` action, and the hostname, and fails closed on missing configuration or verification outage.
+- CodeQL was still running when this README evidence was assembled; its result is deliberately not represented as PASS here.
+- These tests do **not** constitute a Burp Suite assessment, independent audit, proof of live Cloudflare deployment, or proof of a successful Sentinel-signed Testnet transfer.
 
 ## Run it locally
 
