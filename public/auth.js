@@ -250,19 +250,27 @@ function AuthGate() {
     React.createElement('button', {
       type: 'button',
       className: 'sentinel-signout-button',
-      onClick: async () => {
+      onClick: async event => {
+        const button = event.currentTarget;
+        if (button.disabled) return;
+        button.disabled = true;
+        button.textContent = 'Signing out…';
+        setAuthError('');
         try {
-          // Set the marker before calling Privy: the auth-state effect can then
-          // refresh immediately when authenticated becomes false.
-          try { sessionStorage.setItem('sentinel_signout_refresh', '1'); } catch {}
           window.SENTINEL_GUEST = false;
-          try { sessionStorage.removeItem('sentinel_privy_guest'); } catch {}
+          try {
+            sessionStorage.removeItem('sentinel_privy_guest');
+            sessionStorage.removeItem('sentinel_guest_profile_id');
+            sessionStorage.removeItem('sentinel_signout_refresh');
+          } catch {}
+          document.body.classList.remove('sentinel-guest', 'sentinel-authenticated');
           await logout();
-          // Fallback if the SDK resolves logout without producing a state transition.
+          dashboardStarted = false;
           refreshLoginAfterSignOut();
         } catch (error) {
-          try { sessionStorage.removeItem('sentinel_signout_refresh'); } catch {}
           console.error('Privy logout failed:', error);
+          button.disabled = false;
+          button.textContent = 'Sign out';
           setAuthError('Sign out could not be completed. Please retry.');
         }
       }
