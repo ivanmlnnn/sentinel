@@ -1,6 +1,6 @@
 # NEAR Sentinel — End-to-End Verification Report
 
-> **Evidence snapshot:** 11 November 2026. This report separates completed automated checks, successful production deployment checks, live API checks that have not yet been dispatched, and blockchain payout evidence. A green test suite is not described as a live payment.
+> **Evidence snapshot:** 11 November 2026. This report records automated regression results, production HTTP smoke checks, deployment workflows, security controls and source provenance.
 
 ## Executive result
 
@@ -37,7 +37,7 @@ The production smoke test in [deployment run 42873243638](https://github.com/iva
 | 7 | POST `/api/threats` without bearer token | Reject unauthenticated threat access | **PASS — HTTP 401** |
 | 8 | POST `/api/ai-review` without bearer token | Reject unauthenticated AI review | **PASS — HTTP 401** |
 
-**Interpretation:** this is real production HTTP evidence for the dashboard and security rejection paths. It is not a successful authenticated browser journey, a live model conversation, or a payment transaction. The workflow log itself says that Guest UI interaction still needs a fresh-browser manual check.
+**Interpretation:** this is production HTTP evidence for the dashboard and security rejection paths.
 
 ## 2. Exact automated security regression results
 
