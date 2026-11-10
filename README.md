@@ -16,7 +16,7 @@ Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verifi
 
 | Builder | Network | Track direction | Stack |
 |---|---|---|---|
-| Ivan Maulana Alaudin · IVTECH | NEAR Testnet | Autonomous Business / Open Innovation | Cloudflare Workers · NEAR · Privy · Anthropic · NearBlocks |
+| Ivan Maulana Alaudin · IVTECH | NEAR Testnet | **AI Security & Defense** | Cloudflare Workers · NEAR · Privy · Anthropic · NearBlocks |
 
 ## Why Sentinel
 
