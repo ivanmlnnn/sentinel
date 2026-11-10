@@ -569,7 +569,7 @@ function renderAgentResult(data) {
     ((data.agent_message || data.message) ? '<p class="agent-result-message">' + escapeHtml(data.agent_message || data.message) + '</p>' : '') +
     (txHash ? '<p class="agent-result-hash">TX HASH · ' + escapeHtml(txHash) + '</p>' : '') +
     txLink +
-    (approvalId ? '<div class="agent-approval"><p>Review the exact destination and amount. This proposal expires in five minutes.</p><button type="button" class="primary-btn" id="approveAgentPayment">Approve this exact payment</button></div>' : '');
+    (approvalId ? '<div class="agent-approval"><p>Connect a NEAR Testnet wallet with message-signing support. Your wallet will sign the exact receiver, amount, and expiry (NEP-413); this signature does not itself transfer funds. The proposal expires in five minutes.</p><button type="button" class="primary-btn" id="approveAgentPayment">Sign with NEAR wallet & approve</button></div>' : '');
   if (approvalId) {
     $('approveAgentPayment').addEventListener('click', async () => {
       const receiver = String(proposal.receiver_account || '');
@@ -630,7 +630,7 @@ function renderAgentResult(data) {
         toast(approved.execution_enabled ? 'NEAR Testnet transaction confirmed.' : 'Approval result: ' + String(approved.status || 'UNKNOWN'));
       } catch (error) {
         approveButton.disabled = false;
-        approveButton.textContent = 'Retry approval check';
+        approveButton.textContent = 'Sign again & retry';
         toast(error.message || 'Approval failed. No transfer was confirmed.');
       }
     });
