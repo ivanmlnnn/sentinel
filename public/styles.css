@@ -2619,3 +2619,56 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
 .sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button:hover:not(:disabled),.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button:hover:not(:disabled){transform:translateY(-3px) scale(1.012)!important}
 .sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-button:active,.sentinel-auth-card:has(.sentinel-auth-guest-button) .sentinel-auth-guest-button:active{transform:translateY(0) scale(.975)!important;transition-duration:.12s!important}
 @media(prefers-reduced-motion:reduce){.sentinel-auth-card:has(.sentinel-auth-guest-button),.sentinel-auth-card:has(.sentinel-auth-loader),.sentinel-auth-card:has(.sentinel-auth-guest-button) *,.sentinel-auth-card:has(.sentinel-auth-loader) *{animation:none!important;transition:none!important}}
+
+
+/* Make the wayang emblem genuinely playful: idle float, pointer tilt, full spin on tap. */
+.sentinel-auth-card:has(.sentinel-auth-mark) .sentinel-auth-mark{
+  transform-style:preserve-3d!important;
+  animation:sentinel-wayang-idle 4.8s ease-in-out infinite!important;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+@keyframes sentinel-wayang-idle{
+  0%,100%{transform:translateY(0) rotateX(0deg) rotateY(0deg)}
+  25%{transform:translateY(-5px) rotateX(5deg) rotateY(-5deg)}
+  50%{transform:translateY(-2px) rotateX(0deg) rotateY(5deg)}
+  75%{transform:translateY(-6px) rotateX(-4deg) rotateY(0deg)}
+}
+.sentinel-auth-card:has(.sentinel-auth-mark) .sentinel-auth-mark img{
+  backface-visibility:visible!important;
+  transform:translateZ(24px)!important;
+  transition:transform .45s cubic-bezier(.2,.9,.25,1),filter .4s ease!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-mark) .sentinel-auth-mark:hover{
+  transform:perspective(800px) translateY(-7px) rotateX(13deg) rotateY(-15deg) scale(1.055)!important;
+  border-color:#e8df78!important;
+  box-shadow:0 22px 48px #0009,0 0 38px #8bd4ef55,0 0 18px #e8df7870!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-mark) .sentinel-auth-mark:hover img{
+  transform:translateZ(38px) scale(1.06)!important;
+  filter:drop-shadow(0 8px 13px #000b) drop-shadow(0 0 10px #8bd4ef99)!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-mark) .sentinel-auth-mark.is-activated{
+  animation:sentinel-wayang-full-spin 1.3s cubic-bezier(.16,.82,.24,1) both!important;
+  border-color:#e8df78!important;
+  box-shadow:0 0 0 5px #8bd4ef20,0 0 42px #8bd4ef88,0 0 24px #e8df78a0,0 18px 42px #000b!important;
+}
+.sentinel-auth-card:has(.sentinel-auth-mark) .sentinel-auth-mark.is-activated img{
+  animation:sentinel-wayang-image-pop 1.3s cubic-bezier(.16,.82,.24,1) both!important;
+  filter:drop-shadow(0 0 12px #8bd4ef) drop-shadow(0 0 22px #e8df78)!important;
+}
+@keyframes sentinel-wayang-full-spin{
+  0%{transform:perspective(800px) translateY(0) rotateX(0) rotateY(0) scale(1)}
+  28%{transform:perspective(800px) translateY(-10px) rotateX(18deg) rotateY(180deg) scale(1.16)}
+  58%{transform:perspective(800px) translateY(-4px) rotateX(-12deg) rotateY(390deg) scale(1.1)}
+  82%{transform:perspective(800px) translateY(-7px) rotateX(8deg) rotateY(570deg) scale(1.07)}
+  100%{transform:perspective(800px) translateY(0) rotateX(0) rotateY(720deg) scale(1)}
+}
+@keyframes sentinel-wayang-image-pop{
+  0%,100%{transform:translateZ(24px) scale(1)}
+  28%{transform:translateZ(52px) scale(1.18)}
+  58%{transform:translateZ(42px) scale(1.1)}
+}
+@media(prefers-reduced-motion:reduce){
+ .sentinel-auth-card:has(.sentinel-auth-mark) .sentinel-auth-mark{animation:none!important}
+}
