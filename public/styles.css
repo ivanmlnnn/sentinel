@@ -3317,9 +3317,6 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
 
 
 /* Telegram-inspired Sentinel agent conversation. */
-#agentForm>.agent-result{margin:0 0 22px;padding:12px;border-radius:16px;background:linear-gradient(180deg,rgba(9,20,27,.98),rgba(6,13,19,.98))}
-#agentForm>.agent-result.hidden{display:none!important}
-#agentForm>.agent-result:not(.hidden){display:block}
 .telegram-chat-transcript{gap:14px;max-height:620px;overscroll-behavior:contain;scroll-behavior:smooth;padding:8px 4px 14px}
 .telegram-chat-transcript .guest-chat-message{position:relative;max-width:min(88%,680px);padding:12px 15px 13px;border-radius:18px;box-shadow:0 5px 18px rgba(0,0,0,.16);animation:telegram-bubble-in .28s cubic-bezier(.2,.75,.25,1) both}
 .telegram-chat-transcript .guest-chat-user{align-self:flex-end;border-color:rgba(104,224,189,.28);background:linear-gradient(145deg,rgba(28,83,70,.72),rgba(17,53,48,.82));border-bottom-right-radius:6px}
