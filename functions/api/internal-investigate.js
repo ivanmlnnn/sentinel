@@ -15,7 +15,7 @@ export async function verifyInternalPreflight(request, rawBody, env) {
   const signature = decodeHex(request.headers.get("x-sentinel-signature") || "");
   const seconds = Number(timestamp);
   if (typeof secret !== "string" || new TextEncoder().encode(secret).byteLength < 32 ||
-      !/^\\d{10}$/.test(timestamp) || !Number.isSafeInteger(seconds) ||
+      !/^\d{10}$/.test(timestamp) || !Number.isSafeInteger(seconds) ||
       Math.abs(Date.now() / 1000 - seconds) > 60 || !UUID_RE.test(nonce) || !signature) return false;
   try {
     const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret),
