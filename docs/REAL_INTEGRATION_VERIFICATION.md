@@ -6,6 +6,19 @@
 >
 > **Important:** code that calls a real provider is evidence of a real integration path. It is not by itself proof that the deployed production Worker has the same commit, that credentials are configured, or that a live request succeeded. Live deployment and live credentials must be evidenced separately.
 
+## 1.1 Verified Cloudflare deployment history
+
+GitHub Actions confirms that the private Signer Worker was successfully deployed on 10 November 2026:
+
+- [Deploy Sentinel Testnet run #15](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536), source commit `989964e8f967120d61e94bec61e7d09d4049bb4c`, branch `feat/isolated-signer-worker`.
+- Both workflow jobs completed with `success`.
+- The deployment log confirms successful upload of `NEAR_AGENT_SIGNER_PRIVATE_KEY` and `NEAR_PAYMENT_CONTRACT_ID` to Worker `sentinel-signer`, successful deployment of that Worker (version `45194350-5fb8-4aec-8418-45b742147f35`), successful Main Worker deployment, service binding `SIGNER_SERVICE`, and passing production smoke checks.
+- The payment-contract deployment and key-installation steps were skipped in this run because the runtime key/contract configuration were supplied as existing secrets. The run is therefore evidence of successful Signer Worker deployment, not evidence of a new contract deployment or a new key rotation.
+
+The merged `main` revision is `67c2b00007190e98c2038110c7bb0749b3a6f5c2`. Its Main Worker deployment and production smoke test passed in [run 42871954699](https://github.com/ivanmlnnn/sentinel/actions/runs/42871954699). CI, Sentinel checks, CodeQL and Security CI for that revision also completed successfully.
+
+The source default signer account is `freshnook5462.testnet`; `rawvest6817.testnet` is the tracked/recipient account. GitHub masks secret values, so the successful deployment log does not independently reveal which wallet public key corresponds to the installed private-key secret.
+
 ## 1. Verification status at a glance
 
 | Integration / control | What source code implements | What is not automatically proven |
