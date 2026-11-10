@@ -14,7 +14,7 @@ try {
   }
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(row => row.name);
   for (const name of ["investigations", "threat_reports", "privy_webhook_events", "agent_audit",
-    "agent_execution", "signer_nonces", "agent_pending_approvals", "signer_approval_claims"]) {
+    "agent_execution", "signer_nonces", "agent_pending_approvals", "signer_approval_claims", "investigation_owners"]) {
     if (!tables.includes(name)) throw new Error("Missing D1 table after migrations: " + name);
   }
   process.stdout.write("Validated " + files.length + " SQLite D1 migrations and " + tables.length + " tables.\n");
