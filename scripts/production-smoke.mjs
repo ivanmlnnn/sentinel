@@ -23,7 +23,13 @@ const home = await request("/");
 check("dashboard responds", home.status === 200 && home.contentType.includes("text/html"), `HTTP ${home.status}`);
 
 // Public Guest investigation. This creates one normal investigation record in D1.
-const protectedInvestigation = await request("/api/investigate", {\n  method: "POST",\n  body: JSON.stringify({ receiver_account: "merchant.testnet", amount_near: 0.1 })\n});\ncheck("POST /api/investigate rejects a missing bearer token", protectedInvestigation.status === 401, `HTTP ${protectedInvestigation.status}`);\n\nconst investigation = await request("/api/guest/investigate", {
+const protectedInvestigation = await request("/api/investigate", {
+  method: "POST",
+  body: JSON.stringify({ receiver_account: "merchant.testnet", amount_near: 0.1 })
+});
+check("POST /api/investigate rejects a missing bearer token", protectedInvestigation.status === 401, `HTTP ${protectedInvestigation.status}`);
+
+const investigation = await request("/api/guest/investigate", {
   method: "POST",
   body: JSON.stringify({
     sender_account: "agent.testnet",
