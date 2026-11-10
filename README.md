@@ -20,14 +20,35 @@ Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verifi
 - **[Merged security architecture — PR #3](https://github.com/ivanmlnnn/sentinel/pull/3)** — isolated signer, actor-bound approval and replay protections.
 - **[Merged Ed25519 verdict attestation — PR #10](https://github.com/ivanmlnnn/sentinel/pull/10)** — signed preflight decisions bound to the exact payment intent.
 - **[Live dashboard](https://sentinel.ivmaladin.workers.dev)** · **[Judge Demo](docs/JUDGE_DEMO.md)** · **[Secure Agent Pipeline](docs/SECURE_AGENT_PIPELINE.md)**.
-- **Latest deployment proof:** [Main + isolated Signer run 42901218870](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218870) — both Workers deployed and 8/8 production HTTP smoke checks passed.
-- **Latest security proof:** [Sentinel checks 42901218667](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218667), [CodeQL 42901218658](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218658), and [Security CI 42901218721](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218721).
+- **Latest Main Worker deployment proof:** [Cloudflare release run 42913399162](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399162) — Main Worker version `91d0798d-3af0-4853-a6ae-1e951e3eb8c7`, remote D1 migration checks, and 8/8 production HTTP smoke checks passed. The Signer Worker was unchanged in this release.
+- **Latest security proof:** [Sentinel checks 42913399066](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399066), [CodeQL 42913399079](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399079), and [Security CI 42913399216](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399216).
 
-**Latest main release — 11 November 2026:** commit `281759475b4f8d72735cc3c43ae1f4b609df38b6` passed **127/127 automated tests**, the prompt-injection regression (`DENIED - SENTINEL_BLOCK`; `Signer invoked: NO`), validation of 8 Main D1 migrations (10 tables, 24 indexes) and 1 Signer D1 migration (3 tables, 7 indexes), both Worker bundle checks, and the NEAR payment-contract WASM build. [Main + isolated Signer deployment run](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218870) completed successfully: Signer Worker version `98dc36e1-f9ef-4f6e-b4a5-f28de4a59661`, Main Worker version `df27ffb5-cafc-4ab0-bedc-b1ff8bf4cfa7`, and **8/8 production HTTP smoke checks passed**. [Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218721), [Sentinel checks](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218667), and [CodeQL](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218658) all completed successfully. The separate [local stress lab report](docs/INDEPENDENT_LOCAL_STRESS_LAB.md) records simulation-only results and explicitly does not represent D1 concurrency, production latency, or live NEAR transaction evidence. These workflow records prove the listed build, deployment, and HTTP checks; they do not substitute for a separately verifiable live payment transaction.
+**Historical main release — 11 November 2026:** commit `281759475b4f8d72735cc3c43ae1f4b609df38b6` passed **127/127 automated tests**, the prompt-injection regression (`DENIED - SENTINEL_BLOCK`; `Signer invoked: NO`), validation of 8 Main D1 migrations (10 tables, 24 indexes) and 1 Signer D1 migration (3 tables, 7 indexes), both Worker bundle checks, and the NEAR payment-contract WASM build. [Main + isolated Signer deployment run](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218870) completed successfully: Signer Worker version `98dc36e1-f9ef-4f6e-b4a5-f28de4a59661`, Main Worker version `df27ffb5-cafc-4ab0-bedc-b1ff8bf4cfa7`, and **8/8 production HTTP smoke checks passed**. [Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218721), [Sentinel checks](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218667), and [CodeQL](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218658) all completed successfully. The separate [local stress lab report](docs/INDEPENDENT_LOCAL_STRESS_LAB.md) records simulation-only results and explicitly does not represent D1 concurrency, production latency, or live NEAR transaction evidence. These workflow records prove the listed build, deployment, and HTTP checks; they do not substitute for a separately verifiable live payment transaction.
 
 **Gemini migration validation in [PR #13](https://github.com/ivanmlnnn/sentinel/pull/13):** 135/135 automated tests passed, including five Gemini adapter tests; Main and Signer D1 migrations validated; NEAR payment-contract WASM release build passed; [Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42906396166) and [CodeQL JavaScript analysis](https://github.com/ivanmlnnn/sentinel/actions/runs/42906396384) passed; both Cloudflare Worker preview builds passed. See the [Gemini migration verification record](docs/END_TO_END_VERIFICATION.md#9-gemini-provider-migration--11-november-2026). Production activation requires the `GEMINI_API_KEY` secret on the Main Worker.
 
 **Merged-main release (commit `7e88eee64954dbf61ce6e28dc4c31530c3ce14b2`):** production deployment succeeded, 135/135 automated tests passed, NEAR payment-contract WASM release build passed, CodeQL and Security CI passed, and production HTTP smoke checks passed 8/8. See [Deploy run #42907136456](https://github.com/ivanmlnnn/sentinel/actions/runs/42907136456) and the [end-to-end verification record](docs/END_TO_END_VERIFICATION.md#10-merged-main-gemini-production-release--11-november-2026). Live Gemini conversations still require `GEMINI_API_KEY` to be configured on the production Main Worker.
+
+
+
+## Latest merged-main release — 11 November 2026
+
+Commit [`c7bf59d`](https://github.com/ivanmlnnn/sentinel/commit/c7bf59df0b5596e086f8011ef95057bf33bb1e3e) includes the agent-result placement update and was deployed by [Cloudflare release run #42913399162](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399162).
+
+| Verification | Result | Evidence |
+|---|---|---|
+| Automated tests | **136 passed, 0 failed** | [Sentinel checks #42913399066](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399066) and deployment job log |
+| Main D1 remote migrations | **PASS — no migrations pending** | [Deployment run #42913399162](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399162) |
+| Signer D1 remote migrations | **PASS — no migrations pending** | Same deployment run |
+| Main Worker deployment | **PASS** — version `91d0798d-3af0-4853-a6ae-1e951e3eb8c7` | Same deployment run |
+| Isolated Signer Worker | **Unchanged** — Wrangler reported no new target to deploy; current version ID `97e07af1-dfc3-42d0-b980-7e698d977d8e` | Same deployment run |
+| Production HTTP smoke | **8/8 PASS** | Same deployment run; dashboard HTTP 200 and expected Turnstile, bearer-token, and internal-HMAC rejections |
+| Security CI | **PASS** | [Run #42913399216](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399216) |
+| CodeQL | **PASS** | [Run #42913399079](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399079) |
+
+The deployment log confirms both remote D1 migration commands completed with “No migrations to apply”, the Main Worker was deployed, and all eight production HTTP smoke checks passed. The Signer Worker code was unchanged in this release, so Wrangler did not publish a new Signer deployment target.
+
+The independent local stress lab remains a separate evidence set: its nine checks passed in a local SQLite/Python simulation, including nonce, approval, idempotency, spend-cap and simulated multi-instance races. These results are not represented as production D1 concurrency measurements.
 
 ## What is implemented
 
