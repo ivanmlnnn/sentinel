@@ -1,4 +1,4 @@
-import { Account, JsonRpcProvider, KeyPairSigner, PublicKey, actions } from "near-api-js";
+import { Account, JsonRpcProvider, KeyPairSigner, actions } from "near-api-js";
 
 const RPC = "https://rpc.testnet.fastnear.com";
 const accountId = String(process.env.NEAR_AGENT_SIGNER_ACCOUNT_ID || "").toLowerCase();
@@ -46,16 +46,6 @@ if (keys.some(key => key.public_key === restrictedPublicKey)) {
   throw new Error("RESTRICTED_KEY_ALREADY_EXISTS");
 }
 
-// Fail closed unless there is exactly one non-admin FullAccess key to revoke.
-// This avoids deleting an unknown personal/admin key by accident.
-const oldRuntimeKeys = keys.filter(key =>
-  key.public_key !== adminPublicKey && key.access_key?.permission === "FullAccess"
-);
-if (oldRuntimeKeys.length !== 1) {
-  throw new Error("EXPECTED_EXACTLY_ONE_OLD_RUNTIME_FULL_ACCESS_KEY");
-}
-const oldRuntimePublicKey = oldRuntimeKeys[0].public_key;
-
 const provider = new JsonRpcProvider({ url: RPC });
 const account = new Account(accountId, provider);
 const tx = await account.createTransaction({
@@ -67,7 +57,6 @@ const tx = await account.createTransaction({
       ["pay"],
       250_000_000_000_000_000_000_000n
     ),
-    actions.deleteKey(PublicKey.fromString(oldRuntimePublicKey))
   ],
   publicKey: adminPublicKey
 });
@@ -83,13 +72,11 @@ const after = await rpc("query", {
 }, "sentinel-access-key-list-after");
 const installed = (after.keys || []).find(key => key.public_key === restrictedPublicKey);
 const permission = installed?.access_key?.permission?.FunctionCall;
-const oldStillPresent = (after.keys || []).some(key => key.public_key === oldRuntimePublicKey);
 if (!permission ||
     permission.receiver_id !== contractId ||
     !Array.isArray(permission.method_names) ||
     permission.method_names.length !== 1 || permission.method_names[0] !== "pay" ||
-    BigInt(permission.allowance || "0") !== 250_000_000_000_000_000_000_000n ||
-    oldStillPresent) {
+    BigInt(permission.allowance || "0") !== 250_000_000_000_000_000_000_000n) {
   throw new Error("RESTRICTED_KEY_POSTCHECK_FAILED");
 }
 
@@ -101,5 +88,5 @@ console.log(JSON.stringify({
   allowed_contract: permission.receiver_id,
   allowed_methods: permission.method_names,
   gas_allowance_yocto: String(permission.allowance),
-  revoked_old_runtime_public_key: oldRuntimePublicKey
+  admin_full_access_key_preserved: true
 }, null, 2));
