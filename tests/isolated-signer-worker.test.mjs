@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { verifyInternalRequest, reserveNonce, nearToMicro, default as signerWorker } from "../signer-worker/src/index.mjs";
+import { verifyInternalRequest, reserveNonce, nearToMicro, execute, default as signerWorker } from "../signer-worker/src/index.mjs";
 
 async function signedRequest({ secret, body, timestamp = String(Math.floor(Date.now() / 1000)), nonce = "123e4567-e89b-42d3-a456-426614174000" }) {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret),
@@ -58,4 +58,17 @@ test("nonce ledger rejects a duplicate internal request nonce", async () => {
   } } };
   assert.equal(await reserveNonce(env, "123e4567-e89b-42d3-a456-426614174000"), true);
   assert.equal(await reserveNonce(env, "123e4567-e89b-42d3-a456-426614174000"), false);
+});
+
+test("signer kill switch denies before reading key material or touching D1", async () => {
+  const result = await execute({
+    intent: { receiver_account: "rawvest6817.testnet", amount_near: 0.01 },
+    actor: "did:privy:test",
+    idempotency_key: "123e4567-e89b-42d3-a456-426614174000"
+  }, "Bearer test", { sub: "did:privy:test" }, {
+    NEAR_NETWORK: "testnet",
+    NEAR_AGENT_KILL_SWITCH: "true"
+  });
+  assert.equal(result.executed, false);
+  assert.equal(result.reason, "KILL_SWITCH_ACTIVE");
 });
