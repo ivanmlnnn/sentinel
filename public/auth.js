@@ -124,7 +124,7 @@ function AuthGate() {
 
       if (!dashboardStarted) {
         dashboardStarted = true;
-        import('./app.js?v=20261110-turnstile-server-verify-guest-recovery').catch((error) => {
+        import('./app.js?v=20261110-signout-turnstile-fix1').catch((error) => {
           console.error('Sentinel dashboard failed to initialize:', error);
           dashboardStarted = false;
           setAuthError('Dashboard failed to load. Please reload and try again.');
