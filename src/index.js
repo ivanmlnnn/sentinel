@@ -1,6 +1,6 @@
 import { onRequestGet as metricsGet } from "../functions/api/metrics.js";
 import { onRequestGet as threatsGet, onRequestPost as threatsPost, onRequestVerifyPost as threatsVerifyPost } from "../functions/api/threats.js";
-import { onRequestPost as investigatePost } from "../functions/api/investigate.js";
+import { onRequestPost as investigatePost, onRequestGuestPost as guestInvestigatePost } from "../functions/api/investigate.js";
 import { onRequestPost as aiReviewPost } from "../functions/api/ai-review.js";
 import { onRequestPost as privyWebhookPost } from "../functions/api/privy-webhook.js";
 
@@ -10,6 +10,7 @@ const routes = {
   "POST /api/threats": threatsPost,
   "POST /api/threats/verify": threatsVerifyPost,
   "POST /api/investigate": investigatePost,
+  "POST /api/guest/investigate": guestInvestigatePost,
   "POST /api/ai-review": aiReviewPost,
   "POST /api/privy-webhook": privyWebhookPost
 };
@@ -66,7 +67,7 @@ export default {
 
           // Guest investigation stays public for the judge demo, but receives
           // a stricter per-IP budget because it fans out to several upstream APIs.
-          if (request.method === "POST" && url.pathname === "/api/investigate") {
+          if (request.method === "POST" && ["/api/investigate", "/api/guest/investigate"].includes(url.pathname)) {
             const investigationAllowed = await enforceRateLimit(env.INVESTIGATION_RATE_LIMITER, ip);
             if (!investigationAllowed) {
               if (!env.INVESTIGATION_RATE_LIMITER) {
