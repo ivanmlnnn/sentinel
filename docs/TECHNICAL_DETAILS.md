@@ -101,7 +101,7 @@ These are known coverage gaps, not hidden capabilities.
 
 ## 4. Quick start — try it without dashboard login
 
-You do **not** need Privy OTP to inspect the live dashboard in Guest mode, run repository tests, or execute the offline attack simulation. Guest mode is a public, read-only preview and is not an authenticated Privy session.
+You do **not** need Privy OTP to inspect the live dashboard in Guest mode, run repository tests, or execute the offline attack simulation. Guest mode is a public preview that is read-only with respect to wallet/signing and is not an authenticated Privy session. Guest scans are rate-limited and stored in D1.
 
 ### Option A — Run automated tests
 
@@ -156,7 +156,7 @@ The response should contain the investigation decision and supporting assessment
 4. Connect a Testnet account. Sentinel uses the public account ID to autofill the address field.
 5. Run **Check address** and inspect the decision, risk factors, and evidence cards.
 
-**Wallet connection is deliberately non-custodial and read-only in this demo:** Sentinel reads the connected account identity for convenience. It does not request a seed phrase, private key, transaction signature, or permission to transfer funds. Guest and Privy users can both connect a compatible wallet. Guest mode remains a public UI preview; protected report and AI-review actions require a valid Privy token.
+**Wallet connection is deliberately non-custodial and read-only in this demo:** Sentinel reads the connected account identity for convenience. It does not request a seed phrase, private key, transaction signature, or permission to transfer funds. Guest and Privy users can both connect a compatible wallet. Guest mode remains a public UI preview; authenticated investigations, report submissions, and AI-review actions require a valid Privy token.
 
 ## 6. Agent guard: what is implemented vs. what is not
 
@@ -186,7 +186,7 @@ A production design needs a trusted signing service that checks the exact receiv
 
 **Implemented for protected routes:** the Worker verifies the Privy ES256 bearer token signature against the app JWKS and checks issuer, audience, subject, issued-at, and expiry before accepting authenticated investigation, threat-report writes, or AI-review requests. The browser obtains the access token from Privy and attaches it to authenticated API calls. Unit tests cover valid signature, missing token, expiry, wrong audience, and tampering. Only the separate Guest investigation route and public GET endpoints remain open by design.
 
-Public account investigation and GET endpoints are deliberately unauthenticated to support Guest screening. Any new write, identity-specific, or cost-bearing endpoint must use the same server-side verifier before it performs work. Never trust client-side state, email strings, or user IDs supplied in request JSON as authorization. The existing Privy OTP flow remains unchanged.
+Only `POST /api/guest/investigate` and public GET endpoints are deliberately unauthenticated to support Guest screening. The normal `POST /api/investigate` route requires a server-verified Privy token. The Guest route has a stricter Cloudflare rate limit and stores a scan record in D1. Any new write, identity-specific, or cost-bearing endpoint must use the same server-side verifier before it performs work. Never trust client-side state, email strings, or user IDs supplied in request JSON as authorization. The existing Privy OTP flow remains unchanged.
 
 ## 8. NEAR wallet ecosystem — one connection layer, multiple wallets
 
@@ -308,7 +308,7 @@ npx wrangler@latest deploy
 
 Use a long random value for `THREAT_REVIEW_TOKEN`; store it only as a Cloudflare Worker secret. Do not paste it into GitHub, README files, browser code, or chat. The public app ID is not a secret. If overriding the built-in Privy app ID, configure `PRIVY_APP_ID` in the Worker environment to match the Privy app used by the browser.
 
-After deployment, verify all of the following in a fresh browser session: Guest entry works without waiting for Privy; a public `POST /api/investigate` succeeds; `POST /api/threats` and `POST /api/ai-review` reject missing/invalid bearer tokens; a real Privy session can submit a threat report; and `POST /api/threats/verify` rejects requests until the review secret is configured. The repository changes are pushed to `main`, but a live Cloudflare deployment and these production smoke tests have not been verified from this workspace.
+The deployment workflow now validates Wrangler configuration, runs tests, deploys the Worker, and performs production HTTP smoke checks. The latest verified smoke checks confirm the dashboard returns HTTP 200, unauthenticated `POST /api/investigate` returns 401, the public Guest investigation returns a decision, and unauthenticated `POST /api/threats` and `POST /api/ai-review` return 401. A real Privy sign-in session and fresh-browser visual check still require manual verification.
 
 ## 12. Development timeline and pre-existing repository history
 
@@ -330,4 +330,4 @@ Additional implementation commits recorded on 10 November include [Guest preview
 
 NEAR Sentinel is a hackathon prototype for **AI Security & Defense**. It currently demonstrates account investigation, deterministic policy outcomes, outgoing-activity attribution, fail-closed handling of incomplete assessments, an application-level pre-sign guard, automated tests, and an offline prompt-injection denial simulation.
 
-Privy tokens are now verified server-side for protected write/cost-bearing routes, but the read-only investigation and GET endpoints remain public by design, and the live Cloudflare deployment still needs a real-session/invalid-token smoke test. The project does **not** yet demonstrate a non-bypassable signer boundary, a restricted function-call access key enforced on Testnet, or a live autonomous agent transaction flow. Exact account-creation age, pre-first-scan contract history, multi-hop agent graphs, and a federated cross-project threat feed also remain outside the current implementation. These boundaries are stated explicitly so reviewers can distinguish working code from deployment-dependent or future work.
+Privy tokens are now verified server-side for authenticated investigations and protected write/cost-bearing routes. Only the separate rate-limited Guest investigation route and public GET endpoints remain unauthenticated. Production HTTP smoke checks pass, but a real Privy session and fresh-browser visual check still need manual verification. The project does **not** yet demonstrate a non-bypassable signer boundary, a restricted function-call access key enforced on Testnet, or a live autonomous agent transaction flow. Exact account-creation age, pre-first-scan contract history, multi-hop agent graphs, and a federated cross-project threat feed also remain outside the current implementation. These boundaries are stated explicitly so reviewers can distinguish working code from deployment-dependent or future work.
