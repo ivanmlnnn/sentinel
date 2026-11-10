@@ -77,7 +77,8 @@ export async function onRequestPost({ request, env }) {
   const validation = validatePaymentIntent(intent, env);
   if (!validation.ok || !amountMicro) {
     const reason = validation.ok ? "AMOUNT_PRECISION_UNSUPPORTED" : validation.reason;
-    await writeAudit(env, { id: idempotencyKey, actor: identity.sub, event: "AGENT_PAYMENT_PROPOSAL",
+    const savedApproval = await env.DB.prepare("SELECT expires_at FROM agent_pending_approvals WHERE id = ? AND actor = ?").bind(idempotencyKey, identity.sub).first();
+  await writeAudit(env, { id: idempotencyKey, actor: identity.sub, event: "AGENT_PAYMENT_PROPOSAL",
       receiver: typeof intent.receiver_account === "string" ? intent.receiver_account.slice(0, 64) : null,
       amount: Number.isFinite(Number(intent.amount_near)) ? Number(intent.amount_near) : null, reason });
     return json({ run_id: idempotencyKey, status: "DENIED", reason,
@@ -110,7 +111,7 @@ export async function onRequestPost({ request, env }) {
       proposal: { receiver_account: intent.receiver_account, amount_near: intent.amount_near },
       sentinel: assessment ? { decision: assessment.decision || null, risk_score: assessment.risk_score ?? null,
         assessment_status: assessment.assessment_status || null } : null,
-      agent_message: agentText, transaction_hash: null, execution_enabled: false });
+      agent_message: agentText, expires_at: savedApproval?.expires_at || null, transaction_hash: null, execution_enabled: false });
   }
 
   // Proposals never spend automatically. A separate authenticated approval
