@@ -1,4 +1,6 @@
 import { performance } from "node:perf_hooks";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const PROD_HOSTS = new Set(["sentinel.ivmaladin.workers.dev"]);
 const integer = (name, fallback, min, max) => {
@@ -88,7 +90,7 @@ async function run() {
   if (failed > 0 || next < total) process.exitCode = 1;
 }
 
-if (process.argv[1] && new URL(import.meta.url).pathname === process.argv[1]) {
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try { await run(); }
   catch (error) { console.error(error.message); process.exitCode = 1; }
 }
