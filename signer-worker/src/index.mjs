@@ -16,7 +16,7 @@ function hexToBytes(value) {
   if (!/^(?:[0-9a-f]{2})+$/i.test(value)) return null;
   return Uint8Array.from(value.match(/.{2}/g), byte => parseInt(byte, 16));
 }
-function nearToMicro(value) {
+export function nearToMicro(value) {
   const raw = typeof value === "number" ? String(value) : String(value ?? "");
   if (!/^(?:0|[1-9][0-9]*)(?:\.[0-9]{1,6})?$/.test(raw)) return null;
   const [whole, fraction = ""] = raw.split(".");
@@ -43,7 +43,8 @@ export async function verifyInternalRequest(request, rawBody, env) {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
   return crypto.subtle.verify("HMAC", key, supplied, new TextEncoder().encode(timestamp + "." + nonce + "." + rawBody));
 }
-async function reserveNonce(env, nonce) {
+export async function reserveNonce(env, nonce) {
+  try { await env.DB.prepare("DELETE FROM signer_nonces WHERE created_at < datetime('now', '-1 day')").run(); } catch { /* cleanup is best-effort; nonce insertion remains mandatory */ }
   try {
     await env.DB.prepare("INSERT INTO signer_nonces (nonce, created_at) VALUES (?, CURRENT_TIMESTAMP)").bind(nonce).run();
     return true;
