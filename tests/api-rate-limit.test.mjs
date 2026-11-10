@@ -97,3 +97,56 @@ test("wallet investigation fails closed when Turnstile is not configured", async
   assert.equal(response.status, 503);
   assert.equal((await response.json()).error, "TURNSTILE_NOT_CONFIGURED");
 });
+
+
+test("Turnstile rejects a valid token bound to the wrong hostname", async t => {
+  t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({
+    success: true,
+    hostname: "attacker.example",
+    action: "track_wallet"
+  }), { status: 200, headers: { "content-type": "application/json" } }));
+  const response = await worker.fetch(
+    new Request("https://sentinel.ivmaladin.workers.dev/api/guest/investigate", {
+      method: "POST",
+      headers: { "content-type": "application/json", "CF-Connecting-IP": "203.0.113.14" },
+      body: JSON.stringify({ receiver_account: "merchant.testnet", amount_near: 0.1, turnstile_token: "test-token" })
+    }),
+    { API_RATE_LIMITER: limiter(true), INVESTIGATION_RATE_LIMITER: limiter(true), TURNSTILE_SECRET: "test-only-secret" },
+    {}
+  );
+  assert.equal(response.status, 403);
+  assert.equal((await response.json()).error, "TURNSTILE_VERIFICATION_FAILED");
+});
+
+test("Turnstile rejects a token bound to a different action", async t => {
+  t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({
+    success: true,
+    hostname: "sentinel.ivmaladin.workers.dev",
+    action: "other_action"
+  }), { status: 200, headers: { "content-type": "application/json" } }));
+  const response = await worker.fetch(
+    new Request("https://sentinel.ivmaladin.workers.dev/api/guest/investigate", {
+      method: "POST",
+      headers: { "content-type": "application/json", "CF-Connecting-IP": "203.0.113.15" },
+      body: JSON.stringify({ receiver_account: "merchant.testnet", amount_near: 0.1, turnstile_token: "test-token" })
+    }),
+    { API_RATE_LIMITER: limiter(true), INVESTIGATION_RATE_LIMITER: limiter(true), TURNSTILE_SECRET: "test-only-secret" },
+    {}
+  );
+  assert.equal(response.status, 403);
+  assert.equal((await response.json()).error, "TURNSTILE_VERIFICATION_FAILED");
+});
+
+test("Turnstile rejects missing tokens before calling Siteverify", async () => {
+  const response = await worker.fetch(
+    new Request("https://sentinel.ivmaladin.workers.dev/api/guest/investigate", {
+      method: "POST",
+      headers: { "content-type": "application/json", "CF-Connecting-IP": "203.0.113.16" },
+      body: JSON.stringify({ receiver_account: "merchant.testnet", amount_near: 0.1 })
+    }),
+    { API_RATE_LIMITER: limiter(true), INVESTIGATION_RATE_LIMITER: limiter(true), TURNSTILE_SECRET: "test-only-secret" },
+    {}
+  );
+  assert.equal(response.status, 400);
+  assert.equal((await response.json()).error, "TURNSTILE_TOKEN_REQUIRED");
+});
