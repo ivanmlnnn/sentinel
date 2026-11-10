@@ -11,11 +11,11 @@ function microToNear(micro) {
   const fraction = String(micro % 1_000_000).padStart(6, "0").replace(/0+$/, "");
   return fraction ? whole + "." + fraction : String(whole);
 }
-async function callIsolatedSigner({ intent, actor, idempotencyKey, authorizationHeader, env }) {
+async function callIsolatedSigner({ intent, actor, idempotencyKey, approvalId, authorizationHeader, env }) {
   if (!env.SIGNER_SERVICE || !env.AGENT_SIGNER_HMAC_SECRET) {
     return { executed: false, status: "DENIED", reason: "ISOLATED_SIGNER_NOT_CONFIGURED", transaction_hash: null };
   }
-  const payload = JSON.stringify({ intent, actor, idempotency_key: idempotencyKey });
+  const payload = JSON.stringify({ intent, actor, idempotency_key: idempotencyKey, approval_id: approvalId });
   const timestamp = String(Math.floor(Date.now() / 1000));
   const nonce = crypto.randomUUID();
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(env.AGENT_SIGNER_HMAC_SECRET),
@@ -96,7 +96,7 @@ export async function onRequestPost({ request, env }) {
     }, execution_enabled: false });
   }
 
-  const execution = await callIsolatedSigner({ intent, actor: identity.sub, idempotencyKey,
+  const execution = await callIsolatedSigner({ intent, actor: identity.sub, idempotencyKey, approvalId,
     authorizationHeader: request.headers.get("authorization") || "", env });
   const state = execution.executed ? "EXECUTED" : execution.status === "UNKNOWN" ? "UNKNOWN" : "DENIED";
   await updateApproval(env, approvalId, state);
