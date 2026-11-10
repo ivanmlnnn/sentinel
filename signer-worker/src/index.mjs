@@ -191,6 +191,28 @@ export async function verifyFinalTransfer(hash, signerAccountId, receiverAccount
 async function investigate(intent, authorizationHeader, env) {
   const baseValue = String(env.SENTINEL_PREFLIGHT_URL || "");
   const base = baseValue.endsWith("/") ? baseValue.slice(0, -1) : baseValue;
+  const secret = env.AGENT_SIGNER_HMAC_SECRET;
+  if (!base.startsWith("https://") || typeof secret !== "string" || new TextEncoder().encode(secret).byteLength < 32) {
+    throw new Error("PREFLIGHT_AUTH_NOT_CONFIGURED");
+  }
+  const body = JSON.stringify({ receiver_account: intent.receiver_account, amount_near: intent.amount_near });
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const nonce = crypto.randomUUID();
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const signature = Array.from(new Uint8Array(await crypto.subtle.sign("HMAC", key,
+    new TextEncoder().encode(timestamp + "." + nonce + "." + body))), byte => byte.toString(16).padStart(2, "0")).join("");
+  const response = await fetch(base + "/api/internal/investigate", {
+    method: "POST", headers: { "content-type": "application/json", authorization: authorizationHeader,
+      "x-sentinel-timestamp": timestamp, "x-sentinel-nonce": nonce, "x-sentinel-signature": signature },
+    body, signal: AbortSignal.timeout(20000)
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok || !data) throw new Error("SIGNER_PREFLIGHT_FAILED");
+  return data;
+}
+  const baseValue = String(env.SENTINEL_PREFLIGHT_URL || "");
+  const base = baseValue.endsWith("/") ? baseValue.slice(0, -1) : baseValue;
   if (!base.startsWith("https://")) throw new Error("PREFLIGHT_URL_NOT_CONFIGURED");
   const response = await fetch(base + "/api/investigate", {
     method: "POST", headers: { "content-type": "application/json", authorization: authorizationHeader },
