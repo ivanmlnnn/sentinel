@@ -32,7 +32,7 @@ function microToNearString(micro) {
 function deny(reason, status = "DENIED") {
   return { executed: false, status, reason, transaction_hash: null };
 }
-async function verifyInternalRequest(request, rawBody, env) {
+export async function verifyInternalRequest(request, rawBody, env) {
   const secret = env.AGENT_SIGNER_HMAC_SECRET;
   const timestamp = request.headers.get("x-sentinel-timestamp") || "";
   const nonce = request.headers.get("x-sentinel-nonce") || "";
