@@ -1,0 +1,101 @@
+name: Deploy Sentinel Testnet
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_deploy:
+        description: "Type DEPLOY_SENTINEL_TESTNET to apply remote D1 migrations and deploy both Workers"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+concurrency:
+  group: sentinel-testnet-deployment
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify exact source before deployment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout selected revision
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Scan repository for secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+      - name: Validate syntax, migrations, and both Worker bundles
+        run: |
+          node --check src/index.js
+          node --check signer-worker/src/index.mjs
+          node --check public/app.js
+          npm run check:d1
+          npx wrangler@4.159.0 deploy --dry-run
+          npx wrangler@4.159.0 deploy --config signer-worker/wrangler.jsonc --dry-run
+      - name: Run regression suite and prompt-injection demo
+        run: |
+          npm test
+          npm run demo:attack
+      - name: Analyze with CodeQL
+        uses: github/codeql-action/analyze@v3
+
+  deploy:
+    name: Apply migrations and deploy Testnet Workers
+    needs: verify
+    if: ${{ github.event.inputs.confirm_deploy == 'DEPLOY_SENTINEL_TESTNET' }}
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout verified revision
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install deployment tooling
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Authenticate with Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+      - name: Apply idempotent Main Worker D1 migrations
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler@4.159.0 d1 migrations apply sentinel-db --remote --config wrangler.jsonc
+      - name: Apply idempotent Signer D1 migrations
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler@4.159.0 d1 migrations apply db2 --remote --config signer-worker/wrangler.jsonc
+      - name: Deploy private signer first (kill switch remains fail-closed)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler@4.159.0 deploy --config signer-worker/wrangler.jsonc
+      - name: Deploy Main Worker and dashboard assets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler@4.159.0 deploy --config wrangler.jsonc
+      - name: Run production fail-closed smoke checks
+        env:
+          SENTINEL_BASE_URL: https://sentinel.ivmaladin.workers.dev
+        run: npm run smoke:test
