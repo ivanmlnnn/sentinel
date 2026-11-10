@@ -56,3 +56,17 @@ test("public investigation has a stricter per-IP limit than other API routes", a
   assert.equal(investigationLimiter.calls.length, 1);
   assert.deepEqual(apiLimiter.calls[0], { key: "203.0.113.11" });
 });
+
+test("authenticated investigation rejects a missing Privy token after rate-limit checks", async () => {
+  const response = await worker.fetch(
+    new Request("https://sentinel.example/api/investigate", {
+      method: "POST",
+      headers: { "content-type": "application/json", "CF-Connecting-IP": "203.0.113.12" },
+      body: JSON.stringify({ receiver_account: "merchant.testnet", amount_near: 0.1 })
+    }),
+    { API_RATE_LIMITER: limiter(true), INVESTIGATION_RATE_LIMITER: limiter(true) },
+    {}
+  );
+  assert.equal(response.status, 401);
+  assert.equal((await response.json()).error, "UNAUTHORIZED");
+});
