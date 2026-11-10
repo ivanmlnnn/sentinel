@@ -139,14 +139,24 @@ function AuthGate() {
     window.SENTINEL_GUEST = true;
     try { sessionStorage.setItem('sentinel_privy_guest', '1'); } catch {}
 
+    let timeoutId;
     try {
-      await createGuestAccount();
+      await Promise.race([
+        createGuestAccount(),
+        new Promise((_, reject) => {
+          timeoutId = window.setTimeout(() => reject(new Error('GUEST_SESSION_TIMEOUT')), 15000);
+        })
+      ]);
     } catch (error) {
       console.error('Privy Guest Account creation failed:', error);
       window.SENTINEL_GUEST = false;
       try { sessionStorage.removeItem('sentinel_privy_guest'); } catch {}
-      setAuthError('Guest access could not be started. Check that Guest Accounts are enabled in Privy and try again.');
+      setAuthError(error?.message === 'GUEST_SESSION_TIMEOUT'
+        ? 'Guest session timed out. Retry or use email sign-in.'
+        : 'Guest access could not be started. Check that Guest Accounts are enabled in Privy and try again.');
       setGuestLoading(false);
+    } finally {
+      window.clearTimeout(timeoutId);
     }
   };
 
