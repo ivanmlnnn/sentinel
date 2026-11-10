@@ -132,10 +132,10 @@ This is an **offline simulation** of the application-level guard. It does not co
 
 ### Option C — Test the deployed investigation API with curl
 
-This calls the investigation endpoint directly and does not open the dashboard or require a dashboard OTP session:
+This calls the explicit Guest preview endpoint directly and does not open the dashboard or require a dashboard OTP session:
 
 ```bash
-curl -i -X POST "https://sentinel.ivmaladin.workers.dev/api/investigate" \
+curl -i -X POST "https://sentinel.ivmaladin.workers.dev/api/guest/investigate" \
   -H "Content-Type: application/json" \
   --data '{
     "sender_account": "agent.testnet",
@@ -146,7 +146,7 @@ curl -i -X POST "https://sentinel.ivmaladin.workers.dev/api/investigate" \
 
 The response should contain the investigation decision and supporting assessment fields. Results depend on the live API, network selection, and upstream data availability.
 
-**Authentication boundary:** public read-only investigation is intentionally available without a dashboard session so Guest users can try the product. Protected write and AI-review routes use server-side Privy token verification. This public `curl` example demonstrates investigation behavior; it is not an authenticated user-only endpoint.
+**Authentication boundary:** `POST /api/investigate`, `POST /api/threats`, and `POST /api/ai-review` require a server-verified Privy token. The separate `POST /api/guest/investigate` route is public for the judge demo and has a stricter Cloudflare rate limit. It persists a scan record in D1, but it cannot submit threat reports, request AI review, or sign transactions. Public GET endpoints remain available for dashboard display.
 
 ## 5. Live dashboard walkthrough
 
@@ -184,7 +184,7 @@ A production design needs a trusted signing service that checks the exact receiv
 
 **Working:** Privy email OTP is used by the dashboard. The user receives a one-time code by email and completes verification in the client sign-in flow.
 
-**Implemented for protected routes:** the Worker verifies the Privy ES256 bearer token signature against the app JWKS and checks issuer, audience, subject, issued-at, and expiry before accepting threat-report writes or AI-review requests. The browser obtains the access token from Privy and attaches it to those API calls. Unit tests cover valid signature, missing token, expiry, wrong audience, and tampering. Public read-only investigation and public GET endpoints remain open by design for Guest mode.
+**Implemented for protected routes:** the Worker verifies the Privy ES256 bearer token signature against the app JWKS and checks issuer, audience, subject, issued-at, and expiry before accepting authenticated investigation, threat-report writes, or AI-review requests. The browser obtains the access token from Privy and attaches it to authenticated API calls. Unit tests cover valid signature, missing token, expiry, wrong audience, and tampering. Only the separate Guest investigation route and public GET endpoints remain open by design.
 
 Public account investigation and GET endpoints are deliberately unauthenticated to support Guest screening. Any new write, identity-specific, or cost-bearing endpoint must use the same server-side verifier before it performs work. Never trust client-side state, email strings, or user IDs supplied in request JSON as authorization. The existing Privy OTP flow remains unchanged.
 
