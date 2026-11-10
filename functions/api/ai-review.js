@@ -3,7 +3,7 @@ import { json, readJson, verifyPrivyAccessToken } from "./_shared.js";
 export async function onRequestPost({ request, env }) {
   const identity = await verifyPrivyAccessToken(request, env);
   if (!identity) return json({ error: "UNAUTHORIZED", detail: "A valid Privy app access token is required for AI review." }, 401);
-  const body = await readJson(request);
+  const body = await readJson(request, 2048);
   const id = String(body?.investigation_id || "");
   if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ error: "Valid investigation_id is required." }, 400);
   const item = await env.DB.prepare("SELECT id, receiver_account, amount_near, decision, risk_score, risk_factors, evidence, ai_explanation FROM investigations WHERE id = ?").bind(id).first();
