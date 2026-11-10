@@ -68,6 +68,7 @@ The repository's automated attack demo is an offline regression test. It is not 
 - Anthropic tool-calling agent whose output is treated as an untrusted proposal.
 - Actor-bound, exact-intent, five-minute human approval plus a signer-side one-time approval claim before payment execution.
 - Separate signer Worker, private service binding, signer-owned D1 ledger (DB2), HMAC-SHA256 timestamp/nonce protection, replay ledger, exact pending-approval claim, NEP-413 wallet signature verification, receiver allowlist, spend caps, kill switch, and conservative `UNKNOWN` handling.
+- Ed25519-signed, short-lived preflight verdicts binding the exact sender, receiver, microNEAR amount, nonce, expiry, decision, and assessment ID. The isolated Signer Worker verifies the signature and exact intent before policy evaluation or payment execution.
 - Contract-scoped NEAR FunctionCall signer path: signer code checks the runtime key against the configured payment contract and the single `pay` method; native NEAR payouts are emitted by the payment contract, which enforces per-payment and UTC-day caps plus one-time approval IDs. The signer checks the exact payout receipt. The maintainer reports that the payment contract was previously deployed; linked Actions runs independently establish successful Worker deployments and runtime secret-upload events.
 - Legacy in-process signing path disabled.
 - Aggregate-only public metrics, private admin report handling, per-investigation owner checks for AI review, bounded JSON parsing, same-origin API mutation checks, security response headers, and CodeQL/secret-scanning CI.
@@ -78,7 +79,7 @@ The signer implementation is in a separate Worker project under `signer-worker/`
 
 **Deployment evidence and source evidence are kept separate.** GitHub Actions records a successful private Signer Worker deployment (version `45194350-5fb8-4aec-8418-45b742147f35`) and successful Main Worker deployments, including a later Main Worker version `455d1be0-150c-4de0-84f7-c9040c99c615`; see the [Judge Evidence Pack](docs/JUDGE_EVIDENCE_PACK.md) for exact run links and scope. The Signer deployment log records runtime secret uploads and the service binding, while the Main deployment log records successful production HTTP smoke checks. The maintainer reports the payment contract was previously deployed and existing restricted signer configuration was reused.
 
-See [Secure Agent Pipeline](docs/SECURE_AGENT_PIPELINE.md) for the trust boundary, [Security Hardening](docs/SECURITY_HARDENING.md) for the access model and Burp Suite test plan, and [SECURITY.md](SECURITY.md) for responsible disclosure.
+See [Signed Verdict](docs/SIGNED_VERDICT.md) for the attestation format and key provisioning. See [Secure Agent Pipeline](docs/SECURE_AGENT_PIPELINE.md) for the trust boundary, [Security Hardening](docs/SECURITY_HARDENING.md) for the access model and Burp Suite test plan, and [SECURITY.md](SECURITY.md) for responsible disclosure.
 
 ## End-to-end verification results
 
