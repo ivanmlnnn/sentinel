@@ -3091,3 +3091,44 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
  .sentinel-auth-card .sentinel-auth-mark{width:190px!important;height:190px!important}
  .sentinel-auth-card .sentinel-login-wordmark{font-size:clamp(27px,8vw,35px)!important}
 }
+
+
+/* Profile is intentionally a compact circular wayang portrait only. */
+.sentinel-profile-chip{padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
+.sentinel-session-control{gap:10px!important}
+.sentinel-session-avatar{width:38px!important;height:38px!important;min-width:38px!important;flex:0 0 38px!important;border:1px solid rgba(232,223,120,.78)!important;border-radius:50%!important;overflow:hidden!important;padding:0!important}
+.sentinel-session-avatar svg{width:100%!important;height:100%!important;display:block!important}
+.sentinel-profile-meta{display:none!important}
+
+/* A true mesh-built character, framed as a clean circle with no captions. */
+.sentinel-auth-card .sentinel-auth-mark.wayang-3d-host{
+ width:clamp(188px,24vw,232px)!important;height:clamp(188px,24vw,232px)!important;
+ margin:0 auto 24px!important;padding:0!important;display:grid!important;place-items:center!important;
+ overflow:hidden!important;border:0!important;border-radius:50%!important;
+ background:radial-gradient(circle at 48% 42%,#174b50 0%,#0b292e 70%,#071b1c 100%)!important;
+ box-shadow:0 0 34px rgba(99,201,239,.16),inset 0 0 22px rgba(0,0,0,.42)!important;
+ cursor:grab!important;touch-action:none!important;user-select:none!important;
+}
+.sentinel-auth-card .sentinel-auth-mark.wayang-3d-host::before,
+.sentinel-auth-card .sentinel-auth-mark.wayang-3d-host::after{content:none!important;display:none!important}
+.sentinel-auth-mark.wayang-3d-host .wayang-3d-canvas{width:100%!important;height:100%!important;display:block!important;border-radius:50%!important;touch-action:none!important;cursor:grab!important}
+.sentinel-auth-mark.wayang-3d-host .wayang-3d-canvas.is-grabbing{cursor:grabbing!important}
+
+/* Smoother loading choreography; keep the original thin animated loading bar visible. */
+.sentinel-auth-card:has(.sentinel-auth-loader){animation:sentinel-session-arrive 1.25s cubic-bezier(.16,1,.3,1) both!important}
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-mark{animation:sentinel-session-emblem 7s cubic-bezier(.45,0,.55,1) infinite!important}
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-loader{opacity:1!important;animation:sentinel-session-rise .9s cubic-bezier(.16,1,.3,1) .38s both!important}
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-loader::before,
+.sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-loader::after{animation:sentinel-loading-sweep 1.8s cubic-bezier(.65,0,.35,1) infinite!important}
+@keyframes sentinel-session-arrive{
+ 0%{opacity:0;transform:translate3d(0,20px,0) scale(.975);filter:blur(7px)}
+ 70%{opacity:1;filter:blur(0)}
+ 100%{opacity:1;transform:translate3d(0,0,0) scale(1);filter:blur(0)}
+}
+@media(prefers-reduced-motion:reduce){
+ .sentinel-auth-card:has(.sentinel-auth-loader),
+ .sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-mark,
+ .sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-loader{animation:none!important}
+ .sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-loader::before,
+ .sentinel-auth-card:has(.sentinel-auth-loader) .sentinel-auth-loader::after{animation:none!important}
+}
