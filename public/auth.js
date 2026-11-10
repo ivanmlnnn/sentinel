@@ -156,11 +156,11 @@ function AuthGate() {
   if (!authenticated) {
     return React.createElement('main', { className: 'sentinel-auth-screen' },
       React.createElement('section', { className: 'sentinel-auth-card' },
-        React.createElement('button', { className: 'sentinel-auth-mark', type: 'button', ...wayangPointerHandlers, 'aria-label': 'Drag to rotate the Sentinel wayang emblem' },
+        React.createElement('button', { className: 'sentinel-auth-mark', type: 'button', 'aria-label': 'Drag to rotate the Sentinel wayang emblem' },
           React.createElement('img', { src: '/IMG_20260629_220728_136.jpg?v=1', alt: 'NEAR Sentinel wayang emblem' })
         ),
         React.createElement('p', { className: 'sentinel-auth-kicker' }, 'NEAR PROTOCOL / ACCOUNT INTELLIGENCE'),
-        React.createElement('h1', null, 'NEAR SENTINEL'),
+        React.createElement('h1', { className: 'sentinel-login-wordmark' }, React.createElement('span', { className: 'sentinel-login-near' }, 'NEAR'), React.createElement('span', { className: 'sentinel-login-name' }, 'SENTINEL')),
         React.createElement('p', { className: 'sentinel-auth-copy' }, 'Review wallet activity, assess risk signals, and make safer decisions on NEAR.'),
         React.createElement('button', {
           className: 'sentinel-auth-button',
