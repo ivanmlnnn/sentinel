@@ -49,6 +49,18 @@ A shared HMAC secret protects the internal service request but does not make the
 - Approval: actor-bound, exact receiver and amount, one-time, five-minute expiry.
 - Kill switch: signer denies unless `NEAR_AGENT_KILL_SWITCH=false`. Keep it `true` during setup.
 
+## Gated GitHub deployment workflow
+
+The repository now includes `.github/workflows/deploy-testnet.yml`. It is manual-only and deploys only when the workflow input is exactly `DEPLOY_SENTINEL_TESTNET`. It reruns Gitleaks, CodeQL, migration validation, both Worker dry-runs, the full test suite, and the prompt-injection demo before it applies remote migrations and deploys the private signer followed by the Main Worker. It does not disable the signer's kill switch.
+
+Configure these GitHub repository Actions secrets before using the workflow:
+- `CLOUDFLARE_API_TOKEN`: scoped to the intended Cloudflare account with Workers Scripts Edit and D1 Edit permissions.
+- `CLOUDFLARE_ACCOUNT_ID`: the Cloudflare account ID for the same account.
+
+Configure application secrets and non-secret variables directly on the two Cloudflare Workers before deployment. The Main Worker specifically expects the Turnstile secret under the exact name `TURNSTILE_SECRET` (not `TURNSTILE_SECRET_KEY`); the public sitekey is in `public/index.html`. Also configure the required NearBlocks, Privy, Anthropic, HMAC, and signer settings listed above. The signer must keep `NEAR_AGENT_KILL_SWITCH=true`.
+
+The deployment workflow runs the production smoke test after deployment. It requires the guest scan route to return `TURNSTILE_TOKEN_REQUIRED` for a missing token, and requires authenticated preflight to return `UNAUTHORIZED` without a bearer token. A missing Turnstile secret or missing rate-limit binding therefore fails the smoke gate. A passing HTTP smoke test still does not prove browser rendering or a successful Testnet transfer.
+
 ## Deployment configuration
 
 Do not run these deployment steps until CI is green and the branch has been reviewed. Deploy the signer Worker first, then the main Worker.
