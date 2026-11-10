@@ -15,5 +15,13 @@
   ],
   "d1_databases": [
     { "binding": "DB", "database_name": "sentinel-db", "database_id": "f3fa44b2-2b49-4af1-8687-2346cb336b22", "migrations_dir": "migrations-d1" }
-  ]
+  ],
+  "previews": {
+    "d1_databases": [
+      {
+        "binding": "DB",
+        "database_id": "f3fa44b2-2b49-4af1-8687-2346cb336b22"
+      }
+    ]
+  }
 }
