@@ -36,6 +36,20 @@ function amountToMicro(value) {
   const result = BigInt(whole) * 1_000_000n + BigInt((fraction + "000000").slice(0, 6));
   return result > 0n && result <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(result) : null;
 }
+
+function parseSimpleGreeting(prompt) {
+  return /^(?:hi|hello|hey|halo|hai|alo|pagi|siang|sore|malam)[!.?,\\s]*$/i.test(String(prompt || "").trim());
+}
+function parseExplicitPaymentProposal(prompt) {
+  const text = String(prompt || "").trim();
+  const match = text.match(/^(?:please\\s+)?(?:create|make|propose|buat|ajukan)\\s+(?:a\\s+)?payment\\s+proposal\\s+to\\s+([a-z0-9]+(?:[-_.][a-z0-9]+)*)\\s+for\\s+([0-9]+(?:\\.[0-9]{1,6})?)\\s*(?:near|Ⓝ)$/i);
+  if (!match) return null;
+  const receiver = match[1].toLowerCase();
+  const amount = Number(match[2]);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  return { receiver_account: receiver, amount_near: amount, rationale: "User explicitly requested this payment proposal." };
+}
+
 async function writeAudit(env, row) {
   if (!env.DB) throw new Error("AGENT_AUDIT_DATABASE_UNAVAILABLE");
   await env.DB.prepare(
@@ -60,7 +74,14 @@ export async function onRequestPost({ request, env }) {
   try { body = JSON.parse(rawBody); } catch { return json({ error: "INVALID_JSON" }, 400); }
   const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
   if (!prompt || prompt.length > MAX_PROMPT_LENGTH) return json({ error: "PROMPT_REQUIRED" }, 400);
-  const providerResult = await callSentinelAI(env, {
+  if (parseSimpleGreeting(prompt)) {
+    await writeAudit(env, { id: idempotencyKey, actor: identity.sub, event: "AGENT_GREETING", reason: "DETERMINISTIC_GREETING" });
+    return json({ run_id: idempotencyKey, status: "NO_PAYMENT_PROPOSED", message: "Halo! Ada yang bisa Sentinel bantu?" });
+  }
+  const directPaymentIntent = parseExplicitPaymentProposal(prompt);
+  const providerResult = directPaymentIntent
+    ? { ok: true, data: { content: [{ type: "tool_use", id: "sentinel-direct-payment-intent", name: "request_near_payment", input: directPaymentIntent }] } }
+    : await callSentinelAI(env, {
     system: [
       "You are Sentinel Agent, the real conversational AI assistant for the NEAR Sentinel security product. You are Sentinel AI; do not identify yourself as an external model provider.",
       "You must answer ordinary greetings, questions, and how-to requests naturally in clear, helpful language. Do not require a payment intent to have a conversation.",
