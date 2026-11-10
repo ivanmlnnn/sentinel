@@ -19,10 +19,16 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Scan repository history for exposed secrets
+      - name: Scan pull request changes for exposed secrets
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Scan complete repository history
+        shell: bash
+        run: |
+          GITLEAKS_BIN="$(find /tmp -type f -name gitleaks -perm -u+x -print -quit)"
+          test -n "$GITLEAKS_BIN"
+          "$GITLEAKS_BIN" detect --source . --redact --exit-code 2
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
