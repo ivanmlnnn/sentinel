@@ -518,7 +518,7 @@ $('investigateForm').addEventListener('submit', async event => {
     })});
     renderResult(data); await loadMetrics(); toast('Wallet tracking complete: '+data.decision);
   } catch (error) { toast(error.message); }
-  finally { resetTrackWalletTurnstile(); button.disabled = false; button.innerHTML = 'Track wallet <b>↗</b>'; }
+  finally { resetTrackWalletTurnstile(); button.innerHTML = 'Track wallet <b>↗</b>'; }
 });
 $('pasteReceiver').addEventListener('click', async () => {
   try { $('receiver').value = await navigator.clipboard.readText(); }
