@@ -803,7 +803,7 @@ function renderAgentResult(data) {
     : status === 'AWAITING_HUMAN_APPROVAL'
       ? 'Review the amount and recipient before approving.'
       : status === 'DENIED'
-        ? (hasPaymentContext ? 'I could not send this payment. The reason and next step are shown below.' : (policyReasonText || 'This approval is closed. No transfer was confirmed.'))
+        ? 'I could not send this payment. The reason and next step are shown in the payment card below.'
         : status === 'EXECUTED'
           ? 'Payment sent and verified on NEAR Testnet.'
           : status === 'UNKNOWN'
