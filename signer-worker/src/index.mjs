@@ -97,7 +97,8 @@ async function rpc(method, params, id = "sentinel-rpc") {
   let data;
   try { data = await response.json(); } catch { throw new Error("NEAR_RPC_UNAVAILABLE"); }
   if (data.error) {
-    const detail = String(data.error.data || data.error.message || "").toLowerCase();
+    const detail = (typeof data.error.data === "string" ? data.error.data :
+      JSON.stringify(data.error.data || data.error.message || "")).toLowerCase();
     if (method === "query" && (detail.includes("access key") && detail.includes("does not exist") ||
         detail.includes("accesskey") && detail.includes("not found"))) {
       throw new Error("SIGNER_KEY_NOT_FOUND_ON_ACCOUNT");
