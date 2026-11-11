@@ -821,14 +821,15 @@ function renderAgentResult(data) {
       } else {
         balance.textContent = 'Account not found';
         state.textContent = 'NOT FOUND';
-        block.textContent = 'Not present on NEAR Testnet RPC';
-        explorer.hidden = true;
+        block && (block.textContent = 'Not present on NEAR Testnet RPC');
+        if (explorer) explorer.hidden = true;
       }
     }).catch(() => {
       if (!recipientTrackCard.isConnected || recipientTrackCard.dataset.account !== trackedAccount) return;
       $('agentRecipientTrackBalance').textContent = 'Unavailable';
       $('agentRecipientTrackState').textContent = 'RPC UNAVAILABLE';
-      $('agentRecipientTrackBlock').textContent = 'Could not verify live account data';
+      const block = $('agentRecipientTrackBlock');
+      if (block) block.textContent = 'Could not verify live account data';
     });
   }
   if (approvalId && !walletCanApprove) {
