@@ -256,3 +256,32 @@ body{
 .agent-compose-box{background:#0d1213!important;border-color:#3b4541!important}
 .agent-compose-box:focus-within{border-color:#9b8b4d!important;box-shadow:0 0 0 3px rgba(215,189,88,.07)!important}
 @media(max-width:600px){#agentHeading h2{font-size:32px!important}.agent-heading-portrait{width:44px;height:44px;margin-top:12px}}
+
+
+/* Subtle gold divider sweep when dashboard sections enter the viewport. */
+:where(.section-heading,.wallet-guide-head,.agent-chat-header,.panel-top,.table-head,.security-method-heading){
+  position:relative;
+}
+:where(.section-heading,.wallet-guide-head,.agent-chat-header,.panel-top,.table-head,.security-method-heading)::after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  height:1px;
+  pointer-events:none;
+  background:linear-gradient(90deg,rgba(215,189,88,.82),rgba(215,189,88,.24) 42%,rgba(215,189,88,0));
+  transform:scaleX(0);
+  transform-origin:left center;
+  opacity:0;
+  transition:transform .75s cubic-bezier(.2,.7,.2,1),opacity .35s ease;
+}
+:where(.section-heading,.wallet-guide-head,.agent-chat-header,.panel-top,.table-head,.security-method-heading).divider-in-view::after{
+  transform:scaleX(1);
+  opacity:.9;
+}
+@media(prefers-reduced-motion:reduce){
+  :where(.section-heading,.wallet-guide-head,.agent-chat-header,.panel-top,.table-head,.security-method-heading)::after{
+    transform:scaleX(1);opacity:.65;transition:none;
+  }
+}
