@@ -151,6 +151,7 @@ export async function onRequestGet({ request, env }) {
   const executed = executionStatus === "EXECUTED" && Boolean(transactionHash);
   return json({
     approval_id: approvalId,
+    expires_at: row.expires_at,
     status: executed ? "EXECUTED" : status,
     transaction_status: executionStatus,
     proposal: {
