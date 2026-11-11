@@ -2,7 +2,7 @@
 
 > For the concise judge-facing evidence index, current deployment links, reproducible checks and claim boundaries, see [Judge Evidence Pack](JUDGE_EVIDENCE_PACK.md).
 
-Updated: 11 November 2026
+Updated: 12 November 2026
 
 ## Verified project status
 
@@ -32,7 +32,19 @@ The signer account configured by source defaults to `freshnook5462.testnet`; `ra
 
 ## Deploy the complete Sentinel stack
 
-Workflow: [GitHub Actions — Deploy Sentinel Testnet](https://github.com/ivanmlnnn/sentinel/actions/workflows/deploy-testnet.yml)
+**Current operating mode: direct Wrangler deployment.** Do not use the GitHub Actions workflow as the deployment trigger. The workflow link and procedures below are retained only as historical/optional CI documentation; they are not required to update the live Workers.
+
+### Direct deployment from Debian PRoot
+
+```bash
+cd /root/sentinel
+npx wrangler@4.159.0 deploy
+npx wrangler@4.159.0 deploy --config signer-worker/wrangler.jsonc
+```
+
+Deploy both Workers to keep Main and Signer code in sync. This updates the existing Worker services; it does not create new Worker URLs or redeploy the NEAR payment contract. Do not run `git pull` unless you intentionally want to sync local source from GitHub.
+
+Historical GitHub Actions workflow: [Deploy Sentinel Testnet](https://github.com/ivanmlnnn/sentinel/actions/workflows/deploy-testnet.yml).
 
 ### Normal release / redeploy all Workers
 
