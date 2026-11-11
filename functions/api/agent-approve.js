@@ -29,7 +29,11 @@ async function callIsolatedSigner({ intent, actor, idempotencyKey, approvalId, w
       body: payload, signal: AbortSignal.timeout(25000)
     });
     const data = await response.json().catch(() => null);
-    if (!response.ok || !data) return { executed: false, status: "DENIED", reason: "ISOLATED_SIGNER_REQUEST_FAILED", transaction_hash: null };
+    if (!response.ok || !data) {
+      const reason = typeof data?.reason === "string" && /^[A-Z0-9_]{3,96}$/.test(data.reason)
+        ? data.reason : "ISOLATED_SIGNER_REQUEST_FAILED";
+      return { executed: false, status: data?.status === "UNKNOWN" ? "UNKNOWN" : "DENIED", reason, transaction_hash: null };
+    }
     return data;
   } catch {
     return { executed: false, status: "DENIED", reason: "ISOLATED_SIGNER_UNAVAILABLE", transaction_hash: null };
