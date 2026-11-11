@@ -22,7 +22,7 @@ test("main Worker issues a short-lived HMAC preflight token and verifies returne
   assert.match(approve, /stage !== "verify"/);
   assert.match(approve, /preflight_token/);
   assert.match(approve, /transaction_hash/);
-  assert.match(approve, /sentinel\.internal\//);
+  assert.match(approve, /sentinel-signer\\.internal\\//);
 });
 
 test("isolated signer reserves spend before wallet broadcast and verifies token-bound native transfer", () => {
