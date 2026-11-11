@@ -237,8 +237,14 @@ export async function onRequestPost({ request, env }) {
   }
   const idempotencyKey = request.headers.get("Idempotency-Key") || body.idempotency_key || "";
   if (!UUID_RE.test(idempotencyKey)) return json({ error: "IDEMPOTENCY_KEY_REQUIRED" }, 400);
-  const prior = await env.DB.prepare("SELECT idempotency_key FROM agent_execution WHERE idempotency_key=?").bind(idempotencyKey).first();
-  if (prior) return json({ error: "IDEMPOTENCY_KEY_REUSED" }, 409);
+  const reservation = await env.DB.prepare(
+    "SELECT actor, receiver_account, amount_micro, status FROM agent_execution WHERE idempotency_key=?"
+  ).bind(idempotencyKey).first();
+  if (!reservation || reservation.actor !== identity.sub ||
+      reservation.receiver_account !== intent.receiver_account ||
+      Number(reservation.amount_micro) !== amountMicro || reservation.status !== "PENDING") {
+    return json({ error:"WALLET_SPEND_RESERVATION_NOT_FOUND_OR_MISMATCHED" }, 409);
+  }
   const claimed = await env.DB.prepare(
     "UPDATE agent_pending_approvals SET status='APPROVING', updated_at=CURRENT_TIMESTAMP WHERE id=? AND actor=? AND status='PENDING'"
   ).bind(approvalId, identity.sub).run();
