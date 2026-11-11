@@ -35,17 +35,7 @@ async function request(path, options = {}) {
   const response = await fetch(API + path, { ...options, headers });
   const data = await response.json().catch(() => ({error:'Invalid server response.'}));
   if (!response.ok) {
-    const diagnostics = [
-      typeof data.detail === 'string' ? data.detail : null,
-      typeof data.reason === 'string' ? 'reason=' + String(data.reason).slice(0, 100) : null,
-      Number.isInteger(data.preflight_http_status) ? 'preflight_http=' + data.preflight_http_status : null,
-      typeof data.provider_message === 'string' ? data.provider_message : null,
-      data.provider_error_name ? 'type=' + String(data.provider_error_name).slice(0, 80) : null,
-      data.provider_code ? 'code=' + String(data.provider_code).slice(0, 80) : null,
-      Number.isInteger(data.provider_status) ? 'status=' + data.provider_status : null,
-      data.provider_log_id ? 'log=' + String(data.provider_log_id).slice(0, 120) : null
-    ].filter(Boolean);
-    const detail = diagnostics.length ? ': ' + diagnostics.join(' · ') : '';
+    const detail = typeof data.provider_message === 'string' ? ': ' + data.provider_message : '';
     const error = new Error((data.error || 'Request failed. Please retry.') + detail);
     error.data = data;
     throw error;
@@ -207,7 +197,7 @@ async function initWallet() {
   try {
     // NEAR Connect is the current recommended connector in the NEAR Wallet Selector transition.
     const { NearConnector } = await import('https://esm.sh/@hot-labs/near-connect@0.12.0');
-    connector = new NearConnector({ network:'testnet', features:{ testnet:true, signAndSendTransaction:true }, autoConnect:false });
+    connector = new NearConnector({ network:'testnet', features:{ testnet:true, signMessage:true }, autoConnect:false });
     await connector.whenManifestLoaded;
 
     connector.on('wallet:signIn', event => {
@@ -788,7 +778,6 @@ function renderAgentResult(data) {
     PAYMENT_CONTRACT_NOT_CONFIGURED: 'The Testnet payment contract is not configured on the isolated signer.',
     SIGNER_REQUIRES_CONTRACT_SCOPED_FUNCTION_CALL_KEY: 'The signer account key is not restricted to the approved payment contract and pay method.',
     ISOLATED_SIGNER_REQUEST_FAILED: 'The isolated signer did not return a valid execution result. No transfer is confirmed.',
-    SIGNER_NON_JSON_RESPONSE: 'The isolated signer returned a non-JSON response. No transfer is confirmed.',
     ISOLATED_SIGNER_UNAVAILABLE: 'The isolated signer could not be reached. Check its status before trying again.',
     SIGNER_NOT_CONFIGURED: 'The Testnet signer account or signing key is not configured.',
     SIGNER_RESTRICTED_KEY_OR_CONTRACT_INVALID: 'The signer key or payment contract configuration failed its security check.',
@@ -844,7 +833,7 @@ function renderAgentResult(data) {
       ((hasPaymentContext || data.sentinel) ? '<div class="agent-proposal-values">' +
         (proposal.amount_near != null ? '<div class="agent-proposal-field amount"><span>AMOUNT</span><b>' + escapeHtml(String(proposal.amount_near)) + ' <small>NEAR</small></b></div>' : '') +
       '</div>' : '') + recipientCard +
-      (policyReason && ['DENIED','UNKNOWN','FAILED'].includes(status) ? '<div class="agent-policy-reason"><span>Payment not sent · ' + escapeHtml(policyReason) + '</span><p>' + escapeHtml(policyReasonText || ('Reason code: ' + policyReason)) + (data.signer_http_status != null ? '<br>HTTP ' + escapeHtml(String(data.signer_http_status)) : '') + (data.signer_content_type ? '<br>Content-Type: ' + escapeHtml(String(data.signer_content_type)) : '') + (data.signer_response_preview ? '<br>Response: ' + escapeHtml(String(data.signer_response_preview).slice(0, 180)) : '') + '</p></div>' : '') +
+      (status === 'DENIED' && policyReason ? '<div class="agent-policy-reason"><span>Payment not sent</span><p>' + escapeHtml(policyReasonText || ('Reason code: ' + policyReason)) + '</p></div>' : '') +
       ((data.sentinel?.decision || data.sentinel?.risk_score != null) ? '<div class="agent-result-grid compact"><span>Security check</span><b>' + escapeHtml(data.sentinel?.decision ? verdict : 'Completed') + (data.sentinel?.risk_score != null && Number.isFinite(Number(data.sentinel.risk_score)) ? ' · Risk ' + escapeHtml(risk) : '') + '</b></div>' : '') +
       (approvalId && status === 'AWAITING_HUMAN_APPROVAL' ? '<div class="agent-proposal-meta compact"><span>NEAR TESTNET · Expires in 5 minutes</span></div>' : '') +
       (txHash ? '<p class="agent-result-hash">TRANSACTION HASH · ' + escapeHtml(txHash) + '</p>' : '') + txLink +
@@ -913,172 +902,96 @@ function renderAgentResult(data) {
     });
   }
   if (approvalId && walletCanApprove) {
-    // Complete Sentinel's network preflight in the background, before the user taps.
-    // The tap itself can then invoke the selected wallet synchronously, preserving
-    // Android browser user activation for Meteor's deep-link handoff.
-    const approveButton = $('approveAgentPayment');
-    const receiver = String(proposal.receiver_account || '').trim().toLowerCase();
-    const amount = String(proposal.amount_near || '').trim();
-    const amountMatch = /^(?:0|[1-9][0-9]*)(?:\.([0-9]{1,6}))?$/.exec(amount);
-    let amountMicro = null;
-    if (amountMatch) {
-      const [wholePart, fractionPart = ''] = amount.split('.');
-      const micro = BigInt(wholePart) * 1000000n + BigInt((fractionPart + '000000').slice(0, 6));
-      if (micro > 0n && micro <= 100000n) amountMicro = Number(micro);
-    }
-    let preparedApproval = null;
-    let approvalWallet = null;
-    let preparedForAccount = null;
-    let preparingApproval = null;
-    let walletSubmissionStarted = false;
-
-    const showPrepareFailure = error => {
-      preparedApproval = null;
-      approvalWallet = null;
-      preparedForAccount = null;
-      approveButton.disabled = false;
-      approveButton.textContent = 'Retry Sentinel check';
-      const detail = error?.message || 'Sentinel could not complete the security preflight.';
-      let note = approveButton.closest('.agent-approval')?.querySelector('.agent-approval-status-note');
-      if (!note) {
-        note = document.createElement('p');
-        note.className = 'agent-approval-status-note';
-        approveButton.closest('.agent-approval')?.append(note);
-      }
-      note.textContent = detail + ' No wallet transaction was requested.';
-      toast(detail);
-    };
-
-    const prepareApproval = () => {
-      if (preparingApproval) return preparingApproval;
-      if (!connectorReady || !connector || !connectedAccount || !connectedAccount.endsWith('.testnet')) {
-        showPrepareFailure(new Error('Connect a NEAR Testnet wallet before approving.'));
-        return Promise.resolve(null);
-      }
-      if (!data.expires_at) {
-        showPrepareFailure(new Error('Approval expiry is missing. Create a new proposal.'));
-        return Promise.resolve(null);
-      }
-      if (amountMicro === null) {
-        showPrepareFailure(new Error('Invalid payment amount. Use up to 6 decimal places; Testnet limit is 0.1 NEAR.'));
-        return Promise.resolve(null);
-      }
-      const accountAtPrepare = connectedAccount;
+    $('approveAgentPayment').addEventListener('click', async () => {
+      const receiver = String(proposal.receiver_account || '');
+      const amount = String(proposal.amount_near || '');
+      const approveButton = $('approveAgentPayment');
       approveButton.disabled = true;
-      approveButton.textContent = 'Checking Sentinel policy…';
-      preparingApproval = (async () => {
-        try {
-          const prepared = await request('/agent/approve', {
-            method: 'POST',
-            body: JSON.stringify({ stage: 'prepare', approval_id: approvalId, wallet_account: accountAtPrepare })
-          });
-          if (prepared.status !== 'READY_TO_SIGN' || prepared.sentinel?.decision !== 'ALLOW' || !prepared.preflight_token) {
-            throw new Error(prepared.reason || 'Sentinel did not authorize this transfer.');
-          }
-          // Resolve the wallet that is actually connected now. The manifest is the
-          // wallet clue; connector.wallet() supplies that wallet's own adapter.
-          // Never hardcode Meteor or assume every NEAR wallet has the same handoff.
-          const active = await connector.getConnectedWallet();
-          const activeAccount = active?.accounts?.[0]?.accountId || '';
-          const manifest = active?.wallet?.manifest || {};
-          const walletClue = String(manifest.name || manifest.id || connectedWalletName || 'NEAR wallet');
-          if (activeAccount !== accountAtPrepare || connectedAccount !== accountAtPrepare) {
-            throw new Error('Connected wallet changed during the security check. Reconnect and retry.');
-          }
-          const wallet = await connector.wallet();
-          if (!wallet || typeof wallet.signAndSendTransaction !== 'function') {
-            throw new Error(walletClue + ' does not expose the NEAR transfer approval method required by this payment.');
-          }
-          preparedApproval = { ...prepared, _client_prepared_at: Date.now(), _wallet_clue: walletClue };
-          approvalWallet = wallet;
-          preparedForAccount = accountAtPrepare;
-          approveButton.disabled = false;
-          approveButton.textContent = 'Approve payment · ' + walletClue;
-          const note = approveButton.closest('.agent-approval')?.querySelector('.agent-approval-status-note');
-          note?.remove();
-          return prepared;
-        } catch (error) {
-          showPrepareFailure(error);
-          return null;
-        } finally {
-          preparingApproval = null;
-        }
-      })();
-      return preparingApproval;
-    };
-
-    approveButton.addEventListener('click', async () => {
-      if (!preparedApproval || !approvalWallet || preparedForAccount !== connectedAccount) {
-        await prepareApproval();
-        return;
-      }
-      if (Date.now() - Number(preparedApproval._client_prepared_at || 0) > 8 * 60 * 1000) {
-        preparedApproval = null;
-        approvalWallet = null;
-        preparedForAccount = null;
-        await prepareApproval();
-        return;
-      }
-      const amountYocto = (BigInt(amountMicro) * 1000000000000000000n).toString();
-      approveButton.disabled = true;
-      approveButton.textContent = 'Opening ' + (connectedWalletName || 'NEAR wallet') + '…';
-      // Do not await network work before this call: it must run in the tap gesture.
-      let walletRequest;
+      approveButton.textContent = 'Waiting for wallet…';
+      let approvalRequestStarted = false;
       try {
-        walletRequest = approvalWallet.signAndSendTransaction({
-          receiverId: receiver,
-          actions: [{ type: 'Transfer', params: { deposit: amountYocto } }]
+        if (!connectorReady || !connector || !connectedAccount || !connectedAccount.endsWith('.testnet')) {
+          throw new Error('Connect a NEAR Testnet wallet that supports message signing before approving.');
+        }
+        if (!data.expires_at) throw new Error('Approval expiry is missing. Create a new proposal.');
+        const wallet = await connector.wallet();
+        if (!wallet || typeof wallet.signMessage !== 'function') {
+          throw new Error('The connected wallet does not support NEP-413 message signing.');
+        }
+        const amountMicro = Math.round(Number(amount) * 1000000);
+        if (!Number.isSafeInteger(amountMicro) || amountMicro <= 0) throw new Error('Invalid exact payment amount.');
+        const message = JSON.stringify({
+          domain: 'near-sentinel',
+          version: 1,
+          approval_id: approvalId,
+          wallet_account: connectedAccount.toLowerCase(),
+          receiver_account: receiver.toLowerCase(),
+          amount_micro: amountMicro,
+          network: 'testnet',
+          expires_at: data.expires_at
         });
-        walletSubmissionStarted = true;
-      } catch (error) {
-        showPrepareFailure(error);
-        return;
-      }
-      approveButton.textContent = 'Confirm exact transfer in your wallet…';
-      try {
-        const walletResult = await walletRequest;
-        const transactionHash = walletResult?.transaction?.hash ||
-          walletResult?.transaction_outcome?.id ||
-          walletResult?.transactionHash ||
-          walletResult?.hash || null;
-        if (typeof transactionHash !== 'string' || !/^[1-9A-HJ-NP-Za-km-z]{32,64}$/.test(transactionHash)) {
-          throw new Error('Wallet did not return a verifiable transaction hash. Check wallet activity before retrying.');
+        const nonceBytes = crypto.getRandomValues(new Uint8Array(32));
+        const nonceBase64 = btoa(String.fromCharCode(...nonceBytes));
+        const signed = await wallet.signMessage({
+          message,
+          recipient: 'sentinel.ivmaladin.workers.dev',
+          nonce: nonceBytes
+        });
+        if (!signed || !signed.signature || !signed.publicKey || !signed.accountId) {
+          throw new Error('Wallet did not return a verifiable NEP-413 signature. No payment was sent.');
         }
-        approveButton.textContent = 'Verifying wallet transfer on NEAR…';
+        const signatureBase64 = typeof signed.signature === 'string'
+          ? signed.signature
+          : btoa(String.fromCharCode(...new Uint8Array(signed.signature)));
+        approveButton.textContent = 'Verifying wallet signature · awaiting signer…';
+        approvalRequestStarted = true;
         const approved = await request('/agent/approve', {
           method: 'POST',
-          headers: { 'Idempotency-Key': preparedApproval.idempotency_key },
+          headers: { 'Idempotency-Key': crypto.randomUUID() },
           body: JSON.stringify({
-            stage: 'verify',
             approval_id: approvalId,
-            idempotency_key: preparedApproval.idempotency_key,
-            wallet_account: connectedAccount,
-            transaction_hash: transactionHash,
-            preflight_token: preparedApproval.preflight_token
+            wallet_approval: {
+              account_id: signed.accountId,
+              public_key: signed.publicKey,
+              signature: signatureBase64,
+              nonce: nonceBase64
+            }
           })
         });
         renderAgentResult(approved);
-        toast(approved.execution_enabled
-          ? 'Native NEAR transfer verified on Testnet.'
-          : 'Transfer verification: ' + String(approved.status || 'UNKNOWN'));
+        toast(approved.execution_enabled ? 'NEAR Testnet transaction confirmed.' : 'Approval result: ' + String(approved.status || 'UNKNOWN'));
       } catch (error) {
-        approveButton.disabled = true;
-        approveButton.textContent = 'Transfer submitted · verification required';
-        const note = document.createElement('p');
-        note.className = 'agent-approval-status-note';
-        note.textContent = error.message || 'The wallet may have submitted the transfer, but Sentinel could not verify it. Do not retry until wallet activity is checked.';
-        approveButton.closest('.agent-approval')?.append(note);
-        toast('Do not send again. Check wallet activity and transaction status.');
+        if (!approvalRequestStarted) {
+          approveButton.disabled = false;
+          approveButton.textContent = 'Approve payment';
+          toast(error.message || 'Wallet signing was cancelled. No approval was submitted.');
+          return;
+        }
+        try {
+          const current = await request('/agent/approve?approval_id=' + encodeURIComponent(approvalId));
+          if (current.status === 'PENDING') current.status = 'AWAITING_HUMAN_APPROVAL';
+          current.message = current.status === 'EXECUTED'
+            ? 'Payment sent and verified on NEAR Testnet.'
+            : current.status === 'UNKNOWN'
+              ? 'The transaction outcome is not yet verified. Do not retry.'
+              : current.status === 'APPROVING'
+                ? 'Sentinel is still processing this approval.'
+                : current.status === 'EXPIRED'
+                  ? 'This approval expired. Create a new proposal only after checking signer availability.'
+                  : 'This approval has already been processed or closed. No transfer was confirmed.';
+          renderAgentResult(current);
+          toast(current.status === 'EXECUTED' ? 'Payment verified.' : 'Approval status: ' + current.status);
+        } catch {
+          approveButton.disabled = true;
+          approveButton.textContent = 'Approval status unavailable';
+          const note = document.createElement('p');
+          note.className = 'agent-approval-status-note';
+          note.textContent = 'The approval may already have been processed. Do not sign again until its status is verified.';
+          approveButton.closest('.agent-approval')?.append(note);
+          toast('Could not verify approval status. Do not sign again.');
+        }
       }
     });
-
-    // Preflight starts as soon as the approval card is rendered, not on the tap.
-    // This gives the user a single-tap wallet handoff after Sentinel returns ALLOW.
-    if (!connectorReady) {
-      showPrepareFailure(new Error('NEAR wallet connector is still loading. Refresh or retry shortly.'));
-    } else {
-      void prepareApproval();
-    }
   }
 }
 const skillCards = Array.from(document.querySelectorAll('.sentinel-skill-card'));
