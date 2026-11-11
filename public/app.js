@@ -800,7 +800,7 @@ function renderAgentResult(data) {
       ((hasPaymentContext || data.sentinel) ? '<div class="agent-proposal-values">' +
         (proposal.amount_near != null ? '<div class="agent-proposal-field amount"><span>AMOUNT</span><b>' + escapeHtml(String(proposal.amount_near)) + ' <small>NEAR</small></b></div>' : '') +
       '</div>' : '') + recipientCard +
-      (status === 'DENIED' && policyReason ? '<div class="agent-policy-reason"><span>POLICY REASON · ' + escapeHtml(policyReason) + '</span>' + (policyReasonText ? '<p>' + escapeHtml(policyReasonText) + '</p>' : '') + '</div>' : '') +
+      (status === 'DENIED' && policyReason ? '<div class="agent-policy-reason"><span>WHY IT DIDN’T SEND</span>' + (policyReasonText ? '<p>' + escapeHtml(policyReasonText) + '</p>' : '') + '</div>' : '') +
       ((data.sentinel?.decision || data.sentinel?.risk_score != null) ? '<div class="agent-result-grid">' +
         (data.sentinel?.decision ? '<div><span>SENTINEL VERDICT</span><b>' + escapeHtml(verdict) + '</b></div>' : '') +
         (data.sentinel?.risk_score != null && Number.isFinite(Number(data.sentinel.risk_score)) ? '<div><span>RISK SCORE</span><b>' + escapeHtml(risk) + '</b></div>' : '') +
