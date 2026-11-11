@@ -32,13 +32,29 @@ async function request(path, options = {}) {
       console.warn('Could not refresh Privy access token for API request:', error);
     }
   }
-  const response = await fetch(API + path, { ...options, headers });
-  const data = await response.json().catch(() => ({error:'Invalid server response.'}));
+  let response;
+  try {
+    response = await fetch(API + path, { ...options, headers });
+  } catch (cause) {
+    const error = new Error('Sentinel API connection failed before wallet approval. Check network and retry.');
+    error.cause = cause;
+    throw error;
+  }
+  const contentType = response.headers.get('content-type') || 'unknown';
+  const raw = await response.text();
+  let data = null;
+  try { data = raw ? JSON.parse(raw) : null; } catch {}
   if (!response.ok) {
-    const detail = typeof data.provider_message === 'string' ? ': ' + data.provider_message : '';
-    const error = new Error((data.error || 'Request failed. Please retry.') + detail);
+    const reason = typeof data?.error === 'string' ? data.error :
+      typeof data?.reason === 'string' ? data.reason : 'API returned a non-JSON error response';
+    const detail = typeof data?.detail === 'string' ? ': ' + data.detail :
+      typeof data?.provider_message === 'string' ? ': ' + data.provider_message : '';
+    const error = new Error('Sentinel API HTTP ' + response.status + ' (' + contentType + '): ' + reason + detail);
     error.data = data;
     throw error;
+  }
+  if (!data || typeof data !== 'object') {
+    throw new Error('Sentinel API returned invalid JSON (HTTP ' + response.status + ', ' + contentType + '). Wallet was not opened.');
   }
   return data;
 }
