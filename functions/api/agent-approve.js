@@ -29,15 +29,20 @@ async function callIsolatedSigner({ intent, actor, idempotencyKey, approvalId, w
       body: payload, signal: AbortSignal.timeout(25000)
     });
     const data = await response.json().catch(() => null);
-    if (!response.ok || !data) return { executed: false, status: "DENIED", reason: "ISOLATED_SIGNER_REQUEST_FAILED", transaction_hash: null };
+    if (!response.ok || !data) {
+      const reason = typeof data?.reason === "string" && /^[A-Z0-9_]{3,96}$/.test(data.reason)
+        ? data.reason : "ISOLATED_SIGNER_REQUEST_FAILED";
+      return { executed: false, status: data?.status === "UNKNOWN" ? "UNKNOWN" : "DENIED", reason, transaction_hash: null };
+    }
     return data;
   } catch {
     return { executed: false, status: "DENIED", reason: "ISOLATED_SIGNER_UNAVAILABLE", transaction_hash: null };
   }
 }
-async function updateApproval(env, id, status) {
-  await env.DB.prepare("UPDATE agent_pending_approvals SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?")
-    .bind(status, id).run();
+async function updateApproval(env, id, status, reason = null) {
+  const safeReason = typeof reason === "string" && /^[A-Z0-9_]{3,96}$/.test(reason) ? reason : null;
+  await env.DB.prepare("UPDATE agent_pending_approvals SET status=?, failure_reason=COALESCE(?, failure_reason), updated_at=CURRENT_TIMESTAMP WHERE id=?")
+    .bind(status, safeReason, id).run();
 }
 export async function onRequestPost({ request, env }) {
   const identity = await verifyPrivyAccessToken(request, env);
@@ -79,7 +84,7 @@ export async function onRequestPost({ request, env }) {
   const intent = { receiver_account: pending.receiver_account, amount_near: Number(microToNear(pending.amount_micro)), rationale: pending.rationale };
   const validation = validatePaymentIntent(intent, env);
   if (!validation.ok || env.NEAR_NETWORK !== "testnet") {
-    await updateApproval(env, approvalId, "DENIED");
+    await updateApproval(env, approvalId, "DENIED", validation.reason || "TESTNET_ONLY");
     return json({ status: "DENIED", reason: validation.reason || "TESTNET_ONLY", execution_enabled: false });
   }
   let assessment = null;
@@ -92,12 +97,12 @@ export async function onRequestPost({ request, env }) {
     assessment = await response.json().catch(() => null);
     if (!response.ok) throw new Error("PREFLIGHT_FAILED");
   } catch {
-    await updateApproval(env, approvalId, "DENIED");
+    await updateApproval(env, approvalId, "DENIED", "PREFLIGHT_UNAVAILABLE");
     return json({ status: "DENIED", reason: "PREFLIGHT_UNAVAILABLE", execution_enabled: false });
   }
   const policy = evaluateAgentAuthorization({ intent, assessment, env });
   if (!policy.authorized) {
-    await updateApproval(env, approvalId, "DENIED");
+    await updateApproval(env, approvalId, "DENIED", policy.reason);
     return json({ status: "DENIED", reason: policy.reason, sentinel: {
       decision: assessment?.decision || null, risk_score: assessment?.risk_score ?? null
     }, execution_enabled: false });
@@ -106,7 +111,7 @@ export async function onRequestPost({ request, env }) {
   const execution = await callIsolatedSigner({ intent, actor: identity.sub, idempotencyKey, approvalId, walletApproval,
     authorizationHeader: request.headers.get("authorization") || "", env });
   const state = execution.executed ? "EXECUTED" : execution.status === "UNKNOWN" ? "UNKNOWN" : "DENIED";
-  await updateApproval(env, approvalId, state);
+  await updateApproval(env, approvalId, state, execution.reason || null);
   try {
     await env.DB.prepare(
       "INSERT INTO agent_audit (id, actor, event, receiver_account, amount_near, decision, reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"
@@ -131,7 +136,7 @@ export async function onRequestGet({ request, env }) {
   const approvalId = new URL(request.url).searchParams.get("approval_id") || "";
   if (!UUID_RE.test(approvalId)) return json({ error: "INVALID_APPROVAL_ID" }, 400);
   const row = await env.DB.prepare(
-    "SELECT a.id, a.receiver_account, a.amount_micro, a.status, a.expires_at, " +
+    "SELECT a.id, a.receiver_account, a.amount_micro, a.status, a.failure_reason, a.expires_at, " +
     "e.status AS execution_status, e.transaction_hash, " +
     "CASE WHEN a.expires_at <= CURRENT_TIMESTAMP THEN 1 ELSE 0 END AS is_expired " +
     "FROM agent_pending_approvals a " +
@@ -167,7 +172,7 @@ export async function onRequestGet({ request, env }) {
     explorer_url: executed ? "https://testnet.nearblocks.io/txns/" + encodeURIComponent(transactionHash) : null,
     execution_enabled: executed,
     reason: executed ? "TESTNET_TRANSACTION_FINAL_RPC_VERIFIED" :
-      status === "DENIED" ? "APPROVAL_CLOSED_NO_TRANSFER" :
-      status === "UNKNOWN" ? "EXECUTION_OUTCOME_UNKNOWN" : null
+      row.failure_reason || (status === "DENIED" ? "APPROVAL_CLOSED_NO_TRANSFER" :
+      status === "UNKNOWN" ? "EXECUTION_OUTCOME_UNKNOWN" : null)
   });
 }
