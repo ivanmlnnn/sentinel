@@ -40,14 +40,32 @@ function amountToMicro(value) {
 function parseSimpleGreeting(prompt) {
   return /^(?:hi|hello|hey|halo|hai|alo|pagi|siang|sore|malam)[!.?,\\s]*$/i.test(String(prompt || "").trim());
 }
-function parseExplicitPaymentProposal(prompt) {
+
+export function parseExplicitPaymentProposal(prompt) {
   const text = String(prompt || "").trim();
-  const match = text.match(/^(?:please\\s+)?(?:create|make|propose|buat|ajukan)\\s+(?:a\\s+)?payment\\s+proposal\\s+to\\s+([a-z0-9]+(?:[-_.][a-z0-9]+)*)\\s+for\\s+([0-9]+(?:\\.[0-9]{1,6})?)\\s*(?:near|Ⓝ)$/i);
-  if (!match) return null;
-  const receiver = match[1].toLowerCase();
-  const amount = Number(match[2]);
-  if (!Number.isFinite(amount) || amount <= 0) return null;
-  return { receiver_account: receiver, amount_near: amount, rationale: "User explicitly requested this payment proposal." };
+  const account = "([a-z0-9]+(?:[-_.][a-z0-9]+)*)";
+  const amount = "((?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?)";
+  const patterns = [
+    new RegExp("^(?:please\\\\s+)?(?:(?:i\\\\s+(?:want|would like)\\\\s+to\\\\s+)?(?:send|transfer))\\\\s+" + amount + "\\\\s*(?:near|Ⓝ)\\\\s+to\\\\s+" + account + "$", "i"),
+    new RegExp("^(?:please\\\\s+)?(?:(?:i\\\\s+(?:want|would like)\\\\s+to\\\\s+)?(?:send|transfer))\\\\s+(?:to\\\\s+)?" + account + "\\\\s+(?:(?:an?\\\\s+amount\\\\s+of)\\\\s+)?"+ amount + "\\\\s*(?:near|Ⓝ)$", "i"),
+    new RegExp("^(?:saya\\\\s+)?(?:mau|ingin|hendak)\\\\s+(?:mengirim|kirim|transfer)\\\\s+(?:near\\\\s+)?(?:ke\\\\s+)?" + account + "\\\\s+(?:sebesar\\\\s+)?" + amount + "\\\\s*(?:near|Ⓝ)$", "i"),
+    new RegExp("^(?:saya\\\\s+)?(?:mau|ingin|hendak)\\\\s+(?:mengirim|kirim|transfer)\\\\s+" + amount + "\\\\s*(?:near|Ⓝ)\\\\s+ke\\\\s+" + account + "$", "i"),
+    new RegExp("^(?:kirim|transfer)\\\\s+ke\\\\s+" + account + "\\\\s+(?:sebesar\\\\s+)?" + amount + "\\\\s*(?:near|Ⓝ)$", "i")
+  ];
+  for (const [index, pattern] of patterns.entries()) {
+    const match = text.match(pattern);
+    if (!match) continue;
+    const receiver = (index === 0 || index === 3 ? match[2] : match[1]).toLowerCase();
+    const amountText = (index === 0 || index === 3 ? match[1] : match[2]).replace(",", ".");
+    const amountNear = Number(amountText);
+    if (!Number.isFinite(amountNear) || amountNear <= 0) return null;
+    return {
+      receiver_account: receiver,
+      amount_near: amountNear,
+      rationale: "User explicitly requested this payment proposal."
+    };
+  }
+  return null;
 }
 
 async function writeAudit(env, row) {
@@ -60,7 +78,6 @@ async function writeAudit(env, row) {
 export async function onRequestPost({ request, env }) {
   const identity = await verifyPrivyAccessToken(request, env);
   if (!identity) return json({ error: "UNAUTHORIZED" }, 401);
-  if (!env.AI || typeof env.AI.run !== "function") return json({ error: "AI_RUNTIME_NOT_CONFIGURED" }, 503);
   const idempotencyKey = request.headers.get("Idempotency-Key") || "";
   if (!UUID_RE.test(idempotencyKey)) return json({ error: "IDEMPOTENCY_KEY_REQUIRED" }, 400);
   if (!env.DB) return json({ error: "AGENT_AUDIT_DATABASE_UNAVAILABLE" }, 503);
@@ -79,6 +96,7 @@ export async function onRequestPost({ request, env }) {
     return json({ run_id: idempotencyKey, status: "NO_PAYMENT_PROPOSED", message: "Halo! Ada yang bisa Sentinel bantu?" });
   }
   const directPaymentIntent = parseExplicitPaymentProposal(prompt);
+  if (!directPaymentIntent && (!env.AI || typeof env.AI.run !== "function")) return json({ error: "AI_RUNTIME_NOT_CONFIGURED" }, 503);
   const providerResult = directPaymentIntent
     ? { ok: true, data: { content: [{ type: "tool_use", id: "sentinel-direct-payment-intent", name: "request_near_payment", input: directPaymentIntent }] } }
     : await callSentinelAI(env, {
