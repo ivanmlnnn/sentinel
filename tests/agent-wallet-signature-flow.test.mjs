@@ -9,8 +9,11 @@ const approve = readFileSync(new URL("../functions/api/agent-approve.js", import
 test("wallet transfer is requested only after a fresh Sentinel ALLOW preflight", () => {
   const prepare = app.indexOf("stage: 'prepare'");
   const allowGate = app.indexOf("prepared.sentinel?.decision !== 'ALLOW'");
-  const send = app.indexOf("wallet.signAndSendTransaction(");
-  assert.ok(prepare >= 0 && allowGate > prepare && send > allowGate);
+  const cachePrepared = app.indexOf("preparedApproval = prepared");
+  const send = app.indexOf("approvalWallet.signAndSendTransaction(");
+  assert.ok(prepare >= 0 && allowGate > prepare && cachePrepared > allowGate && send > cachePrepared);
+  assert.match(app, /Open wallet & approve/);
+  assert.match(app, /No awaited work before this call/);
   assert.match(app, /features:\{ testnet:true, signAndSendTransaction:true \}/);
   assert.match(app, /type: 'Transfer', params: \{ deposit: amountYocto \}/);
   assert.doesNotMatch(app, /wallet\.signMessage\(/);
