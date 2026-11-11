@@ -159,7 +159,7 @@ async function callSentinelAIProvider(env, messages) {
     tools: MODEL_TOOLS,
     messages,
     maxOutputTokens: 1400,
-    timeoutMs: 12000
+    timeoutMs: 28000
   });
 }
 
