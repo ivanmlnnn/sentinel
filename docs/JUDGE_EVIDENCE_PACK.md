@@ -47,9 +47,9 @@ GitHub remains the source-control and backup repository. GitHub Actions deployme
 
 
 
-## Current merged-main release — 11 November 2026
+## Historical GitHub Actions merged-main release — 11 November 2026
 
-The current mainline release candidate is commit [`c7bf59d`](https://github.com/ivanmlnnn/sentinel/commit/c7bf59df0b5596e086f8011ef95057bf33bb1e3e). It contains the agent-result placement update and is deployed to the Main Worker.
+The historical mainline release candidate was commit [`c7bf59d`](https://github.com/ivanmlnnn/sentinel/commit/c7bf59df0b5596e086f8011ef95057bf33bb1e3e). It contains the agent-result placement update and is deployed to the Main Worker.
 
 | Evidence | Result | Direct record |
 |---|---|---|
