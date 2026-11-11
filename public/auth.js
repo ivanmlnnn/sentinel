@@ -300,3 +300,19 @@ function Root() {
 
 createRoot(document.getElementById('auth-root')).render(React.createElement(Root));
 document.getElementById('auth-root').dataset.authBooted = '1';
+
+
+// Reuse the exact signed-in wayang portrait in the assistant, so both identities match.
+function syncSentinelAgentWayang() {
+  const source = document.querySelector('.sentinel-session-avatar svg');
+  if (!source) return;
+  ['#agentHeadingPortrait', '.agent-chat-avatar'].forEach(selector => {
+    const target = document.querySelector(selector);
+    if (!target || target.dataset.wayangSynced === '1') return;
+    target.replaceChildren(source.cloneNode(true));
+    target.dataset.wayangSynced = '1';
+  });
+}
+const sentinelWayangObserver = new MutationObserver(syncSentinelAgentWayang);
+sentinelWayangObserver.observe(document.body, { childList: true, subtree: true });
+syncSentinelAgentWayang();
