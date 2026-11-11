@@ -16,16 +16,20 @@ test("wallet transfer is requested only after a fresh Sentinel ALLOW preflight",
   assert.doesNotMatch(app, /wallet\.signMessage\(/);
 });
 
-test("main Worker issues a short-lived HMAC preflight token and verifies returned transaction hash", () => {
+test("main Worker issues a short-lived HMAC preflight token and verifies wallet transaction directly on NEAR RPC", () => {
   assert.match(approve, /createPreflightToken/);
   assert.match(approve, /stage === "prepare"/);
   assert.match(approve, /stage !== "verify"/);
   assert.match(approve, /preflight_token/);
   assert.match(approve, /transaction_hash/);
-  assert.ok(approve.includes("sentinel-signer.internal/"));
+  const prepareRoute = approve.slice(approve.indexOf('if (stage === "prepare")'), approve.indexOf('if (stage !== "verify"'));
+  assert.match(prepareRoute, /reserveWalletSpend/);
+  assert.doesNotMatch(prepareRoute, /callIsolatedSigner/);
+  assert.match(approve, /verifyWalletTransferOnRpc/);
+  assert.match(approve, /WALLET_TRANSFER_FINAL_RPC_VERIFIED/);
 });
 
-test("isolated signer reserves spend before wallet broadcast and verifies token-bound native transfer", () => {
+test("wallet-native flow reserves spend before wallet broadcast and verifies token-bound native transfer", () => {
   assert.match(signer, /prepareWalletTransfer/);
   assert.match(signer, /verifyPreflightToken/);
   assert.match(signer, /verifyFinalTransfer\(transactionHash, walletAccount/);
