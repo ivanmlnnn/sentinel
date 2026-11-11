@@ -1,7 +1,5 @@
-import { JsonRpcProvider } from "near-api-js";
 import { verifyPrivyAccessToken } from "../../functions/api/_shared.js";
-import { evaluateAgentAuthorization, validatePaymentIntent } from "../../src/agent-policy.mjs";
-import { verifyVerdict } from "../../src/signed-verdict.mjs";
+import { validatePaymentIntent } from "../../src/agent-policy.mjs";
 
 const RPC = "https://rpc.testnet.fastnear.com";
 const HARD_MAX_PAYMENT_MICRO = 100_000;
@@ -107,28 +105,6 @@ async function rpc(method, params, id = "sentinel-rpc") {
   return data.result;
 }
 
-export async function assertRestrictedFunctionCallKey(accountId, publicKey, contractId) {
-  if (!contractId || !/^[a-z0-9._-]{2,64}\.testnet$/.test(contractId)) {
-    throw new Error("PAYMENT_CONTRACT_NOT_CONFIGURED");
-  }
-  const result = await rpc("query", {
-    request_type: "view_access_key", finality: "final",
-    account_id: accountId, public_key: publicKey
-  }, "sentinel-restricted-key-check");
-  const permission = result.permission?.FunctionCall;
-  let allowance = 0n;
-  try { allowance = BigInt(permission?.allowance ?? "0"); } catch {}
-  if (!permission ||
-      permission.receiver_id !== contractId ||
-      !Array.isArray(permission.method_names) ||
-      permission.method_names.length !== 1 ||
-      permission.method_names[0] !== "pay" ||
-      allowance <= 0n ||
-      allowance > 250_000_000_000_000_000_000_000n) {
-    throw new Error("SIGNER_REQUIRES_CONTRACT_SCOPED_FUNCTION_CALL_KEY");
-  }
-  return { receiver_id: permission.receiver_id, method_names: permission.method_names };
-}
 export async function claimApproval(env, { approvalId, idempotencyKey, actor, receiver, amountMicro }) {
   const pending = await env.DB.prepare(
     "SELECT id, actor, receiver_account, amount_micro, status, expires_at FROM agent_pending_approvals " +
