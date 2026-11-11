@@ -1,4 +1,4 @@
-const DEFAULT_MODEL = "@cf/qwen/qwen3.8-27b";
+const DEFAULT_MODEL = "@cf/zai-org/glm-4.7-flash";
 const MODEL_PATTERN = /^@[a-z0-9-]+\/[a-z0-9._-]+$/i;
 const MAX_TOOL_CALLS = 8;
 
@@ -82,7 +82,7 @@ export function normalizeSentinelAIResponse(data = {}) {
 }
 
 export async function callSentinelAI(env, {
-  system, messages, tools = [], maxOutputTokens = 900, timeoutMs = 12000
+  system, messages, tools = [], maxOutputTokens = 900, timeoutMs = 28000
 } = {}) {
   if (!env?.AI || typeof env.AI.run !== "function") {
     return { ok: false, status: 0, error: "AI_RUNTIME_NOT_CONFIGURED", message: "Sentinel AI Runtime binding is not configured." };
@@ -105,7 +105,7 @@ export async function callSentinelAI(env, {
     const inference = Promise.resolve(env.AI.run(configuredModel, input));
     let timeout;
     const timed = new Promise((_, reject) => {
-      timeout = setTimeout(() => reject(new Error("AI_RUNTIME_TIMEOUT")), Math.min(15000, Math.max(1000, timeoutMs)));
+      timeout = setTimeout(() => reject(new Error("AI_RUNTIME_TIMEOUT")), Math.min(28000, Math.max(1000, timeoutMs)));
     });
     let response;
     try { response = await Promise.race([inference, timed]); }
