@@ -4,8 +4,8 @@ import { callSentinelAI } from "./_ai.js";
 
 const MAX_PROMPT_LENGTH = 4000;
 const DAILY_LIMIT = 10;
-const MAX_TOOL_ROUNDS = 4;
-const MAX_TOOL_CALLS = 4;
+const MAX_TOOL_ROUNDS = 2;
+const MAX_TOOL_CALLS = 2;
 const MODEL_TOOLS = [
   {
     name: "investigate_near_account",
@@ -159,7 +159,7 @@ async function callSentinelAIProvider(env, messages) {
     tools: MODEL_TOOLS,
     messages,
     maxOutputTokens: 1400,
-    timeoutMs: 20000
+    timeoutMs: 12000
   });
 }
 
