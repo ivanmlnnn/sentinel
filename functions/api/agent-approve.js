@@ -122,3 +122,46 @@ export async function onRequestPost({ request, env }) {
     network: execution.network || "testnet", execution_enabled: execution.executed === true
   });
 }
+
+
+export async function onRequestGet({ request, env }) {
+  const identity = await verifyPrivyAccessToken(request, env);
+  if (!identity) return json({ error: "UNAUTHORIZED" }, 401);
+  if (!env.DB) return json({ error: "AGENT_APPROVAL_DATABASE_UNAVAILABLE" }, 503);
+  const approvalId = new URL(request.url).searchParams.get("approval_id") || "";
+  if (!UUID_RE.test(approvalId)) return json({ error: "INVALID_APPROVAL_ID" }, 400);
+  const row = await env.DB.prepare(
+    "SELECT a.id, a.receiver_account, a.amount_micro, a.status, a.expires_at, " +
+    "e.status AS execution_status, e.transaction_hash " +
+    "FROM agent_pending_approvals a " +
+    "LEFT JOIN signer_approval_claims c ON c.approval_id = a.id " +
+    "LEFT JOIN agent_execution e ON e.idempotency_key = c.idempotency_key " +
+    "WHERE a.id = ? AND a.actor = ?"
+  ).bind(approvalId, identity.sub).first();
+  if (!row) return json({ error: "APPROVAL_NOT_FOUND" }, 404);
+  let status = row.status;
+  if (status === "PENDING" && Date.parse(row.expires_at + "Z") <= Date.now()) {
+    await env.DB.prepare(
+      "UPDATE agent_pending_approvals SET status='EXPIRED', updated_at=CURRENT_TIMESTAMP WHERE id=? AND actor=? AND status='PENDING'"
+    ).bind(approvalId, identity.sub).run();
+    status = "EXPIRED";
+  }
+  const executionStatus = row.execution_status || null;
+  const transactionHash = row.transaction_hash || null;
+  const executed = executionStatus === "EXECUTED" && Boolean(transactionHash);
+  return json({
+    approval_id: approvalId,
+    status: executed ? "EXECUTED" : status,
+    transaction_status: executionStatus,
+    proposal: {
+      receiver_account: row.receiver_account,
+      amount_near: Number(microToNear(row.amount_micro))
+    },
+    transaction_hash: transactionHash,
+    explorer_url: executed ? "https://testnet.nearblocks.io/txns/" + encodeURIComponent(transactionHash) : null,
+    execution_enabled: executed,
+    reason: executed ? "TESTNET_TRANSACTION_FINAL_RPC_VERIFIED" :
+      status === "DENIED" ? "APPROVAL_CLOSED_NO_TRANSFER" :
+      status === "UNKNOWN" ? "EXECUTION_OUTCOME_UNKNOWN" : null
+  });
+}
