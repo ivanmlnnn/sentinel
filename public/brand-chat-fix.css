@@ -564,3 +564,38 @@ body{
   .agent-payment-card{padding:13px!important;border-radius:14px!important}
   .agent-payment-card .agent-proposal-field.amount>b{font-size:27px!important}
 }
+
+
+/* Payment result: calm, compact, and consistent with the Sentinel chat surface. */
+.telegram-agent-status{
+  padding:15px!important;
+  border:1px solid rgba(0,224,164,.16)!important;
+  border-radius:15px!important;
+  background:linear-gradient(155deg,#111c20 0%,#0b1317 100%)!important;
+  box-shadow:0 10px 28px rgba(0,0,0,.16)!important;
+}
+.telegram-agent-status .agent-proposal-top{margin-bottom:14px}
+.telegram-agent-status .agent-proposal-brand{font-size:10px;letter-spacing:.08em;color:#9bb5aa}
+.telegram-agent-status .agent-state-pill{padding:5px 9px;border-radius:999px;font:600 10px Inter,system-ui,sans-serif;letter-spacing:.015em}
+.telegram-agent-status .agent-proposal-values{margin:0 0 12px}
+.telegram-agent-status .agent-proposal-field.amount{padding:0 0 11px;border-bottom:1px solid rgba(148,176,169,.12)}
+.telegram-agent-status .agent-proposal-field.amount>span{font-size:10px;letter-spacing:.035em}
+.telegram-agent-status .agent-proposal-field.amount>b{font-size:25px;letter-spacing:-.045em}
+.telegram-agent-status .agent-recipient-track-card.compact{margin:0 0 12px;padding:11px 12px;border:1px solid rgba(148,176,169,.13);border-radius:11px;background:rgba(5,12,14,.42)}
+.telegram-agent-status .agent-recipient-track-head>b{font-size:9px;letter-spacing:.06em}
+.telegram-agent-status .agent-recipient-account{font-size:12px}
+.telegram-agent-status .agent-policy-reason{margin:12px 0 0;padding:12px 13px;border:1px solid rgba(240,120,131,.16);border-radius:11px;background:rgba(240,120,131,.045)}
+.telegram-agent-status .agent-policy-reason>span{font-size:9px;letter-spacing:.06em;color:#d69ba0}
+.telegram-agent-status .agent-policy-reason p{margin:5px 0 0;color:#d7e0dc;font-size:12px;line-height:1.6}
+.telegram-agent-status .agent-result-grid.compact{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:11px 0 0;padding:0;border:0}
+.telegram-agent-status .agent-result-grid.compact>span{color:#82978e;font:500 10px Inter,system-ui,sans-serif;letter-spacing:0}
+.telegram-agent-status .agent-result-grid.compact>b{color:#b7d2c7;font:600 10px Inter,system-ui,sans-serif;text-align:right}
+.telegram-agent-status .agent-proposal-meta.compact{margin:11px 0 0;padding:0;border:0}
+.telegram-agent-status .agent-proposal-meta.compact>span{font-size:10px}
+.telegram-agent-status .agent-approval{margin-top:13px;padding-top:12px}
+.telegram-agent-status .agent-approval>p{font-size:12px;line-height:1.55}
+.telegram-agent-status .agent-approval-actions #approveAgentPayment{min-height:43px;border-radius:11px;font-size:12px}
+@media(max-width:600px){
+  .telegram-agent-status{padding:13px!important}
+  .telegram-agent-status .agent-proposal-field.amount>b{font-size:23px}
+}
