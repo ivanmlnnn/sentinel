@@ -48,16 +48,7 @@ Historical GitHub Actions workflow: [Deploy Sentinel Testnet](https://github.com
 
 ### Normal release / redeploy all Workers
 
-1. Confirm the already-deployed payment contract ID and the existing restricted runtime signer key are the intended ones.
-2. Open the workflow link above and select **Run workflow**.
-3. Select branch `main`.
-4. Set `deploy_target = both`.
-5. Set `rotate_signer_key = false`. This is the normal setting for a routine deployment; do not rotate the key again if the restricted key is already installed.
-6. Enter `DEPLOY_SENTINEL_TESTNET` exactly in the confirmation field.
-7. Start the workflow and wait for the verification and deployment jobs to finish.
-8. Confirm that the Signer Worker deployment completes before Main Worker deployment. The workflow's `both` target performs that order.
-9. Confirm the Main Worker production smoke checks pass.
-10. Open the live dashboard: https://sentinel.ivmaladin.workers.dev
+Use the direct Wrangler procedure above for the current operating mode. Deploy the Signer Worker first, then the Main Worker. GitHub Actions workflow links elsewhere in this document are historical CI/deployment records; they are not the active release trigger. After each deployment, record the exact Wrangler version IDs and run the production HTTP smoke checks. Do not claim a release is live until Wrangler confirms both deployments.
 
 ### What each deployment target does
 
@@ -102,47 +93,21 @@ One-time contract deployment only:
 One-time restricted-key rotation only:
 - `NEAR_AGENT_SIGNER_ADMIN_PRIVATE_KEY`
 
-Keep each Worker's existing runtime secrets in the correct Cloudflare Worker secret store, including its HMAC secret, Privy configuration, and the Gemini `GEMINI_API_KEY` secret on the Main Worker. Never commit, paste, or print secret values. The private Signer Worker is not exposed through a public `workers.dev` URL; Main calls it through the `SIGNER_SERVICE` service binding.
+Keep each Worker's existing runtime secrets in the correct Cloudflare Worker secret store, including its HMAC secret and Privy configuration. The current Main Worker AI path uses the Cloudflare Workers AI `AI` binding and `SENTINEL_AI_MODEL`; it does not require a Gemini API key. Never commit, paste, or print secret values. The private Signer Worker is not exposed through a public `workers.dev` URL; Main calls it through the `SIGNER_SERVICE` service binding.
 
-## Gemini AI provider
+## Current AI provider — Cloudflare Workers AI
 
-Sentinel's authenticated Agent, Guest Agent, and AI Review routes now use the Google Gemini API through the shared `functions/api/_gemini.js` adapter. The default model is `gemini-2.5-flash`; an optional `GEMINI_MODEL` Worker variable can select another model available to the API key.
+The current source routes AI requests through `functions/api/_ai.js` and the Cloudflare Workers AI binding named `AI`. The default model in source is `@cf/zai-org/glm-4.7-flash`; the root `wrangler.jsonc` sets `SENTINEL_AI_MODEL` to the same model. The authenticated Agent, Guest Agent, and AI Review routes call the shared `callSentinelAI` adapter.
 
-### Runtime secret setup
+### Runtime configuration
 
-The Gemini key is a **Main Worker runtime secret**, not a source-code value and not a Signer Worker secret. The Agent, Guest Agent, and AI Review routes execute in the Main Worker. The merged-main source is deployed, but CI and HTTP boundary smoke tests do not prove this secret is present or that Gemini has returned a live response.
+- Configure the Cloudflare Workers AI binding `AI` on the Main Worker.
+- Keep `SENTINEL_AI_MODEL` aligned with a model supported by the account/runtime.
+- No `GEMINI_API_KEY` is required by the current adapter.
+- Never place provider credentials or other secrets in source control.
 
-1. Create an API key in [Google AI Studio](https://aistudio.google.com/apikey).
-2. In the repository's root directory, run `npx wrangler secret put GEMINI_API_KEY` and paste the key at the hidden prompt. Confirm the Wrangler target is the production `sentinel` Main Worker.
-3. Do not put the key in `wrangler.jsonc`, frontend JavaScript, Git history, README, or a GitHub Actions log. Do not configure it on the isolated Signer Worker.
-4. Deploy the Main Worker from the intended release commit, then verify the dashboard and protected API routes.
-5. Keep the existing Privy, Turnstile, D1, HMAC, and isolated Signer configuration unchanged.
+### Security boundary and verification
 
-The previous `ANTHROPIC_API_KEY` and `ANTHROPIC_MODEL` variables are no longer read by these three routes. They can be retired from the Main Worker only after the Gemini deployment is confirmed healthy. Do not delete or change signer secrets as part of this provider migration.
+Model text and tool calls remain untrusted output. Server-side tool allowlists, deterministic payment policy, exact-intent human approval, isolated signer checks, spending limits, and payment-contract restrictions remain separate authorization boundaries. A successful unit test or HTTP authentication smoke test does not prove a live model response. Verify the deployed Main Worker with authenticated Agent, Guest Agent, and AI Review requests before claiming live AI availability.
 
-### Adapter behavior and security boundary
-
-The shared adapter handles Gemini API authentication, model selection, request timeouts, provider error classification, tool declaration schema conversion, function-call normalization, and multi-turn function-response mapping. It is used by all three routes:
-
-- **Authenticated Agent** — ordinary conversation, read-only wallet investigation, and payment proposal generation.
-- **Guest Agent** — bounded read-only skills with existing daily quota and tool-round limits.
-- **AI Review** — evidence-only explanation of a stored deterministic investigation.
-
-Gemini text and function calls remain untrusted model output. A function call can only invoke the route's explicitly allowlisted server-side tool. The deterministic Sentinel policy, exact receiver/amount binding, human NEP-413 approval, isolated signer checks, spend limits, kill switch, and payment-contract enforcement remain independent of the model provider. Gemini cannot authorize, sign, or execute a payment.
-
-### Verification
-
-Run:
-
-```bash
-npm ci
-npm test
-npm run demo:attack
-npm run check:d1
-cargo build --manifest-path payment-contract/Cargo.toml --target wasm32-unknown-unknown --release
-```
-
-The dedicated Gemini adapter regression suite is `tests/gemini-provider.test.mjs`. It covers conversation/tool-call conversion, response normalization, missing-secret fail-closed behavior, API request construction, and rate-limit classification. CI results for the migration must be checked on the exact PR head before describing the adapter, payment-contract WASM build, Security CI, or CodeQL as passing.
-
-A successful build or mocked adapter test does not prove that the production Cloudflare secret is installed or that a live Gemini conversation has succeeded. Record the exact deployment run and perform a real authenticated Agent, Guest Agent, and AI Review smoke test after configuring the runtime secret.
-
+The Gemini migration records in the historical sections of `README.md` and `END_TO_END_VERIFICATION.md` describe earlier revisions only; they are not evidence of the current provider configuration.
