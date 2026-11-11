@@ -3,9 +3,7 @@
   "name": "sentinel-signer",
   "main": "src/index.mjs",
   "compatibility_date": "2026-11-08",
-  "compatibility_flags": [
-    "nodejs_compat"
-  ],
+  "compatibility_flags": ["nodejs_compat"],
   "workers_dev": false,
   "preview_urls": false,
   "d1_databases": [
@@ -23,18 +21,13 @@
   ],
   "previews": {
     "d1_databases": [
-      {
-        "binding": "DB",
-        "database_id": "f3fa44b2-2b49-4af1-8687-2346cb336b22"
-      },
-      {
-        "binding": "DB2",
-        "database_id": "80a08a93-4353-4dba-914d-a436afd040c9"
-      }
+      { "binding": "DB", "database_id": "f3fa44b2-2b49-4af1-8687-2346cb336b22" },
+      { "binding": "DB2", "database_id": "80a08a93-4353-4dba-914d-a436afd040c9" }
     ]
   },
   "vars": {
     "NEAR_NETWORK": "testnet",
+    "NEAR_AGENT_KILL_SWITCH": "false",
     "NEAR_AGENT_ALLOWED_RECEIVERS": "rawvest6817.testnet",
     "NEAR_AGENT_MAX_PAYMENT_NEAR": "0.1",
     "NEAR_AGENT_MAX_DAILY_NEAR": "0.2"
