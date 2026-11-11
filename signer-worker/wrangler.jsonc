@@ -32,5 +32,8 @@
         "database_id": "80a08a93-4353-4dba-914d-a436afd040c9"
       }
     ]
+  },
+  "vars": {
+    "NEAR_NETWORK": "testnet"
   }
 }

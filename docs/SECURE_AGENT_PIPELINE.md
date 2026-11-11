@@ -43,6 +43,10 @@ The Main Worker signs each trusted internal assessment with Ed25519. The canonic
 
 A shared HMAC secret protects the internal service request but does not make the main Worker a fully trusted authorization oracle. The Main Worker has no binding to DB2, so it cannot directly alter the signer's nonce, approval-claim, or spend ledgers. The signer does have a `DB` binding to DB1 so it can read pending approvals; Cloudflare D1 bindings are not read-only in this configuration, even though the current signer code only performs a SELECT against DB1. A compromised Main Worker can still create or alter pending-approval rows and can use its HMAC secret to call the signer. The application approval is therefore not independent cryptographic authorization by itself. The current implementation additionally requires a NEP-413 signature from the human's connected NEAR Testnet wallet key, independently verified by the signer; this is the human approval credential, not the agent runtime signer key. The agent runtime key is separately restricted to the payment contract and pay method. This prevents a compromised Main Worker from substituting receiver, amount, wallet, expiry, or approval ID without a matching wallet signature. The signer still enforces its own hard-coded caps, actor identity, receiver allowlist, kill switch, and independent investigation. Keep the restricted runtime key Testnet-only.
 
+## Explicit Testnet Worker configuration
+
+Both `wrangler.jsonc` (Main Worker) and `signer-worker/wrangler.jsonc` (isolated Signer Worker) pin the non-secret `NEAR_NETWORK=testnet` variable. The payment routes fail closed unless this exact value is present on both Workers. This setting selects the Testnet-only execution boundary; it does not disable the kill switch, add receivers to the allowlist, or relax spending caps. Configure the remaining payment variables and secrets separately in the correct Worker environments, and keep the signer kill switch enabled until an approved test plan is ready.
+
 ## Hard limits
 
 - Network: Testnet only; RPC URL is fixed to `https://rpc.testnet.fastnear.com`.
