@@ -1,5 +1,7 @@
+import { JsonRpcProvider } from "near-api-js";
 import { verifyPrivyAccessToken } from "../../functions/api/_shared.js";
-import { validatePaymentIntent } from "../../src/agent-policy.mjs";
+import { evaluateAgentAuthorization, validatePaymentIntent } from "../../src/agent-policy.mjs";
+import { verifyVerdict } from "../../src/signed-verdict.mjs";
 
 const RPC = "https://rpc.testnet.fastnear.com";
 const HARD_MAX_PAYMENT_MICRO = 100_000;
@@ -105,10 +107,32 @@ async function rpc(method, params, id = "sentinel-rpc") {
   return data.result;
 }
 
+export async function assertRestrictedFunctionCallKey(accountId, publicKey, contractId) {
+  if (!contractId || !/^[a-z0-9._-]{2,64}\.testnet$/.test(contractId)) {
+    throw new Error("PAYMENT_CONTRACT_NOT_CONFIGURED");
+  }
+  const result = await rpc("query", {
+    request_type: "view_access_key", finality: "final",
+    account_id: accountId, public_key: publicKey
+  }, "sentinel-restricted-key-check");
+  const permission = result.permission?.FunctionCall;
+  let allowance = 0n;
+  try { allowance = BigInt(permission?.allowance ?? "0"); } catch {}
+  if (!permission ||
+      permission.receiver_id !== contractId ||
+      !Array.isArray(permission.method_names) ||
+      permission.method_names.length !== 1 ||
+      permission.method_names[0] !== "pay" ||
+      allowance <= 0n ||
+      allowance > 250_000_000_000_000_000_000_000n) {
+    throw new Error("SIGNER_REQUIRES_CONTRACT_SCOPED_FUNCTION_CALL_KEY");
+  }
+  return { receiver_id: permission.receiver_id, method_names: permission.method_names };
+}
 export async function claimApproval(env, { approvalId, idempotencyKey, actor, receiver, amountMicro }) {
   const pending = await env.DB.prepare(
     "SELECT id, actor, receiver_account, amount_micro, status, expires_at FROM agent_pending_approvals " +
-    "WHERE id=? AND actor=? AND status='APPROVING'"
+    "WHERE id=? AND actor=? AND status='APPROVING' AND expires_at > CURRENT_TIMESTAMP"
   ).bind(approvalId, actor).first();
   if (!pending || pending.receiver_account !== receiver || Number(pending.amount_micro) !== amountMicro) {
     throw new Error("HUMAN_APPROVAL_NOT_VERIFIED");
@@ -122,14 +146,10 @@ async function reserveSpend(env, { idempotencyKey, actor, receiver, amountMicro,
   const result = await env.DB2.prepare(
     "INSERT INTO agent_execution (idempotency_key, actor, receiver_account, amount_micro, status, created_at, updated_at) " +
     "SELECT ?, ?, ?, ?, 'PENDING', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP " +
-    "WHERE (SELECT COALESCE(SUM(amount_micro), 0) FROM agent_execution WHERE date(created_at)=date('now') AND (status IN ('EXECUTED','UNKNOWN') OR (status='PENDING' AND created_at > datetime('now', '-15 minutes')))) + ? <= ?"
+    "WHERE (SELECT COALESCE(SUM(amount_micro), 0) FROM agent_execution WHERE date(created_at)=date('now') AND status IN ('PENDING','EXECUTED','UNKNOWN')) + ? <= ?"
   ).bind(idempotencyKey, actor, receiver, amountMicro, amountMicro, dailyCapMicro).run();
   if (result.meta?.changes === 1) return true;
-  const prior = await env.DB2.prepare(
-    "SELECT actor, receiver_account, amount_micro, status FROM agent_execution WHERE idempotency_key = ?"
-  ).bind(idempotencyKey).first();
-  if (prior && prior.actor === actor && prior.receiver_account === receiver &&
-      Number(prior.amount_micro) === amountMicro && prior.status === "PENDING") return true;
+  const prior = await env.DB2.prepare("SELECT idempotency_key FROM agent_execution WHERE idempotency_key = ?").bind(idempotencyKey).first();
   throw new Error(prior ? "IDEMPOTENCY_KEY_REUSED" : "DAILY_SPEND_LIMIT_REACHED");
 }
 async function setState(env, key, state, hash = null) {
@@ -203,56 +223,44 @@ async function verifyPreflightToken(token, env, expected) {
   } catch { throw new Error("PREFLIGHT_TOKEN_INVALID"); }
   const age = Date.now() - Number(payload.issued_at);
   if (payload.decision !== "ALLOW" || !UUID_RE.test(String(payload.nonce || "")) ||
-      !Number.isFinite(age) || age < -30000 || age > 600000 ||
+      !Number.isFinite(age) || age < -30000 || age > 120000 ||
       String(payload.expires_at) !== String(expected.expiresAt) ||
-      Number(payload.issued_at) > Date.parse(String(expected.expiresAt).replace(" ", "T") + (String(expected.expiresAt).endsWith("Z") ? "" : "Z")) ||
       payload.approval_id !== expected.approvalId || payload.actor !== expected.actor ||
       payload.wallet_account !== expected.walletAccount || payload.receiver_account !== expected.receiver ||
-      payload.idempotency_key !== expected.idempotencyKey ||
       Number(payload.amount_micro) !== expected.amountMicro) {
     throw new Error("PREFLIGHT_TOKEN_MISMATCH_OR_EXPIRED");
   }
   return payload;
 }
 
-export async function prepareWalletTransfer(payload, identity, env) {
-  const { intent, idempotency_key: idempotencyKey, approval_id: approvalId,
-    wallet_account: walletAccount, preflight_token: preflightToken } = payload;
-  if (!UUID_RE.test(String(idempotencyKey || ""))) return deny("INVALID_IDEMPOTENCY_KEY");
-  if (!UUID_RE.test(String(approvalId || ""))) return deny("INVALID_APPROVAL_ID");
-  if (env.NEAR_NETWORK !== "testnet") return deny("TESTNET_ONLY");
-  if (env.NEAR_AGENT_KILL_SWITCH !== "false") return deny("KILL_SWITCH_ACTIVE");
-  if (payload.actor !== identity.sub) return deny("ACTOR_MISMATCH");
-  if (!env.DB || !env.DB2) return deny("EXECUTION_DATABASE_UNAVAILABLE");
-  if (!/^[a-z0-9._-]{2,64}\.testnet$/.test(String(walletAccount || ""))) return deny("WALLET_ACCOUNT_MUST_BE_TESTNET");
-  const validated = validatePaymentIntent(intent, env);
-  if (!validated.ok) return deny(validated.reason);
-  const amountMicro = nearToMicro(intent.amount_near);
-  const paymentCap = nearToMicro(env.NEAR_AGENT_MAX_PAYMENT_NEAR);
-  const dailyCap = nearToMicro(env.NEAR_AGENT_MAX_DAILY_NEAR);
-  if (!amountMicro || amountMicro > HARD_MAX_PAYMENT_MICRO || !paymentCap || amountMicro > paymentCap) return deny("HARD_PAYMENT_LIMIT_EXCEEDED");
-  if (!dailyCap || dailyCap > HARD_MAX_DAILY_MICRO) return deny("DAILY_CAP_UNCONFIGURED_OR_TOO_HIGH");
-  const pending = await env.DB.prepare(
-    "SELECT expires_at FROM agent_pending_approvals WHERE id=? AND actor=? AND status='PENDING'"
-  ).bind(approvalId, identity.sub).first();
-  if (!pending) return deny("HUMAN_APPROVAL_NOT_VERIFIED");
-  let tokenPayload;
-  try {
-    tokenPayload = await verifyPreflightToken(preflightToken, env, {
-      approvalId, actor: identity.sub, walletAccount, receiver: validated.receiver_account,
-      amountMicro, idempotencyKey, expiresAt: pending.expires_at
-    });
-  } catch (error) { return deny(error?.message || "PREFLIGHT_TOKEN_INVALID"); }
-  if (!await reserveNonce(env, "preflight:" + tokenPayload.nonce)) return deny("PREFLIGHT_TOKEN_REPLAYED");
-  try {
-    await reserveSpend(env, { idempotencyKey, actor: identity.sub, receiver: validated.receiver_account,
-      amountMicro, dailyCapMicro: dailyCap });
-  } catch (error) { return deny(error?.message || "SPEND_RESERVATION_FAILED"); }
-  return { executed: false, status: "READY_TO_SIGN", reason: "WALLET_TRANSFER_SPEND_RESERVED",
-    idempotency_key: idempotencyKey, receiver_account: validated.receiver_account,
-    amount_near: microToNearString(amountMicro), network: "testnet" };
+async function investigate(intent, authorizationHeader, env) {
+  const baseValue = String(env.SENTINEL_PREFLIGHT_URL || "");
+  const base = baseValue.endsWith("/") ? baseValue.slice(0, -1) : baseValue;
+  const secret = env.AGENT_SIGNER_HMAC_SECRET;
+  const publicKey = env.SENTINEL_VERDICT_PUBLIC_KEY;
+  const senderAccount = String(env.NEAR_AGENT_SIGNER_ACCOUNT_ID || "").toLowerCase();
+  if (!base.startsWith("https://") || typeof secret !== "string" || new TextEncoder().encode(secret).byteLength < 32 ||
+      typeof publicKey !== "string" || !publicKey || !senderAccount) throw new Error("PREFLIGHT_ATTESTATION_NOT_CONFIGURED");
+  const verdictNonce = crypto.randomUUID();
+  const body = JSON.stringify({ sender_account: senderAccount, receiver_account: intent.receiver_account, amount_near: intent.amount_near, nonce: verdictNonce });
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const requestNonce = crypto.randomUUID();
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const signature = Array.from(new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(timestamp + "." + requestNonce + "." + body))), byte => byte.toString(16).padStart(2, "0")).join("");
+  const response = await fetch(base + "/api/internal/investigate", {
+    method: "POST", headers: { "content-type": "application/json", authorization: authorizationHeader,
+      "x-sentinel-timestamp": timestamp, "x-sentinel-nonce": requestNonce, "x-sentinel-signature": signature },
+    body, signal: AbortSignal.timeout(20000)
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok || !data?.attestation) throw new Error("SIGNER_PREFLIGHT_FAILED");
+  const valid = await verifyVerdict(data.attestation, publicKey, {
+    sender_account: senderAccount, receiver_account: intent.receiver_account,
+    amount_micro: nearToMicro(intent.amount_near), nonce: verdictNonce
+  });
+  if (!valid) throw new Error("SIGNED_VERDICT_INVALID_OR_EXPIRED");
+  return data;
 }
-
 export async function execute(payload, authorizationHeader, identity, env) {
   const { intent, idempotency_key: idempotencyKey, approval_id: approvalId,
     wallet_account: walletAccount, transaction_hash: transactionHash, preflight_token: preflightToken } = payload;
@@ -262,7 +270,7 @@ export async function execute(payload, authorizationHeader, identity, env) {
   if (env.NEAR_AGENT_KILL_SWITCH !== "false") return deny("KILL_SWITCH_ACTIVE");
   if (payload.actor !== identity.sub) return deny("ACTOR_MISMATCH");
   if (!env.DB || !env.DB2) return deny("EXECUTION_DATABASE_UNAVAILABLE");
-  if (!/^[a-z0-9._-]{2,64}\.testnet$/.test(String(walletAccount || ""))) return deny("WALLET_ACCOUNT_MUST_BE_TESTNET");
+  if (!/^[a-z0-9._-]{2,64}\\.testnet$/.test(String(walletAccount || ""))) return deny("WALLET_ACCOUNT_MUST_BE_TESTNET");
   const validated = validatePaymentIntent(intent, env);
   if (!validated.ok) return deny(validated.reason);
   const amountMicro = nearToMicro(intent.amount_near);
@@ -279,7 +287,7 @@ export async function execute(payload, authorizationHeader, identity, env) {
     if (!pending) return deny("HUMAN_APPROVAL_NOT_VERIFIED");
     tokenPayload = await verifyPreflightToken(preflightToken, env, {
       approvalId, actor: identity.sub, walletAccount, receiver: validated.receiver_account,
-      amountMicro, idempotencyKey, expiresAt: pending.expires_at
+      amountMicro, expiresAt: pending.expires_at
     });
   } catch (error) {
     return deny(error?.message || "PREFLIGHT_TOKEN_INVALID");
@@ -299,6 +307,10 @@ export async function execute(payload, authorizationHeader, identity, env) {
   }
 
   try {
+    if (!await reserveNonce(env, "preflight:" + tokenPayload.nonce)) {
+      await setState(env, idempotencyKey, "FAILED");
+      return deny("PREFLIGHT_TOKEN_REPLAYED");
+    }
     const verification = await verifyFinalTransfer(transactionHash, walletAccount,
       validated.receiver_account, (BigInt(amountMicro) * 1_000_000_000_000n).toString());
     await setState(env, idempotencyKey, "EXECUTED", transactionHash);
@@ -306,7 +318,7 @@ export async function execute(payload, authorizationHeader, identity, env) {
       transaction_hash: transactionHash, explorer_url: "https://testnet.nearblocks.io/txns/" + encodeURIComponent(transactionHash),
       verification, signer_account: walletAccount, receiver_account: validated.receiver_account,
       amount_near: microToNearString(amountMicro), network: "testnet",
-      sentinel: { decision: tokenPayload.decision, risk_score: Number(tokenPayload.risk_score) } };
+      sentinel: { decision: tokenPayload.decision, risk_score: null } };
   } catch (error) {
     const unknown = error?.message === "NEAR_RPC_UNAVAILABLE";
     try { await setState(env, idempotencyKey, unknown ? "UNKNOWN" : "FAILED", transactionHash); } catch {}
@@ -316,55 +328,31 @@ export async function execute(payload, authorizationHeader, identity, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (request.method !== "POST" || !["/execute", "/prepare"].includes(url.pathname)) return json({ error: "NOT_FOUND" }, 404);
+    if (request.method !== "POST" || url.pathname !== "/execute") return json({ error: "NOT_FOUND" }, 404);
     if (!env.DB || !env.DB2) return json({ error: "SIGNER_DATABASE_UNAVAILABLE" }, 503);
     const boundedBody = await readBoundedSignerBody(request, 8000);
     if (!boundedBody.ok) return json({ error: boundedBody.reason }, boundedBody.status);
     const rawBody = boundedBody.text;
-    let authenticated = false;
-    try { authenticated = await verifyInternalRequest(request, rawBody, env); }
-    catch (error) {
-      console.error("sentinel_signer_auth_check_failed", { name: error?.name || "Error" });
-      return json({ error: "SIGNER_AUTH_CHECK_FAILED" }, 503);
-    }
-    if (!authenticated) return json({ error: "INVALID_INTERNAL_AUTH" }, 401);
+    if (!await verifyInternalRequest(request, rawBody, env)) return json({ error: "INVALID_INTERNAL_AUTH" }, 401);
     const nonce = request.headers.get("x-sentinel-nonce");
     if (!await reserveNonce(env, nonce)) return json({ error: "INTERNAL_REPLAY_REJECTED" }, 409);
-    let identity;
-    try { identity = await verifyPrivyAccessToken(request, env); }
-    catch (error) {
-      console.error("sentinel_signer_identity_check_failed", { name: error?.name || "Error" });
-      return json({ error: "SIGNER_IDENTITY_CHECK_FAILED" }, 503);
-    }
+    const identity = await verifyPrivyAccessToken(request, env);
     if (!identity) return json({ error: "UNAUTHORIZED" }, 401);
     let payload;
     try { payload = JSON.parse(rawBody); } catch { return json({ error: "INVALID_JSON" }, 400); }
     const exactKeys = (value, expected) => value && typeof value === "object" && !Array.isArray(value) &&
       Object.keys(value).sort().join(",") === [...expected].sort().join(",");
-    const commonKeys = ["intent", "actor", "idempotency_key", "approval_id", "wallet_account", "preflight_token"];
-    const expectedKeys = url.pathname === "/execute" ? [...commonKeys, "transaction_hash"] : commonKeys;
-    if (!exactKeys(payload, expectedKeys) ||
+    if (!exactKeys(payload, ["intent", "actor", "idempotency_key", "approval_id", "wallet_account", "transaction_hash", "preflight_token"]) ||
         !exactKeys(payload.intent, ["receiver_account", "amount_near", "rationale"]) ||
         typeof payload.actor !== "string" || payload.actor.length > 128 ||
         typeof payload.intent.receiver_account !== "string" || payload.intent.receiver_account.length > 64 ||
         typeof payload.intent.rationale !== "string" || payload.intent.rationale.length > 500 ||
         typeof payload.wallet_account !== "string" || payload.wallet_account.length > 64 ||
-        typeof payload.preflight_token !== "string" || payload.preflight_token.length > 4096 ||
-        (url.pathname === "/execute" && (typeof payload.transaction_hash !== "string" || payload.transaction_hash.length > 128))) {
+        typeof payload.transaction_hash !== "string" || payload.transaction_hash.length > 128 ||
+        typeof payload.preflight_token !== "string" || payload.preflight_token.length > 4096) {
       return json({ error: "INVALID_PAYLOAD_SCHEMA" }, 400);
     }
-    try {
-      const result = url.pathname === "/prepare"
-        ? await prepareWalletTransfer(payload, identity, env)
-        : await execute(payload, request.headers.get("authorization") || "", identity, env);
-      return json(result, 200);
-    } catch (error) {
-      const message = typeof error?.message === "string" ? error.message : "";
-      const reason = /^[A-Z][A-Z0-9_]{2,95}$/.test(message) ? message : "SIGNER_INTERNAL_ERROR";
-      console.error("Sentinel isolated signer request failed", {
-        path: url.pathname, reason, name: error?.name || "Error"
-      });
-      return json({ executed: false, status: "FAILED", reason, transaction_hash: null }, 500);
-    }
+    const result = await execute(payload, request.headers.get("authorization") || "", identity, env);
+    return json(result, 200);
   }
 };
