@@ -216,7 +216,10 @@ export async function onRequestPost({ request, env }) {
 
   let result = await callSentinelAIProvider(env, messages);
   if (!result.ok) return json({
-    error: result.error, provider_status: result.status || null,
+    error: result.error, provider_status: result.provider_status ?? result.status ?? null,
+    provider_code: result.provider_code || null,
+    provider_log_id: result.provider_log_id || null,
+    provider_error_name: result.provider_error_name || null,
     provider_message: result.message,
     prompts_remaining: Math.max(0, DAILY_LIMIT - Number(quota.prompt_count))
   }, 502);
