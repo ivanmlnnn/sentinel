@@ -132,7 +132,8 @@ export async function onRequestGet({ request, env }) {
   if (!UUID_RE.test(approvalId)) return json({ error: "INVALID_APPROVAL_ID" }, 400);
   const row = await env.DB.prepare(
     "SELECT a.id, a.receiver_account, a.amount_micro, a.status, a.expires_at, " +
-    "e.status AS execution_status, e.transaction_hash " +
+    "e.status AS execution_status, e.transaction_hash, " +
+    "CASE WHEN a.expires_at <= CURRENT_TIMESTAMP THEN 1 ELSE 0 END AS is_expired " +
     "FROM agent_pending_approvals a " +
     "LEFT JOIN signer_approval_claims c ON c.approval_id = a.id " +
     "LEFT JOIN agent_execution e ON e.idempotency_key = c.idempotency_key " +
@@ -140,7 +141,7 @@ export async function onRequestGet({ request, env }) {
   ).bind(approvalId, identity.sub).first();
   if (!row) return json({ error: "APPROVAL_NOT_FOUND" }, 404);
   let status = row.status;
-  if (status === "PENDING" && Date.parse(row.expires_at + "Z") <= Date.now()) {
+  if (status === "PENDING" && Number(row.is_expired) === 1) {
     await env.DB.prepare(
       "UPDATE agent_pending_approvals SET status='EXPIRED', updated_at=CURRENT_TIMESTAMP WHERE id=? AND actor=? AND status='PENDING'"
     ).bind(approvalId, identity.sub).run();
