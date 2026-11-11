@@ -764,8 +764,9 @@ function renderAgentResult(data) {
     /^https:\/\/testnet\.nearblocks\.io\/txns\/[1-9A-HJ-NP-Za-km-z]{32,64}$/.test(data.explorer_url)
     ? data.explorer_url : (data.execution_enabled === true && txHash
       ? 'https://testnet.nearblocks.io/txns/' + encodeURIComponent(txHash) : '');
-  const txLink = data.execution_enabled === true && txHash && explorerUrl
-    ? '<a class="agent-tx-link" href="' + escapeHtml(explorerUrl) + '" target="_blank" rel="noopener noreferrer">View RPC-verified Testnet transaction ↗</a>'
+  const txLink = txHash && explorerUrl
+    ? '<a class="agent-tx-link" href="' + escapeHtml(explorerUrl) + '" target="_blank" rel="noopener noreferrer">' +
+      (data.execution_enabled === true ? 'View RPC-verified Testnet transaction ↗' : 'Check submitted transaction in Testnet Explorer ↗') + '</a>'
     : '';
   const approvalId = status === 'AWAITING_HUMAN_APPROVAL' ? String(data.approval_id || '') : '';
   const policyReason = String(data.reason || '');
@@ -793,8 +794,8 @@ function renderAgentResult(data) {
     PREFLIGHT_ATTESTATION_NOT_CONFIGURED: 'The signer is missing its security preflight URL, shared HMAC secret, verdict public key, or Testnet signer account configuration.',
     PAYMENT_CONTRACT_NOT_CONFIGURED: 'The Testnet payment contract is not configured on the isolated signer.',
     SIGNER_REQUIRES_CONTRACT_SCOPED_FUNCTION_CALL_KEY: 'The signer account key is not restricted to the approved payment contract and pay method.',
-    ISOLATED_SIGNER_REQUEST_FAILED: 'The isolated signer did not return a valid execution result. No transfer is confirmed.',
-    ISOLATED_SIGNER_UNAVAILABLE: 'The isolated signer could not be reached. Check its status before trying again.',
+    ISOLATED_SIGNER_REQUEST_FAILED: 'Your wallet returned a transaction hash, but Sentinel could not read the signer verification result. Check the transaction in NEAR Explorer. Do not submit or approve it again until its status is clear.',
+    ISOLATED_SIGNER_UNAVAILABLE: 'Your wallet returned a transaction hash, but the isolated signer could not be reached to verify it. Check the transaction in NEAR Explorer. Do not submit or approve it again until its status is clear.',
     SIGNER_NOT_CONFIGURED: 'The Testnet signer account or signing key is not configured.',
     SIGNER_RESTRICTED_KEY_OR_CONTRACT_INVALID: 'The signer key or payment contract configuration failed its security check.',
     SIGNER_PRIVATE_KEY_INVALID: 'The configured signer private key is malformed or cannot be decoded. No transfer was sent.',
@@ -849,7 +850,7 @@ function renderAgentResult(data) {
       ((hasPaymentContext || data.sentinel) ? '<div class="agent-proposal-values">' +
         (proposal.amount_near != null ? '<div class="agent-proposal-field amount"><span>AMOUNT</span><b>' + escapeHtml(String(proposal.amount_near)) + ' <small>NEAR</small></b></div>' : '') +
       '</div>' : '') + recipientCard +
-      (status === 'DENIED' && policyReason ? '<div class="agent-policy-reason"><span>Payment not sent</span><p>' + escapeHtml(policyReasonText || ('Reason code: ' + policyReason)) + '</p></div>' : '') +
+      ((status === 'DENIED' || status === 'UNKNOWN') && policyReason ? '<div class="agent-policy-reason"><span>' + (status === 'UNKNOWN' && txHash ? 'Verification pending' : 'Payment not sent') + '</span><p>' + escapeHtml(policyReasonText || ('Reason code: ' + policyReason)) + '</p></div>' : '') +
       ((data.sentinel?.decision || data.sentinel?.risk_score != null) ? '<div class="agent-result-grid compact"><span>Security check</span><b>' + escapeHtml(data.sentinel?.decision ? verdict : 'Completed') + (data.sentinel?.risk_score != null && Number.isFinite(Number(data.sentinel.risk_score)) ? ' · Risk ' + escapeHtml(risk) : '') + '</b></div>' : '') +
       (approvalId && status === 'AWAITING_HUMAN_APPROVAL' ? '<div class="agent-proposal-meta compact"><span>NEAR TESTNET · Expires in 5 minutes</span></div>' : '') +
       (txHash ? '<p class="agent-result-hash">TRANSACTION HASH · ' + escapeHtml(txHash) + '</p>' : '') + txLink +
