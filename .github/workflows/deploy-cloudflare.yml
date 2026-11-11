@@ -58,16 +58,12 @@ jobs:
         env:
           NEAR_AGENT_SIGNER_RESTRICTED_PRIVATE_KEY: ${{ secrets.NEAR_AGENT_SIGNER_RESTRICTED_PRIVATE_KEY }}
           NEAR_PAYMENT_CONTRACT_ID: ${{ secrets.NEAR_PAYMENT_CONTRACT_ID }}
-          NEAR_AGENT_SIGNER_ACCOUNT_ID: ${{ secrets.NEAR_AGENT_SIGNER_ACCOUNT_ID }}
         shell: bash
         run: |
           test -n "$NEAR_AGENT_SIGNER_RESTRICTED_PRIVATE_KEY" || { echo "::error::NEAR_AGENT_SIGNER_RESTRICTED_PRIVATE_KEY is missing"; exit 1; }
           test -n "$NEAR_PAYMENT_CONTRACT_ID" || { echo "::error::NEAR_PAYMENT_CONTRACT_ID is missing"; exit 1; }
           printf '%s' "$NEAR_AGENT_SIGNER_RESTRICTED_PRIVATE_KEY" | npx wrangler@4.159.0 secret put NEAR_AGENT_SIGNER_PRIVATE_KEY --config signer-worker/wrangler.jsonc
           printf '%s' "$NEAR_PAYMENT_CONTRACT_ID" | npx wrangler@4.159.0 secret put NEAR_PAYMENT_CONTRACT_ID --config signer-worker/wrangler.jsonc
-          if [ -n "$NEAR_AGENT_SIGNER_ACCOUNT_ID" ]; then
-            printf '%s' "$NEAR_AGENT_SIGNER_ACCOUNT_ID" | npx wrangler@4.159.0 secret put NEAR_AGENT_SIGNER_ACCOUNT_ID --config signer-worker/wrangler.jsonc
-          fi
 
       # The Main Worker signs each preflight assessment; the isolated Signer
       # verifies it. Generate one matching Ed25519 pair per release and install
