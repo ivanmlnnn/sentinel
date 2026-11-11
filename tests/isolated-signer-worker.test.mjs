@@ -77,22 +77,29 @@ test("signer kill switch denies before reading key material or touching D1", asy
   assert.equal(result.reason, "KILL_SWITCH_ACTIVE");
 });
 
-test("signer rejects missing wallet signature and mismatched approval intent", async () => {
+test("signer claims only an exact, active human-approved wallet transfer intent", async () => {
+  const inserted = [];
   const env = {
     DB: { prepare(sql) {
       assert.match(sql, /^SELECT id, actor/);
       return { bind(...args) { return { async first() {
         return { id: args[0], actor: args[1], receiver_account: "rawvest6817.testnet",
-          amount_micro: 10000, status: "APPROVING", expires_at: "2026-11-10 05:00:00" };
+          amount_micro: 10000, status: "APPROVING", expires_at: "2099-11-10 05:00:00" };
       } }; } };
     } },
-    DB2: { prepare() { throw new Error("DB2 must not be touched before signature validation"); } }
+    DB2: { prepare(sql) {
+      assert.match(sql, /^INSERT INTO signer_approval_claims/);
+      return { bind(...args) { return { async run() { inserted.push(args); return { meta: { changes: 1 } }; } }; } };
+    } }
   };
   const claim = { approvalId: "123e4567-e89b-42d3-a456-426614174000",
     idempotencyKey: "123e4567-e89b-42d3-a456-426614174001",
     actor: "did:privy:test", receiver: "rawvest6817.testnet", amountMicro: 10000 };
-  await assert.rejects(() => claimApproval(env, claim), /WALLET_SIGNATURE_REQUIRED/);
+  await claimApproval(env, claim);
+  assert.equal(inserted.length, 1);
+  assert.deepEqual(inserted[0].slice(0, 5), [claim.approvalId, claim.idempotencyKey, claim.actor, claim.receiver, claim.amountMicro]);
   await assert.rejects(() => claimApproval(env, { ...claim, amountMicro: 20000 }), /HUMAN_APPROVAL_NOT_VERIFIED/);
+  assert.equal(inserted.length, 1);
 });
 
 test("internal HMAC rejects short secrets and non-canonical timestamps", async () => {
@@ -174,49 +181,30 @@ test("signer rejects FullAccess, another contract, and extra FunctionCall method
   }
 });
 
-test("final payout verification requires exact contract call and successful native transfer receipt", async () => {
+test("final transfer verification accepts only the exact connected-wallet native Transfer", async () => {
   const originalFetch = globalThis.fetch;
-  const args = Buffer.from(JSON.stringify({
-    receiver_id: "receiver.testnet",
-    amount_yocto: "10000000000000000000000",
-    approval_id: "approval-123"
-  })).toString("base64");
+  const hash = "11111111111111111111111111111111";
   try {
     globalThis.fetch = async (_url, init) => {
       const request = JSON.parse(init.body);
-      if (request.method === "tx") {
-        return new Response(JSON.stringify({ result: {
-          transaction: {
-            signer_id: "sentinel-signer.testnet",
-            receiver_id: "sentinel-pay.testnet",
-            actions: [{ FunctionCall: { method_name: "pay", args } }]
-          },
-          status: { SuccessValue: "" },
-          transaction_outcome: { block_hash: "block-hash" },
-          receipts_outcome: [{ id: "payout-receipt", outcome: { status: { SuccessValue: "" } } }]
-        } }), { status: 200, headers: { "content-type": "application/json" } });
-      }
-      if (request.method === "EXPERIMENTAL_receipt") {
-        return new Response(JSON.stringify({ result: {
-          predecessor_id: "sentinel-pay.testnet",
+      assert.equal(request.method, "tx");
+      return new Response(JSON.stringify({ result: {
+        transaction: {
+          signer_id: "sender.testnet",
           receiver_id: "receiver.testnet",
-          receipt: { Action: { actions: [{ Transfer: { deposit: "10000000000000000000000" } }] } }
-        } }), { status: 200, headers: { "content-type": "application/json" } });
-      }
-      throw new Error("Unexpected RPC method");
+          actions: [{ Transfer: { deposit: "10000000000000000000000" } }]
+        },
+        status: { SuccessValue: "" },
+        transaction_outcome: { block_hash: "block-hash" },
+        receipts_outcome: [{ id: "transfer-receipt", outcome: { status: { SuccessValue: "" } } }]
+      } }), { status: 200, headers: { "content-type": "application/json" } });
     };
-    const verified = await verifyFinalTransfer(
-      "11111111111111111111111111111111",
-      "sentinel-signer.testnet",
-      "sentinel-pay.testnet",
-      "receiver.testnet",
-      "10000000000000000000000",
-      "approval-123"
-    );
+    const verified = await verifyFinalTransfer(hash, "sender.testnet", "receiver.testnet", "10000000000000000000000");
     assert.equal(verified.verified, true);
+    assert.equal(verified.signer_account, "sender.testnet");
     assert.equal(verified.receiver_account, "receiver.testnet");
     assert.equal(verified.amount_yocto, "10000000000000000000000");
-    assert.equal(verified.payment_receipt_id, "payout-receipt");
+    assert.equal(verified.final_status, "SUCCESS");
   } finally {
     globalThis.fetch = originalFetch;
   }
