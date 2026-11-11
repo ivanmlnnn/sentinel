@@ -38,26 +38,23 @@ function amountToMicro(value) {
 }
 
 function parseSimpleGreeting(prompt) {
-  return /^(?:hi|hello|hey|halo|hai|alo|pagi|siang|sore|malam)[!.?,\\s]*$/i.test(String(prompt || "").trim());
+  return /^(?:hi|hello|hey|halo|hai|alo|pagi|siang|sore|malam)[!.?,\s]*$/i.test(String(prompt || "").trim());
 }
 
 export function parseExplicitPaymentProposal(prompt) {
   const text = String(prompt || "").trim();
-  const account = "([a-z0-9]+(?:[-_.][a-z0-9]+)*)";
-  const amount = "((?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?)";
   const patterns = [
-    new RegExp("^(?:please\\\\s+)?(?:(?:i\\\\s+(?:want|would like)\\\\s+to\\\\s+)?(?:send|transfer))\\\\s+" + amount + "\\\\s*(?:near|Ⓝ)\\\\s+to\\\\s+" + account + "$", "i"),
-    new RegExp("^(?:please\\\\s+)?(?:(?:i\\\\s+(?:want|would like)\\\\s+to\\\\s+)?(?:send|transfer))\\\\s+(?:to\\\\s+)?" + account + "\\\\s+(?:(?:an?\\\\s+amount\\\\s+of)\\\\s+)?"+ amount + "\\\\s*(?:near|Ⓝ)$", "i"),
-    new RegExp("^(?:saya\\\\s+)?(?:mau|ingin|hendak)\\\\s+(?:mengirim|kirim|transfer)\\\\s+(?:near\\\\s+)?(?:ke\\\\s+)?" + account + "\\\\s+(?:sebesar\\\\s+)?" + amount + "\\\\s*(?:near|Ⓝ)$", "i"),
-    new RegExp("^(?:saya\\\\s+)?(?:mau|ingin|hendak)\\\\s+(?:mengirim|kirim|transfer)\\\\s+" + amount + "\\\\s*(?:near|Ⓝ)\\\\s+ke\\\\s+" + account + "$", "i"),
-    new RegExp("^(?:kirim|transfer)\\\\s+ke\\\\s+" + account + "\\\\s+(?:sebesar\\\\s+)?" + amount + "\\\\s*(?:near|Ⓝ)$", "i")
+    { regex: /^(?:please\s+)?(?:(?:i\s+(?:want|would like)\s+to\s+)?(?:send|transfer))\s+((?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?)\s*(?:near|Ⓝ)\s+to\s+([a-z0-9]+(?:[-_.][a-z0-9]+)*)$/i, amount: 1, receiver: 2 },
+    { regex: /^(?:please\s+)?(?:(?:i\s+(?:want|would like)\s+to\s+)?(?:send|transfer))\s+(?:to\s+)?([a-z0-9]+(?:[-_.][a-z0-9]+)*)\s+(?:an?\s+amount\s+of\s+)?((?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?)\s*(?:near|Ⓝ)$/i, amount: 2, receiver: 1 },
+    { regex: /^(?:saya\s+)?(?:mau|ingin|hendak)\s+(?:mengirim|kirim|transfer)\s+(?:near\s+)?(?:ke\s+)?([a-z0-9]+(?:[-_.][a-z0-9]+)*)\s+(?:sebesar\s+)?((?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?)\s*(?:near|Ⓝ)$/i, amount: 2, receiver: 1 },
+    { regex: /^(?:saya\s+)?(?:mau|ingin|hendak)\s+(?:mengirim|kirim|transfer)\s+((?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?)\s*(?:near|Ⓝ)\s+ke\s+([a-z0-9]+(?:[-_.][a-z0-9]+)*)$/i, amount: 1, receiver: 2 },
+    { regex: /^(?:kirim|transfer)\s+ke\s+([a-z0-9]+(?:[-_.][a-z0-9]+)*)\s+(?:sebesar\s+)?((?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?)\s*(?:near|Ⓝ)$/i, amount: 2, receiver: 1 }
   ];
-  for (const [index, pattern] of patterns.entries()) {
-    const match = text.match(pattern);
+  for (const candidate of patterns) {
+    const match = text.match(candidate.regex);
     if (!match) continue;
-    const receiver = (index === 0 || index === 3 ? match[2] : match[1]).toLowerCase();
-    const amountText = (index === 0 || index === 3 ? match[1] : match[2]).replace(",", ".");
-    const amountNear = Number(amountText);
+    const receiver = match[candidate.receiver].toLowerCase();
+    const amountNear = Number(match[candidate.amount].replace(",", "."));
     if (!Number.isFinite(amountNear) || amountNear <= 0) return null;
     return {
       receiver_account: receiver,
