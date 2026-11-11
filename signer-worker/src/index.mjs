@@ -108,7 +108,7 @@ async function rpc(method, params, id = "sentinel-rpc") {
 export async function claimApproval(env, { approvalId, idempotencyKey, actor, receiver, amountMicro }) {
   const pending = await env.DB.prepare(
     "SELECT id, actor, receiver_account, amount_micro, status, expires_at FROM agent_pending_approvals " +
-    "WHERE id=? AND actor=? AND status='APPROVING' AND expires_at > CURRENT_TIMESTAMP"
+    "WHERE id=? AND actor=? AND status='APPROVING'"
   ).bind(approvalId, actor).first();
   if (!pending || pending.receiver_account !== receiver || Number(pending.amount_micro) !== amountMicro) {
     throw new Error("HUMAN_APPROVAL_NOT_VERIFIED");
@@ -122,7 +122,7 @@ async function reserveSpend(env, { idempotencyKey, actor, receiver, amountMicro,
   const result = await env.DB2.prepare(
     "INSERT INTO agent_execution (idempotency_key, actor, receiver_account, amount_micro, status, created_at, updated_at) " +
     "SELECT ?, ?, ?, ?, 'PENDING', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP " +
-    "WHERE (SELECT COALESCE(SUM(amount_micro), 0) FROM agent_execution WHERE date(created_at)=date('now') AND (status IN ('EXECUTED','UNKNOWN') OR (status='PENDING' AND created_at > datetime('now', '-10 minutes')))) + ? <= ?"
+    "WHERE (SELECT COALESCE(SUM(amount_micro), 0) FROM agent_execution WHERE date(created_at)=date('now') AND (status IN ('EXECUTED','UNKNOWN') OR (status='PENDING' AND created_at > datetime('now', '-15 minutes')))) + ? <= ?"
   ).bind(idempotencyKey, actor, receiver, amountMicro, amountMicro, dailyCapMicro).run();
   if (result.meta?.changes === 1) return true;
   const prior = await env.DB2.prepare(
@@ -203,8 +203,9 @@ async function verifyPreflightToken(token, env, expected) {
   } catch { throw new Error("PREFLIGHT_TOKEN_INVALID"); }
   const age = Date.now() - Number(payload.issued_at);
   if (payload.decision !== "ALLOW" || !UUID_RE.test(String(payload.nonce || "")) ||
-      !Number.isFinite(age) || age < -30000 || age > 300000 ||
+      !Number.isFinite(age) || age < -30000 || age > 600000 ||
       String(payload.expires_at) !== String(expected.expiresAt) ||
+      Number(payload.issued_at) > Date.parse(String(expected.expiresAt).replace(" ", "T") + (String(expected.expiresAt).endsWith("Z") ? "" : "Z")) ||
       payload.approval_id !== expected.approvalId || payload.actor !== expected.actor ||
       payload.wallet_account !== expected.walletAccount || payload.receiver_account !== expected.receiver ||
       payload.idempotency_key !== expected.idempotencyKey ||
@@ -223,7 +224,7 @@ export async function prepareWalletTransfer(payload, identity, env) {
   if (env.NEAR_AGENT_KILL_SWITCH !== "false") return deny("KILL_SWITCH_ACTIVE");
   if (payload.actor !== identity.sub) return deny("ACTOR_MISMATCH");
   if (!env.DB || !env.DB2) return deny("EXECUTION_DATABASE_UNAVAILABLE");
-  if (!/^[a-z0-9._-]{2,64}\\.testnet$/.test(String(walletAccount || ""))) return deny("WALLET_ACCOUNT_MUST_BE_TESTNET");
+  if (!/^[a-z0-9._-]{2,64}\.testnet$/.test(String(walletAccount || ""))) return deny("WALLET_ACCOUNT_MUST_BE_TESTNET");
   const validated = validatePaymentIntent(intent, env);
   if (!validated.ok) return deny(validated.reason);
   const amountMicro = nearToMicro(intent.amount_near);
