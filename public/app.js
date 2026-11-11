@@ -913,9 +913,6 @@ function renderAgentResult(data) {
         if (!connectorReady || !connector || !connectedAccount || !connectedAccount.endsWith('.testnet')) {
           throw new Error('Connect a NEAR Testnet wallet before approving.');
         }
-        if (connectedAccount.toLowerCase() !== String(connectedAccount).toLowerCase()) {
-          throw new Error('Wallet account changed. Reconnect and review the proposal.');
-        }
         if (!data.expires_at) throw new Error('Approval expiry is missing. Create a new proposal.');
         const amountMicro = Math.round(Number(amount) * 1000000);
         if (!Number.isSafeInteger(amountMicro) || amountMicro <= 0 || amountMicro > 100000) {
