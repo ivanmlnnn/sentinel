@@ -289,8 +289,11 @@ export async function execute(payload, authorizationHeader, identity, env) {
   try {
     signer = KeyPairSigner.fromSecretKey(env.NEAR_AGENT_SIGNER_PRIVATE_KEY);
     await assertRestrictedFunctionCallKey(signerAccountId, signer.getPublicKey().toString(), contractId);
-  } catch {
-    return deny("SIGNER_RESTRICTED_KEY_OR_CONTRACT_INVALID");
+  } catch (error) {
+    const reason = typeof error?.message === "string" &&
+      ["PAYMENT_CONTRACT_NOT_CONFIGURED", "SIGNER_REQUIRES_CONTRACT_SCOPED_FUNCTION_CALL_KEY"].includes(error.message)
+      ? error.message : "SIGNER_RESTRICTED_KEY_OR_CONTRACT_INVALID";
+    return deny(reason);
   }
   const amountMicro = nearToMicro(intent.amount_near);
   const paymentCap = nearToMicro(env.NEAR_AGENT_MAX_PAYMENT_NEAR);
@@ -300,7 +303,12 @@ export async function execute(payload, authorizationHeader, identity, env) {
 
   let assessment;
   try { assessment = await investigate(validated, authorizationHeader, env); }
-  catch { return deny("SIGNER_PREFLIGHT_UNAVAILABLE"); }
+  catch (error) {
+    const reason = typeof error?.message === "string" &&
+      ["PREFLIGHT_ATTESTATION_NOT_CONFIGURED", "SIGNER_PREFLIGHT_FAILED", "SIGNED_VERDICT_INVALID_OR_EXPIRED"].includes(error.message)
+      ? error.message : "SIGNER_PREFLIGHT_UNAVAILABLE";
+    return deny(reason);
+  }
   const authorization = evaluateAgentAuthorization({ intent, assessment, env });
   if (!authorization.authorized) return deny("SIGNER_" + authorization.reason);
 
