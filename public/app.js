@@ -785,6 +785,7 @@ function renderAgentResult(data) {
     PAYMENT_CONTRACT_NOT_CONFIGURED: 'The Testnet payment contract is not configured on the isolated signer.',
     SIGNER_REQUIRES_CONTRACT_SCOPED_FUNCTION_CALL_KEY: 'The signer account key is not restricted to the approved payment contract and pay method.',
     ISOLATED_SIGNER_REQUEST_FAILED: 'The isolated signer did not return a valid execution result. No transfer is confirmed.',
+    SIGNER_NON_JSON_RESPONSE: 'The isolated signer returned a non-JSON response. No transfer is confirmed.',
     ISOLATED_SIGNER_UNAVAILABLE: 'The isolated signer could not be reached. Check its status before trying again.',
     SIGNER_NOT_CONFIGURED: 'The Testnet signer account or signing key is not configured.',
     SIGNER_RESTRICTED_KEY_OR_CONTRACT_INVALID: 'The signer key or payment contract configuration failed its security check.',
@@ -840,7 +841,7 @@ function renderAgentResult(data) {
       ((hasPaymentContext || data.sentinel) ? '<div class="agent-proposal-values">' +
         (proposal.amount_near != null ? '<div class="agent-proposal-field amount"><span>AMOUNT</span><b>' + escapeHtml(String(proposal.amount_near)) + ' <small>NEAR</small></b></div>' : '') +
       '</div>' : '') + recipientCard +
-      (status === 'DENIED' && policyReason ? '<div class="agent-policy-reason"><span>Payment not sent</span><p>' + escapeHtml(policyReasonText || ('Reason code: ' + policyReason)) + '</p></div>' : '') +
+      (policyReason && ['DENIED','UNKNOWN','FAILED'].includes(status) ? '<div class="agent-policy-reason"><span>Payment not sent · ' + escapeHtml(policyReason) + '</span><p>' + escapeHtml(policyReasonText || ('Reason code: ' + policyReason)) + (data.signer_http_status != null ? '<br>HTTP ' + escapeHtml(String(data.signer_http_status)) : '') + (data.signer_content_type ? '<br>Content-Type: ' + escapeHtml(String(data.signer_content_type)) : '') + (data.signer_response_preview ? '<br>Response: ' + escapeHtml(String(data.signer_response_preview).slice(0, 180)) : '') + '</p></div>' : '') +
       ((data.sentinel?.decision || data.sentinel?.risk_score != null) ? '<div class="agent-result-grid compact"><span>Security check</span><b>' + escapeHtml(data.sentinel?.decision ? verdict : 'Completed') + (data.sentinel?.risk_score != null && Number.isFinite(Number(data.sentinel.risk_score)) ? ' · Risk ' + escapeHtml(risk) : '') + '</b></div>' : '') +
       (approvalId && status === 'AWAITING_HUMAN_APPROVAL' ? '<div class="agent-proposal-meta compact"><span>NEAR TESTNET · Expires in 5 minutes</span></div>' : '') +
       (txHash ? '<p class="agent-result-hash">TRANSACTION HASH · ' + escapeHtml(txHash) + '</p>' : '') + txLink +
