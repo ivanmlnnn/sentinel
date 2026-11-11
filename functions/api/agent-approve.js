@@ -58,10 +58,10 @@ async function callIsolatedSigner({ intent, actor, idempotencyKey, approvalId, w
     const reportedReason = typeof data?.reason === "string" ? data.reason :
       typeof data?.error === "string" ? data.error : "";
     const reason = /^[A-Z0-9_]{3,96}$/.test(reportedReason) ? reportedReason : "ISOLATED_SIGNER_REQUEST_FAILED";
-    if (!response.ok || !data) return { executed: false, status: data?.status === "UNKNOWN" ? "UNKNOWN" : "DENIED", reason, transaction_hash: transactionHash };
+    if (!response.ok || !data) return { executed: false, status: "UNKNOWN", reason, transaction_hash: transactionHash };
     const validExecutionResult = typeof data.executed === "boolean" &&
       ["EXECUTED", "DENIED", "FAILED", "UNKNOWN"].includes(data.status) && typeof data.reason === "string";
-    return validExecutionResult ? data : { executed: false, status: "DENIED", reason, transaction_hash: transactionHash };
+    return validExecutionResult ? data : { executed: false, status: "UNKNOWN", reason, transaction_hash: transactionHash };
   } catch {
     return { executed: false, status: "UNKNOWN", reason: "ISOLATED_SIGNER_UNAVAILABLE", transaction_hash: transactionHash };
   }
