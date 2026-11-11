@@ -258,7 +258,7 @@ export async function onRequestPost({ request, env }) {
     });
     const verification = await verifyWalletTransferOnRpc(body.transaction_hash, walletAccount,
       intent.receiver_account, (BigInt(amountMicro) * 1000000000000000000n).toString());
-    execution = { executed:true, status:"EXECUTED", reason:"WALLET_TRANSFER_FINAL_RPC_VERIFIED",
+    execution = { executed:true, status:"EXECUTED", reason:"TESTNET_WALLET_TRANSFER_FINAL_RPC_VERIFIED",
       transaction_hash:body.transaction_hash,
       explorer_url:"https://testnet.nearblocks.io/txns/" + encodeURIComponent(body.transaction_hash),
       verification, sentinel:{ decision:token.decision, risk_score:Number(token.risk_score) } };
