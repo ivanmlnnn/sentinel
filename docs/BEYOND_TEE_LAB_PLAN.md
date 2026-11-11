@@ -96,3 +96,31 @@ Git blob SHA: `53220beea904a13abc3b60c912736eec9bf6b012`.
 Visual review shows the NEAR Testnet account page for `freshnook5462.testnet`, balance `1.660844 NEAR`, and 28 transactions. The visible transaction rows have green success indicators, method `TRANSFER`, deposit value `0.01 NEAR`, sender `freshnook5462...`, and recipient `rawvest6817...`.
 
 **Evidence classification: Explorer account-history screenshot; partial transaction evidence only.** The screenshot does not expose a full transaction hash or transaction-detail page, and does not establish the exact Sentinel approval ID, contract call, full receipt chain, or that these rows correspond to the specific unresolved approval. It is not sufficient on its own to mark the Sentinel payout verification experiment CR-01 as PASS. Capture an individual transaction detail page showing the full hash and all relevant execution/receipt fields, then independently verify it against Testnet RPC.
+
+
+## Extreme lab execution update — 2026-11-12
+
+The evidence report for the dedicated branch is published at [docs/evidence/EXTREME_LAB_2026-11-12.md](evidence/EXTREME_LAB_2026-11-12.md).
+
+**Tested code revision:** `ac2c1463499af16f29762e1b975dd257b7fad190` on branch `research/extreme-security-evidence-v2`.
+
+Observed in Vercel Sandbox / Node.js 22:
+
+- `npm test`: **166 passed, 0 failed, 0 skipped**.
+- `npm run demo:attack`: PASS; deterministic BLOCK held and signer was not invoked.
+- `npm run check:d1`: PASS; local SQLite validated 9 main migrations / 10 tables / 24 indexes and 1 signer migration / 3 tables / 7 indexes.
+- `npm run smoke:test`: PASS, 8/8 production HTTP negative-path checks.
+- `npm audit --omit=dev --audit-level=high`: PASS, 0 reported production dependency vulnerabilities.
+
+New test files:
+
+- `tests/privy-auth-adversarial.test.mjs` — issuer, time, subject, algorithm, kid/JWK, JWKS outage/format, audience-array, and malformed bearer/JWT cases.
+- `tests/turnstile-failure-modes.test.mjs` — Siteverify outage, malformed upstream response, and server-side secret/token/remote-IP request construction.
+
+These new tests use locally generated Privy keys/JWKS and mocked Turnstile Siteverify. They do not prove live provider integration.
+
+Additional exploratory local runs are documented in the evidence report: 5,000 deterministic BLOCK guard inputs, 2,003 rejected synthetic RPC mutations/failures, 1,000 nonce attempts, 2,000 source-equivalent SQLite spend reservations, and 500 approval claims. These are not live D1, live RPC, or CI benchmarks.
+
+**Open risk:** a fault-injected compensation-write outage can leave a conservative `PENDING` spend reservation behind. This is an availability/reconciliation concern, not evidence of an authorization bypass. Recovery automation and its failure-state tests remain a required gate.
+
+**Still NOT TESTED:** deployed Cloudflare D1 multi-isolate races, real Cloudflare challenge token validation, real Privy production/staging token, hardware TEE attestation, and a new real NEAR Testnet payout. Do not convert these to PASS until the corresponding external evidence is captured.
