@@ -982,7 +982,7 @@ function renderAgentResult(data) {
           if (connectedAccount !== accountAtPrepare) {
             throw new Error('Connected wallet changed during the security check. Reconnect and retry.');
           }
-          preparedApproval = prepared;
+          preparedApproval = { ...prepared, _client_prepared_at: Date.now() };
           approvalWallet = wallet;
           preparedForAccount = accountAtPrepare;
           approveButton.disabled = false;
