@@ -198,9 +198,17 @@ export async function onRequestPost({ request, env }) {
       });
       const response = await runTrustedInvestigation({ request: preflightRequest, env, actor: identity.sub });
       assessment = await response.json().catch(() => null);
-      if (!response.ok) throw new Error("PREFLIGHT_FAILED");
-    } catch {
-      return json({ status: "DENIED", reason: "PREFLIGHT_UNAVAILABLE", execution_enabled: false }, 503);
+      if (!response.ok) {
+        const detail = typeof assessment?.detail === "string" ? assessment.detail :
+          typeof assessment?.error === "string" ? assessment.error : "Trusted investigation returned HTTP " + response.status;
+        return json({ status: "DENIED", error: assessment?.error || "PREFLIGHT_FAILED",
+          reason: "PREFLIGHT_UNAVAILABLE", detail, preflight_http_status: response.status,
+          execution_enabled: false }, 503);
+      }
+    } catch (error) {
+      return json({ status: "DENIED", error: "PREFLIGHT_UNAVAILABLE",
+        reason: "PREFLIGHT_UNAVAILABLE", detail: error?.message || "Trusted investigation could not run.",
+        execution_enabled: false }, 503);
     }
     const policy = evaluateAgentAuthorization({ intent, assessment, env });
     if (!policy.authorized) {
