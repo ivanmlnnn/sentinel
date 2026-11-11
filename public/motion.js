@@ -52,6 +52,19 @@ window.addEventListener('scroll',updateScrollEffects,{passive:true});
 window.addEventListener('resize',updateScrollEffects,{passive:true});
 updateScrollEffects();
 
+/* Animate dashboard separator rules as each section enters and leaves view. */
+const dividerNodes=document.querySelectorAll(
+  '.section-heading, .wallet-guide-head, .agent-chat-header, .panel-top, .table-head, .security-method-heading'
+);
+if ('IntersectionObserver' in window && !reducedMotion) {
+  const dividerObserver=new IntersectionObserver(entries=>{
+    entries.forEach(entry=>entry.target.classList.toggle('divider-in-view',entry.isIntersecting));
+  },{threshold:0.15,rootMargin:'0px 0px -6% 0px'});
+  dividerNodes.forEach(node=>dividerObserver.observe(node));
+} else {
+  dividerNodes.forEach(node=>node.classList.add('divider-in-view'));
+}
+
 
 /* Wallet tracker gets a dedicated enter/leave state as it crosses the viewport. */
 const trackerHeading=document.getElementById('investigate');
