@@ -35,7 +35,7 @@ export async function onRequestGet({ request }) {
     const payload = await response.json();
     if (payload.error) {
       const message = String(payload.error.message || "");
-      if (/unknown account|account.*not found/i.test(message)) {
+      if (/unknown account|does not exist|account.*not found/i.test(message)) {
         return json({ account_id: accountId, account_exists: false, network: "testnet", explorer_url: null });
       }
       return json({ error: "NEAR_RPC_QUERY_FAILED" }, 502);
