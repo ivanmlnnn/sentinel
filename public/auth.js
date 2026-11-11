@@ -306,7 +306,7 @@ createRoot(document.getElementById('auth-root')).render(React.createElement(Root
 function syncSentinelAgentWayang() {
   const source = document.querySelector('.sentinel-session-avatar svg');
   if (!source) return;
-  ['#agentHeadingPortrait', '.agent-chat-avatar'].forEach(selector => {
+  ['#agentHeadingPortrait'].forEach(selector => {
     const target = document.querySelector(selector);
     if (!target || target.dataset.wayangSynced === '1') return;
     target.replaceChildren(source.cloneNode(true));
