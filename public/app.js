@@ -922,7 +922,7 @@ function renderAgentResult(data) {
           throw new Error('Connect a NEAR Testnet wallet before approving.');
         }
         if (!data.expires_at) throw new Error('Approval expiry is missing. Create a new proposal.');
-        const amountMatch = /^(?:0|[1-9][0-9]*)(?:\\.([0-9]{1,6}))?$/.exec(amount.trim());
+        const amountMatch = /^(?:0|[1-9][0-9]*)(?:\.([0-9]{1,6}))?$/.exec(amount.trim());
         if (!amountMatch) throw new Error('Invalid payment amount. Use up to 6 decimal places.');
         const [wholePart, fractionPart = ''] = amount.trim().split('.');
         const amountMicroBig = BigInt(wholePart) * 1000000n + BigInt((fractionPart + '000000').slice(0, 6));
@@ -944,7 +944,7 @@ function renderAgentResult(data) {
         if (!wallet || typeof wallet.signAndSendTransaction !== 'function') {
           throw new Error('The connected wallet does not support native NEAR transfers through signAndSendTransaction.');
         }
-        const amountYocto = (BigInt(amountMicro) * 1000000000000n).toString();
+        const amountYocto = (BigInt(amountMicro) * 1000000000000000000n).toString();
         approveButton.textContent = 'Confirm exact transfer in your wallet…';
         walletSubmissionStarted = true;
         const walletResult = await wallet.signAndSendTransaction({
