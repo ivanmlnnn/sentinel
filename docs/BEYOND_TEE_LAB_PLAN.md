@@ -83,3 +83,16 @@ These are source-level test cases only. They are **not a test pass** until run b
 ## Evidence intake status
 
 The expected path `docs/evidence/near-explorer-success.png` was checked on `main` and was not found. No Explorer screenshot or transaction proof is included in this branch at this time. Upload location/path must be confirmed before the image can be reviewed. Do not report a payment as verified based on an upload confirmation alone.
+
+
+## Explorer screenshot reviewed — 2026-11-12
+
+A screenshot is now present on `main` at:
+
+`docs/evidence/Screenshot_2026-11-12-05-58-28-799_com.android.chrome.png`
+
+Git blob SHA: `53220beea904a13abc3b60c912736eec9bf6b012`.
+
+Visual review shows the NEAR Testnet account page for `freshnook5462.testnet`, balance `1.660844 NEAR`, and 28 transactions. The visible transaction rows have green success indicators, method `TRANSFER`, deposit value `0.01 NEAR`, sender `freshnook5462...`, and recipient `rawvest6817...`.
+
+**Evidence classification: Explorer account-history screenshot; partial transaction evidence only.** The screenshot does not expose a full transaction hash or transaction-detail page, and does not establish the exact Sentinel approval ID, contract call, full receipt chain, or that these rows correspond to the specific unresolved approval. It is not sufficient on its own to mark the Sentinel payout verification experiment CR-01 as PASS. Capture an individual transaction detail page showing the full hash and all relevant execution/receipt fields, then independently verify it against Testnet RPC.
