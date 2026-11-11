@@ -762,7 +762,7 @@ function renderAgentResult(data) {
   const txHash = typeof data.transaction_hash === 'string' ? data.transaction_hash : '';
   const explorerUrl = typeof data.explorer_url === 'string' &&
     /^https:\/\/testnet\.nearblocks\.io\/txns\/[1-9A-HJ-NP-Za-km-z]{32,64}$/.test(data.explorer_url)
-    ? data.explorer_url : (data.execution_enabled === true && txHash
+    ? data.explorer_url : (txHash
       ? 'https://testnet.nearblocks.io/txns/' + encodeURIComponent(txHash) : '');
   const txLink = txHash && explorerUrl
     ? '<a class="agent-tx-link" href="' + escapeHtml(explorerUrl) + '" target="_blank" rel="noopener noreferrer">' +
