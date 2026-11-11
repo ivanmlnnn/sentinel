@@ -342,9 +342,18 @@ export default {
         (url.pathname === "/execute" && (typeof payload.transaction_hash !== "string" || payload.transaction_hash.length > 128))) {
       return json({ error: "INVALID_PAYLOAD_SCHEMA" }, 400);
     }
-    const result = url.pathname === "/prepare"
-      ? await prepareWalletTransfer(payload, identity, env)
-      : await execute(payload, request.headers.get("authorization") || "", identity, env);
-    return json(result, 200);
+    try {
+      const result = url.pathname === "/prepare"
+        ? await prepareWalletTransfer(payload, identity, env)
+        : await execute(payload, request.headers.get("authorization") || "", identity, env);
+      return json(result, 200);
+    } catch (error) {
+      const message = typeof error?.message === "string" ? error.message : "";
+      const reason = /^[A-Z][A-Z0-9_]{2,95}$/.test(message) ? message : "SIGNER_INTERNAL_ERROR";
+      console.error("Sentinel isolated signer request failed", {
+        path: url.pathname, reason, name: error?.name || "Error"
+      });
+      return json({ executed: false, status: "FAILED", reason, transaction_hash: null }, 500);
+    }
   }
 };
