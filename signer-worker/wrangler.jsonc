@@ -28,6 +28,7 @@
   "vars": {
     "NEAR_NETWORK": "testnet",
     "NEAR_AGENT_KILL_SWITCH": "false",
+    "NEAR_AGENT_SIGNER_ACCOUNT_ID": "freshnook5462.testnet",
     "SENTINEL_PREFLIGHT_URL": "https://sentinel.ivmaladin.workers.dev",
     "NEAR_AGENT_ALLOWED_RECEIVERS": "rawvest6817.testnet",
     "NEAR_AGENT_MAX_PAYMENT_NEAR": "0.1",
