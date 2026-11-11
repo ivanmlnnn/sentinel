@@ -1,6 +1,4 @@
-import { Account, JsonRpcProvider, KeyPairSigner, actions, nearToYocto } from "near-api-js";
-import { verifyMessage } from "near-api-js/nep413";
-import { APPROVAL_RECIPIENT, buildWalletApprovalMessage, decodeBase64Bytes } from "../../src/agent-approval-signature.mjs";
+import { JsonRpcProvider } from "near-api-js";
 import { verifyPrivyAccessToken } from "../../functions/api/_shared.js";
 import { evaluateAgentAuthorization, validatePaymentIntent } from "../../src/agent-policy.mjs";
 import { verifyVerdict } from "../../src/signed-verdict.mjs";
@@ -131,7 +129,7 @@ export async function assertRestrictedFunctionCallKey(accountId, publicKey, cont
   }
   return { receiver_id: permission.receiver_id, method_names: permission.method_names };
 }
-export async function claimApproval(env, { approvalId, idempotencyKey, actor, receiver, amountMicro, walletApproval }) {
+export async function claimApproval(env, { approvalId, actor, receiver, amountMicro }) {
   const pending = await env.DB.prepare(
     "SELECT id, actor, receiver_account, amount_micro, status, expires_at FROM agent_pending_approvals " +
     "WHERE id=? AND actor=? AND status='APPROVING' AND expires_at > CURRENT_TIMESTAMP"
@@ -139,32 +137,6 @@ export async function claimApproval(env, { approvalId, idempotencyKey, actor, re
   if (!pending || pending.receiver_account !== receiver || Number(pending.amount_micro) !== amountMicro) {
     throw new Error("HUMAN_APPROVAL_NOT_VERIFIED");
   }
-  const accountId = String(walletApproval?.account_id || "").toLowerCase();
-  const publicKey = String(walletApproval?.public_key || "");
-  const signature = decodeBase64Bytes(walletApproval?.signature, 64);
-  const nonce = decodeBase64Bytes(walletApproval?.nonce, 32);
-  if (!/^[a-z0-9._-]{2,64}\.testnet$/.test(accountId) ||
-      !/^(?:ed25519|secp256k1):[1-9A-HJ-NP-Za-km-z]+$/.test(publicKey) ||
-      !signature || !nonce) throw new Error("WALLET_SIGNATURE_REQUIRED");
-  const nonceText = String(walletApproval.nonce);
-  const message = buildWalletApprovalMessage({
-    approvalId, walletAccount: accountId, receiverAccount: receiver,
-    amountMicro, expiresAt: pending.expires_at
-  });
-  const provider = new JsonRpcProvider({ url: RPC });
-  try {
-    await verifyMessage({
-      payload: { message, nonce, recipient: APPROVAL_RECIPIENT },
-      provider, signature, signerAccountId: accountId, signerPublicKey: publicKey
-    });
-  } catch {
-    throw new Error("WALLET_SIGNATURE_INVALID");
-  }
-  if (!await reserveNonce(env, "wallet:" + nonceText)) throw new Error("WALLET_SIGNATURE_REPLAYED");
-  await env.DB2.prepare(
-    "INSERT INTO signer_approval_claims (approval_id, idempotency_key, actor, receiver_account, amount_micro, claimed_at) " +
-    "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"
-  ).bind(approvalId, idempotencyKey, actor, receiver, amountMicro).run();
 }
 async function reserveSpend(env, { idempotencyKey, actor, receiver, amountMicro, dailyCapMicro }) {
   const result = await env.DB2.prepare(
@@ -201,61 +173,60 @@ function isSuccessfulStatus(status) {
   return Boolean(status && (Object.hasOwn(status, "SuccessValue") || Object.hasOwn(status, "SuccessReceiptId")));
 }
 
-function decodeRpcArgs(value) {
-  if (typeof value !== "string") return null;
-  try { return JSON.parse(atob(value)); } catch { return null; }
-}
-
-export async function verifyFinalTransfer(hash, signerAccountId, contractId, receiverAccountId, amountYocto, approvalId) {
+export async function verifyFinalTransfer(hash, walletAccountId, receiverAccountId, amountYocto) {
   if (typeof hash !== "string" || !/^[1-9A-HJ-NP-Za-km-z]{32,64}$/.test(hash)) {
     throw new Error("INVALID_TRANSACTION_HASH");
   }
-  const result = await rpc("tx", [hash, signerAccountId], "sentinel-final-payment-verification");
+  const result = await rpc("tx", [hash, walletAccountId], "sentinel-final-wallet-transfer-verification");
   const tx = result.transaction;
-  const call = tx?.actions?.find(action => action?.FunctionCall)?.FunctionCall;
-  const callArgs = decodeRpcArgs(call?.args);
+  const transfer = tx?.actions?.length === 1 ? tx.actions[0]?.Transfer : null;
   if (!tx || !isSuccessfulStatus(result.status) ||
-      tx.signer_id !== signerAccountId ||
-      tx.receiver_id !== contractId ||
+      tx.signer_id !== walletAccountId ||
+      tx.receiver_id !== receiverAccountId ||
       !Array.isArray(tx.actions) || tx.actions.length !== 1 ||
-      call?.method_name !== "pay" ||
-      callArgs?.receiver_id !== receiverAccountId ||
-      String(callArgs?.amount_yocto || "") !== String(amountYocto) ||
-      callArgs?.approval_id !== approvalId) {
-    throw new Error("FINAL_PAYMENT_CALL_MISMATCH_OR_FAILURE");
+      !transfer || String(transfer.deposit) !== String(amountYocto)) {
+    throw new Error("FINAL_TRANSFER_INTENT_MISMATCH_OR_FAILURE");
   }
-
   const receipts = Array.isArray(result.receipts_outcome) ? result.receipts_outcome : [];
-  if (!receipts.length || receipts.some(item => !isSuccessfulStatus(item.outcome?.status))) {
-    throw new Error("PAYMENT_RECEIPT_NOT_SUCCESSFUL");
+  if (receipts.some(item => !isSuccessfulStatus(item.outcome?.status))) {
+    throw new Error("TRANSFER_RECEIPT_NOT_SUCCESSFUL");
   }
-
-  let matchingTransfer = null;
-  for (const item of receipts) {
-    const receiptResult = await rpc("EXPERIMENTAL_receipt", { receipt_id: item.id }, "sentinel-payment-receipt");
-    const receiptActions = receiptResult.receipt?.Action?.actions ||
-      receiptResult.receipt?.action?.actions || [];
-    if (receiptResult.predecessor_id !== contractId || receiptResult.receiver_id !== receiverAccountId ||
-        receiptActions.length !== 1) continue;
-    const transfer = receiptActions.map(action => action.Transfer).find(Boolean);
-    if (transfer && String(transfer.deposit) === String(amountYocto)) {
-      matchingTransfer = { receipt_id: item.id, receiver_id: receiptResult.receiver_id, amount_yocto: String(transfer.deposit) };
-      break;
-    }
-  }
-  if (!matchingTransfer) throw new Error("NATIVE_PAYMENT_RECEIPT_NOT_FOUND");
-
   return {
-    verified: true,
-    transaction_hash: hash,
-    signer_account: tx.signer_id,
-    payment_contract: tx.receiver_id,
-    receiver_account: matchingTransfer.receiver_id,
-    amount_yocto: matchingTransfer.amount_yocto,
-    payment_receipt_id: matchingTransfer.receipt_id,
-    block_hash: result.transaction_outcome?.block_hash || null,
-    final_status: "SUCCESS"
+    verified: true, transaction_hash: hash, signer_account: tx.signer_id,
+    receiver_account: tx.receiver_id, amount_yocto: String(transfer.deposit),
+    block_hash: result.transaction_outcome?.block_hash || null, final_status: "SUCCESS"
   };
+}
+
+async function verifyPreflightToken(token, env, expected) {
+  if (typeof token !== "string" || token.length > 4096) throw new Error("PREFLIGHT_TOKEN_INVALID");
+  const [encoded, signature, extra] = token.split(".");
+  const supplied = hexToBytes(signature);
+  if (!encoded || !supplied || extra !== undefined) throw new Error("PREFLIGHT_TOKEN_INVALID");
+  const secret = env.AGENT_SIGNER_HMAC_SECRET;
+  if (typeof secret !== "string" || new TextEncoder().encode(secret).byteLength < 32) {
+    throw new Error("AGENT_SIGNER_HMAC_SECRET_MISSING");
+  }
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
+  if (!await crypto.subtle.verify("HMAC", key, supplied, new TextEncoder().encode(encoded))) {
+    throw new Error("PREFLIGHT_TOKEN_INVALID");
+  }
+  let payload;
+  try {
+    const normalized = encoded.replace(/-/g, "+").replace(/_/g, "/");
+    payload = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(normalized + "=".repeat((4 - normalized.length % 4) % 4)), c => c.charCodeAt(0))));
+  } catch { throw new Error("PREFLIGHT_TOKEN_INVALID"); }
+  const age = Date.now() - Number(payload.issued_at);
+  if (payload.decision !== "ALLOW" || !UUID_RE.test(String(payload.nonce || "")) ||
+      !Number.isFinite(age) || age < -30000 || age > 120000 ||
+      String(payload.expires_at) !== String(expected.expiresAt) ||
+      payload.approval_id !== expected.approvalId || payload.actor !== expected.actor ||
+      payload.wallet_account !== expected.walletAccount || payload.receiver_account !== expected.receiver ||
+      Number(payload.amount_micro) !== expected.amountMicro) {
+    throw new Error("PREFLIGHT_TOKEN_MISMATCH_OR_EXPIRED");
+  }
+  return payload;
 }
 
 async function investigate(intent, authorizationHeader, env) {
@@ -287,50 +258,36 @@ async function investigate(intent, authorizationHeader, env) {
   return data;
 }
 export async function execute(payload, authorizationHeader, identity, env) {
-  const { intent, idempotency_key: idempotencyKey, approval_id: approvalId, wallet_approval: walletApproval } = payload;
+  const { intent, idempotency_key: idempotencyKey, approval_id: approvalId,
+    wallet_account: walletAccount, transaction_hash: transactionHash, preflight_token: preflightToken } = payload;
   if (!UUID_RE.test(String(idempotencyKey || ""))) return deny("INVALID_IDEMPOTENCY_KEY");
   if (!UUID_RE.test(String(approvalId || ""))) return deny("INVALID_APPROVAL_ID");
   if (env.NEAR_NETWORK !== "testnet") return deny("TESTNET_ONLY");
   if (env.NEAR_AGENT_KILL_SWITCH !== "false") return deny("KILL_SWITCH_ACTIVE");
-  if (!env.NEAR_AGENT_SIGNER_PRIVATE_KEY || !env.NEAR_AGENT_SIGNER_ACCOUNT_ID) return deny("SIGNER_NOT_CONFIGURED");
   if (payload.actor !== identity.sub) return deny("ACTOR_MISMATCH");
   if (!env.DB || !env.DB2) return deny("EXECUTION_DATABASE_UNAVAILABLE");
-  const signerAccountId = String(env.NEAR_AGENT_SIGNER_ACCOUNT_ID).toLowerCase();
-  if (!/^[a-z0-9._-]{2,64}\.testnet$/.test(signerAccountId)) return deny("SIGNER_ACCOUNT_MUST_BE_TESTNET");
+  if (!/^[a-z0-9._-]{2,64}\\.testnet$/.test(String(walletAccount || ""))) return deny("WALLET_ACCOUNT_MUST_BE_TESTNET");
   const validated = validatePaymentIntent(intent, env);
   if (!validated.ok) return deny(validated.reason);
-  const contractId = String(env.NEAR_PAYMENT_CONTRACT_ID || "").toLowerCase();
-  let signer;
-  try {
-    signer = KeyPairSigner.fromSecretKey(env.NEAR_AGENT_SIGNER_PRIVATE_KEY);
-  } catch {
-    return deny("SIGNER_PRIVATE_KEY_INVALID");
-  }
-  try {
-    await assertRestrictedFunctionCallKey(signerAccountId, signer.getPublicKey().toString(), contractId);
-  } catch (error) {
-    const reason = typeof error?.message === "string" &&
-      ["PAYMENT_CONTRACT_NOT_CONFIGURED", "SIGNER_REQUIRES_CONTRACT_SCOPED_FUNCTION_CALL_KEY",
-       "SIGNER_KEY_NOT_FOUND_ON_ACCOUNT", "NEAR_RPC_UNAVAILABLE"].includes(error.message)
-      ? error.message : "SIGNER_RESTRICTED_KEY_OR_CONTRACT_INVALID";
-    return deny(reason);
-  }
   const amountMicro = nearToMicro(intent.amount_near);
   const paymentCap = nearToMicro(env.NEAR_AGENT_MAX_PAYMENT_NEAR);
   const dailyCap = nearToMicro(env.NEAR_AGENT_MAX_DAILY_NEAR);
   if (!amountMicro || amountMicro > HARD_MAX_PAYMENT_MICRO || !paymentCap || amountMicro > paymentCap) return deny("HARD_PAYMENT_LIMIT_EXCEEDED");
   if (!dailyCap || dailyCap > HARD_MAX_DAILY_MICRO) return deny("DAILY_CAP_UNCONFIGURED_OR_TOO_HIGH");
 
-  let assessment;
-  try { assessment = await investigate(validated, authorizationHeader, env); }
-  catch (error) {
-    const reason = typeof error?.message === "string" &&
-      ["PREFLIGHT_ATTESTATION_NOT_CONFIGURED", "SIGNER_PREFLIGHT_FAILED", "SIGNED_VERDICT_INVALID_OR_EXPIRED"].includes(error.message)
-      ? error.message : "SIGNER_PREFLIGHT_UNAVAILABLE";
-    return deny(reason);
+  let tokenPayload;
+  try {
+    const pending = await env.DB.prepare(
+      "SELECT expires_at FROM agent_pending_approvals WHERE id=? AND actor=? AND status='APPROVING'"
+    ).bind(approvalId, identity.sub).first();
+    if (!pending) return deny("HUMAN_APPROVAL_NOT_VERIFIED");
+    tokenPayload = await verifyPreflightToken(preflightToken, env, {
+      approvalId, actor: identity.sub, walletAccount, receiver: validated.receiver_account,
+      amountMicro, expiresAt: pending.expires_at
+    });
+  } catch (error) {
+    return deny(error?.message || "PREFLIGHT_TOKEN_INVALID");
   }
-  const authorization = evaluateAgentAuthorization({ intent, assessment, env });
-  if (!authorization.authorized) return deny("SIGNER_" + authorization.reason);
 
   const reservation = await reserveExecution({
     reserveSpendFn: details => reserveSpend(env, details),
@@ -338,61 +295,30 @@ export async function execute(payload, authorizationHeader, identity, env) {
     setStateFn: (key, state) => setState(env, key, state),
     spend: { idempotencyKey, actor: identity.sub, receiver: validated.receiver_account,
       amountMicro, dailyCapMicro: dailyCap },
-    approval: { approvalId, idempotencyKey, actor: identity.sub,
-      receiver: validated.receiver_account, amountMicro, walletApproval }
+    approval: { approvalId, actor: identity.sub, receiver: validated.receiver_account, amountMicro }
   });
   if (!reservation.ok) {
-    if (reservation.stage === "approval") {
-      return deny(reservation.error?.message === "HUMAN_APPROVAL_NOT_VERIFIED"
-        ? "HUMAN_APPROVAL_NOT_VERIFIED" : "APPROVAL_ALREADY_CLAIMED");
-    }
+    if (reservation.stage === "approval") return deny(reservation.error?.message || "HUMAN_APPROVAL_NOT_VERIFIED");
     return deny(reservation.error?.message || "EXECUTION_RESERVATION_FAILED");
   }
 
-  let submitted = false;
   try {
-    const provider = new JsonRpcProvider({ url: RPC });
-    const account = new Account(signerAccountId, provider);
-    const paymentArgs = new TextEncoder().encode(JSON.stringify({
-      receiver_id: validated.receiver_account,
-      amount_yocto: nearToYocto(microToNearString(amountMicro)).toString(),
-      approval_id: approvalId
-    }));
-    const tx = await account.createTransaction({
-      receiverId: contractId,
-      actions: [actions.functionCall("pay", paymentArgs, 30_000_000_000_000n, 0n)],
-      publicKey: signer.getPublicKey()
-    });
-    const signed = await signer.signTransaction(tx);
-    submitted = true;
-    const outcome = await provider.sendTransaction(signed.signedTransaction);
-    const hash = outcome?.transaction?.hash || outcome?.transaction_outcome?.id || null;
-    if (!hash) {
-      await setState(env, idempotencyKey, "UNKNOWN");
-      return deny("TRANSACTION_HASH_UNAVAILABLE", "UNKNOWN");
+    if (!await reserveNonce(env, "preflight:" + tokenPayload.nonce)) {
+      await setState(env, idempotencyKey, "FAILED");
+      return deny("PREFLIGHT_TOKEN_REPLAYED");
     }
-    if (!isSuccessfulStatus(outcome?.status)) {
-      await setState(env, idempotencyKey, "FAILED", hash);
-      return { ...deny("NEAR_PAYMENT_CALL_NOT_SUCCESSFUL", "FAILED"), transaction_hash: hash };
-    }
-    let finalVerification;
-    try {
-      finalVerification = await verifyFinalTransfer(
-        hash, signerAccountId, contractId, validated.receiver_account,
-        nearToYocto(microToNearString(amountMicro)), approvalId
-      );
-    } catch {
-      await setState(env, idempotencyKey, "UNKNOWN", hash);
-      return { ...deny("FINAL_PAYMENT_VERIFICATION_UNAVAILABLE", "UNKNOWN"), transaction_hash: hash };
-    }
-    await setState(env, idempotencyKey, "EXECUTED", hash);
-    return { executed: true, status: "EXECUTED", reason: "TESTNET_TRANSACTION_FINAL_RPC_VERIFIED",
-      transaction_hash: hash, explorer_url: "https://testnet.nearblocks.io/txns/" + encodeURIComponent(hash),
-      verification: finalVerification, signer_account: signerAccountId, receiver_account: validated.receiver_account,
-      amount_near: microToNearString(amountMicro), network: "testnet", sentinel: { decision: assessment.decision, risk_score: assessment.risk_score } };
-  } catch {
-    try { await setState(env, idempotencyKey, submitted ? "UNKNOWN" : "FAILED"); } catch {}
-    return deny(submitted ? "SUBMISSION_OUTCOME_UNKNOWN" : "SIGNER_EXECUTION_FAILED", submitted ? "UNKNOWN" : "FAILED");
+    const verification = await verifyFinalTransfer(transactionHash, walletAccount,
+      validated.receiver_account, (BigInt(amountMicro) * 1_000_000_000_000n).toString());
+    await setState(env, idempotencyKey, "EXECUTED", transactionHash);
+    return { executed: true, status: "EXECUTED", reason: "TESTNET_WALLET_TRANSFER_FINAL_RPC_VERIFIED",
+      transaction_hash: transactionHash, explorer_url: "https://testnet.nearblocks.io/txns/" + encodeURIComponent(transactionHash),
+      verification, signer_account: walletAccount, receiver_account: validated.receiver_account,
+      amount_near: microToNearString(amountMicro), network: "testnet",
+      sentinel: { decision: tokenPayload.decision, risk_score: null } };
+  } catch (error) {
+    const unknown = error?.message === "NEAR_RPC_UNAVAILABLE";
+    try { await setState(env, idempotencyKey, unknown ? "UNKNOWN" : "FAILED", transactionHash); } catch {}
+    return deny(error?.message || "FINAL_TRANSFER_VERIFICATION_FAILED", unknown ? "UNKNOWN" : "FAILED");
   }
 }
 export default {
@@ -412,16 +338,14 @@ export default {
     try { payload = JSON.parse(rawBody); } catch { return json({ error: "INVALID_JSON" }, 400); }
     const exactKeys = (value, expected) => value && typeof value === "object" && !Array.isArray(value) &&
       Object.keys(value).sort().join(",") === [...expected].sort().join(",");
-    if (!exactKeys(payload, ["intent", "actor", "idempotency_key", "approval_id", "wallet_approval"]) ||
+    if (!exactKeys(payload, ["intent", "actor", "idempotency_key", "approval_id", "wallet_account", "transaction_hash", "preflight_token"]) ||
         !exactKeys(payload.intent, ["receiver_account", "amount_near", "rationale"]) ||
-        !exactKeys(payload.wallet_approval, ["account_id", "public_key", "signature", "nonce"]) ||
         typeof payload.actor !== "string" || payload.actor.length > 128 ||
         typeof payload.intent.receiver_account !== "string" || payload.intent.receiver_account.length > 64 ||
         typeof payload.intent.rationale !== "string" || payload.intent.rationale.length > 500 ||
-        typeof payload.wallet_approval.account_id !== "string" || payload.wallet_approval.account_id.length > 64 ||
-        typeof payload.wallet_approval.public_key !== "string" || payload.wallet_approval.public_key.length > 128 ||
-        typeof payload.wallet_approval.signature !== "string" || payload.wallet_approval.signature.length > 256 ||
-        typeof payload.wallet_approval.nonce !== "string" || payload.wallet_approval.nonce.length > 128) {
+        typeof payload.wallet_account !== "string" || payload.wallet_account.length > 64 ||
+        typeof payload.transaction_hash !== "string" || payload.transaction_hash.length > 128 ||
+        typeof payload.preflight_token !== "string" || payload.preflight_token.length > 4096) {
       return json({ error: "INVALID_PAYLOAD_SCHEMA" }, 400);
     }
     const result = await execute(payload, request.headers.get("authorization") || "", identity, env);
