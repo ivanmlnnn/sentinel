@@ -120,7 +120,10 @@ export async function onRequestPost({ request, env }) {
   });
   if (!providerResult.ok) return json({
     error: providerResult.error,
-    provider_status: providerResult.status || null,
+    provider_status: providerResult.provider_status ?? providerResult.status ?? null,
+    provider_code: providerResult.provider_code || null,
+    provider_log_id: providerResult.provider_log_id || null,
+    provider_error_name: providerResult.provider_error_name || null,
     provider_message: providerResult.message
   }, 502);
   const providerData = providerResult.data;
