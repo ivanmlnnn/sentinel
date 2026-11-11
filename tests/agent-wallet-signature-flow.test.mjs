@@ -4,57 +4,29 @@ import { readFileSync } from "node:fs";
 
 const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
 const approve = readFileSync(new URL("../functions/api/agent-approve.js", import.meta.url), "utf8");
+const signer = readFileSync(new URL("../signer-worker/src/index.mjs", import.meta.url), "utf8");
 
-
-test("wallet preflight completes before the tap and one tap launches the active wallet", () => {
-  assert.ok(app.includes(String.raw`const amountMatch = /^(?:0|[1-9][0-9]*)(?:\.([0-9]{1,6}))?$/.exec(amount);`), "decimal NEAR amounts must use a literal decimal-point matcher");
-  const prepare = app.indexOf("stage: 'prepare'");
-  const allowGate = app.indexOf("prepared.sentinel?.decision !== 'ALLOW'");
-  const activeWallet = app.indexOf("const active = await connector.getConnectedWallet()");
-  const walletClue = app.indexOf("const walletClue = String(manifest.name || manifest.id");
-  const wallet = app.indexOf("const wallet = await connector.wallet()");
-  const walletCache = app.indexOf("approvalWallet = wallet");
-  const clickHandler = app.indexOf("approveButton.addEventListener('click'");
-  const send = app.indexOf("approvalWallet.signAndSendTransaction(");
-  assert.ok(prepare >= 0 && allowGate > prepare && activeWallet > allowGate && walletClue > activeWallet);
-  assert.ok(wallet > walletClue && walletCache > wallet);
-  assert.match(app, /activeAccount !== accountAtPrepare/);
-  assert.match(app, /_wallet_clue: walletClue/);
-  assert.ok(clickHandler > walletCache && send > clickHandler);
-  assert.match(app, /connectedWalletName \|\| 'NEAR wallet'/);
-  assert.match(app, /Preflight starts as soon as the approval card is rendered/);
-  assert.doesNotMatch(app, /Open wallet & approve/);
-  assert.match(app, /features:\{ testnet:true, signAndSendTransaction:true \}/);
-  assert.match(app, /type: 'Transfer', params: \{ deposit: amountYocto \}/);
-  assert.match(app, /idempotency_key: preparedApproval\.idempotency_key/);
-  assert.match(app, /preflight_http_status/);
-  assert.doesNotMatch(app, /wallet\.signMessage\(/);
+test("agent approval requests a connected NEAR wallet NEP-413 signature", () => {
+  assert.match(app, /features:\{ testnet:true, signMessage:true \}/);
+  assert.match(app, /wallet\.signMessage\(/);
+  assert.match(app, /recipient: 'sentinel\.ivmaladin\.workers\.dev'/);
+  assert.match(app, /wallet_approval:/);
 });
 
-test("main Worker issues a short-lived HMAC preflight token and verifies wallet transaction directly on NEAR RPC", () => {
-  assert.match(approve, /createPreflightToken/);
-  assert.match(approve, /stage === "prepare"/);
-  assert.match(approve, /stage !== "verify"/);
-  assert.match(approve, /preflight_token/);
-  assert.match(approve, /transaction_hash/);
-  const prepareRoute = approve.slice(approve.indexOf('if (stage === "prepare")'), approve.indexOf('if (stage !== "verify"'));
-  assert.match(prepareRoute, /reserveWalletSpend/);
-  assert.doesNotMatch(prepareRoute, /callIsolatedSigner/);
-  assert.match(approve, /verifyWalletTransferOnRpc/);
-  assert.match(approve, /WALLET_TRANSFER_FINAL_RPC_VERIFIED/);
+test("main Worker forwards wallet signature to the isolated signer", () => {
+  assert.match(approve, /NEAR_WALLET_SIGNATURE_REQUIRED/);
+  assert.match(approve, /wallet_approval: walletApproval/);
 });
 
-test("wallet-native flow reserves spend in Main Worker and verifies exact transfer on NEAR RPC", () => {
-  assert.match(approve, /reserveWalletSpend/);
-  assert.match(approve, /verifyWalletPreflightToken/);
-  assert.match(approve, /verifyWalletTransferOnRpc/);
-  assert.match(approve, /actions\[0\]\?\.Transfer/);
-  const prepareRoute = approve.slice(approve.indexOf('if (stage === "prepare")'), approve.indexOf('if (stage !== "verify"'));
-  assert.doesNotMatch(prepareRoute, /callIsolatedSigner/);
+test("isolated signer verifies NEP-413 and rejects replayed wallet nonce", () => {
+  assert.match(signer, /verifyMessage\(/);
+  assert.match(signer, /WALLET_SIGNATURE_INVALID/);
+  assert.match(signer, /WALLET_SIGNATURE_REPLAYED/);
+  assert.match(signer, /reserveNonce\(env, "wallet:" \+ nonceText\)/);
 });
 
-test("UI only reports success after final RPC verification", () => {
-  assert.match(approve, /TESTNET_WALLET_TRANSFER_FINAL_RPC_VERIFIED/);
-  assert.match(approve, /final_status:"SUCCESS"/);
+test("UI only labels final-RPC-verified transaction links as verified", () => {
+  assert.match(signer, /verifyFinalTransfer\(/);
+  assert.match(signer, /FINAL_PAYMENT_VERIFICATION_UNAVAILABLE/);
   assert.match(app, /View RPC-verified Testnet transaction/);
 });
