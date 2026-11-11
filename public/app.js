@@ -834,7 +834,7 @@ function renderAgentResult(data) {
       ((data.sentinel?.decision || data.sentinel?.risk_score != null) ? '<div class="agent-result-grid compact"><span>Security check</span><b>' + escapeHtml(data.sentinel?.decision ? verdict : 'Completed') + (data.sentinel?.risk_score != null && Number.isFinite(Number(data.sentinel.risk_score)) ? ' · Risk ' + escapeHtml(risk) : '') + '</b></div>' : '') +
       (approvalId && status === 'AWAITING_HUMAN_APPROVAL' ? '<div class="agent-proposal-meta compact"><span>NEAR TESTNET · Expires in 5 minutes</span></div>' : '') +
       (txHash ? '<p class="agent-result-hash">TRANSACTION HASH · ' + escapeHtml(txHash) + '</p>' : '') + txLink +
-      (approvalId ? '<div class="agent-approval"><p>Review the exact amount and recipient in your NEAR wallet.</p><div class="agent-approval-actions">' +
+      (approvalId && status === 'AWAITING_HUMAN_APPROVAL' ? '<div class="agent-approval"><p>Review the exact amount and recipient in your NEAR wallet.</p><div class="agent-approval-actions">' +
         (walletCanApprove
           ? '<button type="button" class="primary-btn" id="approveAgentPayment">Approve payment <b>↗</b></button>'
           : '<button type="button" class="primary-btn" id="connectAgentWallet">Open NEAR wallet <b>↗</b></button>') +
