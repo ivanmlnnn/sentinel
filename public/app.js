@@ -36,6 +36,9 @@ async function request(path, options = {}) {
   const data = await response.json().catch(() => ({error:'Invalid server response.'}));
   if (!response.ok) {
     const diagnostics = [
+      typeof data.detail === 'string' ? data.detail : null,
+      typeof data.reason === 'string' ? 'reason=' + String(data.reason).slice(0, 100) : null,
+      Number.isInteger(data.preflight_http_status) ? 'preflight_http=' + data.preflight_http_status : null,
       typeof data.provider_message === 'string' ? data.provider_message : null,
       data.provider_error_name ? 'type=' + String(data.provider_error_name).slice(0, 80) : null,
       data.provider_code ? 'code=' + String(data.provider_code).slice(0, 80) : null,
@@ -910,72 +913,141 @@ function renderAgentResult(data) {
     });
   }
   if (approvalId && walletCanApprove) {
-    // Use the active wallet selected by NEAR Connect (for example Meteor).
-    // Keep the original one-tap approval interaction; do not require a second tap.
-    $('approveAgentPayment').addEventListener('click', async () => {
-      const receiver = String(proposal.receiver_account || '').trim().toLowerCase();
-      const amount = String(proposal.amount_near || '');
-      const approveButton = $('approveAgentPayment');
-      let walletSubmissionStarted = false;
+    // Complete Sentinel's network preflight in the background, before the user taps.
+    // The tap itself can then invoke the selected wallet synchronously, preserving
+    // Android browser user activation for Meteor's deep-link handoff.
+    const approveButton = $('approveAgentPayment');
+    const receiver = String(proposal.receiver_account || '').trim().toLowerCase();
+    const amount = String(proposal.amount_near || '').trim();
+    const amountMatch = /^(?:0|[1-9][0-9]*)(?:\\.([0-9]{1,6}))?$/.exec(amount);
+    let amountMicro = null;
+    if (amountMatch) {
+      const [wholePart, fractionPart = ''] = amount.split('.');
+      const micro = BigInt(wholePart) * 1000000n + BigInt((fractionPart + '000000').slice(0, 6));
+      if (micro > 0n && micro <= 100000n) amountMicro = Number(micro);
+    }
+    let preparedApproval = null;
+    let approvalWallet = null;
+    let preparedForAccount = null;
+    let preparingApproval = null;
+    let walletSubmissionStarted = false;
+
+    const showPrepareFailure = error => {
+      preparedApproval = null;
+      approvalWallet = null;
+      preparedForAccount = null;
+      approveButton.disabled = false;
+      approveButton.textContent = 'Retry Sentinel check';
+      const detail = error?.message || 'Sentinel could not complete the security preflight.';
+      let note = approveButton.closest('.agent-approval')?.querySelector('.agent-approval-status-note');
+      if (!note) {
+        note = document.createElement('p');
+        note.className = 'agent-approval-status-note';
+        approveButton.closest('.agent-approval')?.append(note);
+      }
+      note.textContent = detail + ' No wallet transaction was requested.';
+      toast(detail);
+    };
+
+    const prepareApproval = () => {
+      if (preparingApproval) return preparingApproval;
+      if (!connectorReady || !connector || !connectedAccount || !connectedAccount.endsWith('.testnet')) {
+        showPrepareFailure(new Error('Connect a NEAR Testnet wallet before approving.'));
+        return Promise.resolve(null);
+      }
+      if (!data.expires_at) {
+        showPrepareFailure(new Error('Approval expiry is missing. Create a new proposal.'));
+        return Promise.resolve(null);
+      }
+      if (amountMicro === null) {
+        showPrepareFailure(new Error('Invalid payment amount. Use up to 6 decimal places; Testnet limit is 0.1 NEAR.'));
+        return Promise.resolve(null);
+      }
+      const accountAtPrepare = connectedAccount;
+      approveButton.disabled = true;
+      approveButton.textContent = 'Checking Sentinel policy…';
+      preparingApproval = (async () => {
+        try {
+          const prepared = await request('/agent/approve', {
+            method: 'POST',
+            body: JSON.stringify({ stage: 'prepare', approval_id: approvalId, wallet_account: accountAtPrepare })
+          });
+          if (prepared.status !== 'READY_TO_SIGN' || prepared.sentinel?.decision !== 'ALLOW' || !prepared.preflight_token) {
+            throw new Error(prepared.reason || 'Sentinel did not authorize this transfer.');
+          }
+          const wallet = await connector.wallet();
+          if (!wallet || typeof wallet.signAndSendTransaction !== 'function') {
+            throw new Error('The selected wallet does not support native NEAR transfers.');
+          }
+          if (connectedAccount !== accountAtPrepare) {
+            throw new Error('Connected wallet changed during the security check. Reconnect and retry.');
+          }
+          preparedApproval = prepared;
+          approvalWallet = wallet;
+          preparedForAccount = accountAtPrepare;
+          approveButton.disabled = false;
+          approveButton.textContent = 'Approve payment · ' + (connectedWalletName || 'NEAR wallet');
+          const note = approveButton.closest('.agent-approval')?.querySelector('.agent-approval-status-note');
+          note?.remove();
+          return prepared;
+        } catch (error) {
+          showPrepareFailure(error);
+          return null;
+        } finally {
+          preparingApproval = null;
+        }
+      })();
+      return preparingApproval;
+    };
+
+    approveButton.addEventListener('click', async () => {
+      if (!preparedApproval || !approvalWallet || preparedForAccount !== connectedAccount) {
+        await prepareApproval();
+        return;
+      }
+      if (Date.now() - Number(preparedApproval._client_prepared_at || 0) > 8 * 60 * 1000) {
+        preparedApproval = null;
+        approvalWallet = null;
+        preparedForAccount = null;
+        await prepareApproval();
+        return;
+      }
+      const amountYocto = (BigInt(amountMicro) * 1000000000000000000n).toString();
+      approveButton.disabled = true;
+      approveButton.textContent = 'Opening ' + (connectedWalletName || 'NEAR wallet') + '…';
+      // Do not await network work before this call: it must run in the tap gesture.
+      let walletRequest;
       try {
-        if (!connectorReady || !connector || !connectedAccount || !connectedAccount.endsWith('.testnet')) {
-          throw new Error('Connect a NEAR Testnet wallet before approving.');
-        }
-        if (!data.expires_at) throw new Error('Approval expiry is missing. Create a new proposal.');
-        const amountMatch = /^(?:0|[1-9][0-9]*)(?:\.([0-9]{1,6}))?$/.exec(amount.trim());
-        if (!amountMatch) throw new Error('Invalid payment amount. Use up to 6 decimal places.');
-        const [wholePart, fractionPart = ''] = amount.trim().split('.');
-        const amountMicroBig = BigInt(wholePart) * 1000000n + BigInt((fractionPart + '000000').slice(0, 6));
-        if (amountMicroBig <= 0n || amountMicroBig > 100000n) {
-          throw new Error('Invalid payment amount. The Testnet limit is 0.1 NEAR.');
-        }
-        const amountMicro = Number(amountMicroBig);
-
-        approveButton.disabled = true;
-        approveButton.textContent = 'Checking Sentinel policy…';
-        const prepared = await request('/agent/approve', {
-          method: 'POST',
-          body: JSON.stringify({ stage: 'prepare', approval_id: approvalId, wallet_account: connectedAccount })
-        });
-        if (prepared.status !== 'READY_TO_SIGN' || prepared.sentinel?.decision !== 'ALLOW' || !prepared.preflight_token) {
-          renderAgentResult(prepared);
-          throw new Error(prepared.reason || 'Sentinel did not authorize this transfer. No wallet transaction was requested.');
-        }
-
-        const wallet = await connector.wallet();
-        if (!wallet || typeof wallet.signAndSendTransaction !== 'function') {
-          throw new Error('The connected wallet does not support native NEAR transfers through signAndSendTransaction.');
-        }
-        const amountYocto = (BigInt(amountMicro) * 1000000000000000000n).toString();
-        approveButton.textContent = 'Opening ' + (connectedWalletName || 'NEAR wallet') + '…';
-        // Invoke the selected wallet's native approval flow immediately after preflight.
-        const walletRequest = wallet.signAndSendTransaction({
+        walletRequest = approvalWallet.signAndSendTransaction({
           receiverId: receiver,
           actions: [{ type: 'Transfer', params: { deposit: amountYocto } }]
         });
         walletSubmissionStarted = true;
-        approveButton.textContent = 'Confirm exact transfer in your wallet…';
+      } catch (error) {
+        showPrepareFailure(error);
+        return;
+      }
+      approveButton.textContent = 'Confirm exact transfer in your wallet…';
+      try {
         const walletResult = await walletRequest;
         const transactionHash = walletResult?.transaction?.hash ||
           walletResult?.transaction_outcome?.id ||
           walletResult?.transactionHash ||
-          walletResult?.hash ||
-          null;
+          walletResult?.hash || null;
         if (typeof transactionHash !== 'string' || !/^[1-9A-HJ-NP-Za-km-z]{32,64}$/.test(transactionHash)) {
-          throw new Error('The wallet did not return a verifiable transaction hash. Do not send again; check the wallet activity first.');
+          throw new Error('Wallet did not return a verifiable transaction hash. Check wallet activity before retrying.');
         }
-
         approveButton.textContent = 'Verifying wallet transfer on NEAR…';
         const approved = await request('/agent/approve', {
           method: 'POST',
-          headers: { 'Idempotency-Key': prepared.idempotency_key },
+          headers: { 'Idempotency-Key': preparedApproval.idempotency_key },
           body: JSON.stringify({
             stage: 'verify',
             approval_id: approvalId,
-            idempotency_key: prepared.idempotency_key,
+            idempotency_key: preparedApproval.idempotency_key,
             wallet_account: connectedAccount,
             transaction_hash: transactionHash,
-            preflight_token: prepared.preflight_token
+            preflight_token: preparedApproval.preflight_token
           })
         });
         renderAgentResult(approved);
@@ -983,21 +1055,23 @@ function renderAgentResult(data) {
           ? 'Native NEAR transfer verified on Testnet.'
           : 'Transfer verification: ' + String(approved.status || 'UNKNOWN'));
       } catch (error) {
-        if (!walletSubmissionStarted) {
-          approveButton.disabled = false;
-          approveButton.textContent = 'Approve payment';
-          toast(error.message || 'Approval stopped. No wallet transfer was requested.');
-          return;
-        }
         approveButton.disabled = true;
         approveButton.textContent = 'Transfer submitted · verification required';
         const note = document.createElement('p');
         note.className = 'agent-approval-status-note';
-        note.textContent = error.message || 'The wallet may have submitted the transfer, but Sentinel could not verify it. Do not retry until the wallet and Explorer are checked.';
+        note.textContent = error.message || 'The wallet may have submitted the transfer, but Sentinel could not verify it. Do not retry until wallet activity is checked.';
         approveButton.closest('.agent-approval')?.append(note);
-        toast('Do not send again. Check the wallet activity and transaction status.');
+        toast('Do not send again. Check wallet activity and transaction status.');
       }
     });
+
+    // Preflight starts as soon as the approval card is rendered, not on the tap.
+    // This gives the user a single-tap wallet handoff after Sentinel returns ALLOW.
+    if (!connectorReady) {
+      showPrepareFailure(new Error('NEAR wallet connector is still loading. Refresh or retry shortly.'));
+    } else {
+      void prepareApproval();
+    }
   }
 }
 const skillCards = Array.from(document.querySelectorAll('.sentinel-skill-card'));
