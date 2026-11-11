@@ -919,7 +919,7 @@ function renderAgentResult(data) {
     const approveButton = $('approveAgentPayment');
     const receiver = String(proposal.receiver_account || '').trim().toLowerCase();
     const amount = String(proposal.amount_near || '').trim();
-    const amountMatch = /^(?:0|[1-9][0-9]*)(?:\\.([0-9]{1,6}))?$/.exec(amount);
+    const amountMatch = /^(?:0|[1-9][0-9]*)(?:\.([0-9]{1,6}))?$/.exec(amount);
     let amountMicro = null;
     if (amountMatch) {
       const [wholePart, fractionPart = ''] = amount.split('.');
