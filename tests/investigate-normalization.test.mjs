@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeTransaction } from "../functions/api/investigate.js";
+import { normalizeTransaction, isAssessmentEvidenceComplete } from "../functions/api/investigate.js";
 
 test("sender history marks the sender's signed transfer to the receiver as outgoing", () => {
   const row = normalizeTransaction({
@@ -41,4 +41,26 @@ test("failed outgoing transaction is not considered a successful interaction", (
 
   assert.equal(row.direction, "OUTGOING_SIGNED");
   assert.equal(row.is_success, false);
+});
+
+test("optional sender interaction history does not block a complete recipient assessment", () => {
+  assert.equal(isAssessmentEvidenceComplete({
+    txHistory: { complete: true }, txSchemaComplete: true,
+    receiptHistory: { complete: true }, receiptSchemaRecognized: true,
+    ftHistory: { complete: true }, ftSchemaRecognized: true,
+    account: { code_hash: "contract-hash" }, contractCodeHistory: { history_error: null }
+  }), true);
+});
+
+test("recipient transaction, receipt, token, and contract evidence remain required", () => {
+  const base = {
+    txHistory: { complete: true }, txSchemaComplete: true,
+    receiptHistory: { complete: true }, receiptSchemaRecognized: true,
+    ftHistory: { complete: true }, ftSchemaRecognized: true,
+    account: { code_hash: "contract-hash" }, contractCodeHistory: { history_error: null }
+  };
+  assert.equal(isAssessmentEvidenceComplete({ ...base, txHistory: { complete: false } }), false);
+  assert.equal(isAssessmentEvidenceComplete({ ...base, receiptSchemaRecognized: false }), false);
+  assert.equal(isAssessmentEvidenceComplete({ ...base, ftHistory: null }), false);
+  assert.equal(isAssessmentEvidenceComplete({ ...base, contractCodeHistory: { history_error: "unavailable" } }), false);
 });
