@@ -7,6 +7,7 @@ const approve = readFileSync(new URL("../functions/api/agent-approve.js", import
 
 
 test("wallet preflight completes before the tap and one tap launches the active wallet", () => {
+  assert.ok(app.includes(String.raw`const amountMatch = /^(?:0|[1-9][0-9]*)(?:\.([0-9]{1,6}))?$/.exec(amount);`), "decimal NEAR amounts must use a literal decimal-point matcher");
   const prepare = app.indexOf("stage: 'prepare'");
   const allowGate = app.indexOf("prepared.sentinel?.decision !== 'ALLOW'");
   const activeWallet = app.indexOf("const active = await connector.getConnectedWallet()");
