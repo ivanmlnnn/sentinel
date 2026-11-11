@@ -51,6 +51,25 @@ jobs:
       - name: Apply isolated Signer D1 migrations
         run: npx wrangler@4.159.0 d1 migrations apply db2 --remote --config signer-worker/wrangler.jsonc
 
+      # The Main Worker signs each preflight assessment; the isolated Signer
+      # verifies it. Generate one matching Ed25519 pair per release and install
+      # each half only on its designated Worker. Values never enter the logs.
+      - name: Provision matching signed-verdict keys
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { webcrypto } from "node:crypto";
+          import { writeFile } from "node:fs/promises";
+          const pair = await webcrypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
+          const privateKey = Buffer.from(await webcrypto.subtle.exportKey("pkcs8", pair.privateKey)).toString("base64");
+          const publicKey = Buffer.from(await webcrypto.subtle.exportKey("raw", pair.publicKey)).toString("base64");
+          await writeFile("/tmp/sentinel-verdict-private", privateKey, { mode: 0o600 });
+          await writeFile("/tmp/sentinel-verdict-public", publicKey, { mode: 0o600 });
+          NODE
+          npx wrangler@4.159.0 secret put SENTINEL_VERDICT_PUBLIC_KEY --config signer-worker/wrangler.jsonc < /tmp/sentinel-verdict-public
+          npx wrangler@4.159.0 secret put SENTINEL_VERDICT_PRIVATE_KEY < /tmp/sentinel-verdict-private
+          rm -f /tmp/sentinel-verdict-private /tmp/sentinel-verdict-public
+
       - name: Deploy isolated Signer Worker
         uses: cloudflare/wrangler-action@v3
         with:
