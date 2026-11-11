@@ -96,10 +96,15 @@ export async function callSentinelAI(env, {
   };
   if (tools.length) {
     input.tools = tools.map(tool => ({
-      name: tool.name,
-      description: tool.description,
-      parameters: tool.input_schema || { type: "object", properties: {} }
+      type: "function",
+      function: {
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.input_schema || { type: "object", properties: {} }
+      }
     }));
+    input.tool_choice = "auto";
+    input.parallel_tool_calls = false;
   }
   try {
     const inference = Promise.resolve(env.AI.run(configuredModel, input));
