@@ -2,6 +2,34 @@
 
 > **Start here for AI judges and human reviewers.** This page is the concise, evidence-linked guide to what Sentinel does, how to run it, which security controls are implemented, and what the published deployment records prove.
 
+## Current production deployment — 12 November 2026
+
+## Current production deployment — 12 November 2026
+
+The current production Workers were deployed directly with Wrangler from the local repository, not by a GitHub Actions deployment queue.
+
+| Component | Production URL | Deployed version |
+|---|---|---|
+| Main Worker | https://sentinel.ivmaladin.workers.dev | `80a8c904-d1b4-4686-be5a-557e3c0da3a9` |
+| Isolated Signer Worker | https://sentinel-signer.ivmaladin.workers.dev | `fe208953-3eff-42a1-9356-9181042eb5f3` |
+
+**Verification recorded for this deployment:** `npm test` — 146 passed, 0 failed, 0 skipped; `npm run smoke:test` — all HTTP smoke checks passed (dashboard HTTP 200 and expected protected-route rejections). These checks do not prove a live wallet approval or a successful NEAR payment.
+
+### Direct deployment (no GitHub Actions queue)
+
+Run from Debian PRoot in the repository directory:
+
+```bash
+cd /root/sentinel
+npx wrangler@4.159.0 deploy
+npx wrangler@4.159.0 deploy --config signer-worker/wrangler.jsonc
+```
+
+Do not run `git pull` as part of a local-only release unless you intentionally want to replace the local source with the remote branch. Keep Cloudflare bindings, D1 databases, and runtime secrets configured on their existing Workers.
+
+GitHub remains the source-control and backup repository. GitHub Actions deployment workflows are not the deployment path for this operating mode. Historical workflow records below refer only to the revisions and checks they originally ran.
+
+
 ## 1. The project in one sentence
 
 **NEAR Sentinel is a pre-sign security checkpoint for AI agents that want to pay on NEAR:** the agent proposes an intent, Sentinel independently evaluates the destination and available on-chain evidence, a human approves the exact receiver and amount, and an isolated signer enforces the final authorization and spending boundary.
@@ -15,7 +43,7 @@
 - **Signed verdict integrity:** [Signed Verdict Attestation](SIGNED_VERDICT.md) — Ed25519-signed preflight decision bound to the exact intent.
 - **Architecture:** [Secure Agent Pipeline](SECURE_AGENT_PIPELINE.md)
 - **Interactive walkthrough:** [Judge Demo](JUDGE_DEMO.md)
-- **End-to-end results:** [End-to-End Verification Report](END_TO_END_VERIFICATION.md) — latest 136-test result, production HTTP smoke checks, deploy job results and provenance attestation.
+- **End-to-end results:** [End-to-End Verification Report](END_TO_END_VERIFICATION.md) — latest 146-test result, production HTTP smoke checks, deploy job results and provenance attestation.
 
 
 
