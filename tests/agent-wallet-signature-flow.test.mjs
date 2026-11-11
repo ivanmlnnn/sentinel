@@ -33,7 +33,7 @@ test("wallet-native flow reserves spend in Main Worker and verifies exact transf
   assert.match(approve, /reserveWalletSpend/);
   assert.match(approve, /verifyWalletPreflightToken/);
   assert.match(approve, /verifyWalletTransferOnRpc/);
-  assert.match(approve, /actions\\[0\\]\\?\\.Transfer/);
+  assert.match(approve, /actions\[0\]\?\.Transfer/);
   const prepareRoute = approve.slice(approve.indexOf('if (stage === "prepare")'), approve.indexOf('if (stage !== "verify"'));
   assert.doesNotMatch(prepareRoute, /callIsolatedSigner/);
 });
