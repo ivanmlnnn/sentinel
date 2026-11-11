@@ -632,6 +632,22 @@ function renderAgentResult(data) {
     ? '<a class="agent-tx-link" href="' + escapeHtml(explorerUrl) + '" target="_blank" rel="noopener noreferrer">View RPC-verified Testnet transaction ↗</a>'
     : '';
   const approvalId = status === 'AWAITING_HUMAN_APPROVAL' ? String(data.approval_id || '') : '';
+  const policyReason = String(data.reason || '');
+  const policyReasonText = ({
+    TESTNET_ONLY: 'Network policy: payments are restricted to NEAR Testnet. Check the Worker network configuration.',
+    KILL_SWITCH_ACTIVE: 'The payment safety kill switch is active. No proposal can proceed until the system is deliberately re-enabled.',
+    AMOUNT_LIMIT_OR_POLICY_UNCONFIGURED: 'The amount exceeds the configured limit, or the payment limit is not configured.',
+    RECEIVER_NOT_ALLOWLISTED: 'This recipient is not on the configured receiver allowlist.',
+    TESTNET_RECEIVER_REQUIRED: 'The recipient must be a NEAR Testnet account ending in .testnet.',
+    INVALID_RECEIVER: 'The recipient account ID is invalid.',
+    INVALID_AMOUNT: 'The payment amount is invalid.',
+    ASSESSMENT_INCOMPLETE: 'Sentinel could not complete the required security assessment.',
+    ASSESSMENT_INTENT_MISMATCH: 'The security assessment does not match this exact recipient and amount.',
+    SENTINEL_BLOCK: 'Sentinel security checks blocked this payment.',
+    HUMAN_REVIEW_REQUIRED: 'Sentinel requires additional human review before this payment can proceed.',
+    INVALID_OR_NON_ALLOW_ASSESSMENT: 'Sentinel did not return a valid ALLOW assessment.',
+    PREFLIGHT_UNAVAILABLE: 'The required security preflight could not be completed.'
+  })[policyReason] || '';
   const responseText = String(data.agent_message || data.message || data.reason || 'Sentinel completed the request.').trim();
   const hasPaymentContext = Boolean(proposal.receiver_account || proposal.amount_near != null || approvalId || txHash);
   const showStatusCard = status !== 'NO_PAYMENT_PROPOSED' && (hasPaymentContext || data.sentinel || data.investigation || status === 'DENIED');
@@ -644,6 +660,7 @@ function renderAgentResult(data) {
         (proposal.receiver_account ? '<div class="agent-proposal-field"><span>RECIPIENT ACCOUNT</span><b>' + escapeHtml(proposal.receiver_account) + '</b></div>' : '') +
         (proposal.amount_near != null ? '<div class="agent-proposal-field amount"><span>PAYMENT AMOUNT</span><b>' + escapeHtml(String(proposal.amount_near)) + ' <small>NEAR</small></b></div>' : '') +
       '</div>' : '') +
+      (status === 'DENIED' && policyReason ? '<div class="agent-policy-reason"><span>POLICY REASON · ' + escapeHtml(policyReason) + '</span>' + (policyReasonText ? '<p>' + escapeHtml(policyReasonText) + '</p>' : '') + '</div>' : '') +
       ((data.sentinel?.decision || data.sentinel?.risk_score != null) ? '<div class="agent-result-grid">' +
         (data.sentinel?.decision ? '<div><span>SENTINEL VERDICT</span><b>' + escapeHtml(verdict) + '</b></div>' : '') +
         (data.sentinel?.risk_score != null && Number.isFinite(Number(data.sentinel.risk_score)) ? '<div><span>RISK SCORE</span><b>' + escapeHtml(risk) + '</b></div>' : '') +
