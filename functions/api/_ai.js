@@ -82,7 +82,7 @@ export function normalizeSentinelAIResponse(data = {}) {
 }
 
 export async function callSentinelAI(env, {
-  system, messages, tools = [], maxOutputTokens = 1200, timeoutMs = 20000
+  system, messages, tools = [], maxOutputTokens = 900, timeoutMs = 12000
 } = {}) {
   if (!env?.AI || typeof env.AI.run !== "function") {
     return { ok: false, status: 0, error: "AI_RUNTIME_NOT_CONFIGURED", message: "Sentinel AI Runtime binding is not configured." };
@@ -105,7 +105,7 @@ export async function callSentinelAI(env, {
     const inference = Promise.resolve(env.AI.run(configuredModel, input));
     let timeout;
     const timed = new Promise((_, reject) => {
-      timeout = setTimeout(() => reject(new Error("AI_RUNTIME_TIMEOUT")), Math.min(30000, Math.max(1000, timeoutMs)));
+      timeout = setTimeout(() => reject(new Error("AI_RUNTIME_TIMEOUT")), Math.min(15000, Math.max(1000, timeoutMs)));
     });
     let response;
     try { response = await Promise.race([inference, timed]); }
