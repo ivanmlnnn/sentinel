@@ -22,7 +22,7 @@ export async function onRequestPost({ request, env }) {
     system,
     messages: [{ role: "user", content: prompt }],
     maxOutputTokens: 450,
-    timeoutMs: 15000
+    timeoutMs: 28000
   });
   if (!result.ok) return json({
     error: result.error,
