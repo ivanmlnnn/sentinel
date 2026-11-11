@@ -8,9 +8,11 @@ on:
 permissions:
   contents: read
 
+# Main and isolated Signer are a single release unit. Never cancel an
+# in-progress deployment between the two Worker publishes.
 concurrency:
   group: sentinel-production
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   test-and-deploy:
