@@ -922,10 +922,14 @@ function renderAgentResult(data) {
           throw new Error('Connect a NEAR Testnet wallet before approving.');
         }
         if (!data.expires_at) throw new Error('Approval expiry is missing. Create a new proposal.');
-        const amountMicro = Math.round(Number(amount) * 1000000);
-        if (!Number.isSafeInteger(amountMicro) || amountMicro <= 0 || amountMicro > 100000) {
+        const amountMatch = /^(?:0|[1-9][0-9]*)(?:\\.([0-9]{1,6}))?$/.exec(amount.trim());
+        if (!amountMatch) throw new Error('Invalid payment amount. Use up to 6 decimal places.');
+        const [wholePart, fractionPart = ''] = amount.trim().split('.');
+        const amountMicroBig = BigInt(wholePart) * 1000000n + BigInt((fractionPart + '000000').slice(0, 6));
+        if (amountMicroBig <= 0n || amountMicroBig > 100000n) {
           throw new Error('Invalid payment amount. The Testnet limit is 0.1 NEAR.');
         }
+        const amountMicro = Number(amountMicroBig);
 
         const prepared = await request('/agent/approve', {
           method: 'POST',
