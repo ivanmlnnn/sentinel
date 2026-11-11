@@ -794,6 +794,13 @@ function renderAgentResult(data) {
   })[policyReason] || (policyReason
     ? 'The signer stopped this payment before broadcast (' + policyReason.replaceAll('_', ' ').toLowerCase() + ').'
     : '');
+  const signerSetupIssue = [
+    'ISOLATED_SIGNER_NOT_CONFIGURED', 'ISOLATED_SIGNER_BINDING_MISSING',
+    'AGENT_SIGNER_HMAC_SECRET_MISSING', 'SIGNER_NOT_CONFIGURED',
+    'SIGNER_ACCOUNT_MUST_BE_TESTNET', 'PREFLIGHT_ATTESTATION_NOT_CONFIGURED',
+    'PAYMENT_CONTRACT_NOT_CONFIGURED', 'SIGNER_REQUIRES_CONTRACT_SCOPED_FUNCTION_CALL_KEY',
+    'SIGNER_RESTRICTED_KEY_OR_CONTRACT_INVALID'
+  ].includes(policyReason);
   const rawResponseText = String(data.agent_message || data.message || '').trim();
   const isInternalResponse = /^[A-Z][A-Z0-9_]{8,}$/.test(rawResponseText);
   const responseText = rawResponseText && !isInternalResponse
@@ -819,7 +826,7 @@ function renderAgentResult(data) {
   const agentCard = showStatusCard
     ? '<section class="telegram-agent-status agent-payment-card">' +
       '<div class="agent-proposal-top"><div class="agent-proposal-brand"><span class="agent-proposal-icon">◈</span><span>' + (hasPaymentContext ? 'Payment' : 'Security check') + '</span></div>' +
-      '<span class="agent-state-pill ' + (data.execution_enabled === true ? 'is-success' : '') + '">' + escapeHtml(({ AWAITING_HUMAN_APPROVAL: 'REVIEW PAYMENT', DENIED: 'NOT SENT', EXECUTED: 'SENT · VERIFIED', UNKNOWN: 'CHECK STATUS', FAILED: 'FAILED', EXPIRED: 'EXPIRED', APPROVING: 'PROCESSING' })[status] || status.replaceAll('_', ' ')) + '</span></div>' +
+      '<span class="agent-state-pill ' + (data.execution_enabled === true ? 'is-success' : '') + '">' + escapeHtml(({ AWAITING_HUMAN_APPROVAL: 'REVIEW PAYMENT', DENIED: signerSetupIssue ? 'SETUP REQUIRED' : 'NOT SENT', EXECUTED: 'SENT · VERIFIED', UNKNOWN: 'CHECK STATUS', FAILED: 'FAILED', EXPIRED: 'EXPIRED', APPROVING: 'PROCESSING' })[status] || status.replaceAll('_', ' ')) + '</span></div>' +
       ((hasPaymentContext || data.sentinel) ? '<div class="agent-proposal-values">' +
         (proposal.amount_near != null ? '<div class="agent-proposal-field amount"><span>AMOUNT</span><b>' + escapeHtml(String(proposal.amount_near)) + ' <small>NEAR</small></b></div>' : '') +
       '</div>' : '') + recipientCard +
