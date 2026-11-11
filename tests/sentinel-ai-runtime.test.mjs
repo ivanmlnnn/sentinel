@@ -54,7 +54,16 @@ test("uses native Workers AI binding and normalized tools without external provi
   assert.equal(captured.model, SENTINEL_AI_DEFAULT_MODEL);
   assert.equal(captured.input.messages[0].role, "system");
   assert.equal(captured.input.messages[1].content, "hello");
-  assert.equal(captured.input.tools[0].name, "investigate_near_account");
+  assert.deepEqual(captured.input.tools[0], {
+    type: "function",
+    function: {
+      name: "investigate_near_account",
+      description: "Read-only lookup",
+      parameters: { type: "object", properties: { account_id: { type: "string" } }, required: ["account_id"] }
+    }
+  });
+  assert.equal(captured.input.tool_choice, "auto");
+  assert.equal(captured.input.parallel_tool_calls, false);
 });
 
 test("converts Sentinel tool history into model-native assistant and tool messages", async () => {
