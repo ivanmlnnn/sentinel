@@ -265,16 +265,15 @@ export async function onRequestPost({ request, env }) {
   const state = execution.executed ? "EXECUTED" : execution.status === "UNKNOWN" ? "UNKNOWN" : "FAILED";
   try {
     await env.DB.prepare(
-      "INSERT INTO agent_execution (idempotency_key, actor, receiver_account, amount_micro, status, transaction_hash, created_at, updated_at) " +
-      "VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
-    ).bind(idempotencyKey, identity.sub, intent.receiver_account, Math.round(intent.amount_near * 1_000_000),
-      state, body.transaction_hash).run();
+      "UPDATE agent_execution SET status=?, transaction_hash=?, updated_at=CURRENT_TIMESTAMP WHERE idempotency_key=? AND actor=?"
+    ).bind(state, body.transaction_hash, idempotencyKey, identity.sub).run();
     await env.DB.prepare(
       "INSERT INTO signer_approval_claims (approval_id, idempotency_key, actor, receiver_account, amount_micro, claimed_at) " +
       "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"
-    ).bind(approvalId, idempotencyKey, identity.sub, intent.receiver_account,
-      Math.round(intent.amount_near * 1_000_000)).run();
-  } catch { /* isolated signer ledger remains authoritative */ }
+    ).bind(approvalId, idempotencyKey, identity.sub, intent.receiver_account, amountMicro).run();
+  } catch (error) {
+    console.error("sentinel_wallet_execution_ledger_update_failed", { name:error?.name || "Error" });
+  }
   await updateApproval(env, approvalId, execution.status === "UNKNOWN" ? "UNKNOWN" : state, execution.reason || null);
   try {
     await env.DB.prepare(
