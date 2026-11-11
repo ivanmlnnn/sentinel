@@ -266,7 +266,7 @@ export async function execute(payload, authorizationHeader, identity, env) {
       transaction_hash: transactionHash, explorer_url: "https://testnet.nearblocks.io/txns/" + encodeURIComponent(transactionHash),
       verification, signer_account: walletAccount, receiver_account: validated.receiver_account,
       amount_near: microToNearString(amountMicro), network: "testnet",
-      sentinel: { decision: tokenPayload.decision, risk_score: null } };
+      sentinel: { decision: tokenPayload.decision, risk_score: Number(tokenPayload.risk_score) } };
   } catch (error) {
     const unknown = error?.message === "NEAR_RPC_UNAVAILABLE";
     try { await setState(env, idempotencyKey, unknown ? "UNKNOWN" : "FAILED", transactionHash); } catch {}
