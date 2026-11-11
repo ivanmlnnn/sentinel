@@ -6,18 +6,22 @@ const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
 const approve = readFileSync(new URL("../functions/api/agent-approve.js", import.meta.url), "utf8");
 
 
-test("one-tap active wallet transfer is requested only after Sentinel ALLOW preflight", () => {
+test("wallet preflight completes before the tap and one tap launches the active wallet", () => {
   const prepare = app.indexOf("stage: 'prepare'");
   const allowGate = app.indexOf("prepared.sentinel?.decision !== 'ALLOW'");
   const wallet = app.indexOf("const wallet = await connector.wallet()");
-  const send = app.indexOf("wallet.signAndSendTransaction(");
-  assert.ok(prepare >= 0 && allowGate > prepare && wallet > allowGate && send > wallet);
+  const walletCache = app.indexOf("approvalWallet = wallet");
+  const clickHandler = app.indexOf("approveButton.addEventListener('click'");
+  const send = app.indexOf("approvalWallet.signAndSendTransaction(");
+  assert.ok(prepare >= 0 && allowGate > prepare && wallet > allowGate && walletCache > wallet);
+  assert.ok(clickHandler > walletCache && send > clickHandler);
   assert.match(app, /connectedWalletName \|\| 'NEAR wallet'/);
+  assert.match(app, /Preflight starts as soon as the approval card is rendered/);
   assert.doesNotMatch(app, /Open wallet & approve/);
-  assert.doesNotMatch(app, /preparedApproval = prepared/);
   assert.match(app, /features:\{ testnet:true, signAndSendTransaction:true \}/);
   assert.match(app, /type: 'Transfer', params: \{ deposit: amountYocto \}/);
-  assert.match(app, /idempotency_key: prepared\.idempotency_key/);
+  assert.match(app, /idempotency_key: preparedApproval\.idempotency_key/);
+  assert.match(app, /preflight_http_status/);
   assert.doesNotMatch(app, /wallet\.signMessage\(/);
 });
 
