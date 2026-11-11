@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 
 const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
 const approve = readFileSync(new URL("../functions/api/agent-approve.js", import.meta.url), "utf8");
-const signer = readFileSync(new URL("../signer-worker/src/index.mjs", import.meta.url), "utf8");
+
 
 test("wallet transfer is requested only after a fresh Sentinel ALLOW preflight", () => {
   const prepare = app.indexOf("stage: 'prepare'");
@@ -29,16 +29,17 @@ test("main Worker issues a short-lived HMAC preflight token and verifies wallet 
   assert.match(approve, /WALLET_TRANSFER_FINAL_RPC_VERIFIED/);
 });
 
-test("wallet-native flow reserves spend before wallet broadcast and verifies token-bound native transfer", () => {
-  assert.match(signer, /prepareWalletTransfer/);
-  assert.match(signer, /verifyPreflightToken/);
-  assert.match(signer, /verifyFinalTransfer\(transactionHash, walletAccount/);
-  assert.match(signer, /actions\[0\]\?\.Transfer/);
-  assert.doesNotMatch(signer, /FunctionCall|method_name.*pay|NEAR_PAYMENT_CONTRACT_ID/);
+test("wallet-native flow reserves spend in Main Worker and verifies exact transfer on NEAR RPC", () => {
+  assert.match(approve, /reserveWalletSpend/);
+  assert.match(approve, /verifyWalletPreflightToken/);
+  assert.match(approve, /verifyWalletTransferOnRpc/);
+  assert.match(approve, /actions\\[0\\]\\?\\.Transfer/);
+  const prepareRoute = approve.slice(approve.indexOf('if (stage === "prepare")'), approve.indexOf('if (stage !== "verify"'));
+  assert.doesNotMatch(prepareRoute, /callIsolatedSigner/);
 });
 
 test("UI only reports success after final RPC verification", () => {
-  assert.match(signer, /TESTNET_WALLET_TRANSFER_FINAL_RPC_VERIFIED/);
-  assert.match(signer, /final_status: "SUCCESS"/);
+  assert.match(approve, /TESTNET_WALLET_TRANSFER_FINAL_RPC_VERIFIED/);
+  assert.match(approve, /final_status:"SUCCESS"/);
   assert.match(app, /View RPC-verified Testnet transaction/);
 });
