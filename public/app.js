@@ -755,7 +755,7 @@ function renderAgentResult(data) {
   const policyReason = String(data.reason || '');
   const policyReasonText = ({
     TESTNET_ONLY: 'Network policy: payments are restricted to NEAR Testnet. Check the Worker network configuration.',
-    KILL_SWITCH_ACTIVE: 'The payment safety kill switch is active. No proposal can proceed until the system is deliberately re-enabled.',
+    KILL_SWITCH_ACTIVE: 'The signer is locked. Your approval was received, but no transfer was sent.',
     AMOUNT_LIMIT_OR_POLICY_UNCONFIGURED: 'The amount exceeds the configured limit, or the payment limit is not configured.',
     RECEIVER_NOT_ALLOWLISTED: 'This recipient is not on the configured receiver allowlist.',
     TESTNET_RECEIVER_REQUIRED: 'The recipient must be a NEAR Testnet account ending in .testnet.',
@@ -766,9 +766,24 @@ function renderAgentResult(data) {
     SENTINEL_BLOCK: 'Sentinel security checks blocked this payment.',
     HUMAN_REVIEW_REQUIRED: 'Sentinel requires additional human review before this payment can proceed.',
     INVALID_OR_NON_ALLOW_ASSESSMENT: 'Sentinel did not return a valid ALLOW assessment.',
-    PREFLIGHT_UNAVAILABLE: 'The required security preflight could not be completed.'
+    PREFLIGHT_UNAVAILABLE: 'The required security preflight could not be completed.',
+    APPROVAL_CLOSED_NO_TRANSFER: 'This approval is closed. No verified transfer was found.',
+    EXECUTION_OUTCOME_UNKNOWN: 'The transaction outcome is not verified. Do not sign or retry again yet.',
+    APPROVAL_NOT_PENDING: 'This approval has already been used or closed. Check its status before creating another proposal.'
   })[policyReason] || '';
-  const responseText = String(data.agent_message || data.message || data.reason || 'Sentinel completed the request.').trim();
+  const rawResponseText = String(data.agent_message || data.message || '').trim();
+  const isInternalResponse = /^[A-Z][A-Z0-9_]{8,}$/.test(rawResponseText);
+  const responseText = rawResponseText && !isInternalResponse
+    ? rawResponseText
+    : status === 'AWAITING_HUMAN_APPROVAL'
+      ? 'Review the amount and recipient before approving.'
+      : status === 'DENIED'
+        ? (policyReasonText || 'This approval is closed. No transfer was confirmed.')
+        : status === 'EXECUTED'
+          ? 'Payment sent and verified on NEAR Testnet.'
+          : status === 'UNKNOWN'
+            ? 'The transaction outcome is not yet verified. Do not retry this payment.'
+            : 'Sentinel completed the request.';
   const hasPaymentContext = Boolean(proposal.receiver_account || proposal.amount_near != null || approvalId || txHash);
   const showStatusCard = status !== 'NO_PAYMENT_PROPOSED' && (hasPaymentContext || data.sentinel || data.investigation || status === 'DENIED');
   const walletCanApprove = Boolean(connectedAccount && connectedAccount.endsWith('.testnet'));
@@ -780,21 +795,21 @@ function renderAgentResult(data) {
     : '';
   const agentCard = showStatusCard
     ? '<section class="telegram-agent-status">' +
-      '<div class="agent-proposal-top"><div class="agent-proposal-brand"><span class="agent-proposal-icon">◈</span><span>' + (hasPaymentContext ? 'PAYMENT PROPOSAL · SENTINEL' : 'SENTINEL SECURITY RESULT') + '</span></div>' +
-      '<span class="agent-state-pill ' + (data.execution_enabled === true ? 'is-success' : '') + '">' + escapeHtml(status.replaceAll('_', ' ')) + '</span></div>' +
+      '<div class="agent-proposal-top"><div class="agent-proposal-brand"><span class="agent-proposal-icon">◈</span><span>' + (hasPaymentContext ? 'PAYMENT' : 'SECURITY CHECK') + '</span></div>' +
+      '<span class="agent-state-pill ' + (data.execution_enabled === true ? 'is-success' : '') + '">' + escapeHtml(({ AWAITING_HUMAN_APPROVAL: 'REVIEW PAYMENT', DENIED: 'NOT SENT', EXECUTED: 'SENT · VERIFIED', UNKNOWN: 'CHECK STATUS', FAILED: 'FAILED', EXPIRED: 'EXPIRED', APPROVING: 'PROCESSING' })[status] || status.replaceAll('_', ' ')) + '</span></div>' +
       ((hasPaymentContext || data.sentinel) ? '<div class="agent-proposal-values">' +
         (proposal.amount_near != null ? '<div class="agent-proposal-field amount"><span>AMOUNT</span><b>' + escapeHtml(String(proposal.amount_near)) + ' <small>NEAR</small></b></div>' : '') +
       '</div>' : '') + recipientCard +
-      (status === 'DENIED' && policyReason ? '<div class="agent-policy-reason"><span>POLICY REASON · ' + escapeHtml(policyReason) + '</span>' + (policyReasonText ? '<p>' + escapeHtml(policyReasonText) + '</p>' : '') + '</div>' : '') +
+      (status === 'DENIED' && policyReason ? '<div class="agent-policy-reason"><span>WHY IT DIDN’T SEND</span>' + (policyReasonText ? '<p>' + escapeHtml(policyReasonText) + '</p>' : '') + '</div>' : '') +
       ((data.sentinel?.decision || data.sentinel?.risk_score != null) ? '<div class="agent-result-grid">' +
         (data.sentinel?.decision ? '<div><span>SENTINEL VERDICT</span><b>' + escapeHtml(verdict) + '</b></div>' : '') +
         (data.sentinel?.risk_score != null && Number.isFinite(Number(data.sentinel.risk_score)) ? '<div><span>RISK SCORE</span><b>' + escapeHtml(risk) + '</b></div>' : '') +
       '</div>' : '') +
-      (approvalId ? '<div class="agent-proposal-meta compact"><span><i></i> TESTNET · EXPIRES IN 5 MIN</span><span>' + escapeHtml(connectedAccount || 'Wallet not connected') + '</span></div>' : '') +
+      (approvalId ? '<div class="agent-proposal-meta compact"><span><i></i> NEAR TESTNET · 5 MINUTES</span></div>' : '') +
       (txHash ? '<p class="agent-result-hash">TRANSACTION HASH · ' + escapeHtml(txHash) + '</p>' : '') + txLink +
-      (approvalId ? '<div class="agent-approval"><p>Sign to approve this exact payment. This signature does not transfer funds.</p><div class="agent-approval-actions">' +
+      (approvalId ? '<div class="agent-approval"><p>Approve this exact payment in your NEAR wallet. Sentinel will only report success after verifying the transaction.</p><div class="agent-approval-actions">' +
         (walletCanApprove
-          ? '<button type="button" class="primary-btn" id="approveAgentPayment">Open NEAR wallet & sign <b>↗</b></button>'
+          ? '<button type="button" class="primary-btn" id="approveAgentPayment">Approve payment <b>↗</b></button>'
           : '<button type="button" class="primary-btn" id="connectAgentWallet">Open NEAR wallet <b>↗</b></button>') +
         '</div></div>' : '') +
       '</section>' : '';
@@ -862,7 +877,8 @@ function renderAgentResult(data) {
       const amount = String(proposal.amount_near || '');
       const approveButton = $('approveAgentPayment');
       approveButton.disabled = true;
-      approveButton.textContent = 'Requesting NEAR wallet signature…';
+      approveButton.textContent = 'Waiting for wallet…';
+      let approvalRequestStarted = false;
       try {
         if (!connectorReady || !connector || !connectedAccount || !connectedAccount.endsWith('.testnet')) {
           throw new Error('Connect a NEAR Testnet wallet that supports message signing before approving.');
@@ -898,6 +914,7 @@ function renderAgentResult(data) {
           ? signed.signature
           : btoa(String.fromCharCode(...new Uint8Array(signed.signature)));
         approveButton.textContent = 'Verifying wallet signature · awaiting signer…';
+        approvalRequestStarted = true;
         const approved = await request('/agent/approve', {
           method: 'POST',
           headers: { 'Idempotency-Key': crypto.randomUUID() },
@@ -914,9 +931,35 @@ function renderAgentResult(data) {
         renderAgentResult(approved);
         toast(approved.execution_enabled ? 'NEAR Testnet transaction confirmed.' : 'Approval result: ' + String(approved.status || 'UNKNOWN'));
       } catch (error) {
-        approveButton.disabled = false;
-        approveButton.textContent = 'Sign again & retry';
-        toast(error.message || 'Approval failed. No transfer was confirmed.');
+        if (!approvalRequestStarted) {
+          approveButton.disabled = false;
+          approveButton.textContent = 'Approve payment';
+          toast(error.message || 'Wallet signing was cancelled. No approval was submitted.');
+          return;
+        }
+        try {
+          const current = await request('/agent/approve?approval_id=' + encodeURIComponent(approvalId));
+          if (current.status === 'PENDING') current.status = 'AWAITING_HUMAN_APPROVAL';
+          current.message = current.status === 'EXECUTED'
+            ? 'Payment sent and verified on NEAR Testnet.'
+            : current.status === 'UNKNOWN'
+              ? 'The transaction outcome is not yet verified. Do not retry.'
+              : current.status === 'APPROVING'
+                ? 'Sentinel is still processing this approval.'
+                : current.status === 'EXPIRED'
+                  ? 'This approval expired. Create a new proposal only after checking signer availability.'
+                  : 'This approval has already been processed or closed. No transfer was confirmed.';
+          renderAgentResult(current);
+          toast(current.status === 'EXECUTED' ? 'Payment verified.' : 'Approval status: ' + current.status);
+        } catch {
+          approveButton.disabled = true;
+          approveButton.textContent = 'Approval status unavailable';
+          const note = document.createElement('p');
+          note.className = 'agent-approval-status-note';
+          note.textContent = 'The approval may already have been processed. Do not sign again until its status is verified.';
+          approveButton.closest('.agent-approval')?.append(note);
+          toast('Could not verify approval status. Do not sign again.');
+        }
       }
     });
   }
