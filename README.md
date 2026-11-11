@@ -43,11 +43,11 @@ The developer reports seeing the transfer in both sender and recipient wallet hi
 - [NEAR ecosystem integration](docs/NEAR_ECOSYSTEM_INTEGRATION.md)
 - [Secure agent pipeline](docs/SECURE_AGENT_PIPELINE.md)
 - [Technical details and project provenance](docs/TECHNICAL_DETAILS.md)
-- [Sentinel checks for this README commit](https://github.com/ivanmlnnn/sentinel/actions/runs/43077026359)
-- [Security CI for this README commit](https://github.com/ivanmlnnn/sentinel/actions/runs/43077026559)
-- [CodeQL for this README commit](https://github.com/ivanmlnnn/sentinel/actions/runs/43077026661)
+- [Sentinel checks on the preceding README revision](https://github.com/ivanmlnnn/sentinel/actions/runs/43077026359)
+- [Security CI on the preceding README revision](https://github.com/ivanmlnnn/sentinel/actions/runs/43077026559)
+- [CodeQL on the preceding README revision](https://github.com/ivanmlnnn/sentinel/actions/runs/43077026661)
 
-The three workflow runs above completed successfully for the README commit. They establish the checks performed by those workflows, not a live payment, browser-level user journey, or production D1 concurrency guarantee. The historical [production smoke run](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399162) reports 8/8 HTTP checks; those checks primarily cover dashboard availability and expected rejection of unauthenticated or improperly authenticated requests.
+The three workflow runs above completed successfully for the preceding README revision (`b59611b`). The current documentation follow-up commit has not yet produced workflow runs at the time of this update. These checks establish only their recorded workflow scope, not a live payment, browser-level user journey, or production D1 concurrency guarantee. The historical [production smoke run](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399162) reports 8/8 HTTP checks; those checks primarily cover dashboard availability and expected rejection of unauthenticated or improperly authenticated requests.
 
 ## Review findings and limitations
 
