@@ -8,6 +8,32 @@ Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verifi
 
 ## Judge start here — 5-minute evidence path
 
+## Current production deployment — 12 November 2026
+
+The current production Workers were deployed directly with Wrangler from the local repository, not by a GitHub Actions deployment queue.
+
+| Component | Production URL | Deployed version |
+|---|---|---|
+| Main Worker | https://sentinel.ivmaladin.workers.dev | `80a8c904-d1b4-4686-be5a-557e3c0da3a9` |
+| Isolated Signer Worker | https://sentinel-signer.ivmaladin.workers.dev | `fe208953-3eff-42a1-9356-9181042eb5f3` |
+
+**Verification recorded for this deployment:** `npm test` — 146 passed, 0 failed, 0 skipped; `npm run smoke:test` — all HTTP smoke checks passed (dashboard HTTP 200 and expected protected-route rejections). These checks do not prove a live wallet approval or a successful NEAR payment.
+
+### Direct deployment (no GitHub Actions queue)
+
+Run from Debian PRoot in the repository directory:
+
+```bash
+cd /root/sentinel
+npx wrangler@4.159.0 deploy
+npx wrangler@4.159.0 deploy --config signer-worker/wrangler.jsonc
+```
+
+Do not run `git pull` as part of a local-only release unless you intentionally want to replace the local source with the remote branch. Keep Cloudflare bindings, D1 databases, and runtime secrets configured on their existing Workers.
+
+GitHub remains the source-control and backup repository. GitHub Actions deployment workflows are not the deployment path for this operating mode. Historical workflow records below refer only to the revisions and checks they originally ran.
+
+
 **NEAR Sentinel protects NEAR payments from compromised or manipulated AI agents.** AI proposes an intent; Sentinel independently evaluates evidence and policy; the wallet owner approves the exact receiver and amount; a separate signer enforces the final boundary.
 
 - **[Judge Evidence Pack](docs/JUDGE_EVIDENCE_PACK.md)** — project explanation, evidence index, reproducible commands and judge walkthrough.
