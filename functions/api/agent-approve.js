@@ -112,8 +112,15 @@ export async function onRequestPost({ request, env }) {
     return json({ status: "EXPIRED", reason: "APPROVAL_EXPIRED" }, 409);
   }
 
+  // Keep the approved amount as an exact decimal string. Never round-trip
+  // NEAR values through IEEE-754 when constructing signer intents.
+  const amountMicro = Number(pending.amount_micro);
+  if (!Number.isSafeInteger(amountMicro) || amountMicro <= 0 || amountMicro > 100000) {
+    await updateApproval(env, approvalId, "DENIED", "INVALID_AMOUNT");
+    return json({ status: "DENIED", reason: "INVALID_AMOUNT", execution_enabled: false });
+  }
   const intent = { receiver_account: pending.receiver_account,
-    amount_near: Number(microToNear(pending.amount_micro)), rationale: pending.rationale };
+    amount_near: microToNear(amountMicro), rationale: pending.rationale };
   const validation = validatePaymentIntent(intent, env);
   if (!validation.ok || env.NEAR_NETWORK !== "testnet") {
     await updateApproval(env, approvalId, "DENIED", validation.reason || "TESTNET_ONLY");
@@ -143,7 +150,7 @@ export async function onRequestPost({ request, env }) {
     let preflightToken;
     try {
       preflightToken = await createPreflightToken({ approvalId, actor: identity.sub, walletAccount,
-        receiver: validation.receiver_account, amountMicro: Math.round(intent.amount_near * 1_000_000),
+        receiver: validation.receiver_account, amountMicro,
         expiresAt: pending.expires_at, riskScore: assessment.risk_score, idempotencyKey, env });
     } catch (error) {
       return json({ status: "DENIED", reason: error.message || "PREFLIGHT_TOKEN_FAILED" }, 503);
