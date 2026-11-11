@@ -83,11 +83,16 @@ export async function reserveNonce(env, nonce) {
   } catch { return false; }
 }
 async function rpc(method, params, id = "sentinel-rpc") {
-  const response = await fetch(RPC, {
-    method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id, method, params }),
-    signal: AbortSignal.timeout(15000)
-  });
+  let response;
+  try {
+    response = await fetch(RPC, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id, method, params }),
+      signal: AbortSignal.timeout(15000)
+    });
+  } catch {
+    throw new Error("NEAR_RPC_UNAVAILABLE");
+  }
   if (!response.ok) throw new Error("NEAR_RPC_UNAVAILABLE");
   let data;
   try { data = await response.json(); } catch { throw new Error("NEAR_RPC_UNAVAILABLE"); }
