@@ -63,6 +63,17 @@ async function fetchAllPages(baseUrl, headers) {
   };
 }
 
+export function isAssessmentEvidenceComplete({ txHistory, txSchemaComplete, receiptHistory, receiptSchemaRecognized, ftHistory, ftSchemaRecognized, account, contractCodeHistory }) {
+  // Sender/agent interaction history is contextual evidence only. Its outage or
+  // incomplete index must not invalidate a complete assessment of the recipient.
+  return Boolean(
+    txHistory?.complete && txSchemaComplete &&
+    receiptHistory?.complete && receiptSchemaRecognized &&
+    ftHistory?.complete && ftSchemaRecognized &&
+    (!account?.code_hash || !contractCodeHistory.history_error)
+  );
+}
+
 function timestampMs(value) {
   if (typeof value === "number" && Number.isFinite(value)) {
     const n = Math.abs(value);
@@ -422,13 +433,10 @@ async function runInvestigation({ request, env, actor = null, turnstileVerified 
         verdict.decision = "WARN";
       }
     }
-    const sourceComplete = Boolean(
-      txHistory?.complete && txSchemaComplete &&
-      receiptHistory?.complete && receiptSchemaRecognized &&
-      ftHistory?.complete && ftSchemaRecognized &&
-      (!sender || sender === receiver || agentInteractionEvidence?.complete) &&
-      (!account?.code_hash || !contractCodeHistory.history_error)
-    );
+    const sourceComplete = isAssessmentEvidenceComplete({
+      txHistory, txSchemaComplete, receiptHistory, receiptSchemaRecognized,
+      ftHistory, ftSchemaRecognized, account, contractCodeHistory
+    });
 
     if (!txHistory || !txSchemaComplete) {
       verdict.risk_factors.push({ code: "TRANSACTION_HISTORY_INCOMPLETE", severity: "info", detail: txError || "Some native transaction rows lacked verifiable hash, status, or timestamp fields." });
