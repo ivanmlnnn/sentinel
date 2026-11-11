@@ -118,11 +118,21 @@ export async function callSentinelAI(env, {
   } catch (error) {
     const message = String(error?.message || error).slice(0, 200);
     const timedOut = message === "AI_RUNTIME_TIMEOUT";
-    console.error("sentinel_ai_runtime_error", { model: configuredModel, message });
+    const providerCode = typeof error?.code === "string" ? error.code.slice(0, 80) : null;
+    const providerStatus = Number.isInteger(error?.status) ? error.status : null;
+    const providerLogId = typeof error?.logId === "string" ? error.logId.slice(0, 120) : null;
+    const providerErrorName = typeof error?.name === "string" ? error.name.slice(0, 80) : "Error";
+    console.error("sentinel_ai_runtime_error", {
+      model: configuredModel, providerCode, providerStatus, providerLogId, providerErrorName, message
+    });
     return {
       ok: false,
       status: timedOut ? 504 : 502,
       error: timedOut ? "AI_RUNTIME_TIMEOUT" : "AI_RUNTIME_UNAVAILABLE",
+      provider_code: providerCode,
+      provider_status: providerStatus,
+      provider_log_id: providerLogId,
+      provider_error_name: providerErrorName,
       message: timedOut ? "Sentinel AI Runtime timed out." : "Sentinel AI Runtime could not complete the request."
     };
   }
