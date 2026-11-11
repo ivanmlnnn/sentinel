@@ -951,7 +951,7 @@ function renderAgentResult(data) {
         if (!wallet || typeof wallet.signAndSendTransaction !== 'function') {
           throw new Error('The connected wallet does not support native NEAR transfers through signAndSendTransaction.');
         }
-        const amountYocto = (BigInt(amountMicro) * 1000000000000n).toString();
+        const amountYocto = (BigInt(amountMicro) * 1000000000000000000n).toString();
         approveButton.textContent = 'Confirm exact transfer in your wallet…';
         walletSubmissionStarted = true;
         const walletResult = await wallet.signAndSendTransaction({
