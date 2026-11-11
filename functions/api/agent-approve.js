@@ -14,7 +14,7 @@ function microToNear(micro) {
 function encodeBase64Url(bytes) {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/=/g, "").replace(/\\+/g, "-").replace(/\\//g, "_");
+  return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 async function createPreflightToken({ approvalId, actor, walletAccount, receiver, amountMicro, expiresAt, env }) {
   const secret = env.AGENT_SIGNER_HMAC_SECRET;
