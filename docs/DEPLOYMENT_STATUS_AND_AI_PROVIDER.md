@@ -6,7 +6,7 @@ Updated: 12 November 2026
 
 ## Verified project status
 
-The full test-by-test and endpoint-by-endpoint results are in the [End-to-End Verification Report](END_TO_END_VERIFICATION.md). The Gemini migration merged to `main` as commit `7e88eee64954dbf61ce6e28dc4c31530c3ce14b2`. The merged-main release reports 135/135 automated tests passed, Payment Contract WASM release build passed, CodeQL analysis passed, Security CI passed, and 8/8 production HTTP smoke checks passed. These do not represent a successful live Gemini conversation or a new blockchain payout.
+The full test-by-test and endpoint-by-endpoint results are in the [End-to-End Verification Report](END_TO_END_VERIFICATION.md). The 135/135-test Gemini migration record below is historical evidence for its tested revision. The current 12 November direct Wrangler deployment and 146-test result are documented at the top of that report. Neither HTTP smoke checks nor a successful build proves a live Gemini conversation or a successful blockchain payout.
 
 
 The following deployment and CI records are successful:
@@ -26,7 +26,7 @@ The following deployment and CI records are successful:
 | Merged-main Security CI | [Run #42907136354](https://github.com/ivanmlnnn/sentinel/actions/runs/42907136354) | Successful |
 | NEAR payment contract | Previously deployed successfully, as confirmed by the project maintainer | Existing contract is reused; do not deploy a second contract for a normal Worker release |
 
-The Signer Worker success record predates the later merged-main source revision. The Main Worker has a later successful deployment record. For a coordinated refresh to the latest source, use the `both` workflow target described below. The deployment and security workflow evidence is indexed in the [End-to-End Verification Report](END_TO_END_VERIFICATION.md).
+The historical Signer and Main Worker workflow records above refer to their original revisions. The current Main and Signer Worker versions are listed in the direct deployment snapshot. Use the Wrangler commands below for subsequent releases; GitHub Actions is not the active deployment trigger.
 
 The signer account configured by source defaults to `freshnook5462.testnet`; `rawvest6817.testnet` is the tracked/recipient account. Do not infer the signer identity from a masked GitHub secret.
 
