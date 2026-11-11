@@ -68,38 +68,33 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
  <div id="reportForm" class="report-form hidden"><input id="reportAccount" placeholder="Account ID"><input id="reportCategory" placeholder="Category"><textarea id="reportEvidence" placeholder="Evidence / transaction hash / source URL"></textarea><button class="primary-btn" id="sendReport">Submit unverified report ↗</button></div></div>
  <aside class="panel fingerprint-panel"><span class="section-index">SIGNAL SOURCES</span><div class="signal-line"><b>01</b><span>Account state</span><i>RPC</i></div><div class="signal-line"><b>02</b><span>Contract code hash</span><i>RPC</i></div><div class="signal-line"><b>03</b><span>Verified reports</span><i>DB</i></div><div class="signal-line"><b>04</b><span>Risk policy</span><i>RULES</i></div></aside>
 </section>
-<div class="section-heading reveal" id="agentHeading"><div><span class="section-index">04 / AUTONOMOUS SECURITY</span><h2>AI agent lab</h2></div><span class="section-meta">PRIVY AUTH · NEAR TESTNET</span></div>
+<div class="section-heading reveal" id="agentHeading"><div><span class="section-index">04 / SENTINEL ASSISTANT</span><h2>Talk to Sentinel</h2></div><span class="section-meta">NEAR TESTNET · SECURITY ASSISTANT</span></div>
 <section class="agent-lab-grid reveal" id="agentLab">
  <div class="panel agent-lab-panel">
-  <div class="panel-top"><span>AUTONOMOUS SECURITY SKILL ENGINE</span><span class="panel-status"><i></i> SERVER-SIDE</span></div>
-  <p class="agent-lab-intro">Your NEAR security command center. Choose a skill, start from a guided draft, or tell Sentinel what you need in your own words.</p>
-  <section class="sentinel-prompt-studio" aria-label="Sentinel prompt studio">
-   <div class="prompt-studio-head"><div><span class="section-index">PROMPT STUDIO / QUICK ACTIONS</span><h3>What should Sentinel do?</h3></div><span class="prompt-studio-hint">SELECT A SKILL TO START</span></div>
-   <div class="sentinel-skill-grid">
-    <button type="button" class="sentinel-skill-card is-selected" data-skill="investigate" data-prompt="Investigate the NEAR account [ACCOUNT_ID]. Check account state, recent transactions, receipts, token transfers, contract activity, anomalies, and evidence completeness. Explain the risk verdict and cite the strongest findings."><span class="skill-card-icon">⌕</span><b>Wallet investigation</b><small>On-chain activity · risk signals · evidence</small><i>READ-ONLY ↗</i></button>
-    <button type="button" class="sentinel-skill-card" data-skill="threat" data-prompt="Check the Sentinel verified threat registry for [ACCOUNT_ID]. Return exact matches, report categories, verification status, and explain what a match or no match means."><span class="skill-card-icon">◈</span><b>Threat intelligence</b><small>Verified reports · account matching</small><i>REGISTRY LOOKUP ↗</i></button>
-    <button type="button" class="sentinel-skill-card" data-skill="triage" data-prompt="Analyze the following NEAR security evidence and prioritize the risks. Separate confirmed facts from suspicious indicators, explain severity and confidence, identify missing evidence, and recommend next steps: [PASTE EVIDENCE OR ACCOUNT_ID]."><span class="skill-card-icon">⌁</span><b>Security triage</b><small>Risk explanation · evidence prioritization</small><i>ANALYSIS ↗</i></button>
-    <button type="button" class="sentinel-skill-card" data-skill="payment" data-prompt="Create a payment proposal to [RECEIVER.testnet] for [AMOUNT] NEAR. Reason: [PAYMENT PURPOSE]. Run Sentinel policy checks and present the exact proposal for human approval. Do not execute without my explicit wallet approval."><span class="skill-card-icon">↗</span><b>Payment proposal</b><small>Policy checks · human approval · Testnet</small><i>AUTHENTICATED ONLY ↗</i></button>
-   </div>
-   <div class="prompt-draft-row"><span class="prompt-draft-label">GUIDED PAYMENT DRAFT</span><div class="prompt-draft-fields"><input id="draftReceiver" maxlength="64" autocomplete="off" placeholder="Recipient · example.testnet" aria-label="Payment recipient"><input id="draftAmount" type="number" min="0.000001" max="0.1" step="0.000001" placeholder="Amount · NEAR" aria-label="Payment amount"><input id="draftReason" maxlength="180" placeholder="Reason · optional" aria-label="Payment reason"><button type="button" class="secondary-btn" id="usePaymentDraft">Use draft ↗</button></div><small>Creates a proposal request only. A connected Testnet wallet and explicit human approval are required before execution.</small></div>
-  </section>
-  <form id="agentForm">
+  <div class="agent-chat-header"><div class="agent-chat-avatar" aria-hidden="true">S</div><div class="agent-chat-identity"><strong>Sentinel AI</strong><span>Your NEAR security assistant</span></div><span class="agent-chat-ready"><i></i> Ready</span></div>
+  <div class="agent-welcome" id="agentWelcome"><div class="agent-welcome-mark" aria-hidden="true">✦</div><div><strong>Hi, I'm Sentinel.</strong><p>Ask me to check a NEAR wallet, explain a security alert, or review a payment proposal. You can write naturally — you don't need special commands.</p></div></div>
+  <div class="agent-quick-start"><span class="agent-quick-label">TRY ASKING</span><div class="sentinel-skill-grid">
+   <button type="button" class="sentinel-skill-card is-selected" data-skill="investigate" data-prompt="Please check this NEAR wallet and explain whether anything looks suspicious: "><span class="skill-card-icon">⌕</span><b>Check a wallet</b></button>
+   <button type="button" class="sentinel-skill-card" data-skill="threat" data-prompt="Check whether this NEAR account appears in Sentinel's verified threat reports: "><span class="skill-card-icon">◈</span><b>Check threat reports</b></button>
+   <button type="button" class="sentinel-skill-card" data-skill="triage" data-prompt="Help me understand this security alert or evidence in simple terms: "><span class="skill-card-icon">⌁</span><b>Explain an alert</b></button>
+   <button type="button" class="sentinel-skill-card" data-skill="payment" data-prompt="Help me prepare a safe NEAR Testnet payment proposal. Recipient: "><span class="skill-card-icon">↗</span><b>Prepare a payment</b></button>
+  </div></div>
+  <form id="agentForm" class="agent-chat-form">
    <div id="agentResult" class="agent-result hidden" aria-live="polite"></div>
-   <label for="agentPrompt">MESSAGE SENTINEL</label>
-   <textarea id="agentPrompt" maxlength="4000" required placeholder="Message Sentinel… Ask a question or investigate a NEAR account."></textarea>
-   <div class="agent-lab-warning"><b>TESTNET SAFETY LIMITS</b><span>Maximum 0.1 NEAR per transfer · 0.2 NEAR per UTC day · explicit receiver allowlist · kill switch.</span></div>
-   <div class="agent-lab-submit"><span>AI proposal ≠ authorization</span><button class="primary-btn" id="agentRunBtn" type="submit">Send message <b>↗</b></button></div>
+   <label class="agent-compose-label" for="agentPrompt">MESSAGE</label>
+   <div class="agent-compose-box"><textarea id="agentPrompt" maxlength="4000" required placeholder="Ask Sentinel anything about NEAR wallet security…" rows="3"></textarea><div class="agent-compose-bottom"><span>Enter a wallet address or ask a question</span><button class="primary-btn" id="agentRunBtn" type="submit">Send <b>↗</b></button></div></div>
+   <details class="agent-payment-details"><summary>Need to prepare a payment proposal?</summary><div class="prompt-draft-fields"><input id="draftReceiver" maxlength="64" autocomplete="off" placeholder="Recipient · example.testnet" aria-label="Payment recipient"><input id="draftAmount" type="number" min="0.000001" max="0.1" step="0.000001" placeholder="Amount · NEAR" aria-label="Payment amount"><input id="draftReason" maxlength="180" placeholder="Reason · optional" aria-label="Payment reason"><button type="button" class="secondary-btn" id="usePaymentDraft">Add to message</button></div><small>This only prepares a proposal. A connected Testnet wallet and your explicit approval are still required before any transfer.</small></details>
+   <div class="agent-lab-warning"><b>YOUR WALLET STAYS IN CONTROL</b><span>Sentinel can investigate and prepare a proposal. It cannot transfer funds without the required wallet approval. This lab currently uses NEAR Testnet.</span></div>
   </form>
  </div>
- <aside class="panel agent-policy-panel">
-  <div class="panel-top"><span>OPERATIONAL SKILLS</span><span class="section-meta">LIVE TOOLS</span></div>
-  <div class="agent-policy-step"><b>01</b><div><strong>Live wallet forensics</strong><span>NEAR RPC · transactions · receipts · token transfers</span></div></div>
-  <div class="agent-policy-step"><b>02</b><div><strong>Threat intelligence</strong><span>Exact matches against reviewed Sentinel reports</span></div></div>
-  <div class="agent-policy-step"><b>03</b><div><strong>Anomaly detection</strong><span>Transaction velocity · recipient clusters · spam signals</span></div></div>
-  <div class="agent-policy-step"><b>04</b><div><strong>Evidence-based triage</strong><span>Risk scoring · completeness · recommended actions</span></div></div>
-  <p class="agent-policy-foot">Skills run server-side. Guest mode is read-only: no payment proposals, signing, transfers, or threat-report changes. Incomplete evidence is never labeled safe.</p>
+ <aside class="panel agent-policy-panel agent-help-panel"><div class="panel-top"><span>HOW TO USE SENTINEL</span><span class="section-meta">3 SIMPLE STEPS</span></div>
+  <div class="agent-help-step"><b>1</b><div><strong>Choose an example</strong><span>Tap a suggestion, or type your own question.</span></div></div>
+  <div class="agent-help-step"><b>2</b><div><strong>Send your message</strong><span>For a wallet check, include the full NEAR account name, such as <code>alice.testnet</code>.</span></div></div>
+  <div class="agent-help-step"><b>3</b><div><strong>Read the answer</strong><span>Sentinel explains what it found, what is uncertain, and what you should do next.</span></div></div>
+  <div class="agent-help-note"><strong>Read-only by default</strong><span>Wallet checks do not move funds. Incomplete history is never treated as proof that a wallet is safe.</span></div>
  </aside>
 </section>
+
 <section class="security-method reveal" id="protocol">
  <div class="security-method-heading"><span class="section-index">05 / SECURITY PROCEDURE</span><h2>How Sentinel checks a wallet</h2><p>Every result follows the same read-only checks. No private keys, approvals, or transactions are requested.</p></div>
  <div class="security-steps">
