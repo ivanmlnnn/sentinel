@@ -129,7 +129,7 @@ export async function assertRestrictedFunctionCallKey(accountId, publicKey, cont
   }
   return { receiver_id: permission.receiver_id, method_names: permission.method_names };
 }
-export async function claimApproval(env, { approvalId, actor, receiver, amountMicro }) {
+export async function claimApproval(env, { approvalId, idempotencyKey, actor, receiver, amountMicro }) {
   const pending = await env.DB.prepare(
     "SELECT id, actor, receiver_account, amount_micro, status, expires_at FROM agent_pending_approvals " +
     "WHERE id=? AND actor=? AND status='APPROVING' AND expires_at > CURRENT_TIMESTAMP"
@@ -137,6 +137,10 @@ export async function claimApproval(env, { approvalId, actor, receiver, amountMi
   if (!pending || pending.receiver_account !== receiver || Number(pending.amount_micro) !== amountMicro) {
     throw new Error("HUMAN_APPROVAL_NOT_VERIFIED");
   }
+  await env.DB2.prepare(
+    "INSERT INTO signer_approval_claims (approval_id, idempotency_key, actor, receiver_account, amount_micro, claimed_at) " +
+    "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"
+  ).bind(approvalId, idempotencyKey, actor, receiver, amountMicro).run();
 }
 async function reserveSpend(env, { idempotencyKey, actor, receiver, amountMicro, dailyCapMicro }) {
   const result = await env.DB2.prepare(
@@ -188,7 +192,7 @@ export async function verifyFinalTransfer(hash, walletAccountId, receiverAccount
     throw new Error("FINAL_TRANSFER_INTENT_MISMATCH_OR_FAILURE");
   }
   const receipts = Array.isArray(result.receipts_outcome) ? result.receipts_outcome : [];
-  if (receipts.some(item => !isSuccessfulStatus(item.outcome?.status))) {
+  if (!receipts.length || receipts.some(item => !isSuccessfulStatus(item.outcome?.status))) {
     throw new Error("TRANSFER_RECEIPT_NOT_SUCCESSFUL");
   }
   return {
@@ -295,7 +299,7 @@ export async function execute(payload, authorizationHeader, identity, env) {
     setStateFn: (key, state) => setState(env, key, state),
     spend: { idempotencyKey, actor: identity.sub, receiver: validated.receiver_account,
       amountMicro, dailyCapMicro: dailyCap },
-    approval: { approvalId, actor: identity.sub, receiver: validated.receiver_account, amountMicro }
+    approval: { approvalId, idempotencyKey, actor: identity.sub, receiver: validated.receiver_account, amountMicro }
   });
   if (!reservation.ok) {
     if (reservation.stage === "approval") return deny(reservation.error?.message || "HUMAN_APPROVAL_NOT_VERIFIED");
