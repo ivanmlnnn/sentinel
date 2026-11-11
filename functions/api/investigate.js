@@ -28,6 +28,50 @@ export function transactionStatus(row) {
   return null;
 }
 
+function retryDelay(response, attempt) {
+  const retryAfter = response?.headers?.get("retry-after");
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds)) return Math.min(2000, Math.max(0, seconds * 1000));
+    const date = Date.parse(retryAfter);
+    if (Number.isFinite(date)) return Math.min(2000, Math.max(0, date - Date.now()));
+  }
+  return 250 * (2 ** attempt);
+}
+
+async function fetchNearBlocksPage(url, headers) {
+  let lastError = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    let response = null;
+    try {
+      response = await fetch(url, {
+        method: "GET",
+        headers,
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+      });
+      if (response.ok) {
+        const payload = await response.json();
+        if (!payload || !Array.isArray(payload.data)) {
+          throw new Error("NearBlocks v3 response did not contain a data array.");
+        }
+        return payload;
+      }
+      const retryable = response.status === 408 || response.status === 425 ||
+        response.status === 429 || response.status >= 500;
+      lastError = new Error(`NearBlocks returned HTTP ${response.status}`);
+      if (!retryable || attempt === 2) throw lastError;
+    } catch (error) {
+      lastError = error;
+      const retryable = !response || response.status === 408 || response.status === 425 ||
+        response.status === 429 || response.status >= 500 ||
+        /did not contain a data array/i.test(error?.message || "");
+      if (!retryable || attempt === 2) throw error;
+    }
+    await new Promise(resolve => setTimeout(resolve, retryDelay(response, attempt)));
+  }
+  throw lastError || new Error("NearBlocks request failed.");
+}
+
 async function fetchAllPages(baseUrl, headers) {
   const rows = [];
   const cursors = new Set();
@@ -37,16 +81,7 @@ async function fetchAllPages(baseUrl, headers) {
     const url = new URL(baseUrl);
     url.searchParams.set("limit", String(PAGE_SIZE));
     if (next) url.searchParams.set("next", next);
-    const response = await fetch(url.toString(), {
-      method: "GET",
-      headers,
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
-    });
-    if (!response.ok) throw new Error(`NearBlocks returned HTTP ${response.status}`);
-    const payload = await response.json();
-    if (!payload || !Array.isArray(payload.data)) {
-      throw new Error("NearBlocks v3 response did not contain a data array.");
-    }
+    const payload = await fetchNearBlocksPage(url.toString(), headers);
     rows.push(...payload.data);
     pages += 1;
     const candidate = payload.meta?.next_page || null;
