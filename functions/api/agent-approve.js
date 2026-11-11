@@ -90,7 +90,7 @@ export async function onRequestPost({ request, env }) {
   ).bind(approvalId, identity.sub).first();
   if (!pending) return json({ error: "APPROVAL_NOT_FOUND" }, 404);
   if (pending.status !== "PENDING") return json({ error: "APPROVAL_NOT_PENDING", status: pending.status }, 409);
-  if (Date.parse(String(pending.expires_at).replace(" ", "T") + (String(pending.expires_at).endsWith("Z") ? "" : "Z")) <= Date.now()) {
+  if (stage === "prepare" && Date.parse(String(pending.expires_at).replace(" ", "T") + (String(pending.expires_at).endsWith("Z") ? "" : "Z")) <= Date.now()) {
     await updateApproval(env, approvalId, "EXPIRED", "APPROVAL_EXPIRED");
     return json({ status: "EXPIRED", reason: "APPROVAL_EXPIRED" }, 409);
   }
@@ -155,7 +155,7 @@ export async function onRequestPost({ request, env }) {
   const prior = await env.DB.prepare("SELECT idempotency_key FROM agent_execution WHERE idempotency_key=?").bind(idempotencyKey).first();
   if (prior) return json({ error: "IDEMPOTENCY_KEY_REUSED" }, 409);
   const claimed = await env.DB.prepare(
-    "UPDATE agent_pending_approvals SET status='APPROVING', updated_at=CURRENT_TIMESTAMP WHERE id=? AND actor=? AND status='PENDING' AND expires_at > CURRENT_TIMESTAMP"
+    "UPDATE agent_pending_approvals SET status='APPROVING', updated_at=CURRENT_TIMESTAMP WHERE id=? AND actor=? AND status='PENDING'"
   ).bind(approvalId, identity.sub).run();
   if (claimed.meta?.changes !== 1) return json({ error: "APPROVAL_EXPIRED_OR_ALREADY_CLAIMED" }, 409);
 
