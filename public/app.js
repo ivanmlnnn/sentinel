@@ -951,10 +951,11 @@ function renderAgentResult(data) {
         approveButton.textContent = 'Verifying wallet transfer on NEAR…';
         const approved = await request('/agent/approve', {
           method: 'POST',
-          headers: { 'Idempotency-Key': crypto.randomUUID() },
+          headers: { 'Idempotency-Key': prepared.idempotency_key },
           body: JSON.stringify({
             stage: 'verify',
             approval_id: approvalId,
+            idempotency_key: prepared.idempotency_key,
             wallet_account: connectedAccount,
             transaction_hash: transactionHash,
             preflight_token: prepared.preflight_token
