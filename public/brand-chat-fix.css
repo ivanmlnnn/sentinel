@@ -397,3 +397,12 @@ body{
 @keyframes wallet-holo-sheen{0%,55%{transform:translateX(-48%) rotate(12deg);opacity:.3}78%{transform:translateX(48%) rotate(12deg);opacity:.8}100%{transform:translateX(48%) rotate(12deg);opacity:.3}}
 @keyframes wallet-card-in{from{opacity:0;transform:translateY(9px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
 @media(prefers-reduced-motion:reduce){.wallet-fact-face:before{animation:none}.wallet-fact-card{animation:none}.wallet-fact-face{transition:none}}
+
+/* Touch-first NEAR wallet card motion and official NEAR Protocol mark. */
+.wallet-fact-symbol{width:27px;height:27px;flex:0 0 27px;padding:5px;border-color:rgba(143,255,216,.42);background:rgba(0,0,0,.12);box-shadow:0 0 18px rgba(0,224,164,.1)}
+.wallet-fact-symbol svg{display:block;width:100%;height:100%;color:#e7fff7;filter:drop-shadow(0 0 5px rgba(91,255,211,.25))}
+.wallet-fact-face{touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+.wallet-fact-face.is-pressed{animation:wallet-card-tap .48s cubic-bezier(.2,.8,.2,1)}
+.wallet-fact-face:active{box-shadow:0 10px 22px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.2)}
+@keyframes wallet-card-tap{0%{transform:perspective(900px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) scale(1)}35%{transform:perspective(900px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) scale(.975) translateY(2px);filter:brightness(1.16)}70%{transform:perspective(900px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) scale(1.012)}100%{transform:perspective(900px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) scale(1)}}
+@media(prefers-reduced-motion:reduce){.wallet-fact-face.is-pressed{animation:none}}

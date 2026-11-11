@@ -113,34 +113,81 @@ function queueWalletFacts(account) {
 function initWalletCardMotion() {
   const card = $('walletFactCard');
   const face = $('walletFactFace');
+  const motionButton = $('walletMotionBtn');
   if (!card || !face) return;
+  let gyroHandler = null;
+  let gyroTimer = null;
   const reset = () => {
     face.style.setProperty('--tilt-x', '0deg');
     face.style.setProperty('--tilt-y', '0deg');
   };
-  card.addEventListener('pointermove', event => {
-    if (event.pointerType === 'touch') return;
+  const tiltFromPoint = (clientX, clientY) => {
     const rect = face.getBoundingClientRect();
-    const x = (event.clientX - rect.left) / rect.width - 0.5;
-    const y = (event.clientY - rect.top) / rect.height - 0.5;
-    face.style.setProperty('--tilt-x', (-y * 13).toFixed(2) + 'deg');
-    face.style.setProperty('--tilt-y', (x * 16).toFixed(2) + 'deg');
+    if (!rect.width || !rect.height) return;
+    const x = (clientX - rect.left) / rect.width - 0.5;
+    const y = (clientY - rect.top) / rect.height - 0.5;
+    face.style.setProperty('--tilt-x', (-y * 12).toFixed(2) + 'deg');
+    face.style.setProperty('--tilt-y', (x * 15).toFixed(2) + 'deg');
+    face.style.setProperty('--shine-x', (x * 35 + 50).toFixed(1) + '%');
+    face.style.setProperty('--shine-y', (y * 35 + 50).toFixed(1) + '%');
+  };
+  // Pointer Events also cover touch screens; the old handler ignored touch input.
+  card.addEventListener('pointermove', event => {
+    if (event.pointerType === 'touch' || event.pointerType === 'pen') {
+      tiltFromPoint(event.clientX, event.clientY);
+      return;
+    }
+    tiltFromPoint(event.clientX, event.clientY);
+  }, { passive: true });
+  card.addEventListener('pointerdown', () => {
+    face.classList.remove('is-pressed');
+    void face.offsetWidth;
+    face.classList.add('is-pressed');
+  }, { passive: true });
+  face.addEventListener('animationend', event => {
+    if (event.animationName === 'wallet-card-tap') face.classList.remove('is-pressed');
   });
+  card.addEventListener('pointerup', () => {
+    face.classList.remove('is-pressed');
+    if (window.matchMedia('(hover: none)').matches) reset();
+  });
+  card.addEventListener('pointercancel', reset);
   card.addEventListener('pointerleave', reset);
-  $('walletMotionBtn')?.addEventListener('click', async () => {
+  motionButton?.addEventListener('click', async () => {
     try {
-      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      if (!('DeviceOrientationEvent' in window)) throw new Error('Device orientation is not supported by this browser.');
+      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
         const permission = await DeviceOrientationEvent.requestPermission();
         if (permission !== 'granted') throw new Error('Motion permission was not granted.');
       }
-      window.addEventListener('deviceorientation', event => {
+      if (gyroHandler) window.removeEventListener('deviceorientation', gyroHandler);
+      let detected = false;
+      gyroHandler = event => {
         if (!Number.isFinite(event.beta) || !Number.isFinite(event.gamma)) return;
+        detected = true;
         face.style.setProperty('--tilt-x', (Math.max(-12, Math.min(12, event.beta - 45))).toFixed(2) + 'deg');
         face.style.setProperty('--tilt-y', (Math.max(-15, Math.min(15, event.gamma))).toFixed(2) + 'deg');
-      }, { passive: true });
-      $('walletMotionBtn').textContent = 'Motion on';
-      $('walletMotionBtn').disabled = true;
-    } catch (error) { toast('Gyroscope unavailable. Touch and pointer tilt still work.'); }
+        if (motionButton) {
+          motionButton.textContent = 'Gyro active';
+          motionButton.disabled = true;
+          motionButton.setAttribute('aria-pressed', 'true');
+        }
+        window.clearTimeout(gyroTimer);
+        gyroTimer = null;
+      };
+      window.addEventListener('deviceorientation', gyroHandler, { passive: true });
+      motionButton.textContent = 'Detecting sensor…';
+      gyroTimer = window.setTimeout(() => {
+        if (detected) return;
+        window.removeEventListener('deviceorientation', gyroHandler);
+        gyroHandler = null;
+        motionButton.textContent = 'Retry gyro';
+        toast('No motion sensor data received. Check browser sensor permissions.');
+      }, 1800);
+    } catch (error) {
+      motionButton.textContent = 'Retry gyro';
+      toast(error.message || 'Gyroscope is unavailable. Touch tilt remains enabled.');
+    }
   });
 }
 async function initWallet() {
