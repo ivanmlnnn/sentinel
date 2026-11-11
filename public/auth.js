@@ -302,15 +302,18 @@ function Root() {
 createRoot(document.getElementById('auth-root')).render(React.createElement(Root));
 
 
-// Reuse the exact signed-in wayang portrait in the assistant, so both identities match.
+// Show the signed-in wayang portrait beside every Sentinel reply, like a real chat.
 function syncSentinelAgentWayang() {
   const source = document.querySelector('.sentinel-session-avatar svg');
   if (!source) return;
-  ['#agentHeadingPortrait'].forEach(selector => {
-    const target = document.querySelector(selector);
-    if (!target || target.dataset.wayangSynced === '1') return;
-    target.replaceChildren(source.cloneNode(true));
-    target.dataset.wayangSynced = '1';
+  document.querySelectorAll('.guest-chat-assistant').forEach(message => {
+    if (message.querySelector(':scope > .sentinel-message-avatar')) return;
+    const avatar = document.createElement('span');
+    avatar.className = 'sentinel-message-avatar';
+    avatar.setAttribute('role', 'img');
+    avatar.setAttribute('aria-label', 'Sentinel wayang profile');
+    avatar.append(source.cloneNode(true));
+    message.prepend(avatar);
   });
 }
 const sentinelWayangObserver = new MutationObserver(syncSentinelAgentWayang);
