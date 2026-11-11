@@ -9,11 +9,16 @@ const approve = readFileSync(new URL("../functions/api/agent-approve.js", import
 test("wallet preflight completes before the tap and one tap launches the active wallet", () => {
   const prepare = app.indexOf("stage: 'prepare'");
   const allowGate = app.indexOf("prepared.sentinel?.decision !== 'ALLOW'");
+  const activeWallet = app.indexOf("const active = await connector.getConnectedWallet()");
+  const walletClue = app.indexOf("const walletClue = String(manifest.name || manifest.id");
   const wallet = app.indexOf("const wallet = await connector.wallet()");
   const walletCache = app.indexOf("approvalWallet = wallet");
   const clickHandler = app.indexOf("approveButton.addEventListener('click'");
   const send = app.indexOf("approvalWallet.signAndSendTransaction(");
-  assert.ok(prepare >= 0 && allowGate > prepare && wallet > allowGate && walletCache > wallet);
+  assert.ok(prepare >= 0 && allowGate > prepare && activeWallet > allowGate && walletClue > activeWallet);
+  assert.ok(wallet > walletClue && walletCache > wallet);
+  assert.match(app, /activeAccount !== accountAtPrepare/);
+  assert.match(app, /_wallet_clue: walletClue/);
   assert.ok(clickHandler > walletCache && send > clickHandler);
   assert.match(app, /connectedWalletName \|\| 'NEAR wallet'/);
   assert.match(app, /Preflight starts as soon as the approval card is rendered/);
