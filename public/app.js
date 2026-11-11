@@ -819,20 +819,20 @@ function renderAgentResult(data) {
       '<div class="agent-recipient-compact-balance"><span>TESTNET BALANCE</span><b id="agentRecipientTrackBalance">Loading…</b></div></section>'
     : '';
   const agentCard = showStatusCard
-    ? '<section class="telegram-agent-status">' +
-      '<div class="agent-proposal-top"><div class="agent-proposal-brand"><span class="agent-proposal-icon">◈</span><span>' + (hasPaymentContext ? 'PAYMENT' : 'SECURITY CHECK') + '</span></div>' +
+    ? '<section class="telegram-agent-status agent-payment-card">' +
+      '<div class="agent-proposal-top"><div class="agent-proposal-brand"><span class="agent-proposal-icon">◈</span><span>' + (hasPaymentContext ? 'Payment' : 'Security check') + '</span></div>' +
       '<span class="agent-state-pill ' + (data.execution_enabled === true ? 'is-success' : '') + '">' + escapeHtml(({ AWAITING_HUMAN_APPROVAL: 'REVIEW PAYMENT', DENIED: 'NOT SENT', EXECUTED: 'SENT · VERIFIED', UNKNOWN: 'CHECK STATUS', FAILED: 'FAILED', EXPIRED: 'EXPIRED', APPROVING: 'PROCESSING' })[status] || status.replaceAll('_', ' ')) + '</span></div>' +
       ((hasPaymentContext || data.sentinel) ? '<div class="agent-proposal-values">' +
         (proposal.amount_near != null ? '<div class="agent-proposal-field amount"><span>AMOUNT</span><b>' + escapeHtml(String(proposal.amount_near)) + ' <small>NEAR</small></b></div>' : '') +
       '</div>' : '') + recipientCard +
-      (status === 'DENIED' && policyReason ? '<div class="agent-policy-reason"><span>WHY IT DIDN’T SEND</span>' + (policyReasonText ? '<p>' + escapeHtml(policyReasonText) + '</p>' : '') + '</div>' : '') +
+      (status === 'DENIED' && policyReason ? '<div class="agent-policy-reason"><span>Payment not sent</span>' + (policyReasonText ? '<p>' + escapeHtml(policyReasonText) + '</p>' : '') + '</div>' : '') +
       ((data.sentinel?.decision || data.sentinel?.risk_score != null) ? '<div class="agent-result-grid">' +
         (data.sentinel?.decision ? '<div><span>SENTINEL VERDICT</span><b>' + escapeHtml(verdict) + '</b></div>' : '') +
         (data.sentinel?.risk_score != null && Number.isFinite(Number(data.sentinel.risk_score)) ? '<div><span>RISK SCORE</span><b>' + escapeHtml(risk) + '</b></div>' : '') +
       '</div>' : '') +
       (approvalId ? '<div class="agent-proposal-meta compact"><span><i></i> NEAR TESTNET · 5 MINUTES</span></div>' : '') +
       (txHash ? '<p class="agent-result-hash">TRANSACTION HASH · ' + escapeHtml(txHash) + '</p>' : '') + txLink +
-      (approvalId ? '<div class="agent-approval"><p>Approve this exact payment in your NEAR wallet. Sentinel will only report success after verifying the transaction.</p><div class="agent-approval-actions">' +
+      (approvalId ? '<div class="agent-approval"><p>Review the exact amount and recipient in your NEAR wallet.</p><div class="agent-approval-actions">' +
         (walletCanApprove
           ? '<button type="button" class="primary-btn" id="approveAgentPayment">Approve payment <b>↗</b></button>'
           : '<button type="button" class="primary-btn" id="connectAgentWallet">Open NEAR wallet <b>↗</b></button>') +
