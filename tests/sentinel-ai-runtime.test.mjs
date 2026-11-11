@@ -81,6 +81,8 @@ test("maps runtime failures to stable provider-neutral errors", async () => {
   });
   assert.equal(result.ok, false);
   assert.equal(result.error, "AI_RUNTIME_UNAVAILABLE");
+  assert.equal(result.provider_error_name, "Error");
+  assert.equal(result.provider_code, null);
   assert.doesNotMatch(result.message, /upstream detail/);
 });
 
