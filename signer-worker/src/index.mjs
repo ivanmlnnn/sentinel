@@ -88,9 +88,18 @@ async function rpc(method, params, id = "sentinel-rpc") {
     body: JSON.stringify({ jsonrpc: "2.0", id, method, params }),
     signal: AbortSignal.timeout(15000)
   });
-  if (!response.ok) throw new Error("NEAR_RPC_HTTP_ERROR");
-  const data = await response.json();
-  if (data.error || !data.result) throw new Error("NEAR_RPC_RESULT_UNAVAILABLE");
+  if (!response.ok) throw new Error("NEAR_RPC_UNAVAILABLE");
+  let data;
+  try { data = await response.json(); } catch { throw new Error("NEAR_RPC_UNAVAILABLE"); }
+  if (data.error) {
+    const detail = String(data.error.data || data.error.message || "").toLowerCase();
+    if (method === "query" && (detail.includes("access key") && detail.includes("does not exist") ||
+        detail.includes("accesskey") && detail.includes("not found"))) {
+      throw new Error("SIGNER_KEY_NOT_FOUND_ON_ACCOUNT");
+    }
+    throw new Error("NEAR_RPC_UNAVAILABLE");
+  }
+  if (!data.result) throw new Error("NEAR_RPC_UNAVAILABLE");
   return data.result;
 }
 
@@ -288,10 +297,15 @@ export async function execute(payload, authorizationHeader, identity, env) {
   let signer;
   try {
     signer = KeyPairSigner.fromSecretKey(env.NEAR_AGENT_SIGNER_PRIVATE_KEY);
+  } catch {
+    return deny("SIGNER_PRIVATE_KEY_INVALID");
+  }
+  try {
     await assertRestrictedFunctionCallKey(signerAccountId, signer.getPublicKey().toString(), contractId);
   } catch (error) {
     const reason = typeof error?.message === "string" &&
-      ["PAYMENT_CONTRACT_NOT_CONFIGURED", "SIGNER_REQUIRES_CONTRACT_SCOPED_FUNCTION_CALL_KEY"].includes(error.message)
+      ["PAYMENT_CONTRACT_NOT_CONFIGURED", "SIGNER_REQUIRES_CONTRACT_SCOPED_FUNCTION_CALL_KEY",
+       "SIGNER_KEY_NOT_FOUND_ON_ACCOUNT", "NEAR_RPC_UNAVAILABLE"].includes(error.message)
       ? error.message : "SIGNER_RESTRICTED_KEY_OR_CONTRACT_INVALID";
     return deny(reason);
   }
