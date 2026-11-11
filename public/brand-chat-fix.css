@@ -466,3 +466,101 @@ body{
 .agent-approval-status-note{margin:9px 0 0;color:#d7bd58;font:12px/1.5 Inter,system-ui,sans-serif}
 .agent-state-pill.is-success{background:rgba(42,190,127,.13);color:#83dcb1;border-color:rgba(42,190,127,.3)}
 @media(max-width:600px){.telegram-agent-status{padding:13px!important}.telegram-agent-status .agent-proposal-field.amount>b{font-size:20px}}
+
+
+/* Payment card: quiet hierarchy, aligned with Sentinel's sage / warm-gold brand. */
+.agent-payment-card{
+  margin-top:14px!important;
+  padding:16px!important;
+  border:1px solid rgba(190,199,177,.16)!important;
+  border-radius:16px!important;
+  background:linear-gradient(155deg,#171d1b 0%,#101614 100%)!important;
+  box-shadow:0 12px 30px rgba(0,0,0,.18)!important;
+}
+.agent-payment-card .agent-proposal-top{margin:0 0 12px!important;align-items:center}
+.agent-payment-card .agent-proposal-brand{font:600 13px Inter,system-ui,sans-serif!important;letter-spacing:0!important;color:#e8ece2!important}
+.agent-payment-card .agent-proposal-icon{display:none!important}
+.agent-payment-card .agent-state-pill{
+  padding:5px 9px!important;border-radius:999px!important;
+  border:1px solid rgba(215,189,88,.22)!important;
+  background:rgba(215,189,88,.08)!important;color:#d9c77d!important;
+  font:600 10px Inter,system-ui,sans-serif!important;letter-spacing:0!important
+}
+.agent-payment-card .agent-proposal-values{margin:0 0 12px!important}
+.agent-payment-card .agent-proposal-field.amount{justify-content:flex-start!important;gap:7px!important}
+.agent-payment-card .agent-proposal-field.amount>span{display:none!important}
+.agent-payment-card .agent-proposal-field.amount>b{
+  font:650 30px/1.1 Inter,system-ui,sans-serif!important;
+  letter-spacing:-1px!important;color:#f0f1e9!important
+}
+.agent-payment-card .agent-proposal-field.amount>b small{
+  font-size:13px!important;font-weight:550!important;color:#aab5a9!important;letter-spacing:0!important
+}
+.agent-payment-card .agent-recipient-track-card.compact{
+  margin:0!important;padding:12px 13px!important;
+  border:1px solid rgba(190,199,177,.11)!important;border-radius:12px!important;
+  background:rgba(5,10,8,.32)!important
+}
+.agent-payment-card .agent-recipient-track-card.compact .agent-recipient-track-head>b{
+  font:600 10px Inter,system-ui,sans-serif!important;letter-spacing:0!important;color:#9ca99c!important
+}
+.agent-payment-card .agent-recipient-track-card.compact .agent-recipient-live-state{
+  font:600 10px Inter,system-ui,sans-serif!important;letter-spacing:0!important
+}
+.agent-payment-card .agent-recipient-track-card.compact .agent-recipient-account{
+  margin-top:5px!important;font:550 13px ui-monospace,monospace!important;color:#edf0e8!important
+}
+.agent-payment-card .agent-recipient-compact-balance{
+  display:flex!important;align-items:center!important;justify-content:space-between!important;
+  gap:12px!important;margin-top:9px!important;padding-top:9px!important;
+  border-top:1px solid rgba(255,255,255,.07)!important
+}
+.agent-payment-card .agent-recipient-compact-balance>span{
+  font:500 10px Inter,system-ui,sans-serif!important;letter-spacing:0!important;color:#89978d!important
+}
+.agent-payment-card .agent-recipient-compact-balance>b{
+  font:550 11px Inter,system-ui,sans-serif!important;color:#dce4d8!important
+}
+.agent-payment-card .agent-policy-reason{
+  margin:11px 0 0!important;padding:11px 12px!important;
+  border:1px solid rgba(215,189,88,.15)!important;border-radius:11px!important;
+  background:rgba(215,189,88,.045)!important
+}
+.agent-payment-card .agent-policy-reason>span{
+  display:block!important;margin:0 0 4px!important;
+  color:#d9c77d!important;font:600 11px Inter,system-ui,sans-serif!important;letter-spacing:0!important
+}
+.agent-payment-card .agent-policy-reason p{
+  margin:0!important;color:#c3ccc0!important;font:12px/1.55 Inter,system-ui,sans-serif!important
+}
+.agent-payment-card .agent-result-grid{
+  display:flex!important;align-items:center!important;gap:16px!important;
+  margin:11px 0 0!important;padding:0!important;border:0!important
+}
+.agent-payment-card .agent-result-grid>div{display:flex!important;align-items:center!important;gap:6px!important}
+.agent-payment-card .agent-result-grid span{
+  font:500 10px Inter,system-ui,sans-serif!important;letter-spacing:0!important;color:#87958a!important
+}
+.agent-payment-card .agent-result-grid b{
+  font:600 11px Inter,system-ui,sans-serif!important;color:#dce7dc!important
+}
+.agent-payment-card .agent-proposal-meta.compact{display:none!important}
+.agent-payment-card .agent-approval{
+  margin-top:13px!important;padding-top:12px!important;
+  border-top:1px solid rgba(190,199,177,.11)!important
+}
+.agent-payment-card .agent-approval>p{
+  margin:0 0 10px!important;color:#9eaca1!important;
+  font:12px/1.5 Inter,system-ui,sans-serif!important
+}
+.agent-payment-card .agent-approval-actions #approveAgentPayment,
+.agent-payment-card .agent-approval-actions #connectAgentWallet{
+  min-height:43px!important;border-radius:11px!important;
+  background:#d8bd58!important;color:#17190f!important;
+  font:650 12px Inter,system-ui,sans-serif!important;box-shadow:none!important
+}
+.agent-payment-card .agent-result-hash{overflow-wrap:anywhere;font-size:10px!important;color:#a7b7aa!important}
+@media(max-width:600px){
+  .agent-payment-card{padding:13px!important;border-radius:14px!important}
+  .agent-payment-card .agent-proposal-field.amount>b{font-size:27px!important}
+}

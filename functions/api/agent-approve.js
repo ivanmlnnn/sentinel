@@ -12,8 +12,12 @@ function microToNear(micro) {
   return fraction ? whole + "." + fraction : String(whole);
 }
 async function callIsolatedSigner({ intent, actor, idempotencyKey, approvalId, walletApproval, authorizationHeader, env }) {
-  if (!env.SIGNER_SERVICE || !env.AGENT_SIGNER_HMAC_SECRET) {
-    return { executed: false, status: "DENIED", reason: "ISOLATED_SIGNER_NOT_CONFIGURED", transaction_hash: null };
+  if (!env.SIGNER_SERVICE) {
+    return { executed: false, status: "DENIED", reason: "ISOLATED_SIGNER_BINDING_MISSING", transaction_hash: null };
+  }
+  if (typeof env.AGENT_SIGNER_HMAC_SECRET !== "string" ||
+      new TextEncoder().encode(env.AGENT_SIGNER_HMAC_SECRET).byteLength < 32) {
+    return { executed: false, status: "DENIED", reason: "AGENT_SIGNER_HMAC_SECRET_MISSING", transaction_hash: null };
   }
   const payload = JSON.stringify({ intent, actor, idempotency_key: idempotencyKey, approval_id: approvalId, wallet_approval: walletApproval });
   const timestamp = String(Math.floor(Date.now() / 1000));

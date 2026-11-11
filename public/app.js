@@ -771,6 +771,12 @@ function renderAgentResult(data) {
     EXECUTION_OUTCOME_UNKNOWN: 'The transaction outcome is not verified. Do not sign or retry again yet.',
     APPROVAL_NOT_PENDING: 'This approval has already been used or closed. Check its status before creating another proposal.',
     ISOLATED_SIGNER_NOT_CONFIGURED: 'The isolated payment signer is not configured. No transfer was sent.',
+    ISOLATED_SIGNER_BINDING_MISSING: 'The main Worker is missing its connection to the isolated signer. Configure the SIGNER_SERVICE service binding and redeploy.',
+    AGENT_SIGNER_HMAC_SECRET_MISSING: 'The shared signer authentication secret is missing or shorter than 32 bytes. Set AGENT_SIGNER_HMAC_SECRET on both Sentinel and Sentinel Signer Workers using the same random value (32+ bytes), then redeploy.',
+    SIGNER_ACCOUNT_MUST_BE_TESTNET: 'The configured signer account is not a NEAR Testnet account.',
+    PREFLIGHT_ATTESTATION_NOT_CONFIGURED: 'The signer is missing its security preflight URL, shared HMAC secret, verdict public key, or Testnet signer account configuration.',
+    PAYMENT_CONTRACT_NOT_CONFIGURED: 'The Testnet payment contract is not configured on the isolated signer.',
+    SIGNER_REQUIRES_CONTRACT_SCOPED_FUNCTION_CALL_KEY: 'The signer account key is not restricted to the approved payment contract and pay method.',
     ISOLATED_SIGNER_REQUEST_FAILED: 'The isolated signer did not return a valid execution result. No transfer is confirmed.',
     ISOLATED_SIGNER_UNAVAILABLE: 'The isolated signer could not be reached. Check its status before trying again.',
     SIGNER_NOT_CONFIGURED: 'The Testnet signer account or signing key is not configured.',
@@ -788,6 +794,13 @@ function renderAgentResult(data) {
   })[policyReason] || (policyReason
     ? 'The signer stopped this payment before broadcast (' + policyReason.replaceAll('_', ' ').toLowerCase() + ').'
     : '');
+  const signerSetupIssue = [
+    'ISOLATED_SIGNER_NOT_CONFIGURED', 'ISOLATED_SIGNER_BINDING_MISSING',
+    'AGENT_SIGNER_HMAC_SECRET_MISSING', 'SIGNER_NOT_CONFIGURED',
+    'SIGNER_ACCOUNT_MUST_BE_TESTNET', 'PREFLIGHT_ATTESTATION_NOT_CONFIGURED',
+    'PAYMENT_CONTRACT_NOT_CONFIGURED', 'SIGNER_REQUIRES_CONTRACT_SCOPED_FUNCTION_CALL_KEY',
+    'SIGNER_RESTRICTED_KEY_OR_CONTRACT_INVALID'
+  ].includes(policyReason);
   const rawResponseText = String(data.agent_message || data.message || '').trim();
   const isInternalResponse = /^[A-Z][A-Z0-9_]{8,}$/.test(rawResponseText);
   const responseText = rawResponseText && !isInternalResponse
@@ -795,7 +808,7 @@ function renderAgentResult(data) {
     : status === 'AWAITING_HUMAN_APPROVAL'
       ? 'Review the amount and recipient before approving.'
       : status === 'DENIED'
-        ? (policyReasonText || 'This approval is closed. No transfer was confirmed.')
+        ? 'I could not send this payment. The reason and next step are shown in the payment card below.'
         : status === 'EXECUTED'
           ? 'Payment sent and verified on NEAR Testnet.'
           : status === 'UNKNOWN'
@@ -811,20 +824,20 @@ function renderAgentResult(data) {
       '<div class="agent-recipient-compact-balance"><span>TESTNET BALANCE</span><b id="agentRecipientTrackBalance">Loading…</b></div></section>'
     : '';
   const agentCard = showStatusCard
-    ? '<section class="telegram-agent-status">' +
-      '<div class="agent-proposal-top"><div class="agent-proposal-brand"><span class="agent-proposal-icon">◈</span><span>' + (hasPaymentContext ? 'PAYMENT' : 'SECURITY CHECK') + '</span></div>' +
-      '<span class="agent-state-pill ' + (data.execution_enabled === true ? 'is-success' : '') + '">' + escapeHtml(({ AWAITING_HUMAN_APPROVAL: 'REVIEW PAYMENT', DENIED: 'NOT SENT', EXECUTED: 'SENT · VERIFIED', UNKNOWN: 'CHECK STATUS', FAILED: 'FAILED', EXPIRED: 'EXPIRED', APPROVING: 'PROCESSING' })[status] || status.replaceAll('_', ' ')) + '</span></div>' +
+    ? '<section class="telegram-agent-status agent-payment-card">' +
+      '<div class="agent-proposal-top"><div class="agent-proposal-brand"><span class="agent-proposal-icon">◈</span><span>' + (hasPaymentContext ? 'Payment' : 'Security check') + '</span></div>' +
+      '<span class="agent-state-pill ' + (data.execution_enabled === true ? 'is-success' : '') + '">' + escapeHtml(({ AWAITING_HUMAN_APPROVAL: 'REVIEW PAYMENT', DENIED: signerSetupIssue ? 'SETUP REQUIRED' : 'NOT SENT', EXECUTED: 'SENT · VERIFIED', UNKNOWN: 'CHECK STATUS', FAILED: 'FAILED', EXPIRED: 'EXPIRED', APPROVING: 'PROCESSING' })[status] || status.replaceAll('_', ' ')) + '</span></div>' +
       ((hasPaymentContext || data.sentinel) ? '<div class="agent-proposal-values">' +
         (proposal.amount_near != null ? '<div class="agent-proposal-field amount"><span>AMOUNT</span><b>' + escapeHtml(String(proposal.amount_near)) + ' <small>NEAR</small></b></div>' : '') +
       '</div>' : '') + recipientCard +
-      (status === 'DENIED' && policyReason ? '<div class="agent-policy-reason"><span>WHY IT DIDN’T SEND</span>' + (policyReasonText ? '<p>' + escapeHtml(policyReasonText) + '</p>' : '') + '</div>' : '') +
+      (status === 'DENIED' && policyReason ? '<div class="agent-policy-reason"><span>Payment not sent</span>' + (policyReasonText ? '<p>' + escapeHtml(policyReasonText) + '</p>' : '') + '</div>' : '') +
       ((data.sentinel?.decision || data.sentinel?.risk_score != null) ? '<div class="agent-result-grid">' +
         (data.sentinel?.decision ? '<div><span>SENTINEL VERDICT</span><b>' + escapeHtml(verdict) + '</b></div>' : '') +
         (data.sentinel?.risk_score != null && Number.isFinite(Number(data.sentinel.risk_score)) ? '<div><span>RISK SCORE</span><b>' + escapeHtml(risk) + '</b></div>' : '') +
       '</div>' : '') +
       (approvalId ? '<div class="agent-proposal-meta compact"><span><i></i> NEAR TESTNET · 5 MINUTES</span></div>' : '') +
       (txHash ? '<p class="agent-result-hash">TRANSACTION HASH · ' + escapeHtml(txHash) + '</p>' : '') + txLink +
-      (approvalId ? '<div class="agent-approval"><p>Approve this exact payment in your NEAR wallet. Sentinel will only report success after verifying the transaction.</p><div class="agent-approval-actions">' +
+      (approvalId ? '<div class="agent-approval"><p>Review the exact amount and recipient in your NEAR wallet.</p><div class="agent-approval-actions">' +
         (walletCanApprove
           ? '<button type="button" class="primary-btn" id="approveAgentPayment">Approve payment <b>↗</b></button>'
           : '<button type="button" class="primary-btn" id="connectAgentWallet">Open NEAR wallet <b>↗</b></button>') +
