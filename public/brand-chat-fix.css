@@ -424,3 +424,14 @@ body{
 .agent-recipient-track-foot a{color:#9fe8d1;text-decoration:none}
 .agent-approval-actions #approveAgentPayment,.agent-approval-actions #connectAgentWallet{min-height:44px}
 @media(prefers-reduced-motion:no-preference){.agent-recipient-track-card{animation:wallet-card-in .35s ease both}}
+
+/* Compact payment proposal details: retain only decision-critical information. */
+.agent-recipient-track-card.compact{margin:10px 0 12px;padding:10px 12px;border-radius:12px}
+.agent-recipient-track-card.compact .agent-recipient-track-head{justify-content:space-between}
+.agent-recipient-track-card.compact .agent-recipient-track-head>b{color:#d9eee7;font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.1em}
+.agent-recipient-track-card.compact .agent-recipient-account{margin-top:7px;font-size:12px}
+.agent-recipient-compact-balance{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(203,255,237,.1)}
+.agent-recipient-compact-balance>span{color:#88a99d;font:600 8px 'IBM Plex Mono',monospace;letter-spacing:.1em}
+.agent-recipient-compact-balance>b{color:#f2fff9;font:600 12px Inter,sans-serif}
+.agent-proposal-meta.compact{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.agent-proposal-meta.compact>span{font-size:9px}
