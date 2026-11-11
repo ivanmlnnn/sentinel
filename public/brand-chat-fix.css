@@ -178,3 +178,44 @@ body{
 .telegram-chat-transcript .guest-chat-message p{font-size:13px;line-height:1.7}
 @media(max-width:850px){.agent-lab-grid{grid-template-columns:1fr}.agent-help-panel{order:2}}
 @media(max-width:600px){.agent-chat-header{padding:15px}.agent-welcome{margin:16px 14px;padding:13px}.agent-quick-start{padding:0 14px 16px}.agent-chat-form{padding:0 14px 16px}.sentinel-skill-grid{gap:7px}.sentinel-skill-card{padding:8px 10px}.sentinel-skill-card b{font-size:11px}.agent-compose-bottom>span{max-width:58%;font-size:10px}.agent-payment-details .prompt-draft-fields{grid-template-columns:1fr 1fr}.agent-payment-details .prompt-draft-fields input:first-child,.agent-payment-details .prompt-draft-fields input:nth-child(3){grid-column:1/-1}}
+
+
+/* Everyday-friendly Agent Lab: clear task choices, less dashboard jargon */
+.agent-chat-header{min-height:66px}
+.agent-chat-identity strong{font-size:15px;letter-spacing:-.01em}
+.agent-chat-identity span{font-size:12px;color:#9aada5}
+.agent-chat-ready{font:600 11px Inter,system-ui,sans-serif;letter-spacing:0;text-transform:none}
+.agent-welcome{gap:13px;margin:18px 22px 16px;padding:17px 18px;border-radius:14px;background:rgba(0,224,164,.045)}
+.agent-welcome-mark{flex:0 0 32px;width:32px;height:32px;border-radius:10px}
+.agent-welcome strong{font-size:15px;letter-spacing:-.01em}
+.agent-welcome p{max-width:58ch;font:13px/1.65 Inter,system-ui,sans-serif;color:#a9bbb4}
+.agent-quick-start{padding-top:4px}
+.agent-quick-label{display:block;margin:0 0 10px;color:#9aada5;font:600 10px Inter,system-ui,sans-serif;letter-spacing:.07em}
+.sentinel-skill-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.sentinel-skill-card{display:flex;align-items:center;justify-content:flex-start;gap:11px;min-height:64px;padding:11px 13px;text-align:left;border:1px solid rgba(148,176,169,.17);border-radius:12px;background:#0b1218}
+.sentinel-skill-card .skill-card-icon{flex:0 0 30px;width:30px;height:30px;border-radius:9px;font-size:16px}
+.sentinel-skill-card .skill-card-copy{display:flex;min-width:0;flex-direction:column;gap:3px}
+.sentinel-skill-card b{font:600 12px Inter,system-ui,sans-serif;color:#e4eee9}
+.sentinel-skill-card small{display:block;color:#8fa39a;font:11px/1.35 Inter,system-ui,sans-serif}
+.sentinel-skill-card:hover,.sentinel-skill-card.is-selected{border-color:rgba(0,224,164,.42);background:rgba(0,224,164,.055)}
+.agent-compose-label{font-size:11px!important;letter-spacing:.02em!important}
+#agentPrompt{min-height:88px;font-size:14px!important}
+.agent-compose-bottom>span{font:11px Inter,system-ui,sans-serif;color:#8fa39a}
+.agent-help-panel .panel-top{font:600 11px Inter,system-ui,sans-serif;letter-spacing:.03em}
+.agent-help-step{padding:14px 0}
+.agent-help-step strong{font-size:13px}
+.agent-help-step span{font-size:12px}
+.agent-help-note{border-radius:12px}
+.agent-help-note strong{font-size:12px}
+.agent-help-note span{font-size:12px;line-height:1.65}
+.agent-lab-warning b{font:650 11px Inter,system-ui,sans-serif;letter-spacing:.02em}
+.agent-lab-warning span{font-size:12px;line-height:1.65}
+@media(max-width:600px){
+ .sentinel-skill-grid{grid-template-columns:1fr 1fr;gap:8px}
+ .sentinel-skill-card{min-height:66px;padding:9px}
+ .sentinel-skill-card .skill-card-icon{flex-basis:27px;width:27px;height:27px}
+ .sentinel-skill-card b{font-size:11px}
+ .sentinel-skill-card small{font-size:10px}
+ .agent-welcome{margin:14px 14px;padding:14px}
+}
+@media(max-width:380px){.sentinel-skill-grid{grid-template-columns:1fr}}
