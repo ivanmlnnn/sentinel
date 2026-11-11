@@ -83,6 +83,68 @@ async function callIsolatedSigner({ stage = "verify", intent, actor, idempotency
     return { executed: false, status: "UNKNOWN", reason: timedOut ? "ISOLATED_SIGNER_TIMEOUT" : "ISOLATED_SIGNER_UNAVAILABLE", transaction_hash: transactionHash };
   }
 }
+async function reserveWalletSpend(env, { idempotencyKey, actor, receiver, amountMicro }) {
+  const dailyCapMicro = 200000;
+  const result = await env.DB.prepare(
+    "INSERT INTO agent_execution (idempotency_key, actor, receiver_account, amount_micro, status, created_at, updated_at) " +
+    "SELECT ?, ?, ?, ?, 'PENDING', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP " +
+    "WHERE (SELECT COALESCE(SUM(amount_micro), 0) FROM agent_execution WHERE date(created_at)=date('now') AND (status IN ('EXECUTED','UNKNOWN') OR (status='PENDING' AND created_at > datetime('now', '-15 minutes')))) + ? <= ?"
+  ).bind(idempotencyKey, actor, receiver, amountMicro, amountMicro, dailyCapMicro).run();
+  if (result.meta?.changes === 1) return true;
+  const prior = await env.DB.prepare("SELECT actor, receiver_account, amount_micro, status FROM agent_execution WHERE idempotency_key=?")
+    .bind(idempotencyKey).first();
+  if (prior && prior.actor === actor && prior.receiver_account === receiver &&
+      Number(prior.amount_micro) === amountMicro && prior.status === "PENDING") return true;
+  throw new Error(prior ? "IDEMPOTENCY_KEY_REUSED" : "DAILY_SPEND_LIMIT_REACHED");
+}
+async function verifyWalletPreflightToken(token, env, expected) {
+  if (typeof token !== "string" || token.length > 4096) throw new Error("PREFLIGHT_TOKEN_INVALID");
+  const [encoded, signature, extra] = token.split(".");
+  if (!encoded || !/^(?:[0-9a-f]{2}){32}$/i.test(signature || "") || extra !== undefined) throw new Error("PREFLIGHT_TOKEN_INVALID");
+  const secret = env.AGENT_SIGNER_HMAC_SECRET;
+  if (typeof secret !== "string" || new TextEncoder().encode(secret).byteLength < 32) throw new Error("AGENT_SIGNER_HMAC_SECRET_MISSING");
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name:"HMAC", hash:"SHA-256" }, false, ["verify"]);
+  const sig = Uint8Array.from(signature.match(/.{2}/g), x => parseInt(x,16));
+  if (!await crypto.subtle.verify("HMAC", key, sig, new TextEncoder().encode(encoded))) throw new Error("PREFLIGHT_TOKEN_INVALID");
+  let payload;
+  try {
+    const normalized = encoded.replace(/-/g,"+").replace(/_/g,"/");
+    payload = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(normalized + "=".repeat((4-normalized.length%4)%4)), c => c.charCodeAt(0))));
+  } catch { throw new Error("PREFLIGHT_TOKEN_INVALID"); }
+  const age = Date.now() - Number(payload.issued_at);
+  if (payload.decision !== "ALLOW" || !Number.isFinite(age) || age < -30000 || age > 600000 ||
+      payload.approval_id !== expected.approvalId || payload.actor !== expected.actor ||
+      payload.wallet_account !== expected.walletAccount || payload.receiver_account !== expected.receiver ||
+      payload.idempotency_key !== expected.idempotencyKey || Number(payload.amount_micro) !== expected.amountMicro ||
+      String(payload.expires_at) !== String(expected.expiresAt)) throw new Error("PREFLIGHT_TOKEN_MISMATCH_OR_EXPIRED");
+  return payload;
+}
+async function verifyWalletTransferOnRpc(hash, walletAccount, receiverAccount, amountYocto) {
+  if (typeof hash !== "string" || !/^[1-9A-HJ-NP-Za-km-z]{32,64}$/.test(hash)) throw new Error("INVALID_TRANSACTION_HASH");
+  let response;
+  try {
+    response = await fetch("https://rpc.testnet.fastnear.com", {
+      method:"POST", headers:{"content-type":"application/json"},
+      body:JSON.stringify({jsonrpc:"2.0",id:"sentinel-wallet-final-verification",method:"tx",params:[hash,walletAccount]}),
+      signal:AbortSignal.timeout(15000)
+    });
+  } catch { throw new Error("NEAR_RPC_UNAVAILABLE"); }
+  if (!response.ok) throw new Error("NEAR_RPC_UNAVAILABLE");
+  let body;
+  try { body = await response.json(); } catch { throw new Error("NEAR_RPC_UNAVAILABLE"); }
+  if (body.error || !body.result) throw new Error("NEAR_RPC_UNAVAILABLE");
+  const result = body.result, tx = result.transaction;
+  const action = tx?.actions?.length === 1 ? tx.actions[0]?.Transfer : null;
+  const success = status => Boolean(status && (Object.hasOwn(status,"SuccessValue") || Object.hasOwn(status,"SuccessReceiptId")));
+  if (!tx || !success(result.status) || tx.signer_id !== walletAccount || tx.receiver_id !== receiverAccount ||
+      !Array.isArray(tx.actions) || tx.actions.length !== 1 || !action || String(action.deposit) !== String(amountYocto)) {
+    throw new Error("FINAL_TRANSFER_INTENT_MISMATCH_OR_FAILURE");
+  }
+  const receipts = Array.isArray(result.receipts_outcome) ? result.receipts_outcome : [];
+  if (!receipts.length || receipts.some(item => !success(item.outcome?.status))) throw new Error("TRANSFER_RECEIPT_NOT_SUCCESSFUL");
+  return { verified:true, transaction_hash:hash, signer_account:tx.signer_id, receiver_account:tx.receiver_id,
+    amount_yocto:String(action.deposit), block_hash:result.transaction_outcome?.block_hash || null, final_status:"SUCCESS" };
+}
 async function updateApproval(env, id, status, reason = null) {
   const safeReason = typeof reason === "string" && /^[A-Z0-9_]{3,96}$/.test(reason) ? reason : null;
   await env.DB.prepare("UPDATE agent_pending_approvals SET status=?, failure_reason=COALESCE(?, failure_reason), updated_at=CURRENT_TIMESTAMP WHERE id=?")
@@ -155,16 +217,12 @@ export async function onRequestPost({ request, env }) {
     } catch (error) {
       return json({ status: "DENIED", reason: error.message || "PREFLIGHT_TOKEN_FAILED" }, 503);
     }
-    const reservation = await callIsolatedSigner({ stage: "prepare", intent, actor: identity.sub,
-      idempotencyKey, approvalId, walletAccount, preflightToken,
-      authorizationHeader: request.headers.get("authorization") || "", env });
-    if (reservation.status !== "READY_TO_SIGN") {
-      return json({ status: reservation.status || "DENIED", reason: reservation.reason || "SPEND_RESERVATION_FAILED",
-        signer_http_status: reservation.signer_http_status ?? null,
-        signer_content_type: reservation.signer_content_type ?? null,
-        signer_response_preview: reservation.signer_response_preview ?? null,
-        proposal: { receiver_account: intent.receiver_account, amount_near: intent.amount_near },
-        sentinel: { decision: assessment.decision, risk_score: assessment.risk_score }, execution_enabled: false });
+    try {
+      await reserveWalletSpend(env, { idempotencyKey, actor: identity.sub, receiver: intent.receiver_account, amountMicro });
+    } catch (error) {
+      return json({ status:"DENIED", reason:error?.message || "SPEND_RESERVATION_FAILED",
+        proposal:{ receiver_account:intent.receiver_account, amount_near:intent.amount_near },
+        sentinel:{ decision:assessment.decision, risk_score:assessment.risk_score }, execution_enabled:false }, 409);
     }
     return json({ status: "READY_TO_SIGN", reason: "SENTINEL_ALLOW_WALLET_TRANSFER",
       idempotency_key: idempotencyKey, preflight_token: preflightToken,
@@ -186,11 +244,25 @@ export async function onRequestPost({ request, env }) {
   ).bind(approvalId, identity.sub).run();
   if (claimed.meta?.changes !== 1) return json({ error: "APPROVAL_EXPIRED_OR_ALREADY_CLAIMED" }, 409);
 
-  const execution = await callIsolatedSigner({ intent, actor: identity.sub, idempotencyKey, approvalId,
-    walletAccount, transactionHash: body.transaction_hash, preflightToken: body.preflight_token,
-    authorizationHeader: request.headers.get("authorization") || "", env });
-  const state = execution.executed ? "EXECUTED" : execution.status === "UNKNOWN" ? "UNKNOWN" :
-    execution.status === "FAILED" || execution.status === "DENIED" ? "FAILED" : "FAILED";
+  let execution;
+  try {
+    const token = await verifyWalletPreflightToken(body.preflight_token, env, {
+      approvalId, actor:identity.sub, walletAccount, receiver:intent.receiver_account,
+      amountMicro, idempotencyKey, expiresAt:pending.expires_at
+    });
+    const verification = await verifyWalletTransferOnRpc(body.transaction_hash, walletAccount,
+      intent.receiver_account, (BigInt(amountMicro) * 1000000000000000000n).toString());
+    execution = { executed:true, status:"EXECUTED", reason:"WALLET_TRANSFER_FINAL_RPC_VERIFIED",
+      transaction_hash:body.transaction_hash,
+      explorer_url:"https://testnet.nearblocks.io/txns/" + encodeURIComponent(body.transaction_hash),
+      verification, sentinel:{ decision:token.decision, risk_score:Number(token.risk_score) } };
+  } catch (error) {
+    const unknown = error?.message === "NEAR_RPC_UNAVAILABLE";
+    execution = { executed:false, status:unknown ? "UNKNOWN" : "FAILED",
+      reason:/^[A-Z][A-Z0-9_]{2,95}$/.test(error?.message || "") ? error.message : "FINAL_TRANSFER_VERIFICATION_FAILED",
+      transaction_hash:body.transaction_hash };
+  }
+  const state = execution.executed ? "EXECUTED" : execution.status === "UNKNOWN" ? "UNKNOWN" : "FAILED";
   try {
     await env.DB.prepare(
       "INSERT INTO agent_execution (idempotency_key, actor, receiver_account, amount_micro, status, transaction_hash, created_at, updated_at) " +
