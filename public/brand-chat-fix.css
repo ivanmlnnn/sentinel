@@ -1,0 +1,122 @@
+/* Sentinel brand alignment + conversational AI workspace */
+:root{
+  --bg:#080b10;
+  --surface:#0d131b;
+  --surface2:#111a24;
+  --line:#24313d;
+  --text:#e9f0f4;
+  --muted:#8797a5;
+  --dim:#536575;
+  --mint:#00e0a4;
+  --green:#00e0a4;
+  --amber:#e9bd68;
+  --red:#f07883;
+}
+html{background:#080b10}
+body{
+  background:radial-gradient(ellipse at 50% 0%,rgba(0,224,164,.075),transparent 42%),#080b10;
+  color:#e9f0f4;
+  font-family:Inter,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+}
+.topbar{background:rgba(8,11,16,.94);border-bottom-color:rgba(0,224,164,.14)}
+.nav-item:hover,.nav-item.active{color:#00e0a4;border-color:rgba(0,224,164,.24);background:rgba(0,224,164,.07)}
+.brand-icon{border-color:rgba(0,224,164,.42);color:#00e0a4}
+.wallet-btn{border-color:rgba(0,224,164,.42);background:rgba(0,224,164,.09);color:#eafff8}
+.wallet-btn:hover{background:rgba(0,224,164,.16)}
+.panel{
+  background:linear-gradient(145deg,rgba(18,27,31,.98),rgba(9,14,19,.98));
+  border-color:rgba(0,224,164,.14);
+}
+.agent-lab-panel{
+  background:linear-gradient(145deg,rgba(18,27,31,.98),rgba(9,14,19,.98));
+  border-color:rgba(0,224,164,.22);
+  box-shadow:0 18px 55px rgba(0,0,0,.22),0 0 36px rgba(0,224,164,.035);
+}
+.agent-policy-panel{background:linear-gradient(145deg,#10191d,#0a1015);border-color:rgba(0,224,164,.13)}
+.sentinel-prompt-studio{
+  background:linear-gradient(145deg,rgba(13,25,25,.94),rgba(9,14,19,.94));
+  border-color:rgba(0,224,164,.18);
+  box-shadow:inset 0 1px rgba(255,255,255,.025);
+}
+.prompt-studio-head h3,.sentinel-skill-card b{font-family:Inter,system-ui,sans-serif}
+.sentinel-skill-card{
+  background:rgba(8,16,19,.7);
+  border-color:rgba(0,224,164,.13);
+}
+.sentinel-skill-card:hover,.sentinel-skill-card.is-selected{
+  border-color:rgba(0,224,164,.42);
+  background:rgba(0,224,164,.075);
+}
+.skill-card-icon{background:rgba(0,224,164,.08);border-color:rgba(0,224,164,.18);color:#00e0a4}
+.prompt-draft-row{border-top-color:rgba(0,224,164,.13)}
+.prompt-draft-label,.prompt-studio-hint{color:#71bba4}
+#agentForm>.agent-result:not(.hidden){
+  background:linear-gradient(180deg,rgba(12,22,25,.98),rgba(8,13,18,.98));
+  border:1px solid rgba(0,224,164,.2);
+  border-radius:16px;
+  box-shadow:inset 0 1px rgba(255,255,255,.025),0 12px 35px rgba(0,0,0,.18);
+}
+.telegram-chat-transcript{gap:16px;padding:10px 5px 16px}
+.telegram-chat-transcript .guest-chat-message{
+  max-width:min(88%,760px);
+  padding:14px 17px;
+  border-radius:17px;
+  border-color:rgba(0,224,164,.16);
+  box-shadow:0 7px 22px rgba(0,0,0,.18);
+}
+.telegram-chat-transcript .guest-chat-user{
+  background:linear-gradient(145deg,rgba(0,92,70,.52),rgba(8,48,40,.82));
+  border-color:rgba(0,224,164,.32);
+  border-bottom-right-radius:6px;
+}
+.telegram-chat-transcript .guest-chat-assistant{
+  background:linear-gradient(145deg,#142024,#0d171c);
+  border-color:rgba(0,224,164,.14);
+  border-bottom-left-radius:6px;
+}
+.telegram-chat-transcript .guest-chat-message>span{
+  color:#00e0a4;
+  font:700 9px/1.4 "IBM Plex Mono",monospace;
+  letter-spacing:.1em;
+}
+.telegram-chat-transcript .guest-chat-user>span{color:#a5e9d6}
+.telegram-chat-transcript .guest-chat-message p,
+.telegram-chat-transcript .guest-chat-message .telegram-agent-response{
+  color:#edf6f3;
+  font:14px/1.8 Inter,system-ui,sans-serif;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+}
+.telegram-agent-bubble{width:min(96%,780px);max-width:96%!important}
+.telegram-typing i{background:#00e0a4}
+.guest-chat-meta{color:#6e9589;border-color:rgba(0,224,164,.13)}
+#agentPrompt{
+  min-height:64px;
+  max-height:180px;
+  resize:vertical;
+  border:1px solid rgba(0,224,164,.24);
+  border-radius:13px;
+  background:#080f13;
+  color:#edf6f3;
+  padding:15px 16px;
+  font:14px/1.6 Inter,system-ui,sans-serif;
+}
+#agentPrompt:focus{border-color:#00e0a4;box-shadow:0 0 0 3px rgba(0,224,164,.10)}
+#agentForm label{font:700 9px "IBM Plex Mono",monospace;color:#9cb8ae}
+.agent-lab-submit .primary-btn,.primary-btn{
+  background:#00e0a4;
+  color:#04110d;
+}
+.agent-lab-warning{border-color:rgba(233,189,104,.24);background:rgba(40,31,17,.48)}
+.agent-lab-warning b{color:#e9bd68}
+.agent-lab-warning span{color:#c2b69c}
+@media(max-width:850px){
+  .agent-lab-grid{grid-template-columns:minmax(0,1fr)}
+  .agent-policy-panel{order:2}
+}
+@media(max-width:560px){
+  .telegram-chat-transcript .guest-chat-message{max-width:95%;padding:12px 14px}
+  .telegram-chat-transcript .guest-chat-message p,
+  .telegram-chat-transcript .guest-chat-message .telegram-agent-response{font-size:13px;line-height:1.75}
+  #agentPrompt{min-height:58px}
+}
