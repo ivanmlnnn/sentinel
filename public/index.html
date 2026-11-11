@@ -11,7 +11,7 @@
 <body>
 <div id="auth-root"><main class="sentinel-auth-screen"><section class="sentinel-auth-card"><div class="sentinel-auth-mark"><img src="/IMG_20260629_220728_136.jpg?v=2" alt="Wayang Tech and Kitchen Needs"></div><p class="sentinel-auth-kicker">NEAR PROTOCOL / WALLET RISK INTELLIGENCE</p><h1>NEAR SENTINEL</h1><p class="sentinel-auth-copy">Preparing your NEAR security workspace.</p><div class="sentinel-auth-loader"></div></section></main></div>
 <script>
-window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r.dataset.authBooted&&!document.body.classList.contains("sentinel-authenticated")){var p=r.querySelector(".sentinel-auth-copy");if(p)p.textContent="Secure sign-in is taking too long to load. Check your connection and reload this page.";var b=r.querySelector(".sentinel-auth-loader");if(b)b.outerHTML="<button class=\"sentinel-auth-button\" onclick=\"location.reload()\">Retry ↻</button>";}},15000);</script>
+window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r.dataset.authReady&&!document.body.classList.contains("sentinel-authenticated")){var p=r.querySelector(".sentinel-auth-copy");if(p)p.textContent="Secure sign-in is taking too long to load. Check your connection and reload this page.";var b=r.querySelector(".sentinel-auth-loader");if(b)b.outerHTML="<button class=\"sentinel-auth-button\" onclick=\"location.reload()\">Retry ↻</button>";}},15000);</script>
 <div class="scroll-progress" id="scrollProgress"></div>
 <header class="topbar">
  <a class="brand" href="#overview"><span class="brand-icon brand-logo"><img src="/IMG_20260629_220728_136.jpg?v=1" alt="Wayang Tech and Kitchen Needs"></span><span class="brand-name">NEAR <b>SENTINEL</b></span></a>
@@ -118,7 +118,7 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
 <script src="/motion.js?v=20261110-signout-turnstile-fix1" defer></script>
 <script type="module">
 const authRoot = document.getElementById('auth-root');
-import('/auth.js?v=20261111-agent-wayang1').catch(error => {
+import('/auth.js?v=20261111-auth-readyfix1').catch(error => {
   console.error('Sentinel authentication module failed to load:', error);
   const copy = authRoot?.querySelector('.sentinel-auth-copy');
   if (copy) copy.textContent = 'Sign-in could not be loaded. Check your connection and reload this page.';
