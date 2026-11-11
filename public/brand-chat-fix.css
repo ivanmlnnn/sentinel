@@ -566,33 +566,67 @@ body{
 }
 
 
-/* Payment card: restrained hierarchy, aligned with the Sentinel dark/mint chat UI. */
-.agent-payment-card{
+/* Payment result: calm, compact, and consistent with the Sentinel chat surface. */
+.telegram-agent-status{
   padding:15px!important;
   border:1px solid rgba(0,224,164,.16)!important;
   border-radius:15px!important;
   background:linear-gradient(155deg,#111c20 0%,#0b1317 100%)!important;
   box-shadow:0 10px 28px rgba(0,0,0,.16)!important;
 }
-.agent-payment-card .agent-proposal-top{margin-bottom:13px}
-.agent-payment-card .agent-proposal-brand{font-size:10px;letter-spacing:.07em;color:#9bb5aa}
-.agent-payment-card .agent-state-pill{padding:5px 9px;border-radius:999px;font:600 10px Inter,system-ui,sans-serif}
-.agent-payment-card .agent-proposal-values{margin:0 0 12px}
-.agent-payment-card .agent-proposal-field.amount{padding:0 0 11px;border-bottom:1px solid rgba(148,176,169,.12)}
-.agent-payment-card .agent-proposal-field.amount>span{font-size:10px;letter-spacing:.035em}
-.agent-payment-card .agent-proposal-field.amount>b{font-size:24px;letter-spacing:-.04em}
-.agent-payment-card .agent-recipient-track-card.compact{margin:0 0 12px;padding:11px 12px;border:1px solid rgba(148,176,169,.13);border-radius:11px;background:rgba(5,12,14,.42)}
-.agent-payment-card .agent-recipient-track-head>b{font-size:9px;letter-spacing:.06em}
-.agent-payment-card .agent-recipient-account{font-size:12px}
-.agent-payment-card .agent-policy-reason{margin:12px 0 0;padding:11px 12px;border:1px solid rgba(240,120,131,.16);border-radius:11px;background:rgba(240,120,131,.045)}
-.agent-payment-card .agent-policy-reason>span{font-size:9px;letter-spacing:.06em;color:#d69ba0}
-.agent-payment-card .agent-policy-reason p{margin:5px 0 0;color:#d7e0dc;font-size:12px;line-height:1.6}
-.agent-payment-card .agent-result-grid.compact{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:11px 0 0;padding:0;border:0}
-.agent-payment-card .agent-result-grid.compact>span{color:#82978e;font:500 10px Inter,system-ui,sans-serif;letter-spacing:0}
-.agent-payment-card .agent-result-grid.compact>b{color:#b7d2c7;font:600 10px Inter,system-ui,sans-serif;text-align:right}
-.agent-payment-card .agent-proposal-meta.compact{margin:11px 0 0;padding:0;border:0}
-.agent-payment-card .agent-proposal-meta.compact>span{font-size:10px}
-.agent-payment-card .agent-approval{margin-top:13px;padding-top:12px}
-.agent-payment-card .agent-approval>p{font-size:12px;line-height:1.55}
-.agent-payment-card .agent-approval-actions #approveAgentPayment{min-height:43px;border-radius:11px;font-size:12px}
-@media(max-width:600px){.agent-payment-card{padding:13px!important}.agent-payment-card .agent-proposal-field.amount>b{font-size:22px}}
+.telegram-agent-status .agent-proposal-top{margin-bottom:14px}
+.telegram-agent-status .agent-proposal-brand{font-size:10px;letter-spacing:.08em;color:#9bb5aa}
+.telegram-agent-status .agent-state-pill{padding:5px 9px;border-radius:999px;font:600 10px Inter,system-ui,sans-serif;letter-spacing:.015em}
+.telegram-agent-status .agent-proposal-values{margin:0 0 12px}
+.telegram-agent-status .agent-proposal-field.amount{padding:0 0 11px;border-bottom:1px solid rgba(148,176,169,.12)}
+.telegram-agent-status .agent-proposal-field.amount>span{font-size:10px;letter-spacing:.035em}
+.telegram-agent-status .agent-proposal-field.amount>b{font-size:25px;letter-spacing:-.045em}
+.telegram-agent-status .agent-recipient-track-card.compact{margin:0 0 12px;padding:11px 12px;border:1px solid rgba(148,176,169,.13);border-radius:11px;background:rgba(5,12,14,.42)}
+.telegram-agent-status .agent-recipient-track-head>b{font-size:9px;letter-spacing:.06em}
+.telegram-agent-status .agent-recipient-account{font-size:12px}
+.telegram-agent-status .agent-policy-reason{margin:12px 0 0;padding:12px 13px;border:1px solid rgba(240,120,131,.16);border-radius:11px;background:rgba(240,120,131,.045)}
+.telegram-agent-status .agent-policy-reason>span{font-size:9px;letter-spacing:.06em;color:#d69ba0}
+.telegram-agent-status .agent-policy-reason p{margin:5px 0 0;color:#d7e0dc;font-size:12px;line-height:1.6}
+.telegram-agent-status .agent-result-grid.compact{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:11px 0 0;padding:0;border:0}
+.telegram-agent-status .agent-result-grid.compact>span{color:#82978e;font:500 10px Inter,system-ui,sans-serif;letter-spacing:0}
+.telegram-agent-status .agent-result-grid.compact>b{color:#b7d2c7;font:600 10px Inter,system-ui,sans-serif;text-align:right}
+.telegram-agent-status .agent-proposal-meta.compact{margin:11px 0 0;padding:0;border:0}
+.telegram-agent-status .agent-proposal-meta.compact>span{font-size:10px}
+.telegram-agent-status .agent-approval{margin-top:13px;padding-top:12px}
+.telegram-agent-status .agent-approval>p{font-size:12px;line-height:1.55}
+.telegram-agent-status .agent-approval-actions #approveAgentPayment{min-height:43px;border-radius:11px;font-size:12px}
+@media(max-width:600px){
+  .telegram-agent-status{padding:13px!important}
+  .telegram-agent-status .agent-proposal-field.amount>b{font-size:23px}
+}
+
+
+/* Payment result: compact wallet-card hierarchy, without changing dashboard theme. */
+.agent-payment-card{
+  margin-top:12px;
+  padding:15px 16px;
+  border:1px solid rgba(0,224,164,.2);
+  border-radius:17px;
+  background:linear-gradient(145deg,rgba(17,29,31,.98),rgba(8,14,19,.98));
+  box-shadow:0 12px 30px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.035);
+}
+.agent-payment-card .agent-proposal-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px}
+.agent-payment-card .agent-proposal-brand{display:flex;align-items:center;gap:8px;color:#9ab4aa;font:650 11px Inter,system-ui,sans-serif;letter-spacing:.04em}
+.agent-payment-card .agent-proposal-icon{display:grid;place-items:center;width:25px;height:25px;border-radius:9px;background:rgba(0,224,164,.1);color:#00e0a4}
+.agent-payment-card .agent-state-pill{padding:6px 9px;border-radius:999px;font-size:9px;letter-spacing:.06em;white-space:nowrap}
+.agent-payment-card .agent-proposal-values{margin:0 0 10px;padding:0;border:0}
+.agent-payment-card .agent-proposal-field.amount{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.agent-payment-card .agent-proposal-field.amount>span{color:#82968e;font:650 9px "IBM Plex Mono",monospace;letter-spacing:.1em}
+.agent-payment-card .agent-proposal-field.amount>b{color:#f0faf5;font:700 27px/1.2 Inter,system-ui,sans-serif;letter-spacing:-.04em}
+.agent-payment-card .agent-proposal-field.amount small{color:#8da69c;font-size:11px;letter-spacing:0}
+.agent-payment-card .agent-policy-reason{margin:11px 0 0;padding:10px 12px;border:1px solid rgba(240,120,131,.15);border-radius:11px;background:rgba(85,29,38,.13)}
+.agent-payment-card .agent-policy-reason>span{color:#e6a0a6;font:650 9px "IBM Plex Mono",monospace;letter-spacing:.08em}
+.agent-payment-card .agent-policy-reason p{margin:5px 0 0;color:#c4d0cb;font:12px/1.6 Inter,system-ui,sans-serif}
+.agent-payment-card .agent-result-grid.compact{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:10px 0 0;padding-top:9px;border-top:1px solid rgba(148,176,169,.1)}
+.agent-payment-card .agent-result-grid.compact span{color:#778d84;font:600 9px "IBM Plex Mono",monospace}
+.agent-payment-card .agent-result-grid.compact b{color:#b5c9c0;font:600 10px Inter,system-ui,sans-serif}
+.agent-payment-card .agent-approval{margin-top:12px;padding-top:11px;border-top:1px solid rgba(148,176,169,.12)}
+@media(max-width:560px){
+  .agent-payment-card{padding:13px;border-radius:14px}
+  .agent-payment-card .agent-proposal-field.amount>b{font-size:24px}
+}
