@@ -218,3 +218,21 @@ The Agent, Guest Agent, and AI Review routes use Google Gemini through a shared 
 Runtime configuration: set `GEMINI_API_KEY` as a secret on the Cloudflare Main Worker. The default model is `gemini-3.8-flash`. See [Gemini AI Provider Setup](DEPLOYMENT_STATUS_AND_AI_PROVIDER.md#gemini-ai-provider) for deployment and verification steps.
 
 The provider migration is covered by `tests/gemini-provider.test.mjs` and the repository's CI workflows. A passing adapter test or build is not, by itself, proof that the production secret is configured or that a live model response has succeeded. Use the linked release workflow and live route smoke test as the evidence for production availability.
+
+
+## AI prompt-injection hardening — implementation and evidence boundary
+
+The Agent route applies a layered boundary between natural-language input, model proposals, trusted investigation evidence, deterministic payment policy, and signing:
+
+- Prompt input is bounded to 4,000 characters and empty/oversized input is rejected in `functions/api/agent.js`.
+- Payment proposal creation is gated by explicit payment intent; ordinary greetings, explanations and how-to requests must not invoke the payment tool.
+- The Agent is instructed to treat user prompts and external content (wallet metadata, transaction memos, websites and tool text) as untrusted data. Model claims and pasted JSON are not accepted as proof that a security check passed.
+- Wallet anomaly analysis uses the server-side trusted investigation result. The follow-up analyst instruction treats evidence strings as untrusted, forbids following embedded instructions or inventing findings, and explicitly states that INCOMPLETE is not safe.
+- The route rejects simultaneous investigation and payment tool calls and limits the payment proposal path to one tool proposal.
+- `src/agent-guard.mjs` independently binds the assessment to the exact receiver and amount, requires a complete valid decision and bounded risk score, denies BLOCK, requires explicit confirmation for WARN, and fails closed on preflight errors or malformed/mismatched assessments.
+
+### Reproducible offline attack regression
+
+Run `npm run demo:attack`. The committed demo injects an instruction claiming operator approval and urging a 10 NEAR payment, while the deterministic Sentinel inspection returns a complete critical BLOCK. The demo passes only if the guard returns `DENIED - SENTINEL_BLOCK` and the signer callback is never invoked (`Signer invoked: NO`).
+
+This is a focused offline regression of the application guard, not a live Gemini red-team exercise, not a general prompt-anomaly classifier benchmark, and not a blockchain payment. Sentinel currently has no documented labeled prompt-anomaly benchmark with precision/recall or broad live-provider adversarial coverage. Describe this capability accurately as layered prompt-injection hardening with a deterministic offline regression, not complete prompt-injection immunity.
