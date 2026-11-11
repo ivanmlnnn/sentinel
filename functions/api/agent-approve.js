@@ -52,7 +52,7 @@ async function callIsolatedSigner({ stage = "verify", intent, actor, idempotency
     const response = await env.SIGNER_SERVICE.fetch("https://sentinel-signer.internal/" + (stage === "prepare" ? "prepare" : "execute"), {
       method: "POST", headers: { "content-type": "application/json", authorization: authorizationHeader,
         "x-sentinel-timestamp": timestamp, "x-sentinel-nonce": nonce, "x-sentinel-signature": signature },
-      body: payload, signal: AbortSignal.timeout(25000)
+      body: payload, signal: AbortSignal.timeout(35000)
     });
     const data = await response.json().catch(() => null);
     const reportedReason = typeof data?.reason === "string" ? data.reason :
@@ -62,8 +62,10 @@ async function callIsolatedSigner({ stage = "verify", intent, actor, idempotency
     const validExecutionResult = typeof data.executed === "boolean" &&
       ["READY_TO_SIGN", "EXECUTED", "DENIED", "FAILED", "UNKNOWN"].includes(data.status) && typeof data.reason === "string";
     return validExecutionResult ? data : { executed: false, status: "UNKNOWN", reason, transaction_hash: transactionHash };
-  } catch {
-    return { executed: false, status: "UNKNOWN", reason: "ISOLATED_SIGNER_UNAVAILABLE", transaction_hash: transactionHash };
+  } catch (error) {
+    const timedOut = error?.name === "TimeoutError" || error?.name === "AbortError";
+    console.error("sentinel_isolated_signer_call_failed", { stage, name: error?.name || "Error", timed_out: timedOut });
+    return { executed: false, status: "UNKNOWN", reason: timedOut ? "ISOLATED_SIGNER_TIMEOUT" : "ISOLATED_SIGNER_UNAVAILABLE", transaction_hash: transactionHash };
   }
 }
 async function updateApproval(env, id, status, reason = null) {
