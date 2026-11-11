@@ -831,11 +831,8 @@ function renderAgentResult(data) {
         (proposal.amount_near != null ? '<div class="agent-proposal-field amount"><span>AMOUNT</span><b>' + escapeHtml(String(proposal.amount_near)) + ' <small>NEAR</small></b></div>' : '') +
       '</div>' : '') + recipientCard +
       (status === 'DENIED' && policyReason ? '<div class="agent-policy-reason"><span>Payment not sent</span>' + (policyReasonText ? '<p>' + escapeHtml(policyReasonText) + '</p>' : '') + '</div>' : '') +
-      ((data.sentinel?.decision || data.sentinel?.risk_score != null) ? '<div class="agent-result-grid">' +
-        (data.sentinel?.decision ? '<div><span>SENTINEL VERDICT</span><b>' + escapeHtml(verdict) + '</b></div>' : '') +
-        (data.sentinel?.risk_score != null && Number.isFinite(Number(data.sentinel.risk_score)) ? '<div><span>RISK SCORE</span><b>' + escapeHtml(risk) + '</b></div>' : '') +
-      '</div>' : '') +
-      (approvalId ? '<div class="agent-proposal-meta compact"><span><i></i> NEAR TESTNET · 5 MINUTES</span></div>' : '') +
+      ((data.sentinel?.decision || data.sentinel?.risk_score != null) ? '<div class="agent-result-grid compact"><span>Security check</span><b>' + escapeHtml(data.sentinel?.decision ? verdict : 'Completed') + (data.sentinel?.risk_score != null && Number.isFinite(Number(data.sentinel.risk_score)) ? ' · Risk ' + escapeHtml(risk) : '') + '</b></div>' : '') +
+      (approvalId && status === 'AWAITING_HUMAN_APPROVAL' ? '<div class="agent-proposal-meta compact"><span>NEAR TESTNET · Expires in 5 minutes</span></div>' : '') +
       (txHash ? '<p class="agent-result-hash">TRANSACTION HASH · ' + escapeHtml(txHash) + '</p>' : '') + txLink +
       (approvalId ? '<div class="agent-approval"><p>Review the exact amount and recipient in your NEAR wallet.</p><div class="agent-approval-actions">' +
         (walletCanApprove
