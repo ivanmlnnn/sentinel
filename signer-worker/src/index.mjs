@@ -312,7 +312,7 @@ export async function execute(payload, authorizationHeader, identity, env) {
       return deny("PREFLIGHT_TOKEN_REPLAYED");
     }
     const verification = await verifyFinalTransfer(transactionHash, walletAccount,
-      validated.receiver_account, (BigInt(amountMicro) * 1_000_000_000_000n).toString());
+      validated.receiver_account, (BigInt(amountMicro) * 1_000_000_000_000_000_000n).toString());
     await setState(env, idempotencyKey, "EXECUTED", transactionHash);
     return { executed: true, status: "EXECUTED", reason: "TESTNET_WALLET_TRANSFER_FINAL_RPC_VERIFIED",
       transaction_hash: transactionHash, explorer_url: "https://testnet.nearblocks.io/txns/" + encodeURIComponent(transactionHash),
