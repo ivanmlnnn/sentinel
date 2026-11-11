@@ -35,7 +35,14 @@ async function request(path, options = {}) {
   const response = await fetch(API + path, { ...options, headers });
   const data = await response.json().catch(() => ({error:'Invalid server response.'}));
   if (!response.ok) {
-    const detail = typeof data.provider_message === 'string' ? ': ' + data.provider_message : '';
+    const diagnostics = [
+      typeof data.provider_message === 'string' ? data.provider_message : null,
+      data.provider_error_name ? 'type=' + String(data.provider_error_name).slice(0, 80) : null,
+      data.provider_code ? 'code=' + String(data.provider_code).slice(0, 80) : null,
+      Number.isInteger(data.provider_status) ? 'status=' + data.provider_status : null,
+      data.provider_log_id ? 'log=' + String(data.provider_log_id).slice(0, 120) : null
+    ].filter(Boolean);
+    const detail = diagnostics.length ? ': ' + diagnostics.join(' · ') : '';
     const error = new Error((data.error || 'Request failed. Please retry.') + detail);
     error.data = data;
     throw error;
