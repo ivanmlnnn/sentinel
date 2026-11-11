@@ -91,6 +91,7 @@ function AuthGate() {
   }
 
   useEffect(() => {
+    if (ready) document.getElementById('auth-root')?.setAttribute('data-auth-ready', '1');
     window.getSentinelAccessToken = getAccessToken;
 
     const host = document.querySelector('.sentinel-auth-mark[data-wayang-3d]');
@@ -299,7 +300,6 @@ function Root() {
 }
 
 createRoot(document.getElementById('auth-root')).render(React.createElement(Root));
-document.getElementById('auth-root').dataset.authBooted = '1';
 
 
 // Reuse the exact signed-in wayang portrait in the assistant, so both identities match.
