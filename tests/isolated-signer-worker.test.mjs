@@ -1,142 +1,40 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
-import {
-  verifyInternalRequest, readBoundedSignerBody, reserveNonce, nearToMicro,
-  claimApproval, prepareWalletTransfer, default as signerWorker
-} from "../signer-worker/src/index.mjs";
+import { verifyInternalRequest, readBoundedSignerBody, reserveNonce, nearToMicro, claimApproval, execute, assertRestrictedFunctionCallKey, verifyFinalTransfer, default as signerWorker } from "../signer-worker/src/index.mjs";
 
 const TEST_SECRET = Buffer.from(webcrypto.getRandomValues(new Uint8Array(32))).toString("hex");
-const ID = "123e4567-e89b-42d3-a456-426614174000";
-const APPROVAL = "123e4567-e89b-42d3-a456-426614174001";
-const WALLET = "ivan.testnet";
-const RECEIVER = "rawvest6817.testnet";
-const EXPIRY = "2026-11-12 05:00:00";
 
-async function signedRequest({ secret, body, timestamp = String(Math.floor(Date.now() / 1000)), nonce = ID }) {
+async function signedRequest({ secret, body, timestamp = String(Math.floor(Date.now() / 1000)), nonce = "123e4567-e89b-42d3-a456-426614174000" }) {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret),
     { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const signature = await crypto.subtle.sign("HMAC", key,
     new TextEncoder().encode(timestamp + "." + nonce + "." + body));
   const hex = [...new Uint8Array(signature)].map(value => value.toString(16).padStart(2, "0")).join("");
   return new Request("https://signer.internal/execute", {
-    method: "POST", headers: { "content-type": "application/json", "x-sentinel-timestamp": timestamp,
+    method: "POST", headers: { "x-sentinel-timestamp": timestamp,
       "x-sentinel-nonce": nonce, "x-sentinel-signature": hex }, body
   });
 }
 
-async function preflightToken(secret, payload) {
-  const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret),
-    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const signature = Buffer.from(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(encoded))).toString("hex");
-  return encoded + "." + signature;
-}
-
-test("isolated signer accepts fresh correctly signed internal requests and rejects tampering", async () => {
+test("isolated signer accepts a fresh correctly signed internal request", async () => {
+  const secret = TEST_SECRET;
   const body = JSON.stringify({ actor: "did:privy:test" });
-  const fresh = await signedRequest({ secret: TEST_SECRET, body });
-  assert.equal(await verifyInternalRequest(fresh, body, { AGENT_SIGNER_HMAC_SECRET: TEST_SECRET }), true);
-  assert.equal(await verifyInternalRequest(fresh, body + " ", { AGENT_SIGNER_HMAC_SECRET: TEST_SECRET }), false);
+  const request = await signedRequest({ secret, body });
+  assert.equal(await verifyInternalRequest(request, body, { AGENT_SIGNER_HMAC_SECRET: secret }), true);
 });
 
-test("isolated signer rejects stale, unsigned and short-secret internal requests", async () => {
-  const body = "{}";
-  const stale = await signedRequest({ secret: TEST_SECRET, body, timestamp: String(Math.floor(Date.now() / 1000) - 120) });
-  assert.equal(await verifyInternalRequest(stale, body, { AGENT_SIGNER_HMAC_SECRET: TEST_SECRET }), false);
-  const short = "short-secret";
-  const shortSigned = await signedRequest({ secret: short, body });
-  assert.equal(await verifyInternalRequest(shortSigned, body, { AGENT_SIGNER_HMAC_SECRET: short }), false);
+test("isolated signer rejects stale, tampered, and unsigned internal requests", async () => {
+  const secret = TEST_SECRET;
+  const body = JSON.stringify({ actor: "did:privy:test" });
+  const stale = await signedRequest({ secret, body, timestamp: String(Math.floor(Date.now() / 1000) - 120) });
+  assert.equal(await verifyInternalRequest(stale, body, { AGENT_SIGNER_HMAC_SECRET: secret }), false);
+  const fresh = await signedRequest({ secret, body });
+  assert.equal(await verifyInternalRequest(fresh, body + " ", { AGENT_SIGNER_HMAC_SECRET: secret }), false);
+  assert.equal(await verifyInternalRequest(fresh, body, {}), false);
 });
 
-test("nonce ledger rejects a duplicate internal request nonce", async () => {
-  const seen = new Set();
-  const env = { DB2: { prepare(sql) {
-    return { bind(nonce) { return { async run() {
-      if (sql.startsWith("INSERT") && seen.has(nonce)) throw new Error("UNIQUE constraint");
-      if (sql.startsWith("INSERT")) seen.add(nonce);
-      return { meta: { changes: 1 } };
-    } }; } };
-  } } };
-  assert.equal(await reserveNonce(env, ID), true);
-  assert.equal(await reserveNonce(env, ID), false);
-});
-
-test("amount conversion accepts only exact microNEAR precision", () => {
-  assert.equal(nearToMicro("0.01"), 10000);
-  assert.equal(nearToMicro("0.000001"), 1);
-  assert.equal(nearToMicro("0.0000001"), null);
-  assert.equal(nearToMicro("1e-6"), null);
-  assert.equal(nearToMicro("-0.1"), null);
-});
-
-test("signer kill switch denies before touching D1", async () => {
-  const result = await prepareWalletTransfer({
-    intent: { receiver_account: RECEIVER, amount_near: 0.01, rationale: "test" },
-    actor: "did:privy:test", idempotency_key: ID, approval_id: APPROVAL,
-    wallet_account: WALLET, preflight_token: "invalid"
-  }, { sub: "did:privy:test" }, { NEAR_NETWORK: "testnet", NEAR_AGENT_KILL_SWITCH: "true" });
-  assert.equal(result.reason, "KILL_SWITCH_ACTIVE");
-});
-
-test("wallet transfer preparation verifies signed ALLOW token and reserves daily spend before broadcast", async () => {
-  const now = Date.now();
-  const payload = {
-    approval_id: APPROVAL, actor: "did:privy:test", wallet_account: WALLET,
-    receiver_account: RECEIVER, amount_micro: 10000, expires_at: EXPIRY,
-    issued_at: now, nonce: "123e4567-e89b-42d3-a456-426614174002",
-    idempotency_key: ID, decision: "ALLOW", risk_score: 0
-  };
-  const token = await preflightToken(TEST_SECRET, payload);
-  const operations = [];
-  const env = {
-    NEAR_NETWORK: "testnet", NEAR_AGENT_KILL_SWITCH: "false",
-    NEAR_AGENT_ALLOWED_RECEIVERS: RECEIVER, NEAR_AGENT_MAX_PAYMENT_NEAR: "0.1",
-    NEAR_AGENT_MAX_DAILY_NEAR: "0.2", AGENT_SIGNER_HMAC_SECRET: TEST_SECRET,
-    DB: { prepare(sql) { return { bind() { return { async first() {
-      assert.match(sql, /status='PENDING'/);
-      return { expires_at: EXPIRY };
-    } }; } }; } },
-    DB2: { prepare(sql) { return { bind(...args) { return {
-      async run() {
-        operations.push({ sql, args });
-        if (sql.includes("signer_nonces")) return { meta: { changes: 1 } };
-        if (sql.includes("agent_execution")) return { meta: { changes: 1 } };
-        return { meta: { changes: 1 } };
-      },
-      async first() { return null; }
-    }; } }; } }
-  };
-  const result = await prepareWalletTransfer({
-    intent: { receiver_account: RECEIVER, amount_near: 0.01, rationale: "test" },
-    actor: "did:privy:test", idempotency_key: ID, approval_id: APPROVAL,
-    wallet_account: WALLET, preflight_token: token
-  }, { sub: "did:privy:test" }, env);
-  assert.equal(result.status, "READY_TO_SIGN");
-  assert.ok(operations.some(item => item.sql.includes("agent_execution")));
-});
-
-test("approval claim matches pending receiver and amount and records one-time claim", async () => {
-  const inserts = [];
-  const env = {
-    DB: { prepare(sql) {
-      return { bind(...args) { return { async first() {
-        assert.match(sql, /status='APPROVING'/);
-        return { receiver_account: RECEIVER, amount_micro: 10000 };
-      } }; } };
-    } },
-    DB2: { prepare(sql) {
-      return { bind(...args) { return { async run() { inserts.push({ sql, args }); return { meta: { changes: 1 } }; } }; } };
-    } }
-  };
-  await claimApproval(env, { approvalId: APPROVAL, idempotencyKey: ID,
-    actor: "did:privy:test", receiver: RECEIVER, amountMicro: 10000 });
-  assert.equal(inserts.length, 1);
-  await assert.rejects(() => claimApproval(env, { approvalId: APPROVAL, idempotencyKey: ID,
-    actor: "did:privy:test", receiver: "attacker.testnet", amountMicro: 10000 }), /HUMAN_APPROVAL_NOT_VERIFIED/);
-});
-
-test("signer endpoint rejects requests without internal authentication", async () => {
+test("isolated signer endpoint rejects requests without internal authentication", async () => {
   const response = await signerWorker.fetch(new Request("https://signer.internal/execute", {
     method: "POST", headers: { "content-type": "application/json" }, body: "{}"
   }), { DB: {}, DB2: {} });
@@ -144,15 +42,182 @@ test("signer endpoint rejects requests without internal authentication", async (
   assert.equal((await response.json()).error, "INVALID_INTERNAL_AUTH");
 });
 
+test("isolated signer converts only exact microNEAR precision", () => {
+  assert.equal(nearToMicro("0.01"), 10000);
+  assert.equal(nearToMicro("0.000001"), 1);
+  assert.equal(nearToMicro("0.0000001"), null);
+  assert.equal(nearToMicro("1e-6"), null);
+  assert.equal(nearToMicro("-0.1"), null);
+});
+
+test("nonce ledger rejects a duplicate internal request nonce", async () => {
+  const seen = new Set();
+  const env = { DB2: { prepare() {
+    return { bind(nonce) { return { async run() {
+      if (seen.has(nonce)) throw new Error("UNIQUE constraint");
+      seen.add(nonce);
+      return { meta: { changes: 1 } };
+    } }; } };
+  } } };
+  assert.equal(await reserveNonce(env, "123e4567-e89b-42d3-a456-426614174000"), true);
+  assert.equal(await reserveNonce(env, "123e4567-e89b-42d3-a456-426614174000"), false);
+});
+
+test("signer kill switch denies before reading key material or touching D1", async () => {
+  const result = await execute({
+    intent: { receiver_account: "rawvest6817.testnet", amount_near: 0.01 },
+    actor: "did:privy:test",
+    idempotency_key: "123e4567-e89b-42d3-a456-426614174000",
+    approval_id: "123e4567-e89b-42d3-a456-426614174001"
+  }, "Bearer test", { sub: "did:privy:test" }, {
+    NEAR_NETWORK: "testnet",
+    NEAR_AGENT_KILL_SWITCH: "true"
+  });
+  assert.equal(result.executed, false);
+  assert.equal(result.reason, "KILL_SWITCH_ACTIVE");
+});
+
+test("signer rejects missing wallet signature and mismatched approval intent", async () => {
+  const env = {
+    DB: { prepare(sql) {
+      assert.match(sql, /^SELECT id, actor/);
+      return { bind(...args) { return { async first() {
+        return { id: args[0], actor: args[1], receiver_account: "rawvest6817.testnet",
+          amount_micro: 10000, status: "APPROVING", expires_at: "2026-11-10 05:00:00" };
+      } }; } };
+    } },
+    DB2: { prepare() { throw new Error("DB2 must not be touched before signature validation"); } }
+  };
+  const claim = { approvalId: "123e4567-e89b-42d3-a456-426614174000",
+    idempotencyKey: "123e4567-e89b-42d3-a456-426614174001",
+    actor: "did:privy:test", receiver: "rawvest6817.testnet", amountMicro: 10000 };
+  await assert.rejects(() => claimApproval(env, claim), /WALLET_SIGNATURE_REQUIRED/);
+  await assert.rejects(() => claimApproval(env, { ...claim, amountMicro: 20000 }), /HUMAN_APPROVAL_NOT_VERIFIED/);
+});
+
+test("internal HMAC rejects short secrets and non-canonical timestamps", async () => {
+  const body = "{}";
+  const shortSecret = "not-a-256-bit-secret";
+  const signed = await signedRequest({ secret: shortSecret, body });
+  assert.equal(await verifyInternalRequest(signed, body, { AGENT_SIGNER_HMAC_SECRET: shortSecret }), false);
+  const longSecret = TEST_SECRET;
+  const exponentTimestamp = await signedRequest({ secret: longSecret, body, timestamp: "1.78e9" });
+  assert.equal(await verifyInternalRequest(exponentTimestamp, body, { AGENT_SIGNER_HMAC_SECRET: longSecret }), false);
+});
+
 test("signer body limit counts UTF-8 bytes and rejects non-JSON content types", async () => {
+  const multibyteBody = JSON.stringify({ prompt: "🛡".repeat(3000) });
   const oversized = new Request("https://signer.internal/execute", {
-    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt: "🛡".repeat(3000) })
+    method: "POST", headers: { "content-type": "application/json" }, body: multibyteBody
   });
   const tooLarge = await readBoundedSignerBody(oversized, 8000);
   assert.equal(tooLarge.ok, false);
   assert.equal(tooLarge.status, 413);
+  assert.equal(tooLarge.reason, "REQUEST_TOO_LARGE");
+
   const wrongType = new Request("https://signer.internal/execute", {
     method: "POST", headers: { "content-type": "text/plain" }, body: "{}"
   });
-  assert.equal((await readBoundedSignerBody(wrongType, 8000)).reason, "JSON_CONTENT_TYPE_REQUIRED");
+  const rejectedType = await readBoundedSignerBody(wrongType, 8000);
+  assert.equal(rejectedType.ok, false);
+  assert.equal(rejectedType.status, 415);
+  assert.equal(rejectedType.reason, "JSON_CONTENT_TYPE_REQUIRED");
+});
+
+test("signer endpoint rejects oversized UTF-8 payload before authentication work", async () => {
+  const oversized = new Request("https://signer.internal/execute", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ prompt: "🛡".repeat(3000) })
+  });
+  const response = await signerWorker.fetch(oversized, { DB: {}, DB2: {} });
+  assert.equal(response.status, 413);
+  assert.equal((await response.json()).error, "REQUEST_TOO_LARGE");
+});
+
+
+test("signer accepts only the exact pay-only FunctionCall key scope", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => new Response(JSON.stringify({ result: {
+      permission: { FunctionCall: {
+        receiver_id: "sentinel-pay.testnet",
+        method_names: ["pay"],
+        allowance: "250000000000000000000000"
+      } }
+    } }), { status: 200, headers: { "content-type": "application/json" } });
+    const scope = await assertRestrictedFunctionCallKey(
+      "sentinel-signer.testnet", "ed25519:11111111111111111111111111111111", "sentinel-pay.testnet"
+    );
+    assert.deepEqual(scope, { receiver_id: "sentinel-pay.testnet", method_names: ["pay"] });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("signer rejects FullAccess, another contract, and extra FunctionCall methods", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    for (const permission of [
+      "FullAccess",
+      { FunctionCall: { receiver_id: "other.testnet", method_names: ["pay"] } },
+      { FunctionCall: { receiver_id: "sentinel-pay.testnet", method_names: ["pay", "withdraw"] } }
+    ]) {
+      globalThis.fetch = async () => new Response(JSON.stringify({ result: { permission } }), {
+        status: 200, headers: { "content-type": "application/json" }
+      });
+      await assert.rejects(() => assertRestrictedFunctionCallKey(
+        "sentinel-signer.testnet", "ed25519:11111111111111111111111111111111", "sentinel-pay.testnet"
+      ), /SIGNER_REQUIRES_CONTRACT_SCOPED_FUNCTION_CALL_KEY/);
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("final payout verification requires exact contract call and successful native transfer receipt", async () => {
+  const originalFetch = globalThis.fetch;
+  const args = Buffer.from(JSON.stringify({
+    receiver_id: "receiver.testnet",
+    amount_yocto: "10000000000000000000000",
+    approval_id: "approval-123"
+  })).toString("base64");
+  try {
+    globalThis.fetch = async (_url, init) => {
+      const request = JSON.parse(init.body);
+      if (request.method === "tx") {
+        return new Response(JSON.stringify({ result: {
+          transaction: {
+            signer_id: "sentinel-signer.testnet",
+            receiver_id: "sentinel-pay.testnet",
+            actions: [{ FunctionCall: { method_name: "pay", args } }]
+          },
+          status: { SuccessValue: "" },
+          transaction_outcome: { block_hash: "block-hash" },
+          receipts_outcome: [{ id: "payout-receipt", outcome: { status: { SuccessValue: "" } } }]
+        } }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (request.method === "EXPERIMENTAL_receipt") {
+        return new Response(JSON.stringify({ result: {
+          predecessor_id: "sentinel-pay.testnet",
+          receiver_id: "receiver.testnet",
+          receipt: { Action: { actions: [{ Transfer: { deposit: "10000000000000000000000" } }] } }
+        } }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      throw new Error("Unexpected RPC method");
+    };
+    const verified = await verifyFinalTransfer(
+      "11111111111111111111111111111111",
+      "sentinel-signer.testnet",
+      "sentinel-pay.testnet",
+      "receiver.testnet",
+      "10000000000000000000000",
+      "approval-123"
+    );
+    assert.equal(verified.verified, true);
+    assert.equal(verified.receiver_account, "receiver.testnet");
+    assert.equal(verified.amount_yocto, "10000000000000000000000");
+    assert.equal(verified.payment_receipt_id, "payout-receipt");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
