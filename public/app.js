@@ -772,6 +772,13 @@ function renderAgentResult(data) {
   const hasPaymentContext = Boolean(proposal.receiver_account || proposal.amount_near != null || approvalId || txHash);
   const showStatusCard = status !== 'NO_PAYMENT_PROPOSED' && (hasPaymentContext || data.sentinel || data.investigation || status === 'DENIED');
   const walletCanApprove = Boolean(connectedAccount && connectedAccount.endsWith('.testnet'));
+  const recipientCard = proposal.receiver_account
+    ? '<section class="agent-recipient-track-card" id="agentRecipientTrackCard" data-account="' + escapeHtml(proposal.receiver_account) + '">' +
+      '<div class="agent-recipient-track-head"><span class="agent-recipient-near-mark" aria-label="NEAR Protocol"><svg viewBox="0 0 24 24" role="img" aria-label="NEAR"><path d="M21.443 0c-.89 0-1.714.46-2.18 1.218l-5.017 7.448a.533.533 0 0 0 .792.7l4.938-4.282a.2.2 0 0 1 .334.151v13.41a.2.2 0 0 1-.354.128L5.03.905A2.555 2.555 0 0 0 3.078 0h-.521A2.557 2.557 0 0 0 0 2.557v18.886a2.557 2.557 0 0 0 4.736 1.338l5.017-7.448a.533.533 0 0 0-.792-.7l-4.938 4.283a.2.2 0 0 1-.333-.152V5.352a.2.2 0 0 1 .354-.128l14.924 17.87c.486.574 1.2.905 1.952.906h.521A2.558 2.558 0 0 0 24 21.445V2.557A2.558 2.558 0 0 0 21.443 0Z" fill="currentColor"/></svg></span><div><b>RECIPIENT · TRACK WALLET</b><span>NEAR TESTNET</span></div><span class="agent-recipient-live-state" id="agentRecipientTrackState">Checking RPC…</span></div>' +
+      '<div class="agent-recipient-account" id="agentRecipientTrackAccount">' + escapeHtml(proposal.receiver_account) + '</div>' +
+      '<div class="agent-recipient-balance-label">ON-CHAIN AVAILABLE BALANCE</div><div class="agent-recipient-balance" id="agentRecipientTrackBalance">Loading…</div>' +
+      '<div class="agent-recipient-track-foot"><span id="agentRecipientTrackBlock">Live NEAR Testnet RPC</span><a id="agentRecipientTrackExplorer" href="https://testnet.nearblocks.io/" target="_blank" rel="noopener noreferrer">Open wallet ↗</a></div></section>'
+    : '';
   const agentCard = showStatusCard
     ? '<section class="telegram-agent-status">' +
       '<div class="agent-proposal-top"><div class="agent-proposal-brand"><span class="agent-proposal-icon">◈</span><span>' + (hasPaymentContext ? 'PAYMENT PROPOSAL · SENTINEL' : 'SENTINEL SECURITY RESULT') + '</span></div>' +
@@ -779,7 +786,7 @@ function renderAgentResult(data) {
       ((hasPaymentContext || data.sentinel) ? '<div class="agent-proposal-values">' +
         (proposal.receiver_account ? '<div class="agent-proposal-field"><span>RECIPIENT ACCOUNT</span><b>' + escapeHtml(proposal.receiver_account) + '</b></div>' : '') +
         (proposal.amount_near != null ? '<div class="agent-proposal-field amount"><span>PAYMENT AMOUNT</span><b>' + escapeHtml(String(proposal.amount_near)) + ' <small>NEAR</small></b></div>' : '') +
-      '</div>' : '') +
+      '</div>' : '') + recipientCard +
       (status === 'DENIED' && policyReason ? '<div class="agent-policy-reason"><span>POLICY REASON · ' + escapeHtml(policyReason) + '</span>' + (policyReasonText ? '<p>' + escapeHtml(policyReasonText) + '</p>' : '') + '</div>' : '') +
       ((data.sentinel?.decision || data.sentinel?.risk_score != null) ? '<div class="agent-result-grid">' +
         (data.sentinel?.decision ? '<div><span>SENTINEL VERDICT</span><b>' + escapeHtml(verdict) + '</b></div>' : '') +
@@ -790,8 +797,8 @@ function renderAgentResult(data) {
       (txHash ? '<p class="agent-result-hash">TRANSACTION HASH · ' + escapeHtml(txHash) + '</p>' : '') + txLink +
       (approvalId ? '<div class="agent-approval"><p>Review the recipient and amount above. Sentinel will ask your connected NEAR Testnet wallet to sign an approval for this exact proposal. Signing this message does not itself transfer funds.</p><div class="agent-approval-actions">' +
         (walletCanApprove
-          ? '<button type="button" class="primary-btn" id="approveAgentPayment">Review & sign approval <b>↗</b></button>'
-          : '<button type="button" class="primary-btn" id="connectAgentWallet">Connect NEAR Testnet wallet <b>↗</b></button>') +
+          ? '<button type="button" class="primary-btn" id="approveAgentPayment">Open NEAR wallet & sign <b>↗</b></button>'
+          : '<button type="button" class="primary-btn" id="connectAgentWallet">Open NEAR wallet <b>↗</b></button>') +
         '</div></div>' : '') +
       '</section>' : '';
   result.innerHTML = '<div class="guest-chat-transcript telegram-chat-transcript" aria-label="Sentinel AI conversation">' +
@@ -800,6 +807,33 @@ function renderAgentResult(data) {
   result.classList.remove('agent-result-enter');
   void result.offsetWidth;
   result.classList.add('agent-result-enter');
+  const recipientTrackCard = $('agentRecipientTrackCard');
+  if (recipientTrackCard) {
+    const trackedAccount = recipientTrackCard.dataset.account || '';
+    request('/wallet?account_id=' + encodeURIComponent(trackedAccount)).then(walletData => {
+      if (!recipientTrackCard.isConnected || recipientTrackCard.dataset.account !== trackedAccount) return;
+      const balance = $('agentRecipientTrackBalance');
+      const state = $('agentRecipientTrackState');
+      const block = $('agentRecipientTrackBlock');
+      const explorer = $('agentRecipientTrackExplorer');
+      if (walletData.account_exists) {
+        balance.textContent = Number(walletData.balance_near).toLocaleString('en-US', { maximumFractionDigits: 6 }) + ' NEAR';
+        state.textContent = 'ACCOUNT ACTIVE';
+        block.textContent = 'Finalized block ' + Number(walletData.block_height).toLocaleString('en-US');
+        explorer.href = walletData.explorer_url || 'https://testnet.nearblocks.io/address/' + encodeURIComponent(trackedAccount);
+      } else {
+        balance.textContent = 'Account not found';
+        state.textContent = 'NOT FOUND';
+        block.textContent = 'Not present on NEAR Testnet RPC';
+        explorer.hidden = true;
+      }
+    }).catch(() => {
+      if (!recipientTrackCard.isConnected || recipientTrackCard.dataset.account !== trackedAccount) return;
+      $('agentRecipientTrackBalance').textContent = 'Unavailable';
+      $('agentRecipientTrackState').textContent = 'RPC UNAVAILABLE';
+      $('agentRecipientTrackBlock').textContent = 'Could not verify live account data';
+    });
+  }
   if (approvalId && !walletCanApprove) {
     const connectButton = $('connectAgentWallet');
     connectButton?.addEventListener('click', async () => {
@@ -819,7 +853,7 @@ function renderAgentResult(data) {
         renderAgentResult(data);
       } catch (error) {
         connectButton.disabled = false;
-        connectButton.textContent = 'Connect NEAR Testnet wallet ↗';
+        connectButton.textContent = 'Open NEAR wallet ↗';
         toast(error.message || 'Wallet connection cancelled or unavailable.');
       }
     });
