@@ -67,3 +67,19 @@ This can be stronger than relying on a TEE alone because a compromised or correc
 The existing nine-check local stress lab remains local SQLite / simulated HTTP / modeled RPC / synthetic E2E evidence. It did not hit Cloudflare D1, submit NEAR transactions, or test a hardware attestation verifier. Existing 146 unit tests and HTTP smoke checks are useful regression evidence but do not establish the experiments in this plan.
 
 **Next gate:** inspect the actual `migrations-d1` and `migrations-signer` schemas, then add a dedicated integration harness for deployed D1. Do not publish a D1 concurrency pass until the raw deployed test results exist.
+
+
+## Added regression fixtures (not yet executed in this environment)
+
+Branch `research/beyond-tee-proof-carrying-execution` now includes `tests/final-transfer-verification.test.mjs`, with deterministic RPC fixtures for:
+
+- one exact successful native transfer and successful receipt;
+- wrong signer, wrong receiver, wrong yocto amount, and extra action;
+- failed top-level transaction status, failed receipt, and missing receipts;
+- malformed transaction hash rejected before RPC.
+
+These are source-level test cases only. They are **not a test pass** until run by Node in the repository environment and the output is captured. They do not substitute for a real Testnet payout or a D1 concurrency test.
+
+## Evidence intake status
+
+The expected path `docs/evidence/near-explorer-success.png` was checked on `main` and was not found. No Explorer screenshot or transaction proof is included in this branch at this time. Upload location/path must be confirmed before the image can be reviewed. Do not report a payment as verified based on an upload confirmation alone.
