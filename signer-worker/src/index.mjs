@@ -122,10 +122,14 @@ async function reserveSpend(env, { idempotencyKey, actor, receiver, amountMicro,
   const result = await env.DB2.prepare(
     "INSERT INTO agent_execution (idempotency_key, actor, receiver_account, amount_micro, status, created_at, updated_at) " +
     "SELECT ?, ?, ?, ?, 'PENDING', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP " +
-    "WHERE (SELECT COALESCE(SUM(amount_micro), 0) FROM agent_execution WHERE date(created_at)=date('now') AND status IN ('PENDING','EXECUTED','UNKNOWN')) + ? <= ?"
+    "WHERE (SELECT COALESCE(SUM(amount_micro), 0) FROM agent_execution WHERE date(created_at)=date('now') AND (status IN ('EXECUTED','UNKNOWN') OR (status='PENDING' AND created_at > datetime('now', '-10 minutes')))) + ? <= ?"
   ).bind(idempotencyKey, actor, receiver, amountMicro, amountMicro, dailyCapMicro).run();
   if (result.meta?.changes === 1) return true;
-  const prior = await env.DB2.prepare("SELECT idempotency_key FROM agent_execution WHERE idempotency_key = ?").bind(idempotencyKey).first();
+  const prior = await env.DB2.prepare(
+    "SELECT actor, receiver_account, amount_micro, status FROM agent_execution WHERE idempotency_key = ?"
+  ).bind(idempotencyKey).first();
+  if (prior && prior.actor === actor && prior.receiver_account === receiver &&
+      Number(prior.amount_micro) === amountMicro && prior.status === "PENDING") return true;
   throw new Error(prior ? "IDEMPOTENCY_KEY_REUSED" : "DAILY_SPEND_LIMIT_REACHED");
 }
 async function setState(env, key, state, hash = null) {
@@ -203,10 +207,49 @@ async function verifyPreflightToken(token, env, expected) {
       String(payload.expires_at) !== String(expected.expiresAt) ||
       payload.approval_id !== expected.approvalId || payload.actor !== expected.actor ||
       payload.wallet_account !== expected.walletAccount || payload.receiver_account !== expected.receiver ||
+      payload.idempotency_key !== expected.idempotencyKey ||
       Number(payload.amount_micro) !== expected.amountMicro) {
     throw new Error("PREFLIGHT_TOKEN_MISMATCH_OR_EXPIRED");
   }
   return payload;
+}
+
+export async function prepareWalletTransfer(payload, identity, env) {
+  const { intent, idempotency_key: idempotencyKey, approval_id: approvalId,
+    wallet_account: walletAccount, preflight_token: preflightToken } = payload;
+  if (!UUID_RE.test(String(idempotencyKey || ""))) return deny("INVALID_IDEMPOTENCY_KEY");
+  if (!UUID_RE.test(String(approvalId || ""))) return deny("INVALID_APPROVAL_ID");
+  if (env.NEAR_NETWORK !== "testnet") return deny("TESTNET_ONLY");
+  if (env.NEAR_AGENT_KILL_SWITCH !== "false") return deny("KILL_SWITCH_ACTIVE");
+  if (payload.actor !== identity.sub) return deny("ACTOR_MISMATCH");
+  if (!env.DB || !env.DB2) return deny("EXECUTION_DATABASE_UNAVAILABLE");
+  if (!/^[a-z0-9._-]{2,64}\\.testnet$/.test(String(walletAccount || ""))) return deny("WALLET_ACCOUNT_MUST_BE_TESTNET");
+  const validated = validatePaymentIntent(intent, env);
+  if (!validated.ok) return deny(validated.reason);
+  const amountMicro = nearToMicro(intent.amount_near);
+  const paymentCap = nearToMicro(env.NEAR_AGENT_MAX_PAYMENT_NEAR);
+  const dailyCap = nearToMicro(env.NEAR_AGENT_MAX_DAILY_NEAR);
+  if (!amountMicro || amountMicro > HARD_MAX_PAYMENT_MICRO || !paymentCap || amountMicro > paymentCap) return deny("HARD_PAYMENT_LIMIT_EXCEEDED");
+  if (!dailyCap || dailyCap > HARD_MAX_DAILY_MICRO) return deny("DAILY_CAP_UNCONFIGURED_OR_TOO_HIGH");
+  const pending = await env.DB.prepare(
+    "SELECT expires_at FROM agent_pending_approvals WHERE id=? AND actor=? AND status='PENDING'"
+  ).bind(approvalId, identity.sub).first();
+  if (!pending) return deny("HUMAN_APPROVAL_NOT_VERIFIED");
+  let tokenPayload;
+  try {
+    tokenPayload = await verifyPreflightToken(preflightToken, env, {
+      approvalId, actor: identity.sub, walletAccount, receiver: validated.receiver_account,
+      amountMicro, idempotencyKey, expiresAt: pending.expires_at
+    });
+  } catch (error) { return deny(error?.message || "PREFLIGHT_TOKEN_INVALID"); }
+  if (!await reserveNonce(env, "preflight:" + tokenPayload.nonce)) return deny("PREFLIGHT_TOKEN_REPLAYED");
+  try {
+    await reserveSpend(env, { idempotencyKey, actor: identity.sub, receiver: validated.receiver_account,
+      amountMicro, dailyCapMicro: dailyCap });
+  } catch (error) { return deny(error?.message || "SPEND_RESERVATION_FAILED"); }
+  return { executed: false, status: "READY_TO_SIGN", reason: "WALLET_TRANSFER_SPEND_RESERVED",
+    idempotency_key: idempotencyKey, receiver_account: validated.receiver_account,
+    amount_near: microToNearString(amountMicro), network: "testnet" };
 }
 
 export async function execute(payload, authorizationHeader, identity, env) {
@@ -235,7 +278,7 @@ export async function execute(payload, authorizationHeader, identity, env) {
     if (!pending) return deny("HUMAN_APPROVAL_NOT_VERIFIED");
     tokenPayload = await verifyPreflightToken(preflightToken, env, {
       approvalId, actor: identity.sub, walletAccount, receiver: validated.receiver_account,
-      amountMicro, expiresAt: pending.expires_at
+      amountMicro, idempotencyKey, expiresAt: pending.expires_at
     });
   } catch (error) {
     return deny(error?.message || "PREFLIGHT_TOKEN_INVALID");
@@ -255,10 +298,6 @@ export async function execute(payload, authorizationHeader, identity, env) {
   }
 
   try {
-    if (!await reserveNonce(env, "preflight:" + tokenPayload.nonce)) {
-      await setState(env, idempotencyKey, "FAILED");
-      return deny("PREFLIGHT_TOKEN_REPLAYED");
-    }
     const verification = await verifyFinalTransfer(transactionHash, walletAccount,
       validated.receiver_account, (BigInt(amountMicro) * 1_000_000_000_000n).toString());
     await setState(env, idempotencyKey, "EXECUTED", transactionHash);
@@ -276,7 +315,7 @@ export async function execute(payload, authorizationHeader, identity, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (request.method !== "POST" || url.pathname !== "/execute") return json({ error: "NOT_FOUND" }, 404);
+    if (request.method !== "POST" || !["/execute", "/prepare"].includes(url.pathname)) return json({ error: "NOT_FOUND" }, 404);
     if (!env.DB || !env.DB2) return json({ error: "SIGNER_DATABASE_UNAVAILABLE" }, 503);
     const boundedBody = await readBoundedSignerBody(request, 8000);
     if (!boundedBody.ok) return json({ error: boundedBody.reason }, boundedBody.status);
@@ -290,17 +329,21 @@ export default {
     try { payload = JSON.parse(rawBody); } catch { return json({ error: "INVALID_JSON" }, 400); }
     const exactKeys = (value, expected) => value && typeof value === "object" && !Array.isArray(value) &&
       Object.keys(value).sort().join(",") === [...expected].sort().join(",");
-    if (!exactKeys(payload, ["intent", "actor", "idempotency_key", "approval_id", "wallet_account", "transaction_hash", "preflight_token"]) ||
+    const commonKeys = ["intent", "actor", "idempotency_key", "approval_id", "wallet_account", "preflight_token"];
+    const expectedKeys = url.pathname === "/execute" ? [...commonKeys, "transaction_hash"] : commonKeys;
+    if (!exactKeys(payload, expectedKeys) ||
         !exactKeys(payload.intent, ["receiver_account", "amount_near", "rationale"]) ||
         typeof payload.actor !== "string" || payload.actor.length > 128 ||
         typeof payload.intent.receiver_account !== "string" || payload.intent.receiver_account.length > 64 ||
         typeof payload.intent.rationale !== "string" || payload.intent.rationale.length > 500 ||
         typeof payload.wallet_account !== "string" || payload.wallet_account.length > 64 ||
-        typeof payload.transaction_hash !== "string" || payload.transaction_hash.length > 128 ||
-        typeof payload.preflight_token !== "string" || payload.preflight_token.length > 4096) {
+        typeof payload.preflight_token !== "string" || payload.preflight_token.length > 4096 ||
+        (url.pathname === "/execute" && (typeof payload.transaction_hash !== "string" || payload.transaction_hash.length > 128))) {
       return json({ error: "INVALID_PAYLOAD_SCHEMA" }, 400);
     }
-    const result = await execute(payload, request.headers.get("authorization") || "", identity, env);
+    const result = url.pathname === "/prepare"
+      ? await prepareWalletTransfer(payload, identity, env)
+      : await execute(payload, request.headers.get("authorization") || "", identity, env);
     return json(result, 200);
   }
 };
