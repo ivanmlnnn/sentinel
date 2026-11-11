@@ -112,9 +112,17 @@ export async function onRequestPost({ request, env }) {
       });
       const response = await runTrustedInvestigation({ request: preflightRequest, env, actor: identity.sub });
       assessment = await response.json().catch(() => null);
-      if (!response.ok) throw new Error("PREFLIGHT_FAILED");
-    } catch {
-      return json({ status: "DENIED", reason: "PREFLIGHT_UNAVAILABLE", execution_enabled: false }, 503);
+      if (!response.ok) {
+        const upstreamError = typeof assessment?.error === "string" ? assessment.error : "PREFLIGHT_FAILED";
+        const upstreamDetail = typeof assessment?.detail === "string" ? assessment.detail : null;
+        console.error("Sentinel approval preflight rejected:", response.status, upstreamError, upstreamDetail);
+        return json({ status: "DENIED", reason: "PREFLIGHT_FAILED", upstream_status: response.status,
+          upstream_error: upstreamError, upstream_detail: upstreamDetail, execution_enabled: false }, 503);
+      }
+    } catch (error) {
+      console.error("Sentinel approval preflight unavailable:", error);
+      return json({ status: "DENIED", reason: "PREFLIGHT_UNAVAILABLE",
+        detail: error instanceof Error ? error.message : "Unknown preflight exception", execution_enabled: false }, 503);
     }
     const policy = evaluateAgentAuthorization({ intent, assessment, env });
     if (!policy.authorized) {
