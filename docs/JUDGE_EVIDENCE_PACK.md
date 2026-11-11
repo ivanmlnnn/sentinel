@@ -4,8 +4,6 @@
 
 ## Current production deployment — 12 November 2026
 
-## Current production deployment — 12 November 2026
-
 The current production Workers were deployed directly with Wrangler from the local repository, not by a GitHub Actions deployment queue.
 
 | Component | Production URL | Deployed version |
