@@ -60,7 +60,7 @@ test("Turnstile Siteverify receives secret, token, and Cloudflare client IP serv
     capturedForm = new URLSearchParams(init.body);
     return new Response(JSON.stringify({
       success: true,
-      hostname: "sentinel.ivmalidin.workers.dev",
+      hostname: "sentinel.ivmaladin.workers.dev",
       action: "track_wallet"
     }), { status: 200, headers: { "content-type": "application/json" } });
   });
@@ -70,6 +70,7 @@ test("Turnstile Siteverify receives secret, token, and Cloudflare client IP serv
   assert.equal(capturedForm.get("secret"), "test-secret-not-production");
   assert.equal(capturedForm.get("response"), "lab-token");
   assert.equal(capturedForm.get("remoteip"), "203.0.113.55");
-  // Siteverify succeeded; the request proceeds to the guest investigation handler.
-  assert.notEqual(response.status, 503);
+  const payload = await response.json();
+  assert.notEqual(payload.error, "TURNSTILE_VERIFICATION_FAILED");
+  assert.notEqual(payload.error, "TURNSTILE_UNAVAILABLE");
 });
