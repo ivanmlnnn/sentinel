@@ -70,6 +70,78 @@ function syncWalletUI(accountId, walletName) {
   $('walletConnectionState').textContent = connectedAccount
     ? 'Connected to ' + (connectedWalletName || 'NEAR wallet') + ': ' + connectedAccount + ' — wallet account autofilled.'
     : 'Not connected — enter any public NEAR Testnet account to track it.';
+  if (trackedWallet.value) queueWalletFacts(trackedWallet.value);
+}
+
+let walletFactsTimer = null;
+let walletFactsRequest = 0;
+function queueWalletFacts(account) {
+  window.clearTimeout(walletFactsTimer);
+  const value = String(account || '').trim().toLowerCase();
+  const card = $('walletFactCard');
+  if (!card) return;
+  if (!/^[a-z0-9._-]{2,64}$/.test(value)) { card.classList.add('hidden'); return; }
+  card.classList.remove('hidden');
+  $('walletFactStatus').textContent = 'Reading NEAR Testnet…';
+  $('walletFactBalance').textContent = '···';
+  $('walletFactAccount').textContent = value;
+  walletFactsTimer = window.setTimeout(async () => {
+    const requestId = ++walletFactsRequest;
+    try {
+      const data = await request('/wallet?account_id=' + encodeURIComponent(value));
+      if (requestId !== walletFactsRequest || $('receiver').value.trim().toLowerCase() !== value) return;
+      $('walletFactBalance').textContent = data.account_exists
+        ? Number(data.balance_near).toLocaleString('en-US', { maximumFractionDigits: 4 }) + ' NEAR'
+        : '—';
+      $('walletFactStatus').textContent = data.account_exists ? 'ACCOUNT ACTIVE' : 'ACCOUNT NOT FOUND';
+      $('walletFactNetwork').textContent = 'NEAR TESTNET';
+      $('walletFactExplorer').href = data.explorer_url || 'https://testnet.nearblocks.io/';
+      $('walletFactExplorer').hidden = !data.account_exists;
+      $('walletFactSource').textContent = data.account_exists
+        ? 'Live balance · block ' + Number(data.block_height).toLocaleString('en-US')
+        : 'No account returned by NEAR RPC';
+      card.dataset.exists = data.account_exists ? 'true' : 'false';
+    } catch (error) {
+      if (requestId !== walletFactsRequest) return;
+      $('walletFactBalance').textContent = 'Unavailable';
+      $('walletFactStatus').textContent = 'DATA UNAVAILABLE';
+      $('walletFactSource').textContent = 'NEAR RPC could not verify this account. Retry in a moment.';
+      $('walletFactExplorer').hidden = true;
+    }
+  }, 450);
+}
+function initWalletCardMotion() {
+  const card = $('walletFactCard');
+  const face = $('walletFactFace');
+  if (!card || !face) return;
+  const reset = () => {
+    face.style.setProperty('--tilt-x', '0deg');
+    face.style.setProperty('--tilt-y', '0deg');
+  };
+  card.addEventListener('pointermove', event => {
+    if (event.pointerType === 'touch') return;
+    const rect = face.getBoundingClientRect();
+    const x = (event.clientX - rect.left) / rect.width - 0.5;
+    const y = (event.clientY - rect.top) / rect.height - 0.5;
+    face.style.setProperty('--tilt-x', (-y * 13).toFixed(2) + 'deg');
+    face.style.setProperty('--tilt-y', (x * 16).toFixed(2) + 'deg');
+  });
+  card.addEventListener('pointerleave', reset);
+  $('walletMotionBtn')?.addEventListener('click', async () => {
+    try {
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        const permission = await DeviceOrientationEvent.requestPermission();
+        if (permission !== 'granted') throw new Error('Motion permission was not granted.');
+      }
+      window.addEventListener('deviceorientation', event => {
+        if (!Number.isFinite(event.beta) || !Number.isFinite(event.gamma)) return;
+        face.style.setProperty('--tilt-x', (Math.max(-12, Math.min(12, event.beta - 45))).toFixed(2) + 'deg');
+        face.style.setProperty('--tilt-y', (Math.max(-15, Math.min(15, event.gamma))).toFixed(2) + 'deg');
+      }, { passive: true });
+      $('walletMotionBtn').textContent = 'Motion on';
+      $('walletMotionBtn').disabled = true;
+    } catch (error) { toast('Gyroscope unavailable. Touch and pointer tilt still work.'); }
+  });
 }
 async function initWallet() {
   const button = $('walletBtn');
@@ -538,8 +610,9 @@ $('investigateForm').addEventListener('submit', async event => {
   } catch (error) { toast(error.message); }
   finally { resetTrackWalletTurnstile(); button.innerHTML = 'Track wallet <b>↗</b>'; }
 });
+$('receiver').addEventListener('input', event => queueWalletFacts(event.target.value));
 $('pasteReceiver').addEventListener('click', async () => {
-  try { $('receiver').value = await navigator.clipboard.readText(); }
+  try { $('receiver').value = await navigator.clipboard.readText(); queueWalletFacts($('receiver').value); }
   catch { toast('Clipboard unavailable. Paste the account ID manually.'); }
 });
 $('refreshBtn').addEventListener('click',() => {loadMetrics();loadThreats();toast('Activity refreshed.');});
@@ -886,6 +959,7 @@ if (GUEST_MODE) {
 
 // Wallet connection is independent from Privy login; Guest users may connect a NEAR wallet too.
 initTrackWalletTurnstile();
+initWalletCardMotion();
 initWallet();
 loadMetrics();
 loadThreats();

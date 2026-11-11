@@ -47,6 +47,11 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
    <div class="account-input"><span>near://</span><input id="sender" placeholder="agent.testnet (optional)" autocomplete="off" maxlength="64"></div>
    <p class="wallet-connection-state">Enter the agent account to inspect its prior outgoing interactions with this receiver.</p>
    <p id="walletConnectionState" class="wallet-connection-state" aria-live="polite">Wallet not connected. Public account checks are still available.</p>
+   <section id="walletFactCard" class="wallet-fact-card hidden" aria-live="polite" aria-label="Recipient wallet card">
+    <div class="wallet-fact-card-top"><span>RECIPIENT WALLET</span><button id="walletMotionBtn" type="button">Enable gyro</button></div>
+    <div id="walletFactFace" class="wallet-fact-face"><div class="wallet-fact-card-brand"><span class="wallet-fact-symbol">◈</span><span>NEAR · SENTINEL</span><span id="walletFactNetwork">NEAR TESTNET</span></div><div class="wallet-fact-account-label">ACCOUNT</div><div id="walletFactAccount" class="wallet-fact-account">wallet.testnet</div><div class="wallet-fact-balance-label">AVAILABLE BALANCE</div><div id="walletFactBalance" class="wallet-fact-balance">···</div><div class="wallet-fact-card-bottom"><span id="walletFactStatus">READING ACCOUNT</span><a id="walletFactExplorer" href="https://testnet.nearblocks.io/" target="_blank" rel="noopener noreferrer" hidden>Explorer ↗</a></div></div>
+    <div id="walletFactSource" class="wallet-fact-source">Live data from NEAR RPC</div>
+   </section>
    <div class="turnstile-wrap" aria-label="Cloudflare wallet scan verification"><div id="turnstileTrackWallet" class="cf-turnstile" data-sitekey="0x4AAAAAAF61dFCiIYIOVwRj" data-action="track_wallet"></div><small id="turnstileTrackWalletStatus" role="status" aria-live="polite" data-state="loading">Loading Cloudflare verification…</small><button id="turnstileTrackWalletRetry" type="button" hidden>Retry verification</button></div>
   <div class="scan-submit"><span>◈ Explorer-indexed wallet activity · read-only</span><button class="primary-btn" id="scanBtn" type="submit" disabled aria-describedby="turnstileTrackWalletStatus">Track wallet <b>↗</b></button></div>
   </form>

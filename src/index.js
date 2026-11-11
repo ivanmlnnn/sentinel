@@ -1,5 +1,6 @@
 import { applySecurityHeaders, validateMutationRequest } from "./http-security.mjs";
 import { onRequestGet as metricsGet } from "../functions/api/metrics.js";
+import { onRequestGet as walletGet } from "../functions/api/wallet.js";
 import { onRequestGet as threatsGet, onRequestPost as threatsPost, onRequestVerifyPost as threatsVerifyPost } from "../functions/api/threats.js";
 import { onRequestPost as investigatePost, onRequestGuestPost as guestInvestigatePost } from "../functions/api/investigate.js";
 import { onRequestPost as aiReviewPost } from "../functions/api/ai-review.js";
@@ -12,6 +13,7 @@ import { onRequestPost as privyWebhookPost } from "../functions/api/privy-webhoo
 const MAX_API_BODY_BYTES = 65536;
 const routes = {
   "GET /api/metrics": metricsGet,
+  "GET /api/wallet": walletGet,
   "GET /api/threats": threatsGet,
   "POST /api/threats": threatsPost,
   "POST /api/threats/verify": threatsVerifyPost,
