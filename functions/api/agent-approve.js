@@ -83,7 +83,7 @@ export async function onRequestPost({ request, env }) {
   const approvalId = String(body?.approval_id || "");
   const walletAccount = String(body?.wallet_account || "").trim().toLowerCase();
   if (!UUID_RE.test(approvalId)) return json({ error: "INVALID_APPROVAL_ID" }, 400);
-  if (!/^[a-z0-9._-]{2,64}\\.testnet$/.test(walletAccount)) return json({ error: "WALLET_ACCOUNT_MUST_BE_TESTNET" }, 400);
+  if (!/^[a-z0-9._-]{2,64}\.testnet$/.test(walletAccount)) return json({ error: "WALLET_ACCOUNT_MUST_BE_TESTNET" }, 400);
 
   const pending = await env.DB.prepare(
     "SELECT id, actor, receiver_account, amount_micro, rationale, status, expires_at FROM agent_pending_approvals WHERE id=? AND actor=?"
