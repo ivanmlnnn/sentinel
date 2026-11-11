@@ -34,6 +34,9 @@
     ]
   },
   "vars": {
-    "NEAR_NETWORK": "testnet"
+    "NEAR_NETWORK": "testnet",
+    "NEAR_AGENT_ALLOWED_RECEIVERS": "rawvest6817.testnet",
+    "NEAR_AGENT_MAX_PAYMENT_NEAR": "0.1",
+    "NEAR_AGENT_MAX_DAILY_NEAR": "0.2"
   }
 }
