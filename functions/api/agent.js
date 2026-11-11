@@ -36,6 +36,35 @@ function amountToMicro(value) {
   const result = BigInt(whole) * 1_000_000n + BigInt((fraction + "000000").slice(0, 6));
   return result > 0n && result <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(result) : null;
 }
+function parseSimpleGreeting(prompt) {
+  return /^(?:hi|hello|hey|halo|hai|alo|pagi|siang|sore|malam)[!.?,\s]*$/i.test(String(prompt || "").trim());
+}
+
+export function parseExplicitPaymentProposal(prompt) {
+  const text = String(prompt || "").trim();
+  const patterns = [
+    { regex: /^(?:please\s+)?(?:create|make|propose|buat|ajukan)\s+(?:a\s+)?payment\s+proposal\s+to\s+([a-z0-9]+(?:[-_.][a-z0-9]+)*)\s+for\s+((?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?)\s*(?:near|Ⓝ)$/i, amount: 2, receiver: 1 },
+    { regex: /^(?:please\s+)?(?:(?:i\s+(?:want|would like)\s+to\s+)?(?:send|transfer))\s+((?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?)\s*(?:near|Ⓝ)\s+to\s+([a-z0-9]+(?:[-_.][a-z0-9]+)*)$/i, amount: 1, receiver: 2 },
+    { regex: /^(?:please\s+)?(?:(?:i\s+(?:want|would like)\s+to\s+)?(?:send|transfer))\s+(?:to\s+)?([a-z0-9]+(?:[-_.][a-z0-9]+)*)\s+(?:an?\s+amount\s+of\s+)?((?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?)\s*(?:near|Ⓝ)$/i, amount: 2, receiver: 1 },
+    { regex: /^(?:saya\s+)?(?:mau|ingin|hendak)\s+(?:mengirim|kirim|transfer)\s+(?:near\s+)?(?:ke\s+)?([a-z0-9]+(?:[-_.][a-z0-9]+)*)\s+(?:sebesar\s+)?((?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?)\s*(?:near|Ⓝ)$/i, amount: 2, receiver: 1 },
+    { regex: /^(?:saya\s+)?(?:mau|ingin|hendak)\s+(?:mengirim|kirim|transfer)\s+((?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?)\s*(?:near|Ⓝ)\s+ke\s+([a-z0-9]+(?:[-_.][a-z0-9]+)*)$/i, amount: 1, receiver: 2 },
+    { regex: /^(?:kirim|transfer)\s+ke\s+([a-z0-9]+(?:[-_.][a-z0-9]+)*)\s+(?:sebesar\s+)?((?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?)\s*(?:near|Ⓝ)$/i, amount: 2, receiver: 1 }
+  ];
+  for (const candidate of patterns) {
+    const match = text.match(candidate.regex);
+    if (!match) continue;
+    const receiver = match[candidate.receiver].toLowerCase();
+    const amountNear = Number(match[candidate.amount].replace(",", "."));
+    if (!Number.isFinite(amountNear) || amountNear <= 0) return null;
+    return {
+      receiver_account: receiver,
+      amount_near: amountNear,
+      rationale: "User explicitly requested this payment proposal."
+    };
+  }
+  return null;
+}
+
 async function writeAudit(env, row) {
   if (!env.DB) throw new Error("AGENT_AUDIT_DATABASE_UNAVAILABLE");
   await env.DB.prepare(
