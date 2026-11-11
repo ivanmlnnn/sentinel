@@ -16,14 +16,14 @@ function encodeBase64Url(bytes) {
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
-async function createPreflightToken({ approvalId, actor, walletAccount, receiver, amountMicro, expiresAt, riskScore, env }) {
+async function createPreflightToken({ approvalId, actor, walletAccount, receiver, amountMicro, expiresAt, riskScore, idempotencyKey, env }) {
   const secret = env.AGENT_SIGNER_HMAC_SECRET;
   if (typeof secret !== "string" || new TextEncoder().encode(secret).byteLength < 32) {
     throw new Error("AGENT_SIGNER_HMAC_SECRET_MISSING");
   }
   const payload = {
     approval_id: approvalId, actor, wallet_account: walletAccount, receiver_account: receiver,
-    amount_micro: amountMicro, expires_at: expiresAt, issued_at: Date.now(), nonce: crypto.randomUUID(),
+    amount_micro: amountMicro, expires_at: expiresAt, issued_at: Date.now(), nonce: crypto.randomUUID(), idempotency_key: idempotencyKey,
     decision: "ALLOW", risk_score: riskScore
   };
   const encoded = encodeBase64Url(new TextEncoder().encode(JSON.stringify(payload)));
@@ -32,7 +32,7 @@ async function createPreflightToken({ approvalId, actor, walletAccount, receiver
   const signature = bytesToHex(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(encoded)));
   return encoded + "." + signature;
 }
-async function callIsolatedSigner({ intent, actor, idempotencyKey, approvalId, walletAccount, transactionHash, preflightToken, authorizationHeader, env }) {
+async function callIsolatedSigner({ stage = "verify", intent, actor, idempotencyKey, approvalId, walletAccount, transactionHash, preflightToken, authorizationHeader, env }) {
   if (!env.SIGNER_SERVICE) {
     return { executed: false, status: "DENIED", reason: "ISOLATED_SIGNER_BINDING_MISSING", transaction_hash: null };
   }
@@ -41,7 +41,7 @@ async function callIsolatedSigner({ intent, actor, idempotencyKey, approvalId, w
     return { executed: false, status: "DENIED", reason: "AGENT_SIGNER_HMAC_SECRET_MISSING", transaction_hash: null };
   }
   const payload = JSON.stringify({ intent, actor, idempotency_key: idempotencyKey, approval_id: approvalId,
-    wallet_account: walletAccount, transaction_hash: transactionHash, preflight_token: preflightToken });
+    wallet_account: walletAccount, ...(transactionHash ? { transaction_hash: transactionHash } : {}), preflight_token: preflightToken });
   const timestamp = String(Math.floor(Date.now() / 1000));
   const nonce = crypto.randomUUID();
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(env.AGENT_SIGNER_HMAC_SECRET),
@@ -49,7 +49,7 @@ async function callIsolatedSigner({ intent, actor, idempotencyKey, approvalId, w
   const signature = bytesToHex(await crypto.subtle.sign("HMAC", key,
     new TextEncoder().encode(timestamp + "." + nonce + "." + payload)));
   try {
-    const response = await env.SIGNER_SERVICE.fetch("https://sentinel-signer.internal/execute", {
+    const response = await env.SIGNER_SERVICE.fetch("https://sentinel-signer.internal/" + (stage === "prepare" ? "prepare" : "execute"), {
       method: "POST", headers: { "content-type": "application/json", authorization: authorizationHeader,
         "x-sentinel-timestamp": timestamp, "x-sentinel-nonce": nonce, "x-sentinel-signature": signature },
       body: payload, signal: AbortSignal.timeout(25000)
@@ -60,7 +60,7 @@ async function callIsolatedSigner({ intent, actor, idempotencyKey, approvalId, w
     const reason = /^[A-Z0-9_]{3,96}$/.test(reportedReason) ? reportedReason : "ISOLATED_SIGNER_REQUEST_FAILED";
     if (!response.ok || !data) return { executed: false, status: "UNKNOWN", reason, transaction_hash: transactionHash };
     const validExecutionResult = typeof data.executed === "boolean" &&
-      ["EXECUTED", "DENIED", "FAILED", "UNKNOWN"].includes(data.status) && typeof data.reason === "string";
+      ["READY_TO_SIGN", "EXECUTED", "DENIED", "FAILED", "UNKNOWN"].includes(data.status) && typeof data.reason === "string";
     return validExecutionResult ? data : { executed: false, status: "UNKNOWN", reason, transaction_hash: transactionHash };
   } catch {
     return { executed: false, status: "UNKNOWN", reason: "ISOLATED_SIGNER_UNAVAILABLE", transaction_hash: transactionHash };
@@ -122,16 +122,26 @@ export async function onRequestPost({ request, env }) {
         decision: assessment?.decision || null, risk_score: assessment?.risk_score ?? null
       }, execution_enabled: false });
     }
+    const idempotencyKey = crypto.randomUUID();
     let preflightToken;
     try {
       preflightToken = await createPreflightToken({ approvalId, actor: identity.sub, walletAccount,
         receiver: validation.receiver_account, amountMicro: Math.round(intent.amount_near * 1_000_000),
-        expiresAt: pending.expires_at, riskScore: assessment.risk_score, env });
+        expiresAt: pending.expires_at, riskScore: assessment.risk_score, idempotencyKey, env });
     } catch (error) {
       return json({ status: "DENIED", reason: error.message || "PREFLIGHT_TOKEN_FAILED" }, 503);
     }
+    const reservation = await callIsolatedSigner({ stage: "prepare", intent, actor: identity.sub,
+      idempotencyKey, approvalId, walletAccount, preflightToken,
+      authorizationHeader: request.headers.get("authorization") || "", env });
+    if (reservation.status !== "READY_TO_SIGN") {
+      return json({ status: reservation.status || "DENIED", reason: reservation.reason || "SPEND_RESERVATION_FAILED",
+        proposal: { receiver_account: intent.receiver_account, amount_near: intent.amount_near },
+        sentinel: { decision: assessment.decision, risk_score: assessment.risk_score }, execution_enabled: false });
+    }
     return json({ status: "READY_TO_SIGN", reason: "SENTINEL_ALLOW_WALLET_TRANSFER",
-      preflight_token: preflightToken, proposal: { receiver_account: intent.receiver_account, amount_near: intent.amount_near },
+      idempotency_key: idempotencyKey, preflight_token: preflightToken,
+      proposal: { receiver_account: intent.receiver_account, amount_near: intent.amount_near },
       sentinel: { decision: assessment.decision, risk_score: assessment.risk_score,
         assessment_status: assessment.assessment_status }, expires_at: pending.expires_at });
   }
@@ -140,7 +150,7 @@ export async function onRequestPost({ request, env }) {
       typeof body.preflight_token !== "string" || body.preflight_token.length > 4096) {
     return json({ error: "INVALID_APPROVAL_STAGE_OR_TRANSACTION" }, 400);
   }
-  const idempotencyKey = request.headers.get("Idempotency-Key") || "";
+  const idempotencyKey = request.headers.get("Idempotency-Key") || body.idempotency_key || "";
   if (!UUID_RE.test(idempotencyKey)) return json({ error: "IDEMPOTENCY_KEY_REQUIRED" }, 400);
   const prior = await env.DB.prepare("SELECT idempotency_key FROM agent_execution WHERE idempotency_key=?").bind(idempotencyKey).first();
   if (prior) return json({ error: "IDEMPOTENCY_KEY_REUSED" }, 409);
