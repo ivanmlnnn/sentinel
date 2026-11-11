@@ -302,16 +302,25 @@ function Root() {
 createRoot(document.getElementById('auth-root')).render(React.createElement(Root));
 
 
-// Show the signed-in wayang portrait beside every Sentinel reply, like a real chat.
+// Keep a dedicated Sentinel avatar source mounted independently of the account menu.
+const sentinelAvatarHost = document.createElement('span');
+sentinelAvatarHost.className = 'sentinel-agent-avatar-source';
+sentinelAvatarHost.hidden = true;
+document.body.append(sentinelAvatarHost);
+createRoot(sentinelAvatarHost).render(buildWayangAvatar('sentinel-agent'));
+
+// Add the avatar to every newly rendered assistant reply (guest and signed-in chats).
 function syncSentinelAgentWayang() {
-  const source = document.querySelector('.sentinel-session-avatar svg');
+  const source = document.querySelector('.sentinel-agent-avatar-source svg')
+    || document.querySelector('.sentinel-session-avatar svg')
+    || document.querySelector('.sentinel-auth-mark svg');
   if (!source) return;
   document.querySelectorAll('.guest-chat-assistant').forEach(message => {
     if (message.querySelector(':scope > .sentinel-message-avatar')) return;
     const avatar = document.createElement('span');
     avatar.className = 'sentinel-message-avatar';
     avatar.setAttribute('role', 'img');
-    avatar.setAttribute('aria-label', 'Sentinel wayang profile');
+    avatar.setAttribute('aria-label', 'Sentinel AI profile');
     avatar.append(source.cloneNode(true));
     message.prepend(avatar);
   });
