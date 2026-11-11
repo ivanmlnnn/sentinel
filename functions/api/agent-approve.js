@@ -150,10 +150,14 @@ export async function onRequestGet({ request, env }) {
   const executionStatus = row.execution_status || null;
   const transactionHash = row.transaction_hash || null;
   const executed = executionStatus === "EXECUTED" && Boolean(transactionHash);
+  const resolvedStatus = executed ? "EXECUTED" :
+    executionStatus === "UNKNOWN" ? "UNKNOWN" :
+    executionStatus === "FAILED" ? "FAILED" :
+    executionStatus === "PENDING" ? "APPROVING" : status;
   return json({
     approval_id: approvalId,
     expires_at: row.expires_at,
-    status: executed ? "EXECUTED" : status,
+    status: resolvedStatus,
     transaction_status: executionStatus,
     proposal: {
       receiver_account: row.receiver_account,
