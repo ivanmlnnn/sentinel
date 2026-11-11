@@ -62,11 +62,19 @@ async function callIsolatedSigner({ stage = "verify", intent, actor, idempotency
     const reason = /^[A-Z0-9_]{3,96}$/.test(reportedReason) ? reportedReason :
       !data ? "SIGNER_NON_JSON_RESPONSE" : "ISOLATED_SIGNER_REQUEST_FAILED";
     if (!response.ok || !data) {
+      const contentType = response.headers.get("content-type") || "unknown";
+      const preview = !data
+        ? responseText.replace(/<script[\\s\\S]*?<\\/script>/gi, "").replace(/<style[\\s\\S]*?<\\/style>/gi, "").replace(/<[^>]*>/g, " ").replace(/\\s+/g, " ").trim().slice(0, 180)
+        : "";
       console.error("sentinel_isolated_signer_bad_response", {
-        stage, status: response.status, content_type: response.headers.get("content-type") || "unknown",
-        reason
+        stage, status: response.status, content_type: contentType, reason,
+        body_preview: preview || undefined
       });
-      return { executed: false, status: "UNKNOWN", reason, transaction_hash: transactionHash };
+      return {
+        executed: false, status: "UNKNOWN", reason, transaction_hash: transactionHash,
+        signer_http_status: response.status, signer_content_type: contentType,
+        signer_response_preview: preview || null
+      };
     }
     const validExecutionResult = typeof data.executed === "boolean" &&
       ["READY_TO_SIGN", "EXECUTED", "DENIED", "FAILED", "UNKNOWN"].includes(data.status) && typeof data.reason === "string";
@@ -147,6 +155,9 @@ export async function onRequestPost({ request, env }) {
       authorizationHeader: request.headers.get("authorization") || "", env });
     if (reservation.status !== "READY_TO_SIGN") {
       return json({ status: reservation.status || "DENIED", reason: reservation.reason || "SPEND_RESERVATION_FAILED",
+        signer_http_status: reservation.signer_http_status ?? null,
+        signer_content_type: reservation.signer_content_type ?? null,
+        signer_response_preview: reservation.signer_response_preview ?? null,
         proposal: { receiver_account: intent.receiver_account, amount_near: intent.amount_near },
         sentinel: { decision: assessment.decision, risk_score: assessment.risk_score }, execution_enabled: false });
     }
