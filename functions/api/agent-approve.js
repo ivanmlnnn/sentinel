@@ -16,7 +16,7 @@ function encodeBase64Url(bytes) {
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
-async function createPreflightToken({ approvalId, actor, walletAccount, receiver, amountMicro, expiresAt, env }) {
+async function createPreflightToken({ approvalId, actor, walletAccount, receiver, amountMicro, expiresAt, riskScore, env }) {
   const secret = env.AGENT_SIGNER_HMAC_SECRET;
   if (typeof secret !== "string" || new TextEncoder().encode(secret).byteLength < 32) {
     throw new Error("AGENT_SIGNER_HMAC_SECRET_MISSING");
@@ -24,7 +24,7 @@ async function createPreflightToken({ approvalId, actor, walletAccount, receiver
   const payload = {
     approval_id: approvalId, actor, wallet_account: walletAccount, receiver_account: receiver,
     amount_micro: amountMicro, expires_at: expiresAt, issued_at: Date.now(), nonce: crypto.randomUUID(),
-    decision: "ALLOW"
+    decision: "ALLOW", risk_score: riskScore
   };
   const encoded = encodeBase64Url(new TextEncoder().encode(JSON.stringify(payload)));
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret),
@@ -126,7 +126,7 @@ export async function onRequestPost({ request, env }) {
     try {
       preflightToken = await createPreflightToken({ approvalId, actor: identity.sub, walletAccount,
         receiver: validation.receiver_account, amountMicro: Math.round(intent.amount_near * 1_000_000),
-        expiresAt: pending.expires_at, env });
+        expiresAt: pending.expires_at, riskScore: assessment.risk_score, env });
     } catch (error) {
       return json({ status: "DENIED", reason: error.message || "PREFLIGHT_TOKEN_FAILED" }, 503);
     }
