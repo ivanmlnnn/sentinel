@@ -44,6 +44,7 @@ function parseSimpleGreeting(prompt) {
 export function parseExplicitPaymentProposal(prompt) {
   const text = String(prompt || "").trim();
   const patterns = [
+    { regex: /^(?:please\s+)?(?:create|make|propose|buat|ajukan)\s+(?:a\s+)?payment\s+proposal\s+to\s+([a-z0-9]+(?:[-_.][a-z0-9]+)*)\s+for\s+((?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?)\s*(?:near|Ⓝ)$/i, amount: 2, receiver: 1 },
     { regex: /^(?:please\s+)?(?:(?:i\s+(?:want|would like)\s+to\s+)?(?:send|transfer))\s+((?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?)\s*(?:near|Ⓝ)\s+to\s+([a-z0-9]+(?:[-_.][a-z0-9]+)*)$/i, amount: 1, receiver: 2 },
     { regex: /^(?:please\s+)?(?:(?:i\s+(?:want|would like)\s+to\s+)?(?:send|transfer))\s+(?:to\s+)?([a-z0-9]+(?:[-_.][a-z0-9]+)*)\s+(?:an?\s+amount\s+of\s+)?((?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?)\s*(?:near|Ⓝ)$/i, amount: 2, receiver: 1 },
     { regex: /^(?:saya\s+)?(?:mau|ingin|hendak)\s+(?:mengirim|kirim|transfer)\s+(?:near\s+)?(?:ke\s+)?([a-z0-9]+(?:[-_.][a-z0-9]+)*)\s+(?:sebesar\s+)?((?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?)\s*(?:near|Ⓝ)$/i, amount: 2, receiver: 1 },
