@@ -769,8 +769,25 @@ function renderAgentResult(data) {
     PREFLIGHT_UNAVAILABLE: 'The required security preflight could not be completed.',
     APPROVAL_CLOSED_NO_TRANSFER: 'This approval is closed. No verified transfer was found.',
     EXECUTION_OUTCOME_UNKNOWN: 'The transaction outcome is not verified. Do not sign or retry again yet.',
-    APPROVAL_NOT_PENDING: 'This approval has already been used or closed. Check its status before creating another proposal.'
-  })[policyReason] || '';
+    APPROVAL_NOT_PENDING: 'This approval has already been used or closed. Check its status before creating another proposal.',
+    ISOLATED_SIGNER_NOT_CONFIGURED: 'The isolated payment signer is not configured. No transfer was sent.',
+    ISOLATED_SIGNER_REQUEST_FAILED: 'The isolated signer did not return a valid execution result. No transfer is confirmed.',
+    ISOLATED_SIGNER_UNAVAILABLE: 'The isolated signer could not be reached. Check its status before trying again.',
+    SIGNER_NOT_CONFIGURED: 'The Testnet signer account or signing key is not configured.',
+    SIGNER_RESTRICTED_KEY_OR_CONTRACT_INVALID: 'The signer key or payment contract configuration failed its security check.',
+    HARD_PAYMENT_LIMIT_EXCEEDED: 'The payment exceeds Sentinel’s hard per-transaction limit of 0.1 NEAR.',
+    DAILY_CAP_UNCONFIGURED_OR_TOO_HIGH: 'The daily Testnet spending cap is missing or exceeds the hard safety limit.',
+    DAILY_SPEND_LIMIT_REACHED: 'The signer has reached its configured daily Testnet spending limit.',
+    SIGNER_PREFLIGHT_UNAVAILABLE: 'The signer could not complete its independent security preflight.',
+    SIGNER_PREFLIGHT_FAILED: 'The signer’s independent security preflight failed.',
+    SIGNED_VERDICT_INVALID_OR_EXPIRED: 'The signed security verdict was invalid or expired.',
+    WALLET_SIGNATURE_INVALID: 'The NEAR wallet signature could not be verified.',
+    WALLET_SIGNATURE_REPLAYED: 'This wallet signature was already used and cannot be reused.',
+    HUMAN_APPROVAL_NOT_VERIFIED: 'The wallet approval did not match this exact payment proposal.',
+    APPROVAL_ALREADY_CLAIMED: 'This approval has already been claimed. Do not sign it again.'
+  })[policyReason] || (policyReason
+    ? 'The signer stopped this payment before broadcast (' + policyReason.replaceAll('_', ' ').toLowerCase() + ').'
+    : '');
   const rawResponseText = String(data.agent_message || data.message || '').trim();
   const isInternalResponse = /^[A-Z][A-Z0-9_]{8,}$/.test(rawResponseText);
   const responseText = rawResponseText && !isInternalResponse
