@@ -46,8 +46,8 @@ GitHub remains the source-control and backup repository. GitHub Actions deployme
 - **[Merged security architecture — PR #3](https://github.com/ivanmlnnn/sentinel/pull/3)** — isolated signer, actor-bound approval and replay protections.
 - **[Merged Ed25519 verdict attestation — PR #10](https://github.com/ivanmlnnn/sentinel/pull/10)** — signed preflight decisions bound to the exact payment intent.
 - **[Live dashboard](https://sentinel.ivmaladin.workers.dev)** · **[Judge Demo](docs/JUDGE_DEMO.md)** · **[Secure Agent Pipeline](docs/SECURE_AGENT_PIPELINE.md)**.
-- **Latest Main Worker deployment proof:** [Cloudflare release run 42913399162](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399162) — Main Worker version `91d0798d-3af0-4853-a6ae-1e951e3eb8c7`, remote D1 migration checks, and 8/8 production HTTP smoke checks passed. The Signer Worker was unchanged in this release.
-- **Latest security proof:** [Sentinel checks 42913399066](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399066), [CodeQL 42913399079](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399079), and [Security CI 42913399216](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399216).
+- **Historical GitHub Actions Main Worker deployment proof (11 Nov 2026):** [Cloudflare release run 42913399162](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399162) — Main Worker version `91d0798d-3af0-4853-a6ae-1e951e3eb8c7`, remote D1 migration checks, and 8/8 production HTTP smoke checks passed. The Signer Worker was unchanged in this release.
+- **Historical GitHub Actions security proof (11 Nov 2026):** [Sentinel checks 42913399066](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399066), [CodeQL 42913399079](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399079), and [Security CI 42913399216](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399216).
 
 **Historical main release — 11 November 2026:** commit `281759475b4f8d72735cc3c43ae1f4b609df38b6` passed **127/127 automated tests**, the prompt-injection regression (`DENIED - SENTINEL_BLOCK`; `Signer invoked: NO`), validation of 8 Main D1 migrations (10 tables, 24 indexes) and 1 Signer D1 migration (3 tables, 7 indexes), both Worker bundle checks, and the NEAR payment-contract WASM build. [Main + isolated Signer deployment run](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218870) completed successfully: Signer Worker version `98dc36e1-f9ef-4f6e-b4a5-f28de4a59661`, Main Worker version `df27ffb5-cafc-4ab0-bedc-b1ff8bf4cfa7`, and **8/8 production HTTP smoke checks passed**. [Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218721), [Sentinel checks](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218667), and [CodeQL](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218658) all completed successfully. The separate [local stress lab report](docs/INDEPENDENT_LOCAL_STRESS_LAB.md) records simulation-only results and explicitly does not represent D1 concurrency, production latency, or live NEAR transaction evidence. These workflow records prove the listed build, deployment, and HTTP checks; they do not substitute for a separately verifiable live payment transaction.
 
@@ -57,7 +57,7 @@ GitHub remains the source-control and backup repository. GitHub Actions deployme
 
 
 
-## Latest merged-main release — 11 November 2026
+## Historical GitHub Actions merged-main release — 11 November 2026
 
 Commit [`c7bf59d`](https://github.com/ivanmlnnn/sentinel/commit/c7bf59df0b5596e086f8011ef95057bf33bb1e3e) includes the agent-result placement update and was deployed by [Cloudflare release run #42913399162](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399162).
 
