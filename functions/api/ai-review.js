@@ -26,7 +26,10 @@ export async function onRequestPost({ request, env }) {
   });
   if (!result.ok) return json({
     error: result.error,
-    runtime_status: result.status || null,
+    runtime_status: result.provider_status ?? result.status ?? null,
+    provider_code: result.provider_code || null,
+    provider_log_id: result.provider_log_id || null,
+    provider_error_name: result.provider_error_name || null,
     runtime_message: result.message
   }, 502);
   const explanation = (result.data.content || []).filter(x => x.type === "text").map(x => x.text).join("\n").trim();
