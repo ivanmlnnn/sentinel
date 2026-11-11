@@ -321,10 +321,21 @@ export default {
     const boundedBody = await readBoundedSignerBody(request, 8000);
     if (!boundedBody.ok) return json({ error: boundedBody.reason }, boundedBody.status);
     const rawBody = boundedBody.text;
-    if (!await verifyInternalRequest(request, rawBody, env)) return json({ error: "INVALID_INTERNAL_AUTH" }, 401);
+    let authenticated = false;
+    try { authenticated = await verifyInternalRequest(request, rawBody, env); }
+    catch (error) {
+      console.error("sentinel_signer_auth_check_failed", { name: error?.name || "Error" });
+      return json({ error: "SIGNER_AUTH_CHECK_FAILED" }, 503);
+    }
+    if (!authenticated) return json({ error: "INVALID_INTERNAL_AUTH" }, 401);
     const nonce = request.headers.get("x-sentinel-nonce");
     if (!await reserveNonce(env, nonce)) return json({ error: "INTERNAL_REPLAY_REJECTED" }, 409);
-    const identity = await verifyPrivyAccessToken(request, env);
+    let identity;
+    try { identity = await verifyPrivyAccessToken(request, env); }
+    catch (error) {
+      console.error("sentinel_signer_identity_check_failed", { name: error?.name || "Error" });
+      return json({ error: "SIGNER_IDENTITY_CHECK_FAILED" }, 503);
+    }
     if (!identity) return json({ error: "UNAUTHORIZED" }, 401);
     let payload;
     try { payload = JSON.parse(rawBody); } catch { return json({ error: "INVALID_JSON" }, 400); }
