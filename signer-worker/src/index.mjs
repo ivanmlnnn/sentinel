@@ -270,7 +270,7 @@ export async function execute(payload, authorizationHeader, identity, env) {
   if (env.NEAR_AGENT_KILL_SWITCH !== "false") return deny("KILL_SWITCH_ACTIVE");
   if (payload.actor !== identity.sub) return deny("ACTOR_MISMATCH");
   if (!env.DB || !env.DB2) return deny("EXECUTION_DATABASE_UNAVAILABLE");
-  if (!/^[a-z0-9._-]{2,64}\\.testnet$/.test(String(walletAccount || ""))) return deny("WALLET_ACCOUNT_MUST_BE_TESTNET");
+  if (!/^[a-z0-9._-]{2,64}\.testnet$/.test(String(walletAccount || ""))) return deny("WALLET_ACCOUNT_MUST_BE_TESTNET");
   const validated = validatePaymentIntent(intent, env);
   if (!validated.ok) return deny(validated.reason);
   const amountMicro = nearToMicro(intent.amount_near);
