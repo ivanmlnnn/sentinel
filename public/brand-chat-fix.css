@@ -120,3 +120,61 @@ body{
   .telegram-chat-transcript .guest-chat-message .telegram-agent-response{font-size:13px;line-height:1.75}
   #agentPrompt{min-height:58px}
 }
+
+
+/* Agent Lab: conversational, human-readable assistant surface. */
+.agent-lab-grid{grid-template-columns:minmax(0,1.55fr) minmax(240px,.65fr);align-items:start;gap:16px}
+.agent-lab-panel{padding:0;overflow:hidden;background:linear-gradient(155deg,#10191d 0%,#0a1015 72%);border:1px solid rgba(0,224,164,.2)}
+.agent-chat-header{display:flex;align-items:center;gap:12px;padding:18px 22px;border-bottom:1px solid rgba(148,176,169,.12);background:rgba(7,13,17,.55)}
+.agent-chat-avatar{display:grid;place-items:center;width:42px;height:42px;border-radius:14px;background:linear-gradient(145deg,#00e0a4,#087d65);color:#04130e;font-weight:800;font-size:20px;box-shadow:0 0 24px rgba(0,224,164,.16)}
+.agent-chat-identity{display:flex;flex-direction:column;gap:3px}
+.agent-chat-identity strong{font:700 15px Inter,system-ui,sans-serif;color:#edf8f4}
+.agent-chat-identity span{font:12px Inter,system-ui,sans-serif;color:#8fa69e}
+.agent-chat-ready{margin-left:auto;display:flex;align-items:center;gap:7px;color:#a9c8bd;font:12px Inter,system-ui,sans-serif}
+.agent-chat-ready i,.agent-chat-ready i:before{display:block;width:7px;height:7px;border-radius:50%;background:#00e0a4}
+.agent-welcome{display:flex;gap:13px;margin:22px 22px 18px;padding:16px 17px;border:1px solid rgba(0,224,164,.13);border-radius:15px;background:rgba(16,34,32,.62)}
+.agent-welcome-mark{display:grid;place-items:center;flex:0 0 30px;height:30px;border-radius:10px;background:rgba(0,224,164,.12);color:#00e0a4;font-size:18px}
+.agent-welcome strong{display:block;margin:1px 0 5px;color:#e9f6f1;font:650 14px Inter,system-ui,sans-serif}
+.agent-welcome p{margin:0;color:#a9bbb5;font:13px/1.65 Inter,system-ui,sans-serif}
+.agent-quick-start{padding:0 22px 20px}
+.agent-quick-label{display:block;margin:0 0 10px;color:#8da79d;font:600 10px Inter,system-ui,sans-serif;letter-spacing:.09em}
+.sentinel-skill-grid{display:flex;flex-wrap:wrap;gap:8px}
+.sentinel-skill-card{display:inline-flex;align-items:center;gap:8px;min-height:38px;padding:8px 12px;border:1px solid rgba(147,177,166,.18);border-radius:999px;background:#111c20;color:#c6d8d1;text-align:left;transition:border-color .18s,background .18s,transform .18s}
+.sentinel-skill-card b{font:550 12px Inter,system-ui,sans-serif}
+.sentinel-skill-card small,.sentinel-skill-card i{display:none}
+.skill-card-icon{display:inline-grid;place-items:center;width:19px;height:19px;border-radius:50%;background:rgba(0,224,164,.1);color:#00e0a4;font-size:13px}
+.sentinel-skill-card:hover,.sentinel-skill-card.is-selected{border-color:rgba(0,224,164,.55);background:rgba(0,224,164,.09);color:#eafff7}
+.agent-chat-form{padding:0 22px 20px}
+.agent-compose-label{display:block;margin:0 0 8px!important;color:#9ab4aa!important;font:600 10px Inter,system-ui,sans-serif!important;letter-spacing:.08em}
+.agent-compose-box{padding:12px 13px 10px;border:1px solid rgba(142,177,164,.24);border-radius:15px;background:#080f13;transition:border-color .2s,box-shadow .2s}
+.agent-compose-box:focus-within{border-color:#00b98b;box-shadow:0 0 0 3px rgba(0,224,164,.08)}
+#agentPrompt{min-height:76px;max-height:220px;resize:vertical;padding:2px 1px;border:0!important;border-radius:0!important;background:transparent!important;color:#edf8f4!important;font:14px/1.6 Inter,system-ui,sans-serif!important;box-shadow:none!important}
+#agentPrompt::placeholder{color:#71877f}
+.agent-compose-bottom{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:9px;border-top:1px solid rgba(148,176,169,.12)}
+.agent-compose-bottom>span{color:#71877f;font:11px Inter,system-ui,sans-serif}
+.agent-compose-bottom .primary-btn{min-width:104px;min-height:38px;padding:9px 15px;border-radius:10px}
+.agent-payment-details{margin-top:12px;color:#a8bcb4;font:12px Inter,system-ui,sans-serif}
+.agent-payment-details summary{width:max-content;max-width:100%;cursor:pointer;color:#9cc9b9}
+.agent-payment-details[open] summary{margin-bottom:12px}
+.agent-payment-details .prompt-draft-fields{display:grid;grid-template-columns:1.2fr .8fr 1fr auto;gap:8px}
+.agent-payment-details input{min-width:0;width:100%;padding:10px;border:1px solid rgba(148,176,169,.2);border-radius:9px;background:#080f13;color:#eaf7f1;font:12px Inter,system-ui,sans-serif}
+.agent-payment-details small{display:block;margin-top:9px;color:#83988f;line-height:1.55}
+.agent-lab-warning{margin-top:14px;padding:11px 13px;border-color:rgba(0,224,164,.16);border-radius:11px;background:rgba(0,224,164,.045)}
+.agent-lab-warning b{color:#8fd7bd;font:650 10px Inter,system-ui,sans-serif;letter-spacing:.04em}
+.agent-lab-warning span{color:#9eb5ac;font:12px/1.55 Inter,system-ui,sans-serif}
+.agent-help-panel{padding:20px;background:linear-gradient(155deg,rgba(16,25,29,.98),rgba(9,14,19,.98));border-color:rgba(0,224,164,.13)}
+.agent-help-panel .panel-top{margin-bottom:8px}
+.agent-help-step{display:flex;gap:12px;padding:17px 0;border-bottom:1px solid rgba(148,176,169,.12)}
+.agent-help-step>b{display:grid;place-items:center;flex:0 0 27px;height:27px;border-radius:9px;background:rgba(0,224,164,.1);color:#00e0a4;font:700 12px Inter,system-ui,sans-serif}
+.agent-help-step div{display:flex;flex-direction:column;gap:5px}
+.agent-help-step strong{color:#e2f0ea;font:650 13px Inter,system-ui,sans-serif}
+.agent-help-step span{color:#91a69e;font:12px/1.6 Inter,system-ui,sans-serif}
+.agent-help-step code{color:#b7e7d5;font:11px "IBM Plex Mono",monospace}
+.agent-help-note{display:flex;flex-direction:column;gap:6px;margin-top:18px;padding:13px;border:1px solid rgba(0,224,164,.14);border-radius:11px;background:rgba(0,224,164,.045)}
+.agent-help-note strong{color:#9ce3c7;font:650 12px Inter,system-ui,sans-serif}
+.agent-help-note span{color:#93a9a0;font:12px/1.55 Inter,system-ui,sans-serif}
+#agentLab:has(#agentResult:not(.hidden)) .agent-welcome,#agentLab:has(#agentResult:not(.hidden)) .agent-quick-start{display:none}
+#agentForm>.agent-result:not(.hidden){margin:18px 0 22px}
+.telegram-chat-transcript .guest-chat-message p{font-size:13px;line-height:1.7}
+@media(max-width:850px){.agent-lab-grid{grid-template-columns:1fr}.agent-help-panel{order:2}}
+@media(max-width:600px){.agent-chat-header{padding:15px}.agent-welcome{margin:16px 14px;padding:13px}.agent-quick-start{padding:0 14px 16px}.agent-chat-form{padding:0 14px 16px}.sentinel-skill-grid{gap:7px}.sentinel-skill-card{padding:8px 10px}.sentinel-skill-card b{font-size:11px}.agent-compose-bottom>span{max-width:58%;font-size:10px}.agent-payment-details .prompt-draft-fields{grid-template-columns:1fr 1fr}.agent-payment-details .prompt-draft-fields input:first-child,.agent-payment-details .prompt-draft-fields input:nth-child(3){grid-column:1/-1}}
