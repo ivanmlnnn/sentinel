@@ -219,3 +219,40 @@ body{
  .agent-welcome{margin:14px 14px;padding:14px}
 }
 @media(max-width:380px){.sentinel-skill-grid{grid-template-columns:1fr}}
+
+
+/* Refined Agent Lab visual hierarchy: editorial title and quieter surfaces */
+#agentHeading .agent-heading-title{display:flex;flex-direction:column;align-items:flex-start;gap:0}
+#agentHeading .section-index{color:#c7b96b!important;letter-spacing:.12em}
+#agentHeading h2{position:relative;margin:9px 0 0!important;padding-bottom:12px;font-size:clamp(32px,3.2vw,42px)!important;line-height:1.08!important;letter-spacing:-1.15px!important;color:#f0eee5!important}
+#agentHeading h2:after{content:"";position:absolute;left:0;bottom:0;width:76px;height:3px;border-radius:2px;background:#d7bd58;box-shadow:0 0 10px rgba(215,189,88,.12)}
+.agent-heading-portrait{display:flex;align-items:center;justify-content:center;width:48px;height:48px;margin-top:14px;border-radius:50%;overflow:hidden;border:1px solid rgba(215,189,88,.65);background:#171b1b;box-shadow:0 0 0 3px rgba(215,189,88,.07)}
+.agent-heading-portrait svg{display:block;width:100%;height:100%}
+.agent-lab-panel{background:#101416!important;border:1px solid #303b3a!important}
+.agent-chat-header{background:#151a1b!important;border-bottom:1px solid #303a38!important}
+.agent-chat-avatar{width:38px!important;height:38px!important;flex:0 0 38px!important;padding:0!important;overflow:hidden!important;border:1px solid rgba(215,189,88,.5)!important;border-radius:50%!important;background:#171b1b!important;box-shadow:none!important;color:transparent!important;font-size:0!important}
+.agent-chat-avatar svg{display:block;width:100%;height:100%}
+.agent-chat-identity strong{color:#f0eee5!important;font-size:14px!important;font-weight:650!important}
+.agent-chat-identity span{color:#a8b0a9!important;font-size:11px!important}
+.agent-chat-ready{color:#b5c2b8!important}
+.agent-chat-ready i{background:#8eae91!important;box-shadow:0 0 0 3px rgba(142,174,145,.1)!important}
+.agent-welcome{background:#171c1c!important;border:1px solid #343e3b!important;border-radius:12px!important;box-shadow:none!important}
+.agent-welcome-mark{background:#282b25!important;color:#d7bd58!important;border-radius:9px!important}
+.agent-welcome strong{color:#f0eee5!important;font-size:15px!important}
+.agent-welcome p{color:#b4bdb5!important}
+.agent-help-panel{background:#111718!important;border-color:#303b38!important}
+.agent-help-step{border-bottom-color:#303936!important}
+.agent-help-step>b{background:#282b25!important;color:#d7bd58!important}
+.agent-help-step strong{color:#e8e9df!important}
+.agent-help-step span,.agent-help-note span{color:#aeb8af!important}
+.agent-help-note{background:#171c1b!important;border-color:#3a4034!important}
+.agent-help-note strong{color:#d7c778!important}
+.sentinel-skill-card{background:#171c1c!important;border-color:#343e3b!important}
+.sentinel-skill-card .skill-card-icon{background:#282b25!important;color:#d7bd58!important}
+.sentinel-skill-card:hover,.sentinel-skill-card.is-selected{background:#202624!important;border-color:#8b8050!important}
+.agent-lab-warning{background:#1a1d19!important;border-color:#494332!important}
+.agent-lab-warning b{color:#d7c778!important}
+.agent-lab-warning span{color:#b8b8a9!important}
+.agent-compose-box{background:#0d1213!important;border-color:#3b4541!important}
+.agent-compose-box:focus-within{border-color:#9b8b4d!important;box-shadow:0 0 0 3px rgba(215,189,88,.07)!important}
+@media(max-width:600px){#agentHeading h2{font-size:32px!important}.agent-heading-portrait{width:44px;height:44px;margin-top:12px}}
