@@ -975,18 +975,25 @@ function renderAgentResult(data) {
           if (prepared.status !== 'READY_TO_SIGN' || prepared.sentinel?.decision !== 'ALLOW' || !prepared.preflight_token) {
             throw new Error(prepared.reason || 'Sentinel did not authorize this transfer.');
           }
-          const wallet = await connector.wallet();
-          if (!wallet || typeof wallet.signAndSendTransaction !== 'function') {
-            throw new Error('The selected wallet does not support native NEAR transfers.');
-          }
-          if (connectedAccount !== accountAtPrepare) {
+          // Resolve the wallet that is actually connected now. The manifest is the
+          // wallet clue; connector.wallet() supplies that wallet's own adapter.
+          // Never hardcode Meteor or assume every NEAR wallet has the same handoff.
+          const active = await connector.getConnectedWallet();
+          const activeAccount = active?.accounts?.[0]?.accountId || '';
+          const manifest = active?.wallet?.manifest || {};
+          const walletClue = String(manifest.name || manifest.id || connectedWalletName || 'NEAR wallet');
+          if (activeAccount !== accountAtPrepare || connectedAccount !== accountAtPrepare) {
             throw new Error('Connected wallet changed during the security check. Reconnect and retry.');
           }
-          preparedApproval = { ...prepared, _client_prepared_at: Date.now() };
+          const wallet = await connector.wallet();
+          if (!wallet || typeof wallet.signAndSendTransaction !== 'function') {
+            throw new Error(walletClue + ' does not expose the NEAR transfer approval method required by this payment.');
+          }
+          preparedApproval = { ...prepared, _client_prepared_at: Date.now(), _wallet_clue: walletClue };
           approvalWallet = wallet;
           preparedForAccount = accountAtPrepare;
           approveButton.disabled = false;
-          approveButton.textContent = 'Approve payment · ' + (connectedWalletName || 'NEAR wallet');
+          approveButton.textContent = 'Approve payment · ' + walletClue;
           const note = approveButton.closest('.agent-approval')?.querySelector('.agent-approval-status-note');
           note?.remove();
           return prepared;
