@@ -54,11 +54,20 @@ async function callIsolatedSigner({ stage = "verify", intent, actor, idempotency
         "x-sentinel-timestamp": timestamp, "x-sentinel-nonce": nonce, "x-sentinel-signature": signature },
       body: payload, signal: AbortSignal.timeout(35000)
     });
-    const data = await response.json().catch(() => null);
+    const responseText = await response.text();
+    let data = null;
+    try { data = JSON.parse(responseText); } catch { /* signer must return JSON; never expose raw HTML/body */ }
     const reportedReason = typeof data?.reason === "string" ? data.reason :
       typeof data?.error === "string" ? data.error : "";
-    const reason = /^[A-Z0-9_]{3,96}$/.test(reportedReason) ? reportedReason : "ISOLATED_SIGNER_REQUEST_FAILED";
-    if (!response.ok || !data) return { executed: false, status: "UNKNOWN", reason, transaction_hash: transactionHash };
+    const reason = /^[A-Z0-9_]{3,96}$/.test(reportedReason) ? reportedReason :
+      !data ? "SIGNER_NON_JSON_RESPONSE" : "ISOLATED_SIGNER_REQUEST_FAILED";
+    if (!response.ok || !data) {
+      console.error("sentinel_isolated_signer_bad_response", {
+        stage, status: response.status, content_type: response.headers.get("content-type") || "unknown",
+        reason
+      });
+      return { executed: false, status: "UNKNOWN", reason, transaction_hash: transactionHash };
+    }
     const validExecutionResult = typeof data.executed === "boolean" &&
       ["READY_TO_SIGN", "EXECUTED", "DENIED", "FAILED", "UNKNOWN"].includes(data.status) && typeof data.reason === "string";
     return validExecutionResult ? data : { executed: false, status: "UNKNOWN", reason, transaction_hash: transactionHash };
