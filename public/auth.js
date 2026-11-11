@@ -315,6 +315,15 @@ function syncSentinelAgentWayang() {
     || document.querySelector('.sentinel-session-avatar svg')
     || document.querySelector('.sentinel-auth-mark svg');
   if (!source) return;
+  const mountAvatar = (host, className, label) => {
+    if (!host || host.querySelector('svg')) return;
+    host.classList.add(className);
+    host.setAttribute('role', 'img');
+    host.setAttribute('aria-label', label);
+    host.append(source.cloneNode(true));
+  };
+  mountAvatar(document.querySelector('.agent-chat-avatar'), 'has-wayang-avatar', 'Sentinel AI profile');
+  mountAvatar(document.querySelector('.agent-welcome-avatar'), 'has-wayang-avatar', 'Sentinel AI profile');
   document.querySelectorAll('.guest-chat-assistant').forEach(message => {
     if (message.querySelector(':scope > .sentinel-message-avatar')) return;
     const avatar = document.createElement('span');
