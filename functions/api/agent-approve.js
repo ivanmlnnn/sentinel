@@ -163,8 +163,20 @@ export async function onRequestPost({ request, env }) {
     walletAccount, transactionHash: body.transaction_hash, preflightToken: body.preflight_token,
     authorizationHeader: request.headers.get("authorization") || "", env });
   const state = execution.executed ? "EXECUTED" : execution.status === "UNKNOWN" ? "UNKNOWN" :
-    execution.status === "FAILED" ? "FAILED" : "DENIED";
-  await updateApproval(env, approvalId, state, execution.reason || null);
+    execution.status === "FAILED" || execution.status === "DENIED" ? "FAILED" : "FAILED";
+  try {
+    await env.DB.prepare(
+      "INSERT INTO agent_execution (idempotency_key, actor, receiver_account, amount_micro, status, transaction_hash, created_at, updated_at) " +
+      "VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+    ).bind(idempotencyKey, identity.sub, intent.receiver_account, Math.round(intent.amount_near * 1_000_000),
+      state, body.transaction_hash).run();
+    await env.DB.prepare(
+      "INSERT INTO signer_approval_claims (approval_id, idempotency_key, actor, receiver_account, amount_micro, claimed_at) " +
+      "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"
+    ).bind(approvalId, idempotencyKey, identity.sub, intent.receiver_account,
+      Math.round(intent.amount_near * 1_000_000)).run();
+  } catch { /* isolated signer ledger remains authoritative */ }
+  await updateApproval(env, approvalId, execution.status === "UNKNOWN" ? "UNKNOWN" : state, execution.reason || null);
   try {
     await env.DB.prepare(
       "INSERT INTO agent_audit (id, actor, event, receiver_account, amount_near, decision, reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"
