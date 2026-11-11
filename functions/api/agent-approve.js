@@ -63,9 +63,7 @@ async function callIsolatedSigner({ stage = "verify", intent, actor, idempotency
       !data ? "SIGNER_NON_JSON_RESPONSE" : "ISOLATED_SIGNER_REQUEST_FAILED";
     if (!response.ok || !data) {
       const contentType = response.headers.get("content-type") || "unknown";
-      const preview = !data
-        ? responseText.replace(/<script[\\s\\S]*?<\\/script>/gi, "").replace(/<style[\\s\\S]*?<\\/style>/gi, "").replace(/<[^>]*>/g, " ").replace(/\\s+/g, " ").trim().slice(0, 180)
-        : "";
+      const preview = !data ? responseText.replace(/[\r\n\t]+/g, " ").trim().slice(0, 120) : "";
       console.error("sentinel_isolated_signer_bad_response", {
         stage, status: response.status, content_type: contentType, reason,
         body_preview: preview || undefined
