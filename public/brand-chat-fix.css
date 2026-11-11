@@ -350,3 +350,27 @@ body{
  .agent-quick-start{padding-left:14px!important;padding-right:14px!important}
  .agent-lab-panel{border-radius:19px!important}
 }
+
+
+/* Explain deterministic policy denials directly in the payment result. */
+.telegram-agent-status .agent-policy-reason {
+  margin: 12px 0 2px;
+  padding: 12px 14px;
+  border: 1px solid rgba(214, 166, 91, .24);
+  border-radius: 12px;
+  background: rgba(214, 166, 91, .07);
+}
+.telegram-agent-status .agent-policy-reason > span {
+  display: block;
+  color: var(--sentinel-gold, #d6a65b);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .09em;
+  overflow-wrap: anywhere;
+}
+.telegram-agent-status .agent-policy-reason p {
+  margin: 6px 0 0;
+  color: var(--sentinel-text, #e8e4dc);
+  font-size: 12px;
+  line-height: 1.55;
+}
