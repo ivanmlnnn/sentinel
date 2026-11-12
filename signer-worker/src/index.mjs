@@ -142,7 +142,7 @@ export async function claimApproval(env, { approvalId, idempotencyKey, actor, re
     "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"
   ).bind(approvalId, idempotencyKey, actor, receiver, amountMicro).run();
 }
-async function reserveSpend(env, { idempotencyKey, actor, receiver, amountMicro, dailyCapMicro }) {
+export async function reserveSpend(env, { idempotencyKey, actor, receiver, amountMicro, dailyCapMicro }) {
   const result = await env.DB2.prepare(
     "INSERT INTO agent_execution (idempotency_key, actor, receiver_account, amount_micro, status, created_at, updated_at) " +
     "SELECT ?, ?, ?, ?, 'PENDING', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP " +
