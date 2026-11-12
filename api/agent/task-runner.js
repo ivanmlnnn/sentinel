@@ -1,9 +1,11 @@
+import { timingSafeEqual } from 'node:crypto';
 import { query } from '../_lib/db.js';
 export default async function handler(req,res){
  if(req.method!=='POST')return res.status(405).json({error:'METHOD_NOT_ALLOWED'});
  const supplied=String(req.headers['authorization']||'').replace(/^Bearer\s+/i,'');
- const expected=process.env.SENTINEL_RUNNER_SECRET;
- if(!expected||supplied.length!==expected.length||!Buffer.from(supplied).equals(Buffer.from(expected)))return res.status(401).json({error:'RUNNER_AUTH_REQUIRED'});
+ const expected=process.env.SENTINEL_RUNNER_SECRET||'';
+ const suppliedBytes=Buffer.from(supplied),expectedBytes=Buffer.from(expected);
+ if(expectedBytes.length<32||suppliedBytes.length!==expectedBytes.length||!timingSafeEqual(suppliedBytes,expectedBytes))return res.status(401).json({error:'RUNNER_AUTH_REQUIRED'});
  const id=String(req.body?.task_id||'');
  if(!/^[0-9a-f-]{36}$/i.test(id))return res.status(400).json({error:'INVALID_TASK_ID'});
  try{
