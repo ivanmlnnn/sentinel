@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
-import { verifyInternalRequest, readBoundedSignerBody, reserveNonce, nearToMicro, claimApproval, execute, assertRestrictedFunctionCallKey, verifyFinalTransfer, default as signerWorker } from "../signer-worker/src/index.mjs";
+import { verifyInternalRequest, readBoundedSignerBody, reserveNonce, nearToMicro, claimApproval, execute, assertRestrictedFunctionCallKey, verifyFinalTransfer, authorizeSignedPreflight, default as signerWorker } from "../signer-worker/src/index.mjs";
 
 const TEST_SECRET = Buffer.from(webcrypto.getRandomValues(new Uint8Array(32))).toString("hex");
 
@@ -61,6 +61,37 @@ test("nonce ledger rejects a duplicate internal request nonce", async () => {
   } } };
   assert.equal(await reserveNonce(env, "123e4567-e89b-42d3-a456-426614174000"), true);
   assert.equal(await reserveNonce(env, "123e4567-e89b-42d3-a456-426614174000"), false);
+});
+
+test("isolated signer independently authorizes a complete signed ALLOW assessment", () => {
+  const intent = { receiver_account: "rawvest6817.testnet", amount_near: 0.01, rationale: "invoice" };
+  const token = { decision: "ALLOW", risk_score: 12, assessment_status: "COMPLETE",
+    receiver_account: "rawvest6817.testnet", amount_micro: 10000 };
+  const env = { NEAR_NETWORK: "testnet", NEAR_AGENT_KILL_SWITCH: "false",
+    NEAR_AGENT_MAX_PAYMENT_NEAR: "0.1", NEAR_AGENT_ALLOWED_RECEIVERS: "rawvest6817.testnet" };
+  assert.equal(authorizeSignedPreflight(intent, token, env).authorized, true);
+});
+
+test("isolated signer denies signed WARN, BLOCK, incomplete, high-risk and intent-substituted verdicts", () => {
+  const intent = { receiver_account: "rawvest6817.testnet", amount_near: 0.01, rationale: "invoice" };
+  const base = { decision: "ALLOW", risk_score: 12, assessment_status: "COMPLETE",
+    receiver_account: "rawvest6817.testnet", amount_micro: 10000 };
+  const env = { NEAR_NETWORK: "testnet", NEAR_AGENT_KILL_SWITCH: "false",
+    NEAR_AGENT_MAX_PAYMENT_NEAR: "0.1", NEAR_AGENT_ALLOWED_RECEIVERS: "rawvest6817.testnet" };
+  for (const token of [
+    { ...base, decision: "WARN" }, { ...base, decision: "BLOCK" },
+    { ...base, assessment_status: "INCOMPLETE" }, { ...base, risk_score: 30 },
+    { ...base, receiver_account: "attacker.testnet" }, { ...base, amount_micro: 20000 }
+  ]) assert.equal(authorizeSignedPreflight(intent, token, env).authorized, false);
+});
+
+test("isolated signer denies when its own receiver policy is not configured", () => {
+  const intent = { receiver_account: "rawvest6817.testnet", amount_near: 0.01, rationale: "invoice" };
+  const token = { decision: "ALLOW", risk_score: 12, assessment_status: "COMPLETE",
+    receiver_account: "rawvest6817.testnet", amount_micro: 10000 };
+  assert.equal(authorizeSignedPreflight(intent, token, { NEAR_NETWORK: "testnet",
+    NEAR_AGENT_KILL_SWITCH: "false", NEAR_AGENT_MAX_PAYMENT_NEAR: "0.1" }).reason,
+    "RECEIVER_NOT_ALLOWLISTED");
 });
 
 test("signer kill switch denies before reading key material or touching D1", async () => {
