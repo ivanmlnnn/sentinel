@@ -261,6 +261,23 @@ async function verifyPreflightToken(token, env, expected) {
   return payload;
 }
 
+/**
+ * Re-evaluate the signed assessment at the isolated execution boundary.
+ * A valid signature proves who issued the verdict; it does not replace local
+ * policy enforcement. Missing or malformed assessment fields fail closed.
+ */
+export function authorizeSignedPreflight(intent, tokenPayload, env) {
+  const assessment = {
+    decision: tokenPayload?.decision,
+    risk_score: tokenPayload?.risk_score,
+    assessment_status: tokenPayload?.assessment_status,
+    receiver_account: tokenPayload?.receiver_account,
+    amount_near: Number.isSafeInteger(tokenPayload?.amount_micro)
+      ? microToNearString(tokenPayload.amount_micro) : null
+  };
+  return evaluateAgentAuthorization({ intent, assessment, env });
+}
+
 async function investigate(intent, authorizationHeader, env) {
   const baseValue = String(env.SENTINEL_PREFLIGHT_URL || "");
   const base = baseValue.endsWith("/") ? baseValue.slice(0, -1) : baseValue;
@@ -320,6 +337,9 @@ export async function execute(payload, authorizationHeader, identity, env) {
   } catch (error) {
     return deny(error?.message || "PREFLIGHT_TOKEN_INVALID");
   }
+
+  const authorization = authorizeSignedPreflight(intent, tokenPayload, env);
+  if (!authorization.authorized) return deny(authorization.reason);
 
   const reservation = await reserveExecution({
     reserveSpendFn: details => reserveSpend(env, details),
