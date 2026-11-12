@@ -33,6 +33,8 @@ jobs:
           node --check src/trading-core.mjs
           node --check functions/api/trading-tokens.js
           node --check functions/api/trading-quote.js
+          node --check api/trading/tokens.js
+          node --check api/trading/quote.js
           node --check public/trade-skill-draft.js
           node --check public/app.js
       - name: Full test suite
