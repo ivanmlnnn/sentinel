@@ -81,6 +81,8 @@ The independent local stress lab remains a separate evidence set: its nine check
 
 **Developer Mode status:** preview only. The toggle creates trading-skill drafts; it does not add a delegated access key or activate autonomous wallet execution. See the [Developer Mode Session Design](docs/DEVELOPER_MODE_SESSION_DESIGN.md).
 
+**Agent terminal boundary:** authenticated User Agent requests enter `POST /api/terminal/run`, pass through the Railway terminal runtime, and then reach the existing authenticated Sentinel Agent API. Railway is a separate runtime boundary, not yet a second independent agent brain. Developer Agent autonomous execution is intentionally disabled: the Worker rejects `mode=developer` with `409 DEVELOPER_DELEGATION_NOT_CONFIGURED`, and the UI only creates non-executable trading drafts. Do not describe the two-terminal autonomous architecture as complete until the dedicated Developer Agent, restricted NEAR FunctionCall key, audited escrow/session contract, on-chain verification, and wallet-signed revocation are implemented and tested.
+
 
 - NEAR account-state checks through FastNear JSON-RPC.
 - Live read-only NEAR Testnet account state and indexed native transaction, receipt, and fungible-token transfer evidence through NearBlocks Testnet API; provider coverage and pagination are surfaced rather than assumed complete.
