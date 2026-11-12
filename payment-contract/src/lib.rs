@@ -97,6 +97,24 @@ mod tests{
  fn msg(receiver:&str,amount:u128)->Vec<u8>{let r=AccountId::from_str(receiver).unwrap();let c=AccountId::from_str("sentinel.testnet").unwrap();let s=AccountId::from_str("agent.testnet").unwrap();let i=intent_hash(&r,amount,"invoice-42");proof_message("testnet",&c,&s,&r,amount,"approval-42","nonce-42",1000,2000,&i,&[3;32],&[4;32],"policy-v1",1)}
  #[test]fn ed25519_accepts_exact_and_rejects_tampered(){let k=SigningKey::from_bytes(&[7;32]);let m=msg("receiver.testnet",123);let sig=k.sign(&m).to_bytes();let pk=k.verifying_key().to_bytes();assert!(env::ed25519_verify(&sig,&m,&pk));let mut bad=m.clone();bad.push(0);assert!(!env::ed25519_verify(&sig,&bad,&pk));assert!(!env::ed25519_verify(&[0;64],&m,&pk));}
  #[test]fn signature_binds_receiver_and_amount(){let k=SigningKey::from_bytes(&[8;32]);let m=msg("receiver.testnet",123);let sig=k.sign(&m).to_bytes();let pk=k.verifying_key().to_bytes();assert!(!env::ed25519_verify(&sig,&msg("attacker.testnet",123),&pk));assert!(!env::ed25519_verify(&sig,&msg("receiver.testnet",124),&pk));}
+
+ #[test]fn rejects_every_single_bit_flip_in_signed_message(){
+  let k=SigningKey::from_bytes(&[11;32]);let m=msg("receiver.testnet",777);let sig=k.sign(&m).to_bytes();let pk=k.verifying_key().to_bytes();
+  let mut checked=0usize;
+  for i in 0..m.len(){for bit in 0..8{let mut changed=m.clone();changed[i]^=1u8<<bit;assert!(!env::ed25519_verify(&sig,&changed,&pk),"message byte {i}, bit {bit}");checked+=1;}}
+  assert!(checked>=2000,"expected hundreds of independent tamper vectors");
+ }
+ #[test]fn rejects_every_single_bit_flip_in_signature(){
+  let k=SigningKey::from_bytes(&[12;32]);let m=msg("receiver.testnet",888);let sig=k.sign(&m).to_bytes();let pk=k.verifying_key().to_bytes();
+  let mut checked=0usize;
+  for i in 0..sig.len(){for bit in 0..8{let mut changed=sig;changed[i]^=1u8<<bit;assert!(!env::ed25519_verify(&changed,&m,&pk),"signature byte {i}, bit {bit}");checked+=1;}}
+  assert_eq!(checked,512);
+ }
+ #[test]fn wrong_public_key_never_verifies(){
+  let k=SigningKey::from_bytes(&[13;32]);let wrong=SigningKey::from_bytes(&[14;32]);let m=msg("receiver.testnet",999);let sig=k.sign(&m).to_bytes();
+  assert!(!env::ed25519_verify(&sig,&m,&wrong.verifying_key().to_bytes()));
+ }
+
  #[test]fn strict_hex_decoder(){assert_eq!(decode_hex::<2>("00aF"),Some([0,175]));assert_eq!(decode_hex::<2>("00af00"),None);assert_eq!(decode_hex::<2>("00xz"),None);assert_eq!(decode_hex::<2>("00é"),None);}
  #[test]fn intent_hash_binds_receiver_amount_and_memo(){let r=AccountId::from_str("receiver.testnet").unwrap();let o=AccountId::from_str("other.testnet").unwrap();let h=intent_hash(&r,123,"invoice-42");assert_ne!(h,intent_hash(&r,123,"invoice-43"));assert_ne!(h,intent_hash(&o,123,"invoice-42"));assert_ne!(h,intent_hash(&r,124,"invoice-42"));}
 }
