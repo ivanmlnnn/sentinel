@@ -127,7 +127,8 @@ async function terminalRunPost({ request }) {
   try { body = await request.clone().json(); } catch { return apiError("INVALID_JSON", 400); }
   const mode = body?.mode || "user";
   const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
-  if (!["user", "developer"].includes(mode)) return apiError("INVALID_TERMINAL_MODE", 400);
+  if (mode === "developer") return apiError("DEVELOPER_DELEGATION_NOT_CONFIGURED", 409);
+  if (mode !== "user") return apiError("INVALID_TERMINAL_MODE", 400);
   if (!prompt || prompt.length > 4000) return apiError("PROMPT_REQUIRED", 400);
   try {
     const upstream = await fetch(TERMINAL_RUNTIME_URL + "/v1/terminal/run", {
