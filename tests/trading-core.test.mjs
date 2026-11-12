@@ -1,0 +1,123 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  normalizeTidepoolTokens,
+  validateTradingQuoteInput,
+  buildTidepoolDryQuotePayload,
+  validateTidepoolDryQuote,
+  getTidepoolDryQuote
+} from "../src/trading-core.mjs";
+
+const tokens = normalizeTidepoolTokens([
+  { assetId: "nep141:usdc.tidepool-sandbox.testnet", decimals: 6, blockchain: "near", symbol: "USDC" },
+  { assetId: "nep141:wnear.tidepool-sandbox.testnet", decimals: 24, blockchain: "near", symbol: "wNEAR" },
+  { assetId: "nep141:base-0x123.tp-omft.testnet", decimals: 6, blockchain: "base", symbol: "USDC" },
+  { assetId: "nep141:usdc.tether-token.near", decimals: 6, blockchain: "near", symbol: "USDC" },
+  { assetId: "nep141:bad.tidepool-sandbox.testnet", decimals: 80, blockchain: "near", symbol: "BAD" }
+]);
+
+const input = {
+  originAsset: "nep141:usdc.tidepool-sandbox.testnet",
+  destinationAsset: "nep141:wnear.tidepool-sandbox.testnet",
+  amount: "1000000",
+  recipient: "alice.testnet",
+  slippageTolerance: 100
+};
+
+function quoteResponse(overrides = {}) {
+  const request = buildTidepoolDryQuotePayload(input, Date.parse("2026-11-12T07:00:00.000Z"));
+  return {
+    correlationId: "quote-correlation-123",
+    quoteRequest: request,
+    quote: {
+      amountIn: "1000000",
+      amountOut: "250000000000000000000000",
+      minAmountOut: "247500000000000000000000",
+      amountInFormatted: "1",
+      amountOutFormatted: "0.25",
+      amountInUsd: "1.00",
+      amountOutUsd: "0.99",
+      timeEstimate: 8
+    },
+    signature: "ed25519:0123456789abcdefghijklmnop",
+    ...overrides
+  };
+}
+
+test("only exposes Tidepool NEAR testnet assets, not bridged or mainnet assets", () => {
+  assert.deepEqual(tokens.map(token => token.symbol), ["USDC", "wNEAR"]);
+  assert.ok(tokens.every(token => token.network === "testnet"));
+});
+
+test("validates supported assets, base-unit integer amount and testnet recipient", () => {
+  assert.equal(validateTradingQuoteInput(input, tokens).ok, true);
+  assert.equal(validateTradingQuoteInput({ ...input, amount: "0.1" }, tokens).reason,
+    "AMOUNT_MUST_BE_POSITIVE_BASE_UNIT_INTEGER");
+  assert.equal(validateTradingQuoteInput({ ...input, recipient: "alice.near" }, tokens).reason,
+    "VALID_TESTNET_RECIPIENT_REQUIRED");
+  assert.equal(validateTradingQuoteInput({ ...input, originAsset: "nep141:unknown.tidepool-sandbox.testnet" }, tokens).reason,
+    "ASSET_NOT_SUPPORTED_ON_TESTNET");
+});
+
+test("rejects identical assets, unsupported fields and unsafe slippage", () => {
+  assert.equal(validateTradingQuoteInput({ ...input, destinationAsset: input.originAsset }, tokens).reason,
+    "IDENTICAL_ASSETS");
+  assert.equal(validateTradingQuoteInput({ ...input, execute: true }, tokens).reason,
+    "UNSUPPORTED_QUOTE_FIELD");
+  assert.equal(validateTradingQuoteInput({ ...input, slippageTolerance: 301 }, tokens).reason,
+    "SLIPPAGE_OUT_OF_RANGE");
+});
+
+test("builds a dry-only INTENTS quote payload with a bounded deadline", () => {
+  const now = Date.parse("2026-11-12T07:00:00.000Z");
+  const payload = buildTidepoolDryQuotePayload(input, now);
+  assert.equal(payload.dry, true);
+  assert.equal(payload.swapType, "EXACT_INPUT");
+  assert.equal(payload.depositType, "INTENTS");
+  assert.equal(payload.recipientType, "INTENTS");
+  assert.equal(payload.refundType, "INTENTS");
+  assert.equal(payload.amount, input.amount);
+  assert.equal(Date.parse(payload.deadline) - now, 600000);
+  assert.equal(Object.hasOwn(payload, "depositAddress"), false);
+});
+
+test("accepts a provider quote only when it matches the exact request", () => {
+  assert.equal(validateTidepoolDryQuote(quoteResponse(), input).ok, true);
+  const changed = quoteResponse({
+    quoteRequest: { ...buildTidepoolDryQuotePayload(input), amount: "999999" }
+  });
+  assert.equal(validateTidepoolDryQuote(changed, input).reason, "TIDEPOOL_QUOTE_INTENT_MISMATCH");
+});
+
+test("rejects malformed amounts, inverted minimum output and live deposit addresses", () => {
+  assert.equal(validateTidepoolDryQuote(quoteResponse({
+    quote: { amountIn: "1.2", amountOut: "2", minAmountOut: "1" }
+  }), input).reason, "TIDEPOOL_INVALID_QUOTE_AMOUNT");
+  assert.equal(validateTidepoolDryQuote(quoteResponse({
+    quote: { amountIn: "1000000", amountOut: "1", minAmountOut: "2" }
+  }), input).reason, "TIDEPOOL_INVALID_MINIMUM_OUTPUT");
+  assert.equal(validateTidepoolDryQuote(quoteResponse({
+    quote: { ...quoteResponse().quote, depositAddress: "dangerous.testnet" }
+  }), input).reason, "DRY_QUOTE_MUST_NOT_HAVE_DEPOSIT_ADDRESS");
+});
+
+test("requests tokens then a dry quote and never asks Tidepool to create a deposit", async () => {
+  const calls = [];
+  const fetchImpl = async (url, init = {}) => {
+    calls.push({ url, init });
+    if (url.endsWith("/v0/tokens")) return new Response(JSON.stringify([
+      { assetId: input.originAsset, decimals: 6, blockchain: "near", symbol: "USDC" },
+      { assetId: input.destinationAsset, decimals: 24, blockchain: "near", symbol: "wNEAR" }
+    ]), { status: 200, headers: { "content-type": "application/json" } });
+    return new Response(JSON.stringify(quoteResponse()), {
+      status: 200, headers: { "content-type": "application/json" }
+    });
+  };
+  const result = await getTidepoolDryQuote(input, fetchImpl, Date.parse("2026-11-12T07:00:00.000Z"));
+  assert.equal(result.ok, true);
+  assert.equal(result.value.mode, "QUOTE_ONLY");
+  assert.equal(result.value.execution_enabled, false);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].init.method, "POST");
+  assert.equal(JSON.parse(calls[1].init.body).dry, true);
+});
