@@ -19,3 +19,9 @@ test("approval is invalidated when receiver mutates",()=>{const r=evaluateProofI
 test("provenance root changes when evidence changes",()=>{const a=buildProvenanceGraph(intent,base,trust,now);const b=buildProvenanceGraph(intent,[...base,ev("registry",{receiver:"attacker.near"})],trust,now);assert.notEqual(a.root,b.root)});
 test("canonical digest is independent of object key order",()=>assert.equal(digest({a:1,b:2}),digest({b:2,a:1})));
 test("unknown source is never accepted even if payload says trusted",()=>{const x=ev("ghost",{receiver:"vendor.near"},{trusted:true});assert.equal(verifyEvidence(x,trust,now).ok,false)});
+
+test("mail evidence cannot authorize a receiver even when correctly signed",()=>{const r=evaluateProofIntent({intent,evidence:[...base,ev("mail",{receiver:"vendor.near"})],trustStore:trust,now});assert.equal(r.decision,"BLOCK");assert.ok(r.failures.includes("receiver:UNAUTHORIZED_FIELD_AUTHORITY"))});
+test("registry evidence cannot authorize a payment amount",()=>{const r=evaluateProofIntent({intent,evidence:[...base,ev("registry",{amount:"5"})],trustStore:trust,now});assert.equal(r.decision,"BLOCK");assert.ok(r.failures.includes("amount:UNAUTHORIZED_FIELD_AUTHORITY"))});
+test("unauthorized conflicting evidence blocks even with one valid authority",()=>{const r=evaluateProofIntent({intent,evidence:[...base,ev("mail",{receiver:"attacker.near"})],trustStore:trust,now});assert.equal(r.decision,"BLOCK");assert.ok(r.failures.includes("receiver:UNAUTHORIZED_FIELD_AUTHORITY"))});
+test("tampered signature bytes are rejected",()=>{const x={...base[0],signature:"0".repeat(64)};assert.equal(verifyEvidence(x,trust,now).reason,"BAD_SIGNATURE")});
+test("array claims are rejected as malformed evidence",()=>{const x=signEvidence({source_id:"registry",issued_at:now-1,expires_at:now+10,claims:[]},trust.registry);assert.equal(verifyEvidence(x,trust,now).reason,"MALFORMED_EVIDENCE")});
