@@ -947,10 +947,12 @@ async function renderTradeSkillDraft(prompt) {
         const intent = await request('/trading/generate-intent', {
           method: 'POST',
           body: JSON.stringify({
-            depositAddress: liveQuote.deposit_address,
+            providerQuote: liveQuote.signed_quote,
             signerId: connectedAccount,
             originAsset: lastSwapRequest.originAsset,
-            amount: lastSwapRequest.amount
+            destinationAsset: lastSwapRequest.destinationAsset,
+            amount: lastSwapRequest.amount,
+            slippageTolerance: lastSwapRequest.slippageTolerance
           })
         });
         if (intent.standard !== 'nep413' || intent.signer_id !== connectedAccount ||
@@ -991,10 +993,13 @@ async function renderTradeSkillDraft(prompt) {
               public_key: publicKey,
               signature
             },
+            providerQuote: liveQuote.signed_quote,
             expectedSignerId: connectedAccount,
             expectedDepositAddress: liveQuote.deposit_address,
             expectedAsset: lastSwapRequest.originAsset,
-            expectedAmount: lastSwapRequest.amount
+            expectedDestinationAsset: lastSwapRequest.destinationAsset,
+            expectedAmount: lastSwapRequest.amount,
+            expectedSlippageTolerance: lastSwapRequest.slippageTolerance
           })
         });
         liveStatus.textContent = 'Intent submitted. Checking Tidepool settlement status…';
