@@ -1,4 +1,5 @@
 import { applySecurityHeaders, validateMutationRequest } from "./http-security.mjs";
+import { captureHatchableTelemetry } from "./hatchable-bridge.mjs";
 import { onRequestGet as metricsGet } from "../functions/api/metrics.js";
 import { onRequestGet as walletGet } from "../functions/api/wallet.js";
 import { onRequestGet as threatsGet, onRequestPost as threatsPost, onRequestVerifyPost as threatsVerifyPost } from "../functions/api/threats.js";
@@ -118,7 +119,24 @@ function serviceUnavailable(code) { return apiError(code, 503); }
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    const respond = response => applySecurityHeaders(response, url);
+    const respond = response => {
+      const secured = applySecurityHeaders(response, url);
+      if (url.pathname.startsWith("/api/")) {
+        const delivery = captureHatchableTelemetry({ request, response: secured, env })
+          .then(result => {
+            if (!result.delivered && result.reason !== "NOT_SECURITY_EVENT") {
+              console.warn("Hatchable telemetry bridge degraded", {
+                reason: result.reason || "DELIVERY_FAILED",
+                services: result.services || []
+              });
+            }
+          })
+          .catch(() => console.warn("Hatchable telemetry bridge degraded", { reason: "BRIDGE_RUNTIME_ERROR" }));
+        if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(delivery);
+        else void delivery;
+      }
+      return secured;
+    };
     const mutationError = validateMutationRequest(request, url);
     if (mutationError) return respond(apiError(mutationError, 400));
 
