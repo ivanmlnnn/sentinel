@@ -368,3 +368,29 @@ export async function submitTidepoolSignedIntent({ signedData, expectedSignerId,
     }
   };
 }
+
+
+export async function getTidepoolSwapStatus(depositAddress, fetchImpl = fetch) {
+  if (typeof depositAddress !== "string" || !DEPOSIT_ADDRESS_RE.test(depositAddress)) {
+    return { ok: false, reason: "INVALID_DEPOSIT_ADDRESS" };
+  }
+  const payload = await fetchJson(
+    TIDEPOOL_BASE_URL + "/v0/status?depositAddress=" + encodeURIComponent(depositAddress),
+    { method: "GET", headers: { accept: "application/json" } },
+    fetchImpl
+  );
+  if (!payload || typeof payload !== "object" || typeof payload.status !== "string") {
+    return { ok: false, reason: "TIDEPOOL_INVALID_STATUS_RESPONSE" };
+  }
+  return {
+    ok: true,
+    value: {
+      status: payload.status,
+      deposit_address: depositAddress,
+      correlation_id: payload.correlationId || null,
+      transactions: Array.isArray(payload.swapDetails?.nearTxHashes) ? payload.swapDetails.nearTxHashes : [],
+      explorer_url: typeof payload.tidepool?.explorerUrl === "string" ? payload.tidepool.explorerUrl : null,
+      raw: payload
+    }
+  };
+}
