@@ -4,6 +4,8 @@ import {spawnSync} from "node:child_process";
 import {mkdtempSync,readFileSync,writeFileSync,rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
+import {fileURLToPath} from "node:url";
+const labRoot=join(fileURLToPath(new URL(".",import.meta.url)),"..");
 import {signEvidence,digest} from "../src/provenance.mjs";
 import {comparePaymentIntents,normalizeIdentifier,detectSplitPayments} from "../src/semantic-firewall.mjs";
 import {independentSignerCheck} from "../src/independent-signer.mjs";
@@ -77,18 +79,18 @@ test("spending cap is not exceeded by sequential reservations",()=>{
 });
 
 test("portable verifier accepts proof fixture",()=>{
- const r=spawnSync(process.execPath,["src/verify-proof.mjs","fixtures/valid-proof.json"],{encoding:"utf8"});
+ const r=spawnSync(process.execPath,[join(labRoot,"src/verify-proof.mjs"),join(labRoot,"fixtures/valid-proof.json")],{encoding:"utf8",cwd:labRoot});
  assert.equal(r.status,0,r.stderr);
  assert.match(r.stdout,/PROOF_STRUCTURE_VALID/);
 });
 test("portable verifier rejects tampered proof root",()=>{
  const dir=mkdtempSync(join(tmpdir(),"sentinel-proof-"));
  try {
-  const p=JSON.parse(readFileSync("fixtures/valid-proof.json","utf8"));
+  const p=JSON.parse(readFileSync(join(labRoot,"fixtures/valid-proof.json"),"utf8"));
   p.provenance_root="f".repeat(64);
   const file=join(dir,"tampered.json");
   writeFileSync(file,JSON.stringify(p));
-  const r=spawnSync(process.execPath,["src/verify-proof.mjs",file],{encoding:"utf8"});
+  const r=spawnSync(process.execPath,[join(labRoot,"src/verify-proof.mjs"),file],{encoding:"utf8",cwd:labRoot});
   assert.notEqual(r.status,0);
   assert.match(r.stderr,/INVALID_PROOF/);
  } finally { rmSync(dir,{recursive:true,force:true}); }
