@@ -113,11 +113,24 @@ test("requests tokens then a dry quote and never asks Tidepool to create a depos
       status: 200, headers: { "content-type": "application/json" }
     });
   };
-  const result = await getTidepoolDryQuote(input, fetchImpl, Date.parse("2026-11-12T07:00:00.000Z"));
+  const result = await getTidepoolDryQuote(input, fetchImpl, Date.parse("2026-11-12T07:00:00.000Z"), () => true);
   assert.equal(result.ok, true);
   assert.equal(result.value.mode, "QUOTE_ONLY");
   assert.equal(result.value.execution_enabled, false);
   assert.equal(calls.length, 2);
   assert.equal(calls[1].init.method, "POST");
   assert.equal(JSON.parse(calls[1].init.body).dry, true);
+});
+
+test("rejects a dry quote when the provider signature verifier fails", async () => {
+  const fetchImpl = async url => {
+    if (url.endsWith("/v0/tokens")) return new Response(JSON.stringify([
+      { assetId: input.originAsset, decimals: 6, blockchain: "near", symbol: "USDC" },
+      { assetId: input.destinationAsset, decimals: 24, blockchain: "near", symbol: "wNEAR" }
+    ]), { status: 200 });
+    return new Response(JSON.stringify(quoteResponse()), { status: 200 });
+  };
+  const result = await getTidepoolDryQuote(input, fetchImpl, Date.parse("2026-11-12T07:00:00.000Z"), () => false);
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "TIDEPOOL_QUOTE_SIGNATURE_INVALID");
 });
