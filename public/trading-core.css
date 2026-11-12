@@ -50,3 +50,11 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+.developer-trade-quote > a {
+  color: #82e3df;
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  width: fit-content;
+}
