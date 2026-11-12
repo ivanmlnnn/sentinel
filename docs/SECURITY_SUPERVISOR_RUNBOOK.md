@@ -1,6 +1,6 @@
 # Security Supervisor Runbook
 
-Status date: 12 November 2026
+Status date: 13 November 2026
 
 ## Purpose
 
@@ -24,8 +24,8 @@ Cloudflare must never wait for the supervisor or an AI provider before enforcing
 | Security Supervisor endpoint | Deployed | `/api/security-supervisor`; unauthenticated request rejected with HTTP 401 |
 | Telemetry and incident tables | Deployed | Hatchable migration `005_security_supervisor.sql` |
 | Deterministic event thresholds | Implemented | Initial heuristic thresholds; require tuning and false-positive review |
-| Production Worker telemetry forwarding | NOT CONNECTED | No end-to-end production event delivery has been demonstrated |
-| 24/7 availability / uptime SLA | NOT VERIFIED | Deployment does not prove continuous uptime, retries, or recovery |
+| Production Worker telemetry forwarding | NOT CONNECTED | Source audit found no Worker-to-Hatchable forwarding call; Hatchable telemetry/session/incident tables returned zero rows during this review |
+| 24/7 availability / uptime SLA | NOT VERIFIED | Deployment does not prove continuous uptime, retries, or recovery; recent Agent Task Runner invocations included HTTP 503 failures |
 | AI-assisted incident analysis | NOT VERIFIED | AI provider setup is a separate prerequisite; deterministic ingestion does not require AI |
 | Automatic Cloudflare IP blocking | NOT IMPLEMENTED | Worker remains the enforcement authority; no remote block command is exposed |
 
