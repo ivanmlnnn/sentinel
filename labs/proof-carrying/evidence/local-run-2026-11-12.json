@@ -1,12 +1,16 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "recorded_at": "2026-11-12",
   "repository": "https://github.com/ivanmlnnn/sentinel",
   "branch": "lab/proof-carrying-agent-economy",
-  "tested_commit": "6f8efb21d70269c0d92570efaad7e2c387a25179",
+  "tested_commit": "49731643960109cbbc20ae7de16ab08d32518254",
+  "contract_source_tested_commit": "96a59b7f98fe13dd493ede577a4d957d211e0600",
   "environment": {
     "runner": "Vercel Sandbox",
     "node": "v24.22.1",
+    "rustc": "1.99.1",
+    "cargo": "1.99.1",
+    "near_sdk_resolved": "5.30.1 (Cargo.toml semver lower bound 5.17.2)",
     "wrangler": "4.160.1",
     "database": "Wrangler/Miniflare local D1",
     "network": "local-only D1; no --remote"
@@ -14,15 +18,15 @@
   "results": {
     "root_test_suite": {
       "status": "PASS",
-      "tests": 216,
-      "passed": 216,
+      "tests": 219,
+      "passed": 219,
       "failed": 0,
       "command": "npm test"
     },
     "proof_lab_suite": {
       "status": "PASS",
-      "tests": 70,
-      "passed": 70,
+      "tests": 73,
+      "passed": 73,
       "failed": 0,
       "command": "cd labs/proof-carrying && npm test"
     },
@@ -31,9 +35,59 @@
       "output": "PROOF_STRUCTURE_VALID",
       "command": "npm run verify"
     },
+    "contract_unit_tests": {
+      "status": "PASS",
+      "tests": 14,
+      "passed": 14,
+      "failed": 0,
+      "command": "cargo test --manifest-path payment-contract/Cargo.toml -- --nocapture",
+      "coverage": [
+        "valid exact signed payment",
+        "approval and nonce replay rejected",
+        "receiver substitution rejected",
+        "amount substitution rejected",
+        "memo substitution rejected",
+        "expired proof rejected",
+        "future-issued proof rejected",
+        "proof lifetime above five minutes rejected",
+        "key rotation invalidates old signature",
+        "on-chain daily cap rejects a second valid payment",
+        "wrong public key rejected",
+        "strict hex decoding",
+        "intent hash binds receiver, amount and memo",
+        "Ed25519 tamper rejection"
+      ]
+    },
+    "ed25519_single_bit_flip_matrix": {
+      "status": "PASS",
+      "message_bytes": 291,
+      "message_bit_flip_vectors": 2328,
+      "signature_bit_flip_vectors": 512,
+      "total_vectors": 2840,
+      "expected": "Every one-bit mutation of signed message or signature is rejected"
+    },
+    "contract_wasm_build": {
+      "status": "PASS",
+      "command": "cargo build --manifest-path payment-contract/Cargo.toml --target wasm32-unknown-unknown --release",
+      "artifact": "payment-contract/target/wasm32-unknown-unknown/release/sentinel_payment_contract.wasm",
+      "sha256": "0febf8f346014edefc42f7f60ae70233581ddaa8815f576843f3e08db0633e6b"
+    },
+    "javascript_contract_envelope": {
+      "status": "PASS",
+      "tests": 3,
+      "passed": 3,
+      "failed": 0,
+      "command": "node --test labs/proof-carrying/test/contract-envelope.test.mjs"
+    },
+    "cross_language_encoding": {
+      "status": "PASS",
+      "message_sha256": "79f97f55182728dfd98acd123695dc2aefed18c78ec348c3f56399e40e3a4f37",
+      "details": "Rust contract and JavaScript signer reference helper assert the same deterministic binary proof message hash"
+    },
     "local_d1_race_suite": {
       "status": "PASS",
       "command": "npm run test:d1",
+      "database": "Wrangler/Miniflare local D1",
       "cases": [
         {
           "name": "duplicate nonce claim",
@@ -80,22 +134,20 @@
     },
     "migration_validation": {
       "status": "PASS",
-      "tested_commit": "ff1fbe434868f5b692363f7deefb0020d86b2dad",
+      "command": "npm run check:d1",
       "d1_migrations": 9,
       "d1_tables": 10,
       "d1_indexes": 24,
       "signer_migrations": 1,
       "signer_tables": 3,
-      "signer_indexes": 7,
-      "command": "npm run check:d1"
+      "signer_indexes": 7
     }
   },
   "not_verified": [
     "Remote Cloudflare production D1 concurrency or regional behavior",
-    "NEAR Testnet contract proof-signature or provenance-root verification",
-    "Production independent signer deployment and independent live evidence ingestion",
-    "Rust/WASM contract build in the Vercel sandbox (rustc/cargo unavailable)",
-    "GitHub Actions run status; no status was observed at evidence capture"
+    "Production Main Worker and Signer Worker integration with the new contract proof envelope",
+    "Fresh NEAR Testnet deployment, proof-key installation, live proof payment, and final transaction receipt",
+    "GitHub Actions run status for the latest branch commit"
   ],
-  "scope_note": "These results validate the isolated lab, the existing repository tests, and local D1 behavior only. They do not establish production security, on-chain proof verification, or hackathon placement."
+  "scope_note": "The contract source now verifies an Ed25519 signature over a deterministic, domain-separated message and enforces expiry, approval/nonce replay protection, and spend caps. Local Rust tests and a wasm32 build passed. The JS reference encoder matches the Rust message hash. This is not yet an end-to-end deployed payment system: the production signer/Main Worker are not wired to the new ABI, no Testnet contract was deployed, and no production D1 or live NEAR transaction was tested."
 }
