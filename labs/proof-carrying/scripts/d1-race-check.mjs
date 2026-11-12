@@ -8,7 +8,7 @@ const repoRoot=resolve(labRoot,"../..");
 const config="labs/proof-carrying/wrangler.d1-test.jsonc";
 const port=8791;
 const base="http://127.0.0.1:"+port;
-const wrangler=(...args)=>execFileSync("npx",["--yes","wrangler@4",...args],{cwd:repoRoot,encoding:"utf8",stdio:"pipe"});
+const wrangler=(...args)=>execFileSync("npx",["--yes","wrangler@4.160.1",...args],{cwd:repoRoot,encoding:"utf8",stdio:"pipe"});
 function clean(){
   wrangler("d1","execute","db2","--local","--config",config,"--command","DELETE FROM agent_execution; DELETE FROM signer_nonces; DELETE FROM signer_approval_claims;");
   wrangler("d1","execute","sentinel-db","--local","--config",config,"--command","DELETE FROM agent_pending_approvals;");
@@ -34,7 +34,7 @@ try {
   wrangler("d1","migrations","apply","sentinel-db","--local","--config",config);
   wrangler("d1","migrations","apply","db2","--local","--config",config);
   clean();
-  child=spawn("npx",["--yes","wrangler@4","dev","--config",config,"--local","--ip","127.0.0.1","--port",String(port)],{cwd:repoRoot,stdio:["ignore","pipe","pipe"],detached:true});
+  child=spawn("npx",["--yes","wrangler@4.160.1","dev","--config",config,"--local","--ip","127.0.0.1","--port",String(port)],{cwd:repoRoot,stdio:["ignore","pipe","pipe"],detached:true});
   child.on("error",error=>{logs+="SPAWN_ERROR "+error.message;});
   child.stdout.on("data",x=>{logs+=x.toString();}); child.stderr.on("data",x=>{logs+=x.toString();});
   await waitForServer(child);
