@@ -34,7 +34,7 @@ try {
   wrangler("d1","migrations","apply","sentinel-db","--local","--config",config);
   wrangler("d1","migrations","apply","db2","--local","--config",config);
   clean();
-  child=spawn("npx",["--yes","wrangler@4","dev","--config",config,"--local","--ip","127.0.0.1","--port",String(port)],{cwd:repoRoot,stdio:["ignore","pipe","pipe"]});
+  child=spawn(resolve(repoRoot,"node_modules/.bin/wrangler"),["dev","--config",config,"--local","--ip","127.0.0.1","--port",String(port)],{cwd:repoRoot,stdio:["ignore","pipe","pipe"],detached:true});
   child.stdout.on("data",x=>{logs+=x.toString();}); child.stderr.on("data",x=>{logs+=x.toString();});
   await waitForServer(child);
   const report=[];
@@ -57,6 +57,6 @@ try {
   console.error("D1_LOCAL_RACE_TESTS_FAIL",error?.stack||error,"\nWRANGLER LOGS:\n"+logs);
   process.exitCode=1;
 } finally {
-  if(child && child.exitCode===null){ child.kill("SIGTERM"); await Promise.race([new Promise(r=>child.once("exit",r)),new Promise(r=>setTimeout(r,3000))]); if(child.exitCode===null) child.kill("SIGKILL"); }
+  if(child && child.exitCode===null){ try { process.kill(-child.pid,"SIGTERM"); } catch {} await Promise.race([new Promise(r=>child.once("exit",r)),new Promise(r=>setTimeout(r,5000))]); if(child.exitCode===null){ try { process.kill(-child.pid,"SIGKILL"); } catch {} } }
   try { clean(); } catch(error) { console.error("LOCAL_D1_CLEANUP_FAILED",error?.message||error); process.exitCode=1; }
 }
