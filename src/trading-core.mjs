@@ -188,7 +188,7 @@ export async function getTidepoolDryQuote(input, fetchImpl = fetch, now = Date.n
 
 
 const DEPOSIT_ADDRESS_RE = /^[a-f0-9]{64}$/i;
-const SIGNATURE_RE = /^(?:ed25519|secp256k1):[1-9A-HJ-NP-Za-km-z]{32,100}$/;
+const SIGNATURE_RE = /^ed25519:[1-9A-HJ-NP-Za-km-z]{32,100}$/;
 
 export function validateTidepoolLiveQuote(payload, expected) {
   if (!payload || typeof payload !== "object" || !payload.quote || !payload.quoteRequest) {
@@ -268,7 +268,12 @@ export async function getTidepoolLiveQuote(input, fetchImpl = fetch, now = Date.
   };
 }
 
-export async function generateTidepoolSwapIntent({ depositAddress, signerId, originAsset, amount }, fetchImpl = fetch) {
+export async function generateTidepoolSwapIntent(input, fetchImpl = fetch) {
+  if (!input || typeof input !== "object" || Array.isArray(input) ||
+      Object.keys(input).some(key => !["depositAddress", "signerId", "originAsset", "amount"].includes(key))) {
+    return { ok: false, reason: "INVALID_SWAP_INTENT_REQUEST" };
+  }
+  const { depositAddress, signerId, originAsset, amount } = input;
   if (typeof depositAddress !== "string" || !DEPOSIT_ADDRESS_RE.test(depositAddress) ||
       typeof signerId !== "string" || !ACCOUNT_RE.test(signerId) ||
       typeof originAsset !== "string" || !/^nep141:[a-z0-9._-]+\\.tidepool-sandbox\\.testnet$/i.test(originAsset) ||
@@ -322,7 +327,12 @@ export async function generateTidepoolSwapIntent({ depositAddress, signerId, ori
   };
 }
 
-export async function submitTidepoolSignedIntent({ signedData, expectedSignerId, expectedDepositAddress, expectedAsset, expectedAmount }, fetchImpl = fetch) {
+export async function submitTidepoolSignedIntent(input, fetchImpl = fetch) {
+  if (!input || typeof input !== "object" || Array.isArray(input) ||
+      Object.keys(input).some(key => !["signedData", "expectedSignerId", "expectedDepositAddress", "expectedAsset", "expectedAmount"].includes(key))) {
+    return { ok: false, reason: "INVALID_SIGNED_INTENT_REQUEST" };
+  }
+  const { signedData, expectedSignerId, expectedDepositAddress, expectedAsset, expectedAmount } = input;
   if (!signedData || signedData.standard !== "nep413" || !signedData.payload ||
       typeof signedData.payload.message !== "string" ||
       typeof signedData.payload.nonce !== "string" ||
