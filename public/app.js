@@ -709,7 +709,8 @@ developerModeToggle?.addEventListener('change', () => {
 });
 function buildTradeSkillDraft(prompt) {
   const text = String(prompt || '').trim();
-  const action = /\b(sell|jual)\b/i.test(text) ? 'SELL' : /\b(swap|tukar|exchange)\b/i.test(text) ? 'SWAP' : 'BUY';
+  const negatedAction = /\b(don't|do not|never|jangan|tidak|bukan)\s+(?:buy|sell|swap|trade|beli|jual|tukar)\b/i.test(text);
+  const action = negatedAction ? null : /\b(sell|jual)\b/i.test(text) ? 'SELL' : /\b(swap|tukar|exchange)\b/i.test(text) ? 'SWAP' : /\b(buy|beli|dca)\b/i.test(text) ? 'BUY' : null;
   const assets = ['BTC','ETH','NEAR','USDC','USDT','SOL','WNEAR'];
   const mentions = assets.map(symbol => ({ symbol, index: text.search(new RegExp('\\b' + symbol + '\\b', 'i')) }))
     .filter(item => item.index >= 0).sort((a, b) => a.index - b.index);
@@ -724,7 +725,7 @@ function buildTradeSkillDraft(prompt) {
   const toAsset = action === 'SWAP' ? mentions[1]?.symbol || null : null;
   const asset = action === 'SWAP' ? null : mentions[0]?.symbol || null;
   return {
-    skill_id: 'sentinel.trade.' + action.toLowerCase() + '.draft',
+    skill_id: 'sentinel.trade.' + (action || 'unknown').toLowerCase() + '.draft',
     skill_version: 1,
     action,
     asset,
@@ -743,7 +744,7 @@ function buildTradeSkillDraft(prompt) {
 async function renderTradeSkillDraft(prompt) {
   const result = $('agentResult');
   const draft = buildTradeSkillDraft(prompt);
-  const complete = Boolean(draft.amount && draft.amount_unit && (draft.action === 'SWAP' ? draft.from_asset && draft.to_asset : draft.asset));
+  const complete = Boolean(draft.action && draft.amount && draft.amount_unit && (draft.action === 'SWAP' ? draft.from_asset && draft.to_asset : draft.asset));
   const canonical = JSON.stringify(draft);
   let fingerprint = 'unavailable';
   try {
