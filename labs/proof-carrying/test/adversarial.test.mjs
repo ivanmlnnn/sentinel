@@ -128,3 +128,5 @@ test("semantic firewall blocks null intents",()=>assert.equal(comparePaymentInte
 test("semantic firewall blocks missing receiver field",()=>assert.equal(comparePaymentIntents({original:intent,proposed:{amount:"5",memo:"invoice-42"}}).decision,"BLOCK"));
 test("semantic firewall blocks non-string amount",()=>assert.equal(comparePaymentIntents({original:intent,proposed:{...intent,amount:5}}).decision,"BLOCK"));
 test("semantic firewall blocks array-shaped intent",()=>assert.equal(comparePaymentIntents({original:intent,proposed:[intent.receiver,intent.amount,intent.memo]}).decision,"BLOCK"));
+test("independent signer blocks missing intent without throwing",()=>assert.deepEqual(independentSignerCheck({intent:null}).reasons,["INVALID_PAYMENT_INTENT"]));
+test("independent signer blocks malformed intent without throwing",()=>assert.equal(independentSignerCheck({intent:{receiver:"x",amount:5,memo:"m"}}).decision,"BLOCK"));
