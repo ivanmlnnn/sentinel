@@ -173,4 +173,4 @@ Operational detail: [Security Supervisor Runbook](docs/SECURITY_SUPERVISOR_RUNBO
 
 ## Hatchable manual runtime
 
-The Hatchable Task Runner is mirrored in [`hatchable/api/agent-task-runner.js`](hatchable/api/agent-task-runner.js). It uses deterministic commands and creates review-only proposals; it does not require an AI API and cannot sign or broadcast transactions. See [Hatchable Manual Agent Runtime](docs/HATCHABLE_MANUAL_AGENT_RUNTIME.md) for the deployed v22 status and verification limits.
+The Hatchable Control Plane, Security Supervisor, and Task Runner are mirrored under [`hatchable/api/`](hatchable/api/), with the telemetry migration under [`hatchable/migrations/`](hatchable/migrations/). It uses deterministic commands and creates review-only proposals; it does not require an AI API and cannot sign or broadcast transactions. See [Hatchable Manual Agent Runtime](docs/HATCHABLE_MANUAL_AGENT_RUNTIME.md) for the deployed v22 status and verification limits.
