@@ -1,5 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
-import { query } from '../_lib/db.js';
+import { query } from './db.js';
 export default async function handler(req,res){
  if(req.method!=='POST')return res.status(405).json({error:'METHOD_NOT_ALLOWED'});
  const supplied=String(req.headers['authorization']||'').replace(/^Bearer\s+/i,'');
