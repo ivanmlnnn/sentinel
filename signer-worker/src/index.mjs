@@ -143,11 +143,27 @@ export async function claimApproval(env, { approvalId, idempotencyKey, actor, re
   ).bind(approvalId, idempotencyKey, actor, receiver, amountMicro).run();
 }
 export async function reserveSpend(env, { idempotencyKey, actor, receiver, amountMicro, dailyCapMicro }) {
-  const result = await env.DB2.prepare(
-    "INSERT INTO agent_execution (idempotency_key, actor, receiver_account, amount_micro, status, created_at, updated_at) " +
-    "SELECT ?, ?, ?, ?, 'PENDING', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP " +
-    "WHERE (SELECT COALESCE(SUM(amount_micro), 0) FROM agent_execution WHERE date(created_at)=date('now') AND status IN ('PENDING','EXECUTED','UNKNOWN')) + ? <= ?"
-  ).bind(idempotencyKey, actor, receiver, amountMicro, amountMicro, dailyCapMicro).run();
+  if (typeof idempotencyKey !== "string" || !idempotencyKey ||
+      typeof actor !== "string" || !actor || typeof receiver !== "string" || !receiver ||
+      !Number.isSafeInteger(amountMicro) || amountMicro <= 0 ||
+      !Number.isSafeInteger(dailyCapMicro) || dailyCapMicro <= 0) {
+    throw new Error("INVALID_SPEND_RESERVATION");
+  }
+  let result;
+  try {
+    result = await env.DB2.prepare(
+      "INSERT INTO agent_execution (idempotency_key, actor, receiver_account, amount_micro, status, created_at, updated_at) " +
+      "SELECT ?, ?, ?, ?, 'PENDING', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP " +
+      "WHERE (SELECT COALESCE(SUM(amount_micro), 0) FROM agent_execution WHERE date(created_at)=date('now') AND status IN ('PENDING','EXECUTED','UNKNOWN')) + ? <= ?"
+    ).bind(idempotencyKey, actor, receiver, amountMicro, amountMicro, dailyCapMicro).run();
+  } catch (error) {
+    let prior = null;
+    try {
+      prior = await env.DB2.prepare("SELECT idempotency_key FROM agent_execution WHERE idempotency_key = ?").bind(idempotencyKey).first();
+    } catch { /* Preserve the original D1 failure when the lookup also fails. */ }
+    if (prior) throw new Error("IDEMPOTENCY_KEY_REUSED");
+    throw error;
+  }
   if (result.meta?.changes === 1) return true;
   const prior = await env.DB2.prepare("SELECT idempotency_key FROM agent_execution WHERE idempotency_key = ?").bind(idempotencyKey).first();
   throw new Error(prior ? "IDEMPOTENCY_KEY_REUSED" : "DAILY_SPEND_LIMIT_REACHED");
