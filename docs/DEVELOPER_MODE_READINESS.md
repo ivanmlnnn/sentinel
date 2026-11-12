@@ -50,11 +50,11 @@ Existing transaction paths are separate:
 
 The Hatchable project has deployed Control Plane and Security Supervisor endpoints. That is deployment evidence only, not proof of production integration.
 
-The Cloudflare Worker source reviewed on 13 November 2026 contains its local agent run/approval routes but no demonstrated call to the Hatchable `/api/agent-control` or `/api/security-supervisor` endpoints. Hatchable telemetry, incident, task, and session tables returned no rows in the reviewed database queries. Recent Agent Task Runner executions also included HTTP 503 failures.
+The Sentinel branch now contains `src/hatchable-bridge.mjs` and the Worker response path schedules sanitized HMAC-signed telemetry to both Hatchable `/api/agent-control` and `/api/security-supervisor` endpoints. Hatchable v21 is deployed with idempotent Control Plane telemetry storage and the Supervisor event contract. However, the Worker changes are not yet deployed; the required Hatchable HMAC secret is missing, the matching Worker secret is not configured, and the project visibility is still `personal`, so an anonymous Worker request is blocked by the platform sign-in wall. The new `worker_telemetry_events` table currently has zero rows.\n\nThe Agent Task Runner has returned HTTP 503. The AI usage ledger showed three calls for `haiku` with `provider: null` and zero tokens, consistent with an account-level AI provider connection not being configured. The runner now classifies structured provider-setup errors, but successful model execution remains unverified.
 
 Therefore:
-- Production telemetry forwarding: **NOT CONNECTED / NOT VERIFIED**.
-- Durable agent session lifecycle through Hatchable: **NOT VERIFIED**.
+- Worker-to-Hatchable telemetry bridge: **IMPLEMENTED IN BRANCH, NOT DEPLOYED / NOT VERIFIED**.
+- HMAC credentials and public route reachability: **NOT CONFIGURED**.\n- Durable agent session lifecycle through Hatchable: **NOT VERIFIED**.
 - Successful autonomous task execution: **NOT VERIFIED**.
 - 24/7 monitoring or autonomous containment: **NOT CLAIMED**.
 
