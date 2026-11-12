@@ -1,0 +1,52 @@
+.developer-trade-quote {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid rgba(91, 210, 205, .34);
+  border-radius: 12px;
+  background: rgba(12, 49, 52, .34);
+  display: grid;
+  gap: 10px;
+}
+.developer-trade-quote > strong {
+  color: #82e3df;
+  font: 700 11px/1.4 "IBM Plex Mono", monospace;
+  letter-spacing: .08em;
+}
+.developer-trade-quote p {
+  margin: 0;
+  color: var(--muted, #a8b8b8);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.developer-trade-quote label {
+  display: block;
+  margin: 4px 0 -5px;
+  color: var(--muted, #a8b8b8);
+  font: 600 10px/1.4 "IBM Plex Mono", monospace;
+  letter-spacing: .04em;
+}
+.developer-trade-quote input {
+  width: 100%;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid rgba(130, 227, 223, .25);
+  border-radius: 8px;
+  color: var(--text, #edf7f5);
+  background: rgba(3, 19, 22, .7);
+  font: 12px "IBM Plex Mono", monospace;
+}
+.developer-trade-quote button {
+  justify-self: start;
+}
+.developer-trade-quote pre {
+  max-height: 260px;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  border-radius: 8px;
+  color: #c8e9e5;
+  background: rgba(0, 0, 0, .24);
+  font: 10px/1.5 "IBM Plex Mono", monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
