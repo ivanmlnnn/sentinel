@@ -25,7 +25,11 @@ Cloudflare must never wait for the supervisor or an AI provider before enforcing
 | Telemetry and incident tables | Deployed | Migrations `005_security_supervisor.sql` and `006_worker_telemetry.sql`; idempotent `worker_telemetry_events` table exists |
 | Deterministic event thresholds | Implemented | Initial heuristic thresholds; require tuning and false-positive review |
 | Production Worker telemetry forwarding | IMPLEMENTED IN BRANCH · NOT ACTIVE | `src/hatchable-bridge.mjs` signs sanitized events and asynchronously sends them to both Hatchable endpoints; Cloudflare Worker deployment and secrets are still pending |
-| Agent Task Runner | DEGRADED · PROVIDER SETUP REQUIRED | Recent calls returned HTTP 503; AI ledger showed `provider: null` and zero tokens. Connect a supported account-level AI provider in Hatchable Setup, then rerun the task flow |\n| Hatchable bridge credentials and visibility | NOT CONFIGURED | `SENTINEL_CONTROL_HMAC` is not set; project visibility is `personal`, which blocks anonymous Worker-to-Hatchable requests |\n| 24/7 availability / uptime SLA | NOT VERIFIED | Deployment does not prove continuous uptime, retries, or recovery |
+| Agent Task Runner | DEPLOYED v22 · MANUAL RULE ENGINE | No AI provider call; exact command grammar; proposal-only financial actions; help-task smoke test returned HTTP 200 / COMPLETED |
+| Hatchable bridge credentials and visibility | PARTIALLY CONFIGURED | User configured Hatchable `SENTINEL_CONTROL_HMAC`; matching Cloudflare secret and Worker deployment remain pending. Project is still private, blocking anonymous Worker access |
+
+
+| 24/7 availability / uptime SLA | NOT VERIFIED | Deployment does not prove continuous uptime, retries, or recovery |
 | AI-assisted incident analysis | NOT VERIFIED | AI provider setup is a separate prerequisite; deterministic ingestion does not require AI |
 | Automatic Cloudflare IP blocking | NOT IMPLEMENTED | Worker remains the enforcement authority; no remote block command is exposed |
 
@@ -44,7 +48,15 @@ The Worker bridge sends allow-listed event types, a UUID event ID, outcome, and 
 
 Recommended event types include `AUTH_FAILURE`, `ACCESS_DENIED`, `INVALID_SIGNATURE`, `REPLAY_DETECTED`, `RATE_LIMITED`, `POLICY_BLOCK`, `SESSION_REVOKED`, `SESSION_EXPIRED`, `SESSION_COMPROMISE`, `ORIGIN_ERROR`, `CSP_VIOLATION`, `INPUT_REJECTED`, and `WALLET_CONSENT_FAILURE`.
 
-## Current integration implementation\n\nThe Sentinel branch now contains `src/hatchable-bridge.mjs`, called from the Worker response path through `ctx.waitUntil`. It signs each request with HMAC-SHA256 over `timestamp.nonce.rawBody`, uses a fresh nonce per endpoint, hashes the source IP with a keyed HMAC, and sends to both `/api/agent-control` (`telemetry.observe`) and `/api/security-supervisor` (`telemetry.ingest`). The Control Plane persists event IDs idempotently in `worker_telemetry_events`; the Supervisor persists the same event in `security_telemetry`.\n\nThe Hatchable project was deployed through v21 with these endpoint changes and migration 006. This is not end-to-end proof: the Worker branch has not yet been deployed, `SENTINEL_CONTROL_HMAC` is missing in Hatchable Setup, the matching Worker secret is not configured, and the project remains private.\n\n## Rollout verification checklist
+## Current integration implementation
+
+The Sentinel branch contains `src/hatchable-bridge.mjs`, called from the Worker response path through `ctx.waitUntil`. It signs sanitized events with HMAC-SHA256 over `timestamp.nonce.rawBody`, uses a fresh nonce per endpoint, hashes the source IP with a keyed HMAC, and sends to both `/api/agent-control` (`telemetry.observe`) and `/api/security-supervisor` (`telemetry.ingest`).
+
+Hatchable v22 is live. The Control Plane persists telemetry idempotently in `worker_telemetry_events`; the Security Supervisor uses deterministic thresholds; and the Task Runner now uses a deterministic manual command engine instead of an AI provider. The Task Runner source is mirrored at `hatchable/api/agent-task-runner.js` in this repository. A scheduler smoke test for the `help` command returned HTTP 200 and COMPLETED.
+
+The user has configured the Hatchable-side `SENTINEL_CONTROL_HMAC`. The matching Cloudflare Worker secret and Worker deployment are still pending. The Hatchable project remains private/personal, so anonymous Worker-to-Hatchable requests are still blocked. Therefore the two endpoint deployments and task smoke test do not establish a working end-to-end telemetry connection.
+
+## Rollout verification checklist
 
 - [ ] A valid HMAC request is accepted.
 - [ ] Missing or invalid HMAC is rejected.
