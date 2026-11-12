@@ -773,9 +773,9 @@ async function renderTradeSkillDraft(prompt) {
     quoteStatus.setAttribute('aria-live', 'polite');
     const quoteDetails = document.createElement('pre');
     quoteDetails.hidden = true;
-    const quoteForm = document.createElement('form');
-    quoteForm.addEventListener('submit', async event => {
-      event.preventDefault();
+    const quoteForm = document.createElement('div');
+    quoteButton.type = 'button';
+    quoteButton.addEventListener('click', async () => {
       quoteButton.disabled = true;
       quoteStatus.textContent = 'Loading the live Testnet asset list and requesting a dry quote…';
       quoteDetails.hidden = true;
@@ -824,9 +824,9 @@ async function renderTradeSkillDraft(prompt) {
     });
     quoteForm.append(recipientLabel, recipientInput, quoteButton, quoteStatus, quoteDetails);
     quotePanel.append(quoteTitle, quoteHelp, quoteForm);
-    card.append(quotePanel);
   }
   card.append(heading, summary, details, note, hash, copy);
+  if (typeof quotePanel !== 'undefined') card.append(quotePanel);
   result.replaceChildren(card);
   result.classList.remove('hidden');
   result.scrollTop = result.scrollHeight;
