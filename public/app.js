@@ -235,7 +235,14 @@ async function initWallet() {
       const account = event.accounts && event.accounts[0];
       syncWalletUI(account?.accountId, event.wallet?.manifest?.name || 'NEAR wallet');
     });
-    connector.on('wallet:signOut', () => syncWalletUI(null, null));
+    connector.on('wallet:signOut', () => {
+      syncWalletUI(null, null);
+      if (developerModeEnabled || developerModePending) {
+        setDeveloperMode(false, 'OFF · WALLET DISCONNECTED');
+        if (developerModeToggle) developerModeToggle.disabled = false;
+        developerModePending = false;
+      }
+    });
 
     try {
       const current = await connector.getConnectedWallet();
