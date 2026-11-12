@@ -59,16 +59,17 @@ These paths are distinct and are **not connected end-to-end**:
 
 ## Hatchable integration status
 
-Hatchable project `IVTECH Sentinel` is deployed at **v22**. Control Plane and Security Supervisor are deployed; Agent Task Runner is deterministic/manual.
+Hatchable project `IVTECH Sentinel` is deployed at **v23**. Control Plane, Security Supervisor, deterministic Task Runner, and the first persisted Skill Foundry backend are deployed.
 
-The Control Plane supports signed `session.activate`, `session.revoke`, `session.status`, `task.submit`, and `task.status`. These are application-level session records and task orchestration; they do not create or verify NEAR on-chain access keys.
+The Control Plane supports signed `session.activate`, `session.revoke`, `session.status`, `task.submit`, `task.status`, `skill.create`, and `skill.list`. The Skill Foundry stores owner-scoped, versioned Testnet strategy drafts with SHA-256 fingerprints. Supported schemas are SWAP, DCA, LIMIT_BUY, and LIMIT_SELL; validation rejects unknown fields, invalid asset pairs, malformed decimal amounts, and DCA schedules whose aggregate amount exceeds the declared maximum. Every stored skill is `DRAFT` with `execution_mode=PROPOSE_ONLY`; it cannot sign, broadcast, or schedule transactions. These are application-level records and do not create or verify NEAR on-chain access keys.
 
 A temporary ACTIVE Testnet session and queued `help` task returned HTTP 200, `COMPLETED`, `SENTINEL_DETERMINISTIC_RULE_ENGINE`, and `ai_provider_required: false`. Temporary test records were removed. This proves only the tested help-task path.
 
 Hatchable Setup confirms `SENTINEL_CONTROL_HMAC` is configured. Matching Cloudflare `HATCHABLE_CONTROL_HMAC` and Worker deployment remain outstanding. Hatchable remains `personal`/private, so anonymous Worker requests are blocked by the platform sign-in wall. Use a separate public API-only project if the dashboard must remain private.
 
 Therefore:
-- Hatchable deterministic Task Runner: **DEPLOYED v22 · HELP TASK SMOKE-TESTED**.
+- Hatchable deterministic Task Runner: **DEPLOYED v23 · HELP TASK SMOKE-TESTED**.
+- Hatchable Skill Foundry backend: **DEPLOYED v23 · schema and API added; authenticated create/list E2E NOT YET VERIFIED**.
 - AI dependency for that Task Runner: **REMOVED**.
 - Hatchable Task Runner ↔ dashboard chat: **NOT CONNECTED**.
 - Hatchable app sessions ↔ on-chain NEAR delegated keys: **NOT CONNECTED**.
@@ -76,7 +77,7 @@ Therefore:
 - Hatchable HMAC: **CONFIGURED**; matching Cloudflare secret: **PENDING**.
 - Hatchable public reachability: **BLOCKED BY PRIVATE PROJECT VISIBILITY**.
 - Tidepool swap: **SEPARATE USER-SIGNED TESTNET FLOW; NOT AUTONOMOUS**.
-- BUY/SELL adapter, persisted executable skills, scheduled strategy runner, delegated signing/broadcast: **NOT IMPLEMENTED / DISABLED**.
+- Persisted executable skills, BUY/SELL execution adapter, scheduled strategy runner, delegated signing/broadcast: **NOT IMPLEMENTED / DISABLED**.
 - 24/7 monitoring or autonomous containment: **NOT CLAIMED**.
 
 ## Release acceptance tests
