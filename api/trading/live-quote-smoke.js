@@ -1,5 +1,4 @@
-import { verifyQuoteSignature } from "@defuse-protocol/one-click-sdk-typescript";
-import { getTidepoolTestnetTokens, buildTidepoolDryQuotePayload } from "../../src/trading-core.mjs";
+import { getTidepoolTestnetTokens, getTidepoolLiveQuote } from "../../src/trading-core.mjs";
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
@@ -8,27 +7,24 @@ export default async function handler(req, res) {
     const tokens = await getTidepoolTestnetTokens();
     const origin = tokens.find(token => token.symbol.toUpperCase() === "USDC");
     const destination = tokens.find(token => token.symbol.toUpperCase() === "WNEAR");
-    const input = {
-      originAsset: origin.asset_id, destinationAsset: destination.asset_id,
-      amount: "1000000", recipient: "user.testnet", slippageTolerance: 100
-    };
-    const requestBody = { ...buildTidepoolDryQuotePayload(input), dry: false };
-    const response = await fetch("https://www.usetidepool.tech/v0/quote", {
-      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(requestBody)
+    if (!origin || !destination) return res.status(503).json({ error: "SMOKE_ASSETS_UNAVAILABLE" });
+    const result = await getTidepoolLiveQuote({
+      originAsset: origin.asset_id,
+      destinationAsset: destination.asset_id,
+      amount: "1000000",
+      recipient: "user.testnet",
+      slippageTolerance: 100
     });
-    const payload = await response.json();
+    if (!result.ok) return res.status(502).json({ error: result.reason });
     return res.status(200).json({
-      http_status: response.status,
-      keys: Object.keys(payload || {}),
-      quote_request: payload.quoteRequest,
-      quote: payload.quote,
-      timestamp: payload.timestamp,
-      signature: payload.signature,
-      verified_full_payload: verifyQuoteSignature(payload, "ed25519:U1Mu4u1nHnHmgABpCkfDGXt2FZj8k29UGqhkMAu4iWY"),
-      verified_without_correlation: verifyQuoteSignature({
-        timestamp: payload.timestamp, quoteRequest: payload.quoteRequest,
-        quote: payload.quote, signature: payload.signature
-      }, "ed25519:U1Mu4u1nHnHmgABpCkfDGXt2FZj8k29UGqhkMAu4iWY")
+      smoke_test: "PASSED",
+      provider: result.value.provider,
+      network: result.value.network,
+      mode: result.value.mode,
+      execution_enabled: result.value.execution_enabled,
+      deposit_address_format_valid: /^[a-f0-9]{64}$/i.test(result.value.deposit_address),
+      quote: result.value.quote,
+      provider_signature_verified: result.value.provider_signature_verified
     });
   } catch (error) {
     return res.status(502).json({ error: error instanceof Error ? error.message : "SMOKE_FAILED" });
