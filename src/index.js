@@ -15,6 +15,7 @@ import { onRequestPost as tradingLiveQuotePost } from "../functions/api/trading-
 import { onRequestPost as tradingGenerateIntentPost } from "../functions/api/trading-generate-intent.js";
 import { onRequestPost as tradingSubmitIntentPost } from "../functions/api/trading-submit-intent.js";
 import { onRequestGet as tradingStatusGet } from "../functions/api/trading-status.js";
+import { onRequestPost as tradingKeyStatusPost } from "../functions/api/trading-key-status.js";
 
 const MAX_API_BODY_BYTES = 65536;
 const routes = {
@@ -36,7 +37,8 @@ const routes = {
   "POST /api/trading/live-quote": tradingLiveQuotePost,
   "POST /api/trading/generate-intent": tradingGenerateIntentPost,
   "POST /api/trading/submit-intent": tradingSubmitIntentPost,
-  "GET /api/trading/status": tradingStatusGet
+  "GET /api/trading/status": tradingStatusGet,
+  "POST /api/trading/key-status": tradingKeyStatusPost
 };
 
 async function validateBoundedJsonBody(request) {
