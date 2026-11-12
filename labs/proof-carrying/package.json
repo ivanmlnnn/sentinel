@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "verify": "node src/verify-proof.mjs fixtures/valid-proof.json"
+    "verify": "node src/verify-proof.mjs fixtures/valid-proof.json",
+    "test:d1": "node scripts/d1-race-check.mjs"
   }
 }
