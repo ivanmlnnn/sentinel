@@ -711,7 +711,8 @@ function buildTradeSkillDraft(prompt) {
   const text = String(prompt || '').trim();
   const action = /\b(sell|jual)\b/i.test(text) ? 'SELL' : /\b(swap|tukar|exchange)\b/i.test(text) ? 'SWAP' : 'BUY';
   const assets = ['BTC','ETH','NEAR','USDC','USDT','SOL','WNEAR'];
-  const asset = assets.find(symbol => new RegExp('\\b' + symbol + '\\b','i').test(text)) || null;
+  const mentions = assets.map(symbol => ({ symbol, index: text.search(new RegExp('\\b' + symbol + '\\b', 'i')) }))
+    .filter(item => item.index >= 0).sort((a, b) => a.index - b.index);
   const amountMatch = text.match(/\$\s*(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?)\s*(USD|USDC|USDT|BTC|ETH|NEAR|SOL|WNEAR)\b/i);
   const amount = amountMatch ? Number(amountMatch[1] || amountMatch[2]) : null;
   const amountUnit = amountMatch?.[3] ? amountMatch[3].toUpperCase() : (amountMatch?.[1] ? 'USD' : null);
@@ -719,11 +720,16 @@ function buildTradeSkillDraft(prompt) {
     : /\b(daily|every day|setiap hari|harian)\b/i.test(text) ? 'DAILY'
     : /\b(weekly|every week|setiap minggu|mingguan|monday|senin|friday|jumat)\b/i.test(text) ? 'WEEKLY'
     : /\b(monthly|every month|setiap bulan|bulanan)\b/i.test(text) ? 'MONTHLY' : 'ON_DEMAND';
+  const fromAsset = action === 'SWAP' ? mentions[0]?.symbol || null : null;
+  const toAsset = action === 'SWAP' ? mentions[1]?.symbol || null : null;
+  const asset = action === 'SWAP' ? null : mentions[0]?.symbol || null;
   return {
     skill_id: 'sentinel.trade.' + action.toLowerCase() + '.draft',
     skill_version: 1,
     action,
     asset,
+    from_asset: fromAsset,
+    to_asset: toAsset,
     amount: Number.isFinite(amount) && amount > 0 ? amount : null,
     amount_unit: amountUnit,
     schedule,
@@ -737,7 +743,7 @@ function buildTradeSkillDraft(prompt) {
 async function renderTradeSkillDraft(prompt) {
   const result = $('agentResult');
   const draft = buildTradeSkillDraft(prompt);
-  const complete = Boolean(draft.asset && draft.amount && draft.amount_unit);
+  const complete = Boolean(draft.amount && draft.amount_unit && (draft.action === 'SWAP' ? draft.from_asset && draft.to_asset : draft.asset));
   const canonical = JSON.stringify(draft);
   let fingerprint = 'unavailable';
   try {
@@ -755,8 +761,8 @@ async function renderTradeSkillDraft(prompt) {
   heading.append(title, status);
   const summary = document.createElement('p');
   summary.textContent = complete
-    ? draft.action + ' ' + draft.amount + ' ' + draft.amount_unit + ' · ' + draft.asset + ' · ' + draft.schedule
-    : 'Sentinel could not safely determine the asset and amount. Refine the prompt before creating a reviewable skill.';
+    ? draft.action + ' ' + draft.amount + ' ' + draft.amount_unit + ' · ' + (draft.action === 'SWAP' ? draft.from_asset + ' → ' + draft.to_asset : draft.asset) + ' · ' + draft.schedule
+    : 'Sentinel could not safely determine the asset pair and amount. Refine the prompt before creating a reviewable skill.';
   const details = document.createElement('pre');
   details.textContent = JSON.stringify(draft, null, 2);
   const note = document.createElement('p');
@@ -777,7 +783,6 @@ async function renderTradeSkillDraft(prompt) {
   result.classList.remove('hidden');
   result.scrollTop = result.scrollHeight;
 }
-
 const GUEST_CHAT_KEY = 'sentinel.guestAgent.messages.v1';
 let guestConversation = [];
 let authenticatedPrompt = '';
