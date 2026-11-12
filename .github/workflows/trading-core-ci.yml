@@ -38,10 +38,12 @@ jobs:
           node --check functions/api/trading-generate-intent.js
           node --check functions/api/trading-submit-intent.js
           node --check functions/api/trading-status.js
+          node --check functions/api/trading-key-status.js
           node --check api/trading/live-quote.js
           node --check api/trading/generate-intent.js
           node --check api/trading/submit-intent.js
           node --check api/trading/status.js
+          node --check api/trading/key-status.js
           node --check api/trading/tokens.js
           node --check api/trading/quote.js
           node --check public/trade-skill-draft.js
