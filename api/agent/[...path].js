@@ -1,8 +1,8 @@
-import control from '../_lib/agent-control.js';
-import supervisor from '../_lib/agent-supervisor.js';
-import taskRunner from '../_lib/agent-task-runner.js';
-import developerSession from '../_lib/agent-developer-session.js';
-import developerTask from '../_lib/agent-developer-task.js';
+import control from '../../server/agent-control.js';
+import supervisor from '../../server/agent-supervisor.js';
+import taskRunner from '../../server/agent-task-runner.js';
+import developerSession from '../../server/agent-developer-session.js';
+import developerTask from '../../server/agent-developer-task.js';
 
 export const config = { api: { bodyParser: false } };
 
