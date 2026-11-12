@@ -115,6 +115,65 @@ mod tests{
   assert!(!env::ed25519_verify(&sig,&m,&wrong.verifying_key().to_bytes()));
  }
 
+
+ fn set_test_context(predecessor:&str,now:u64){
+  use near_sdk::test_utils::VMContextBuilder;
+  let mut b=VMContextBuilder::new();
+  b.current_account_id(AccountId::from_str("sentinel.testnet").unwrap())
+   .predecessor_account_id(AccountId::from_str(predecessor).unwrap())
+   .block_timestamp(now)
+   .account_balance(NearToken::from_near(10));
+  near_sdk::testing_env!(b.build());
+ }
+ fn signed_args(key:&SigningKey,receiver:&str,amount:u128,approval:&str,nonce:&str,memo:&str,issued:u64,expires:u64)->String{
+  let receiver=AccountId::from_str(receiver).unwrap();
+  let intent=intent_hash(&receiver,amount,memo);
+  let root=[5u8;32];let evidence=[6u8;32];
+  let message=proof_message(&env::chain_id(),&env::current_account_id(),&env::predecessor_account_id(),&receiver,amount,
+   approval,nonce,issued,expires,&intent,&root,&evidence,"policy-v1",1);
+  to_hex(&key.sign(&message).to_bytes())
+ }
+ fn fresh_contract(key:&SigningKey,now:u64)->SentinelPayment{
+  set_test_context("owner.testnet",now);
+  let mut c=SentinelPayment::new(AccountId::from_str("owner.testnet").unwrap(),AccountId::from_str("agent.testnet").unwrap(),U128(1000),U128(2000));
+  c.set_proof_signer_key(to_hex(&key.verifying_key().to_bytes()));
+  set_test_context("agent.testnet",now);
+  c
+ }
+ #[test]fn contract_accepts_exact_signed_payment_and_consumes_both_replay_keys(){
+  let now=10_000_000_000u64;let key=SigningKey::from_bytes(&[21;32]);let mut c=fresh_contract(&key,now);
+  let sig=signed_args(&key,"receiver.testnet",500,"approval-a","nonce-a","invoice-a",now-1,now+60_000_000_000);
+  let _promise=c.pay(AccountId::from_str("receiver.testnet").unwrap(),U128(500),"approval-a".into(),"nonce-a".into(),"invoice-a".into(),
+   U64(now-1),U64(now+60_000_000_000),"05".repeat(32),"06".repeat(32),"policy-v1".into(),sig.clone());
+  assert!(c.used_approvals.contains(&"approval-a".to_string()));
+  assert!(c.used_nonces.contains(&"nonce-a".to_string()));
+  let replay=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||c.pay(AccountId::from_str("receiver.testnet").unwrap(),U128(500),
+   "approval-a".into(),"nonce-a".into(),"invoice-a".into(),U64(now-1),U64(now+60_000_000_000),"05".repeat(32),"06".repeat(32),"policy-v1".into(),sig)));
+  assert!(replay.is_err(),"replayed approval and nonce must be rejected");
+ }
+ #[test]fn contract_rejects_receiver_substitution(){
+  let now=20_000_000_000u64;let key=SigningKey::from_bytes(&[22;32]);let mut c=fresh_contract(&key,now);
+  let sig=signed_args(&key,"receiver.testnet",500,"approval-b","nonce-b","invoice-b",now-1,now+60_000_000_000);
+  let result=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||c.pay(AccountId::from_str("attacker.testnet").unwrap(),U128(500),
+   "approval-b".into(),"nonce-b".into(),"invoice-b".into(),U64(now-1),U64(now+60_000_000_000),"05".repeat(32),"06".repeat(32),"policy-v1".into(),sig)));
+  assert!(result.is_err(),"receiver substitution must fail signature verification");
+ }
+ #[test]fn contract_rejects_expired_proof_before_signature_verification(){
+  let now=30_000_000_000u64;let key=SigningKey::from_bytes(&[23;32]);let mut c=fresh_contract(&key,now);
+  let result=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||c.pay(AccountId::from_str("receiver.testnet").unwrap(),U128(500),
+   "approval-c".into(),"nonce-c".into(),"invoice-c".into(),U64(now-10),U64(now-1),"05".repeat(32),"06".repeat(32),"policy-v1".into(),"00".into())));
+  assert!(result.is_err(),"expired proof must fail closed");
+ }
+ #[test]fn contract_rejects_future_issued_and_overlong_proofs(){
+  let now=40_000_000_000u64;let key=SigningKey::from_bytes(&[24;32]);let mut c=fresh_contract(&key,now);
+  let future=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||c.pay(AccountId::from_str("receiver.testnet").unwrap(),U128(500),
+   "approval-d".into(),"nonce-d".into(),"invoice-d".into(),U64(now+1),U64(now+60_000_000_000),"05".repeat(32),"06".repeat(32),"policy-v1".into(),"00".into())));
+  assert!(future.is_err());
+  let long=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||c.pay(AccountId::from_str("receiver.testnet").unwrap(),U128(500),
+   "approval-e".into(),"nonce-e".into(),"invoice-e".into(),U64(now-1),U64(now+MAX_PROOF_TTL_NS+1),"05".repeat(32),"06".repeat(32),"policy-v1".into(),"00".into())));
+  assert!(long.is_err());
+ }
+
  #[test]fn strict_hex_decoder(){assert_eq!(decode_hex::<2>("00aF"),Some([0,175]));assert_eq!(decode_hex::<2>("00af00"),None);assert_eq!(decode_hex::<2>("00xz"),None);assert_eq!(decode_hex::<2>("00é"),None);}
  #[test]fn intent_hash_binds_receiver_amount_and_memo(){let r=AccountId::from_str("receiver.testnet").unwrap();let o=AccountId::from_str("other.testnet").unwrap();let h=intent_hash(&r,123,"invoice-42");assert_ne!(h,intent_hash(&r,123,"invoice-43"));assert_ne!(h,intent_hash(&o,123,"invoice-42"));assert_ne!(h,intent_hash(&r,124,"invoice-42"));}
 }
