@@ -1,5 +1,5 @@
 const TIDEPOOL_BASE_URL = "https://www.usetidepool.tech";
-const ACCOUNT_RE = /^[a-z0-9]+(?:[-_.][a-z0-9]+)*\\.testnet$/;
+const ACCOUNT_RE = /^[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet$/;
 const INTEGER_RE = /^(?:0|[1-9][0-9]*)$/;
 const MAX_AMOUNT_DIGITS = 78;
 const DEFAULT_SLIPPAGE_BPS = 100;
@@ -11,7 +11,7 @@ export function normalizeTidepoolTokens(payload) {
     .filter(token =>
       token &&
       typeof token.assetId === "string" &&
-      /^nep141:[a-z0-9._-]+\\.tidepool-sandbox\\.testnet$/i.test(token.assetId) &&
+      /^nep141:[a-z0-9._-]+\.tidepool-sandbox\.testnet$/i.test(token.assetId) &&
       token.blockchain === "near" &&
       typeof token.symbol === "string" &&
       Number.isInteger(token.decimals) &&
