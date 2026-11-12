@@ -25,3 +25,9 @@ test("registry evidence cannot authorize a payment amount",()=>{const r=evaluate
 test("unauthorized conflicting evidence blocks even with one valid authority",()=>{const r=evaluateProofIntent({intent,evidence:[...base,ev("mail",{receiver:"attacker.near"})],trustStore:trust,now});assert.equal(r.decision,"BLOCK");assert.ok(r.failures.includes("receiver:UNAUTHORIZED_FIELD_AUTHORITY"))});
 test("tampered signature bytes are rejected",()=>{const x={...base[0],signature:"0".repeat(64)};assert.equal(verifyEvidence(x,trust,now).reason,"BAD_SIGNATURE")});
 test("array claims are rejected as malformed evidence",()=>{const x=signEvidence({source_id:"registry",issued_at:now-1,expires_at:now+10,claims:[]},trust.registry);assert.equal(verifyEvidence(x,trust,now).reason,"MALFORMED_EVIDENCE")});
+
+test("null trust store fails closed without throwing",()=>assert.equal(verifyEvidence(base[0],null,now).reason,"UNKNOWN_SOURCE"));
+test("undefined claim value is rejected as malformed evidence",()=>{const x={source_id:"registry",issued_at:now-1,expires_at:now+10,claims:{receiver:undefined},signature:"a".repeat(64)};assert.equal(verifyEvidence(x,trust,now).reason,"MALFORMED_EVIDENCE")});
+test("missing payment intent fails closed without throwing",()=>assert.equal(evaluateProofIntent({intent:null,evidence:base,trustStore:trust,now}).decision,"BLOCK"));
+test("missing evidence array fails closed without throwing",()=>assert.equal(evaluateProofIntent({intent,evidence:null,trustStore:trust,now}).decision,"BLOCK"));
+test("missing clock fails closed without throwing",()=>assert.equal(evaluateProofIntent({intent,evidence:base,trustStore:trust}).decision,"BLOCK"));
