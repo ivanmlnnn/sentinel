@@ -659,6 +659,7 @@ body{
 .developer-mode-switch input:checked+.developer-mode-track:after{transform:translateX(15px);background:var(--sentinel-cyan);box-shadow:0 0 12px rgba(53,207,255,.55)}
 .developer-mode-switch input:focus-visible+.developer-mode-track{outline:2px solid var(--sentinel-cyan);outline-offset:3px}
 .developer-mode-banner{margin:0 22px 18px;padding:12px 14px;border:1px solid var(--sentinel-cyan-line);border-radius:12px;background:rgba(10,48,67,.45);display:flex;flex-direction:column;gap:5px}
+.developer-mode-banner.hidden{display:none}
 .developer-mode-banner b{font:700 9px "IBM Plex Mono",monospace;letter-spacing:.1em;color:var(--sentinel-cyan)}
 .developer-mode-banner span{font:12px/1.55 Inter,system-ui,sans-serif;color:#b8d8e5}
 .developer-trade-draft{padding:16px;border:1px solid var(--sentinel-cyan-line);border-radius:14px;background:linear-gradient(145deg,#0e2634,#091720);color:#eaf8ff}
