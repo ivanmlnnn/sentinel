@@ -13,14 +13,18 @@ function mac(payload, secret) { return createHmac("sha256", secret).update(canon
 export function signEvidence(payload, secret) { return {...payload, signature:mac(payload,secret)}; }
 export function verifyEvidence(evidence, trustStore, now) {
   if (!evidence || typeof evidence.source_id !== "string" || !evidence.claims || typeof evidence.claims !== "object" || Array.isArray(evidence.claims) || !Number.isSafeInteger(evidence.issued_at) || !Number.isSafeInteger(evidence.expires_at)) return {ok:false,reason:"MALFORMED_EVIDENCE"};
-  const secret = trustStore && Object.hasOwn(trustStore,evidence.source_id) ? trustStore[evidence.source_id] : null;
+  const secret = trustStore && typeof trustStore === "object" && Object.hasOwn(trustStore,evidence.source_id) ? trustStore[evidence.source_id] : null;
   if (typeof secret !== "string" || !secret) return {ok:false,reason:"UNKNOWN_SOURCE"};
   if (!Number.isSafeInteger(now) || evidence.issued_at > now || evidence.expires_at <= now) return {ok:false,reason:"STALE_OR_FUTURE_EVIDENCE"};
   const {signature,...payload}=evidence;
   if (typeof signature !== "string" || !/^[a-f0-9]{64}$/i.test(signature)) return {ok:false,reason:"BAD_SIGNATURE"};
-  const expected=Buffer.from(mac(payload,secret),"hex");
-  const actual=Buffer.from(signature,"hex");
-  if (actual.length!==expected.length || !timingSafeEqual(actual,expected)) return {ok:false,reason:"BAD_SIGNATURE"};
+  try {
+    const expected=Buffer.from(mac(payload,secret),"hex");
+    const actual=Buffer.from(signature,"hex");
+    if (actual.length!==expected.length || !timingSafeEqual(actual,expected)) return {ok:false,reason:"BAD_SIGNATURE"};
+  } catch {
+    return {ok:false,reason:"MALFORMED_EVIDENCE"};
+  }
   return {ok:true,reason:"AUTHENTICATED"};
 }
 const FIELD_AUTHORITIES = Object.freeze({
@@ -47,8 +51,17 @@ export function buildProvenanceGraph(intent, evidenceList, trustStore, now) {
   }
   return {version:2,intent_hash:digest(intent),nodes,edges,root:digest({intent_hash:digest(intent),nodes,edges})};
 }
-export function evaluateProofIntent({intent,evidence,trustStore,now,approvedIntent}) {
-  const graph=buildProvenanceGraph(intent,evidence,trustStore,now);
+export function evaluateProofIntent(input={}) {
+  const {intent,evidence,trustStore,now,approvedIntent}=input || {};
+  if (!intent || typeof intent!=="object" || Array.isArray(intent) || !["receiver","amount","memo"].every(k=>typeof intent[k]==="string" && intent[k].length>0)) {
+    return {decision:"BLOCK",failures:["INVALID_PAYMENT_INTENT"],graph:null,proof:null};
+  }
+  if (!Array.isArray(evidence) || !Number.isSafeInteger(now)) {
+    return {decision:"BLOCK",failures:["INVALID_EVIDENCE_INPUT_OR_CLOCK"],graph:null,proof:null};
+  }
+  let graph;
+  try { graph=buildProvenanceGraph(intent,evidence,trustStore,now); }
+  catch { return {decision:"BLOCK",failures:["UNVERIFIABLE_EVIDENCE_INPUT"],graph:null,proof:null}; }
   const failures=[];
   for (const field of ["receiver","amount","memo"]) {
     const edge=graph.edges.find(x=>x.field===field);
