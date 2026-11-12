@@ -8,8 +8,8 @@ const html = read("../public/index.html");
 const signer = read("../signer-worker/src/index.mjs");
 const paymentContract = read("../payment-contract/src/lib.rs");
 const mainWrangler = read("../wrangler.jsonc");
-const developerSessionApi = read("../api/_lib/agent-developer-session.js");
-const developerTaskApi = read("../api/_lib/agent-developer-task.js");
+const developerSessionApi = read("../server/agent-developer-session.js");
+const developerTaskApi = read("../server/agent-developer-task.js");
 
 test("Developer Mode requires NEAR Testnet wallet approval and remains off until server verification", () => {
   assert.match(app, /requestDeveloperModeWalletApproval/);
