@@ -95,7 +95,7 @@ fn to_hex(b:&[u8])->String{const H:&[u8;16]=b"0123456789abcdef";let mut s=String
 mod tests{
  use super::*;use ed25519_dalek::{Signer,SigningKey};use std::str::FromStr;
  fn msg(receiver:&str,amount:u128)->Vec<u8>{let r=AccountId::from_str(receiver).unwrap();let c=AccountId::from_str("sentinel.testnet").unwrap();let s=AccountId::from_str("agent.testnet").unwrap();let i=intent_hash(&r,amount,"invoice-42");proof_message("testnet",&c,&s,&r,amount,"approval-42","nonce-42",1000,2000,&i,&[3;32],&[4;32],"policy-v1",1)}
- #[test]fn ed25519_accepts_exact_and_rejects_tampered(){let k=SigningKey::from_bytes(&[7;32]);let m=msg("receiver.testnet",123);let sig=k.sign(&m).to_bytes();let pk=k.verifying_key().to_bytes();assert!(env::ed25519_verify(&sig,&m,&pk));let mut bad=m.clone();bad.push(0);assert!(!env::ed25519_verify(&sig,&bad,&pk));assert!(!env::ed25519_verify(&[0;64],&m,&pk));}
+ #[test]fn ed25519_accepts_exact_and_rejects_tampered(){let k=SigningKey::from_bytes(&[7;32]);let m=msg("receiver.testnet",123);assert_eq!(to_hex(&env::sha256(&m)),"79f97f55182728dfd98acd123695dc2aefed18c78ec348c3f56399e40e3a4f37");let sig=k.sign(&m).to_bytes();let pk=k.verifying_key().to_bytes();assert!(env::ed25519_verify(&sig,&m,&pk));let mut bad=m.clone();bad.push(0);assert!(!env::ed25519_verify(&sig,&bad,&pk));assert!(!env::ed25519_verify(&[0;64],&m,&pk));}
  #[test]fn signature_binds_receiver_and_amount(){let k=SigningKey::from_bytes(&[8;32]);let m=msg("receiver.testnet",123);let sig=k.sign(&m).to_bytes();let pk=k.verifying_key().to_bytes();assert!(!env::ed25519_verify(&sig,&msg("attacker.testnet",123),&pk));assert!(!env::ed25519_verify(&sig,&msg("receiver.testnet",124),&pk));}
 
  #[test]fn rejects_every_single_bit_flip_in_signed_message(){
