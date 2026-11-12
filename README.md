@@ -2,7 +2,7 @@
 
 ### A pre-sign security checkpoint for AI agents on NEAR.
 
-**An agent can propose a payment. Sentinel checks the destination. A human approves the exact intent. A separate Testnet signer enforces the final limits.**
+**An agent can propose a payment. Sentinel checks the destination. The connected wallet signs the exact Testnet transfer; an isolated Worker independently verifies the resulting transaction and applies replay and spend controls.**
 
 Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verified threat registry, then returns a deterministic verdict: `ALLOW`, `WARN`, `BLOCK`, or `INCOMPLETE`.
 
@@ -40,7 +40,8 @@ GitHub remains the source-control and backup repository. GitHub Actions deployme
 - **[End-to-End Verification Report](docs/END_TO_END_VERIFICATION.md)** — exact test counts, production HTTP smoke results, deployment scope and provenance attestation.
 - **[Independent Local Stress Lab](docs/INDEPENDENT_LOCAL_STRESS_LAB.md)** — nine local simulation checks, raw concurrency/load outcomes, and a strict boundary between simulated results and live D1/NEAR verification.
 - **[Gemini AI Provider Setup](docs/DEPLOYMENT_STATUS_AND_AI_PROVIDER.md#gemini-ai-provider)** — Gemini API integration, runtime secret setup, tool-calling compatibility, and verification steps.
-- **[NEAR Ecosystem Integration & Wallet-to-Agent Flow](docs/NEAR_ECOSYSTEM_INTEGRATION.md)** — the actual NEAR-native flow, identity separation, NEP-413 approval, restricted FunctionCall signer, and payment contract.
+- **[NEAR Ecosystem Integration & Wallet-to-Agent Flow](docs/NEAR_ECOSYSTEM_INTEGRATION.md)** — current native-transfer and Tidepool NEP-413 flows, identity separation, and implementation boundaries.
+- **[Developer Mode Session Design](docs/DEVELOPER_MODE_SESSION_DESIGN.md)** — why Developer Mode is currently preview-only and the contract, wallet, and backend gates required before one-approval delegated execution.
 - **[Signed Verdict Attestation](docs/SIGNED_VERDICT.md)** — Ed25519-signed assessment integrity at the isolated signer boundary; merged in [PR #10](https://github.com/ivanmlnnn/sentinel/pull/10).
 - **[Tracked recipient in NEAR Testnet Explorer](https://testnet.nearblocks.io/address/rawvest6817.testnet)** — inspect the public account activity for `rawvest6817.testnet` independently.
 - **[Merged security architecture — PR #3](https://github.com/ivanmlnnn/sentinel/pull/3)** — isolated signer, actor-bound approval and replay protections.
@@ -78,6 +79,9 @@ The independent local stress lab remains a separate evidence set: its nine check
 
 ## What is implemented
 
+**Developer Mode status:** preview only. The toggle creates trading-skill drafts; it does not add a delegated access key or activate autonomous wallet execution. See the [Developer Mode Session Design](docs/DEVELOPER_MODE_SESSION_DESIGN.md).
+
+
 - NEAR account-state checks through FastNear JSON-RPC.
 - Live read-only NEAR Testnet account state and indexed native transaction, receipt, and fungible-token transfer evidence through NearBlocks Testnet API; provider coverage and pagination are surfaced rather than assumed complete.
 - Evidence completeness tracking; missing or unavailable data is not treated as safe.
@@ -87,9 +91,9 @@ The independent local stress lab remains a separate evidence set: its nine check
 - Privy-authenticated investigation, Gemini-powered AI review, and authenticated/guest agent routes.
 - Google Gemini tool-calling agent whose output is treated as an untrusted proposal.
 - Actor-bound, exact-intent, five-minute human approval plus signer-side one-time approval claim.
-- Separate signer Worker, private service binding, signer-owned D1 ledger, HMAC-SHA256 timestamp/nonce protection, replay ledger, Ed25519-signed preflight verdict verification, NEP-413 wallet signature verification, receiver allowlist, spend caps, kill switch, and conservative `UNKNOWN` handling.
+- Separate Signer Worker, private service binding, signer-owned D1 ledger, HMAC-SHA256 timestamp/nonce protection, replay ledger, Ed25519-signed preflight verdict verification, receiver allowlist, spend caps, kill switch, conservative `UNKNOWN` handling, and final RPC verification of the exact wallet-signed native transfer. NEP-413 signing is used by the separate Tidepool swap-intent flow.
 - Merged Ed25519-signed, short-lived preflight verdicts from PR #10. The payload binds sender, receiver, exact microNEAR amount, nonce, expiry, decision, risk score, assessment status, and assessment ID; the isolated signer verifies the signature and exact intent before policy evaluation and payment execution.
-- Contract-scoped NEAR FunctionCall signer path and final transaction/receipt verification, as documented in the existing deployment evidence.
+- Source-level payment-contract code and a restricted FunctionCall-key validator are present, but the current native-payment route verifies a wallet-signed `Transfer`; it does not execute that payout through the payment contract. Do not claim contract-scoped payouts until a configured deployed contract and matching live transaction evidence exist.
 - Legacy in-process signing path disabled.
 - Aggregate-only public metrics, private admin report handling, per-investigation owner checks for AI review, bounded JSON parsing, same-origin API mutation checks, security response headers, and CI security checks.
 
