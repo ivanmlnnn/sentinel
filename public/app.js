@@ -214,7 +214,7 @@ async function initWallet() {
   try {
     // NEAR Connect is the current recommended connector in the NEAR Wallet Selector transition.
     const { NearConnector } = await import('https://esm.sh/@hot-labs/near-connect@0.12.0');
-    connector = new NearConnector({ network:'testnet', features:{ testnet:true, signAndSendTransaction:true }, autoConnect:false });
+    connector = new NearConnector({ network:'testnet', features:{ testnet:true, signAndSendTransaction:true, signMessage:true }, autoConnect:false });
     await connector.whenManifestLoaded;
 
     connector.on('wallet:signIn', event => {
