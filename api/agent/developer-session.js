@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { JsonRpcProvider } from 'near-api-js';
 import { verifyMessage } from 'near-api-js/nep413';
 import { query } from '../_lib/db.js';
