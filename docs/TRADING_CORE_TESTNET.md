@@ -5,7 +5,8 @@
 - Provider-backed NEAR Testnet token discovery from Tidepool.
 - Dry EXACT_INPUT quote endpoint with server-side asset, amount, recipient, slippage, quote-binding and signature checks.
 - Separate live-quote endpoint, invoked only after the user explicitly chooses the Testnet swap flow. It requests `dry: false` and returns a per-quote INTENTS deposit account. It does not itself move funds.
-- NEP-413 intent generation restricted to the exact signer, deposit account, input token and amount returned by the live quote.
+- NEP-413 intent generation revalidates the original Tidepool-signed live quote on the server and binds signer, deposit account, input/output assets, amount, recipient/refund account and slippage to it.
+- Signed-intent submission independently revalidates the same provider quote and rejects any changed deposit address, signer, token, amount, recipient or slippage before contacting the provider.
 - Wallet signing through the connected NEAR Connect wallet's `signMessage` method. The UI requires the signer account to match the recipient/refund account.
 - Signed-intent submission restricted to a single NEP-413 transfer to the exact provider-generated deposit account and amount.
 - Verifier public-key registration preflight via NEAR Testnet RPC, with a one-time wallet-signed `add_public_key` transaction when needed.
@@ -19,9 +20,9 @@
 2. The browser fetches the live provider token list and requests a dry quote.
 3. The user selects **Review & sign Testnet swap**. Sentinel requests a fresh live quote and verifies its provider signature.
 4. Sentinel checks that the connected Testnet account is also the quote recipient and refund account.
-5. Tidepool generates a NEP-413 transfer intent for the exact quote deposit account, token and input amount.
+5. The browser returns the original signed provider quote to Sentinel. Sentinel independently rechecks the maker signature and exact quote fields before requesting a NEP-413 intent for that quote's deposit account, token and input amount.
 6. The connected wallet signs the exact message and nonce returned by Tidepool. Sentinel never constructs or signs the message itself.
-7. Sentinel validates the signed payload's signer, verifier, receiver, token, amount and deadline before submitting it to Tidepool.
+7. Sentinel revalidates the signed provider quote again, then validates the wallet-signed payload's signer, verifier, receiver, token, amount and deadline before submitting it to Tidepool.
 8. Sentinel polls Tidepool status. A swap is only described as successful when the provider reports `SUCCESS`.
 
 ## Endpoints
