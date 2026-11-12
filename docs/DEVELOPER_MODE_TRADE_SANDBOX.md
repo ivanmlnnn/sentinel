@@ -2,7 +2,7 @@
 
 ## Status
 
-This branch adds a UI-only, draft-only Developer Mode preview. It does not add exchange connectivity, NEAR Intents execution, wallet signing, scheduling, or live trading. The UI labels generated trade skills as non-executable.
+This branch now includes a server-side Tidepool NEAR Testnet asset-list endpoint and a server-side dry-quote endpoint for swaps. Developer Mode can request a real provider dry quote for supported NEAR Testnet assets. The quote endpoint always sends `dry: true`; it does not create a deposit address, request a wallet signature, submit a deposit, or execute a swap. BUY/SELL execution, wallet signing, scheduling, and settlement are still not implemented.
 
 ## User flow
 
