@@ -59,7 +59,7 @@ These paths are distinct and are **not connected end-to-end**:
 
 ## Hatchable integration status
 
-Hatchable project `IVTECH Sentinel` is deployed at **v23**. Control Plane, Security Supervisor, deterministic Task Runner, and the first persisted Skill Foundry backend are deployed.
+Hatchable dashboard project `IVTECH Sentinel` is deployed at **v24**. A separate API-only `Sentinel Public Control Gateway` is deployed at **v1**. Control Plane, Security Supervisor, deterministic Task Runner, and the first persisted Skill Foundry backend are deployed.
 
 The Control Plane supports signed `session.activate`, `session.revoke`, `session.status`, `task.submit`, `task.status`, `skill.create`, and `skill.list`. The Skill Foundry stores owner-scoped, versioned Testnet strategy drafts with SHA-256 fingerprints. Supported schemas are SWAP, DCA, LIMIT_BUY, and LIMIT_SELL; validation rejects unknown fields, invalid asset pairs, malformed decimal amounts, and DCA schedules whose aggregate amount exceeds the declared maximum. Every stored skill is `DRAFT` with `execution_mode=PROPOSE_ONLY`; it cannot sign, broadcast, or schedule transactions. These are application-level records and do not create or verify NEAR on-chain access keys.
 
@@ -69,13 +69,13 @@ Hatchable Setup confirms `SENTINEL_CONTROL_HMAC` is configured. Matching Cloudfl
 
 Therefore:
 - Hatchable deterministic Task Runner: **DEPLOYED v23 · HELP TASK SMOKE-TESTED**.
-- Hatchable Skill Foundry backend: **DEPLOYED v23 · schema and API added; authenticated create/list E2E NOT YET VERIFIED**.
+- Hatchable Skill Foundry backend: **DEPLOYED v24 · signed create/list operations exposed; authenticated create/list E2E NOT YET VERIFIED**.
 - AI dependency for that Task Runner: **REMOVED**.
 - Hatchable Task Runner ↔ dashboard chat: **NOT CONNECTED**.
 - Hatchable app sessions ↔ on-chain NEAR delegated keys: **NOT CONNECTED**.
 - Worker-to-Hatchable telemetry: **IMPLEMENTED IN BRANCH, NOT DEPLOYED / NOT VERIFIED**.
-- Hatchable HMAC: **CONFIGURED**; matching Cloudflare secret: **PENDING**.
-- Hatchable public reachability: **BLOCKED BY PRIVATE PROJECT VISIBILITY**.
+- Hatchable dashboard HMAC: **CONFIGURED**. The new API-only gateway declares `SENTINEL_CONTROL_HMAC` but its value still needs to be set in that project's Setup. Matching Cloudflare `HATCHABLE_CONTROL_HMAC`: **PENDING**.
+- API-only gateway public reachability: **PENDING USER VISIBILITY CHANGE**; the project is private by default. Its public exposure is limited to HMAC-authenticated Control/Supervisor endpoints and a scheduler-only runner. The main dashboard remains private.
 - Tidepool swap: **SEPARATE USER-SIGNED TESTNET FLOW; NOT AUTONOMOUS**.
 - Persisted executable skills, BUY/SELL execution adapter, scheduled strategy runner, delegated signing/broadcast: **NOT IMPLEMENTED / DISABLED**.
 - 24/7 monitoring or autonomous containment: **NOT CLAIMED**.
