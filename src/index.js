@@ -9,6 +9,8 @@ import { onRequestPost as guestAgentPost } from "../functions/api/guest-agent.js
 import { onRequestPost as agentApprovePost } from "../functions/api/agent-approve.js";
 import { onRequestPost as internalInvestigatePost } from "../functions/api/internal-investigate.js";
 import { onRequestPost as privyWebhookPost } from "../functions/api/privy-webhook.js";
+import { onRequestGet as tradingTokensGet } from "../functions/api/trading-tokens.js";
+import { onRequestPost as tradingQuotePost } from "../functions/api/trading-quote.js";
 
 const MAX_API_BODY_BYTES = 65536;
 const routes = {
@@ -24,7 +26,9 @@ const routes = {
   "POST /api/guest/agent": guestAgentPost,
   "POST /api/agent/approve": agentApprovePost,
   "POST /api/internal/investigate": internalInvestigatePost,
-  "POST /api/privy-webhook": privyWebhookPost
+  "POST /api/privy-webhook": privyWebhookPost,
+  "GET /api/trading/tokens": tradingTokensGet,
+  "POST /api/trading/quote": tradingQuotePost
 };
 
 async function validateBoundedJsonBody(request) {
