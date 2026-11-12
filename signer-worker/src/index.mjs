@@ -137,10 +137,22 @@ export async function claimApproval(env, { approvalId, idempotencyKey, actor, re
   if (!pending || pending.receiver_account !== receiver || Number(pending.amount_micro) !== amountMicro) {
     throw new Error("HUMAN_APPROVAL_NOT_VERIFIED");
   }
-  await env.DB2.prepare(
-    "INSERT INTO signer_approval_claims (approval_id, idempotency_key, actor, receiver_account, amount_micro, claimed_at) " +
-    "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"
-  ).bind(approvalId, idempotencyKey, actor, receiver, amountMicro).run();
+  try {
+    await env.DB2.prepare(
+      "INSERT INTO signer_approval_claims (approval_id, idempotency_key, actor, receiver_account, amount_micro, claimed_at) " +
+      "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"
+    ).bind(approvalId, idempotencyKey, actor, receiver, amountMicro).run();
+  } catch (error) {
+    let prior = null;
+    try {
+      prior = await env.DB2.prepare(
+        "SELECT approval_id, idempotency_key FROM signer_approval_claims WHERE approval_id=? OR idempotency_key=? LIMIT 1"
+      ).bind(approvalId, idempotencyKey).first();
+    } catch { /* Preserve the original D1 failure when the lookup also fails. */ }
+    if (prior?.approval_id === approvalId) throw new Error("APPROVAL_ALREADY_CLAIMED");
+    if (prior) throw new Error("IDEMPOTENCY_KEY_REUSED");
+    throw error;
+  }
 }
 export async function reserveSpend(env, { idempotencyKey, actor, receiver, amountMicro, dailyCapMicro }) {
   if (typeof idempotencyKey !== "string" || !idempotencyKey ||
