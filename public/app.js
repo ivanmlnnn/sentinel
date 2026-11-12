@@ -235,6 +235,42 @@ async function initWallet() {
       const account = event.accounts && event.accounts[0];
       syncWalletUI(account?.accountId, event.wallet?.manifest?.name || 'NEAR wallet');
     });
+    connector.on('wallet:signInAndSignMessage', async event => {
+      const pendingRaw = sessionStorage.getItem(DEVELOPER_CHALLENGE_KEY);
+      if (!pendingRaw) return;
+      try {
+        const pending = JSON.parse(pendingRaw);
+        const account = event.accounts && event.accounts[0];
+        const signed = account?.signedMessage || event.signedMessage || {};
+        const publicKey = String(signed.publicKey || signed.public_key || '');
+        const signature = String(signed.signature || '');
+        if (!account?.accountId || account.accountId !== pending.account_id || !publicKey || !signature) {
+          throw new Error('Wallet did not return the expected signed approval.');
+        }
+        const response = await fetch('/api/agent/developer-session', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            operation: 'activate', challenge_id: pending.challenge_id,
+            account_id: account.accountId, public_key: publicKey, signature
+          })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Wallet approval verification failed.');
+        sessionStorage.removeItem(DEVELOPER_CHALLENGE_KEY);
+        developerSessionExpiresAt = result.session?.expires_at || result.expires_at || null;
+        syncWalletUI(account.accountId, event.wallet?.manifest?.name || 'NEAR wallet');
+        setDeveloperMode(true, 'ON · WALLET APPROVED · 8H APP SESSION');
+        toast('Wallet signature verified. Developer application session is active for up to 8 hours.');
+      } catch (error) {
+        sessionStorage.removeItem(DEVELOPER_CHALLENGE_KEY);
+        setDeveloperMode(false, 'OFF · WALLET APPROVAL FAILED');
+        toast(error?.message || 'Could not verify wallet approval. Developer Mode remains OFF.');
+      } finally {
+        developerModePending = false;
+        if (developerModeToggle) developerModeToggle.disabled = false;
+      }
+    });
     connector.on('wallet:signOut', () => {
       syncWalletUI(null, null);
       if (developerModeEnabled || developerModePending) {
@@ -722,6 +758,8 @@ const developerModeToggle = $('developerModeToggle');
 const developerModeBanner = $('developerModeBanner');
 let developerModeEnabled = false;
 let developerModePending = false;
+let developerSessionExpiresAt = null;
+const DEVELOPER_CHALLENGE_KEY = 'sentinel.developer.challenge.v1';
 
 function setDeveloperMode(enabled, statusText) {
   developerModeEnabled = Boolean(enabled);
@@ -732,6 +770,17 @@ function setDeveloperMode(enabled, statusText) {
   if (status) status.textContent = statusText || (developerModeEnabled ? 'ON · WALLET CONNECTED · PREVIEW ONLY' : 'OFF · SAFE CHAT');
 }
 
+async function revokeDeveloperSession() {
+  try {
+    await fetch('/api/agent/developer-session', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ operation: 'revoke' })
+    });
+  } catch {}
+  developerSessionExpiresAt = null;
+  sessionStorage.removeItem(DEVELOPER_CHALLENGE_KEY);
+}
 async function requestDeveloperModeWalletApproval() {
   if (developerModePending) return;
   developerModePending = true;
@@ -739,11 +788,9 @@ async function requestDeveloperModeWalletApproval() {
     developerModeToggle.checked = false;
     developerModeToggle.disabled = true;
   }
-  setDeveloperMode(false, 'WAITING FOR WALLET APPROVAL');
+  setDeveloperMode(false, 'PREPARING WALLET APPROVAL');
   try {
-    if (!connectorReady || !connector) {
-      throw new Error('NEAR wallet connector is not ready. Refresh and try again.');
-    }
+    if (!connectorReady || !connector) throw new Error('NEAR wallet connector is not ready. Refresh and try again.');
     if (!connectedAccount) {
       if (!Array.isArray(connector.availableWallets) || connector.availableWallets.length === 0) {
         throw new Error('No compatible NEAR Testnet wallet is available in this browser.');
@@ -753,13 +800,34 @@ async function requestDeveloperModeWalletApproval() {
     const current = await connector.getConnectedWallet();
     const account = current?.accounts?.[0];
     const accountId = account?.accountId;
-    if (!accountId || !accountId.endsWith('.testnet')) {
-      throw new Error('Wallet approval was not completed with a NEAR Testnet account.');
-    }
+    const features = current?.wallet?.manifest?.features || {};
+    if (!accountId || !accountId.endsWith('.testnet')) throw new Error('Connect a NEAR Testnet account first.');
+    if (features.signMessage !== true) throw new Error('This wallet does not advertise NEP-413 message signing. Choose a supported wallet.');
     syncWalletUI(accountId, current.wallet?.manifest?.name || 'NEAR wallet');
-    setDeveloperMode(true, 'ON · WALLET CONNECTED · PREVIEW ONLY');
-    toast('NEAR Testnet wallet connected. Developer preview is active; delegated execution is not enabled.');
+    const challengeResponse = await fetch('/api/agent/developer-session', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ operation: 'challenge', account_id: accountId })
+    });
+    const challenge = await challengeResponse.json();
+    if (!challengeResponse.ok) throw new Error(challenge.error || 'Could not create a wallet approval challenge.');
+    sessionStorage.setItem(DEVELOPER_CHALLENGE_KEY, JSON.stringify({
+      challenge_id: challenge.challenge_id, account_id: accountId
+    }));
+    const nonce = Uint8Array.from(atob(challenge.payload.nonce), character => character.charCodeAt(0));
+    setDeveloperMode(false, 'REDIRECTING TO WALLET · REVIEW APPROVAL');
+    await connector.connect({
+      signMessageParams: {
+        message: challenge.payload.message,
+        recipient: challenge.payload.recipient,
+        nonce,
+        callbackUrl: challenge.payload.callbackUrl
+      }
+    });
+    setDeveloperMode(false, 'WAITING FOR WALLET SIGNATURE');
+    toast('Approve the NEP-413 Sentinel session message in your wallet. No transaction or access key is being created.');
   } catch (error) {
+    sessionStorage.removeItem(DEVELOPER_CHALLENGE_KEY);
     setDeveloperMode(false, 'OFF · WALLET APPROVAL REQUIRED');
     toast(error?.message || 'Wallet approval was rejected. Developer Mode remains OFF.');
   } finally {
@@ -773,8 +841,9 @@ developerModeToggle?.addEventListener('change', () => {
     void requestDeveloperModeWalletApproval();
     return;
   }
-  setDeveloperMode(false, 'OFF · SAFE CHAT');
-  toast('Developer Mode disabled.');
+  void revokeDeveloperSession();
+  setDeveloperMode(false, 'OFF · SESSION REVOKED');
+  toast('Developer Mode disabled. The application session is being revoked.');
 });
 async function renderTradeSkillDraft(prompt) {
   const result = $('agentResult');
