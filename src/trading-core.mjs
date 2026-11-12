@@ -185,3 +185,186 @@ export async function getTidepoolDryQuote(input, fetchImpl = fetch, now = Date.n
     }
   };
 }
+
+
+const DEPOSIT_ADDRESS_RE = /^[a-f0-9]{64}$/i;
+const SIGNATURE_RE = /^(?:ed25519|secp256k1):[1-9A-HJ-NP-Za-km-z]{32,100}$/;
+
+export function validateTidepoolLiveQuote(payload, expected) {
+  if (!payload || typeof payload !== "object" || !payload.quote || !payload.quoteRequest) {
+    return { ok: false, reason: "TIDEPOOL_INVALID_LIVE_QUOTE_RESPONSE" };
+  }
+  const request = payload.quoteRequest;
+  const quote = payload.quote;
+  if (request.dry !== false ||
+      request.swapType !== "EXACT_INPUT" ||
+      request.originAsset !== expected.originAsset ||
+      request.destinationAsset !== expected.destinationAsset ||
+      request.amount !== expected.amount ||
+      request.recipient !== expected.recipient ||
+      request.refundTo !== expected.recipient ||
+      request.slippageTolerance !== expected.slippageTolerance ||
+      request.depositType !== "INTENTS" ||
+      request.recipientType !== "INTENTS" ||
+      request.refundType !== "INTENTS" ||
+      request.depositMode !== "SIMPLE") {
+    return { ok: false, reason: "TIDEPOOL_LIVE_QUOTE_INTENT_MISMATCH" };
+  }
+  for (const key of ["amountIn", "amountOut", "minAmountOut"]) {
+    if (typeof quote[key] !== "string" || !INTEGER_RE.test(quote[key]) || quote[key] === "0") {
+      return { ok: false, reason: "TIDEPOOL_INVALID_LIVE_QUOTE_AMOUNT" };
+    }
+  }
+  if (quote.amountIn !== expected.amount || BigInt(quote.minAmountOut) > BigInt(quote.amountOut)) {
+    return { ok: false, reason: "TIDEPOOL_INVALID_LIVE_QUOTE_MINIMUM" };
+  }
+  if (typeof quote.depositAddress !== "string" || !DEPOSIT_ADDRESS_RE.test(quote.depositAddress)) {
+    return { ok: false, reason: "TIDEPOOL_INVALID_DEPOSIT_ADDRESS" };
+  }
+  if (typeof payload.signature !== "string" || payload.signature.length < 16 || payload.signature.length > 1024) {
+    return { ok: false, reason: "TIDEPOOL_LIVE_QUOTE_SIGNATURE_MISSING" };
+  }
+  return { ok: true, value: payload };
+}
+
+export async function getTidepoolLiveQuote(input, fetchImpl = fetch, now = Date.now(), verifySignature = verifyQuoteSignature) {
+  const tokens = await getTidepoolTestnetTokens(fetchImpl);
+  const validation = validateTradingQuoteInput(input, tokens);
+  if (!validation.ok) return validation;
+  const requestBody = {
+    ...buildTidepoolDryQuotePayload(validation.value, now),
+    dry: false
+  };
+  const payload = await fetchJson(TIDEPOOL_BASE_URL + "/v0/quote", {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify(requestBody)
+  }, fetchImpl);
+  const quoteValidation = validateTidepoolLiveQuote(payload, validation.value);
+  if (!quoteValidation.ok) return quoteValidation;
+  let signatureValid = false;
+  try { signatureValid = verifySignature(payload, TIDEPOOL_QUOTE_PUBLIC_KEY) === true; } catch {}
+  if (!signatureValid) return { ok: false, reason: "TIDEPOOL_LIVE_QUOTE_SIGNATURE_INVALID" };
+  return {
+    ok: true,
+    value: {
+      provider: "Tidepool community testnet",
+      network: "NEAR Testnet",
+      mode: "LIVE_QUOTE_AWAITING_USER_SIGNATURE",
+      execution_enabled: false,
+      deposit_address: payload.quote.depositAddress,
+      correlation_id: payload.correlationId || null,
+      quote_request: payload.quoteRequest,
+      quote: {
+        amount_in: payload.quote.amountIn,
+        amount_in_formatted: payload.quote.amountInFormatted || null,
+        amount_out: payload.quote.amountOut,
+        amount_out_formatted: payload.quote.amountOutFormatted || null,
+        minimum_amount_out: payload.quote.minAmountOut,
+        estimated_seconds: Number.isFinite(payload.quote.timeEstimate) ? payload.quote.timeEstimate : null
+      },
+      provider_signature_verified: true
+    }
+  };
+}
+
+export async function generateTidepoolSwapIntent({ depositAddress, signerId, originAsset, amount }, fetchImpl = fetch) {
+  if (typeof depositAddress !== "string" || !DEPOSIT_ADDRESS_RE.test(depositAddress) ||
+      typeof signerId !== "string" || !ACCOUNT_RE.test(signerId) ||
+      typeof originAsset !== "string" || !/^nep141:[a-z0-9._-]+\\.tidepool-sandbox\\.testnet$/i.test(originAsset) ||
+      typeof amount !== "string" || !INTEGER_RE.test(amount) || amount === "0" || amount.length > MAX_AMOUNT_DIGITS) {
+    return { ok: false, reason: "INVALID_SWAP_INTENT_REQUEST" };
+  }
+  const payload = await fetchJson(TIDEPOOL_BASE_URL + "/v0/generate-intent", {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify({
+      type: "swap_transfer",
+      standard: "nep413",
+      signerId,
+      depositAddress
+    })
+  }, fetchImpl);
+  const intent = payload?.intent;
+  const nep413 = intent?.payload;
+  if (intent?.standard !== "nep413" || !nep413 || typeof nep413.message !== "string" ||
+      typeof nep413.nonce !== "string" || typeof nep413.recipient !== "string") {
+    return { ok: false, reason: "TIDEPOOL_INVALID_GENERATED_INTENT" };
+  }
+  let message;
+  try { message = JSON.parse(nep413.message); }
+  catch { return { ok: false, reason: "TIDEPOOL_INVALID_GENERATED_INTENT_MESSAGE" }; }
+  const transfer = Array.isArray(message.intents) && message.intents.length === 1 ? message.intents[0] : null;
+  const tokenEntries = transfer?.tokens && typeof transfer.tokens === "object" ? Object.entries(transfer.tokens) : [];
+  if (message.signer_id !== signerId ||
+      message.verifying_contract !== "verifier.tidepool-sandbox.testnet" ||
+      transfer?.intent !== "transfer" ||
+      transfer.receiver_id !== depositAddress ||
+      tokenEntries.length !== 1 ||
+      tokenEntries[0][0] !== originAsset ||
+      tokenEntries[0][1] !== amount ||
+      nep413.recipient !== "verifier.tidepool-sandbox.testnet" ||
+      !Number.isFinite(Date.parse(message.deadline)) ||
+      Date.parse(message.deadline) <= Date.now()) {
+    return { ok: false, reason: "TIDEPOOL_GENERATED_INTENT_MISMATCH" };
+  }
+  return {
+    ok: true,
+    value: {
+      standard: "nep413",
+      payload: nep413,
+      correlation_id: payload.correlationId || null,
+      signer_id: signerId,
+      deposit_address: depositAddress,
+      asset_id: originAsset,
+      amount
+    }
+  };
+}
+
+export async function submitTidepoolSignedIntent({ signedData, expectedSignerId, expectedDepositAddress, expectedAsset, expectedAmount }, fetchImpl = fetch) {
+  if (!signedData || signedData.standard !== "nep413" || !signedData.payload ||
+      typeof signedData.payload.message !== "string" ||
+      typeof signedData.payload.nonce !== "string" ||
+      signedData.payload.recipient !== "verifier.tidepool-sandbox.testnet" ||
+      typeof signedData.public_key !== "string" || !SIGNATURE_RE.test(signedData.public_key) ||
+      typeof signedData.signature !== "string" || !SIGNATURE_RE.test(signedData.signature)) {
+    return { ok: false, reason: "INVALID_SIGNED_INTENT" };
+  }
+  let message;
+  try { message = JSON.parse(signedData.payload.message); }
+  catch { return { ok: false, reason: "INVALID_SIGNED_INTENT_MESSAGE" }; }
+  const transfer = Array.isArray(message.intents) && message.intents.length === 1 ? message.intents[0] : null;
+  const entries = transfer?.tokens && typeof transfer.tokens === "object" ? Object.entries(transfer.tokens) : [];
+  if (message.signer_id !== expectedSignerId ||
+      !ACCOUNT_RE.test(expectedSignerId) ||
+      message.verifying_contract !== "verifier.tidepool-sandbox.testnet" ||
+      transfer?.intent !== "transfer" ||
+      transfer.receiver_id !== expectedDepositAddress ||
+      !DEPOSIT_ADDRESS_RE.test(expectedDepositAddress) ||
+      entries.length !== 1 ||
+      entries[0][0] !== expectedAsset ||
+      entries[0][1] !== expectedAmount ||
+      !Number.isFinite(Date.parse(message.deadline)) ||
+      Date.parse(message.deadline) <= Date.now()) {
+    return { ok: false, reason: "SIGNED_INTENT_POLICY_MISMATCH" };
+  }
+  const payload = await fetchJson(TIDEPOOL_BASE_URL + "/v0/submit-intent", {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify({ type: "swap_transfer", signedData })
+  }, fetchImpl);
+  if (typeof payload.intentHash !== "string" || typeof payload.correlationId !== "string") {
+    return { ok: false, reason: "TIDEPOOL_INVALID_SUBMIT_RESPONSE" };
+  }
+  return {
+    ok: true,
+    value: {
+      intent_hash: payload.intentHash,
+      correlation_id: payload.correlationId,
+      transaction_hash: payload.tidepool?.txHash || null,
+      explorer_url: payload.tidepool?.explorerUrl || null,
+      status: "SUBMITTED"
+    }
+  };
+}
