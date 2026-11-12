@@ -1,65 +1,59 @@
-# Sentinel Trading Core — Testnet Quote Milestone
+# Sentinel Trading Core — NEAR Testnet
 
-## Implemented in this branch
+## Implemented
 
-- A server-side asset-list proxy for Tidepool's NEAR Testnet assets.
-- Strict asset allowlisting from the live provider token list; only NEAR blockchain assets whose IDs belong to Tidepool's testnet namespace are exposed.
-- A server-side EXACT_INPUT quote endpoint that always sends `dry: true`.
-- Validation of positive integer base-unit amounts, supported token IDs, NEAR Testnet recipient accounts, slippage limits, exact quote/request binding, output amounts and provider signature presence.
-- The quote response is explicitly marked `QUOTE_ONLY` with `execution_enabled: false`.
+- Provider-backed NEAR Testnet token discovery from Tidepool.
+- Dry EXACT_INPUT quote endpoint with server-side asset, amount, recipient, slippage, quote-binding and signature checks.
+- Separate live-quote endpoint, invoked only after the user explicitly chooses the Testnet swap flow. It requests `dry: false` and returns a per-quote INTENTS deposit account. It does not itself move funds.
+- NEP-413 intent generation restricted to the exact signer, deposit account, input token and amount returned by the live quote.
+- Wallet signing through the connected NEAR Connect wallet's `signMessage` method. The UI requires the signer account to match the recipient/refund account.
+- Signed-intent submission restricted to a single NEP-413 transfer to the exact provider-generated deposit account and amount.
+- Tidepool status polling after submission.
+- Separate Vercel API routes and Cloudflare Worker routes for tokens, dry quote, live quote, intent generation, intent submission and status.
+- No generic swap private key, server-side signing, or fallback to the existing native NEAR payment signer.
 
-## API
+## End-to-end flow
 
-### GET /api/trading/tokens
+1. Ask Sentinel parses a swap draft. This is not an executable instruction.
+2. The browser fetches the live provider token list and requests a dry quote.
+3. The user selects **Review & sign Testnet swap**. Sentinel requests a fresh live quote and verifies its provider signature.
+4. Sentinel checks that the connected Testnet account is also the quote recipient and refund account.
+5. Tidepool generates a NEP-413 transfer intent for the exact quote deposit account, token and input amount.
+6. The connected wallet signs the exact message and nonce returned by Tidepool. Sentinel never constructs or signs the message itself.
+7. Sentinel validates the signed payload's signer, verifier, receiver, token, amount and deadline before submitting it to Tidepool.
+8. Sentinel polls Tidepool status. A swap is only described as successful when the provider reports `SUCCESS`.
 
-Returns the currently supported Tidepool NEAR Testnet assets. Asset IDs and decimal precision come from the provider response; the UI must not construct asset IDs from symbols.
+## Endpoints
 
-### POST /api/trading/quote
+| Method | Route | Purpose |
+|---|---|---|
+| GET | `/api/trading/tokens` | Provider-backed NEAR Testnet assets |
+| POST | `/api/trading/quote` | Dry quote; always `dry: true` |
+| POST | `/api/trading/live-quote` | Explicit live quote; `dry: false`, no funds moved yet |
+| POST | `/api/trading/generate-intent` | Exact NEP-413 intent for a live quote |
+| POST | `/api/trading/submit-intent` | Validate and submit user-signed intent |
+| GET | `/api/trading/status?depositAddress=...` | Provider settlement status |
 
-Example body:
+## Wallet and funding prerequisites
 
-```json
-{
-  "originAsset": "nep141:usdc.tidepool-sandbox.testnet",
-  "destinationAsset": "nep141:wnear.tidepool-sandbox.testnet",
-  "amount": "1000000",
-  "recipient": "alice.testnet",
-  "slippageTolerance": 100
-}
-```
+- Connect a NEAR Testnet wallet with NEP-413 `signMessage` support. The current connector filters for `testnet`, `signAndSendTransaction`, and `signMessage`.
+- The wallet must hold the selected test token in its NEAR Intents balance.
+- The account's public key may need to be registered with the Tidepool verifier before its first NEP-413 intent. Follow Tidepool's current wallet/faucet setup instructions.
+- The UI deliberately stops if the wallet cannot return a complete NEP-413 signature. It does not silently switch signing standards.
+- A rejected wallet prompt means no signed intent is submitted. If the wallet prompt completed but the network response timed out, check Tidepool status before attempting again.
 
-Amount is an integer string in the asset's smallest unit. Slippage is basis points; the server defaults to 100 bps and caps at 300 bps. The server always uses a dry quote, INTENTS deposit/refund/recipient types, and a 10-minute request deadline. The server verifies the quote signature with the Tidepool maker public key documented by Tidepool, using the official 1Click TypeScript SDK's verifyQuoteSignature implementation. Invalid signatures are rejected before a quote is returned.
+## Trust and risk boundaries
 
-## Important trust boundary
+Tidepool is a community-operated testnet sandbox, not an official NEAR/Defuse/1Click service. Its deposit accounts are custodial and its test tokens have no monetary value. Never send real funds or mainnet assets to Tidepool.
 
-The official NEAR Intents 1Click API currently documents no testnet deployment. This branch therefore uses Tidepool, a community-operated testnet sandbox, not an official NEAR-operated service. Tidepool states that its testnet deposit addresses are custodial; never send real assets to them. Source: https://www.usetidepool.tech/docs
+The provider's maker quote signature is verified using the pinned official 1Click TypeScript SDK and Tidepool's published maker public key. The verifier contract checks the signed intent when it is submitted. The API also checks that the payload is one transfer intent with the exact expected signer, verifier, deposit account, token and amount.
 
-This milestone does **not**:
-- create a live quote or deposit address;
-- connect or sign with Meteor Wallet;
-- submit a deposit or signed intent;
-- execute or settle a swap;
-- implement order scheduling or mainnet trading.
+This is not yet a mainnet-ready trading system. BUY/SELL, limit orders, recurring schedules, automated strategies, unattended agent execution, and mainnet integration remain disabled. A successful Testnet swap still needs a live funded-wallet run and independent explorer verification before the feature can be described as end-to-end validated.
 
-The existing native NEAR payment signer is intentionally not reused as a token-swap signer.
+## References
 
-## Live quote and NEP-413 intent milestone
-
-This branch now additionally provides:
-- A separate explicit live-quote endpoint. It uses `dry: false` only after the user chooses the live Testnet flow; it returns a short-lived quote deposit account but does not move funds.
-- Server-side validation of the exact pair, amount, recipient/refund account, slippage, deposit type, deposit address and provider signature.
-- A Tidepool `generate-intent` proxy that only accepts NEP-413 transfer intents matching the live quote's signer, deposit address, token and amount.
-- A signed-intent submission proxy that only accepts NEP-413 payloads for the exact expected signer, verifier, deposit address, token and amount.
-- A status endpoint for polling Tidepool settlement.
-- A UI flow requiring the connected NEAR Testnet wallet, a separate confirmation, and wallet `signMessage`. There is no server-side private key or signing fallback.
-
-The wallet must have the selected test token in its NEAR Intents balance and the required public key registration on the verifier. If it does not, the verifier can reject the signed intent; use Tidepool's documented Testnet faucet/setup flow first. Tidepool is community-operated and custodial for deposit accounts; only valueless test tokens belong here.
-
-## Remaining gated milestones
-
-1. Validate Meteor Wallet and other supported wallets on a funded Testnet account end-to-end.
-2. Independently verify successful settlement using Tidepool status and the NEAR Testnet explorer.
-3. Test refund, partial deposit, expiry, replay, wrong signer, altered amount and provider outage cases.
-4. Keep BUY/SELL, scheduling and mainnet execution disabled until a separate policy and signing design is reviewed.
-
-A dry quote is evidence of a provider price response only. It is not an executed trade.
+- Tidepool docs: https://www.usetidepool.tech/docs
+- Quickstart: https://www.usetidepool.tech/docs/quickstart
+- Generate intent: https://www.usetidepool.tech/docs/api-reference/generate-intent
+- Submit intent: https://www.usetidepool.tech/docs/api-reference/submit-intent
+- NEAR Connect: https://www.npmjs.com/package/@hot-labs/near-connect
