@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { generateKeyPairSync, createPublicKey, verify } from "node:crypto";
+import { generateKeyPairSync, verify } from "node:crypto";
 import { encodeContractProofMessage, signContractProof } from "../src/contract-envelope.mjs";
 
 const input = {
@@ -15,9 +15,8 @@ test("binary proof envelope signs and verifies with Ed25519", async () => {
   const { publicKey, privateKey } = generateKeyPairSync("ed25519");
   const pkcs8 = privateKey.export({ type: "pkcs8", format: "der" });
   const proof = await signContractProof(input, pkcs8);
-  const pub = createPublicKey(publicKey);
   assert.equal(proof.signature.length, 128);
-  assert.equal(verify(null, Buffer.from(proof.message), pub, Buffer.from(proof.signature, "hex")), true);
+  assert.equal(verify(null, Buffer.from(proof.message), publicKey, Buffer.from(proof.signature, "hex")), true);
   assert.equal(proof.intentHash.length, 64);
   assert.equal(proof.messageHash.length, 64);
 });
