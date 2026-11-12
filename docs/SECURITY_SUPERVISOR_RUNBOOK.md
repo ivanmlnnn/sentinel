@@ -22,29 +22,29 @@ Cloudflare must never wait for the supervisor or an AI provider before enforcing
 |---|---|---|
 | Hatchable control-plane API | Deployed | Separate Hatchable project; not bundled into the Cloudflare Worker |
 | Security Supervisor endpoint | Deployed | `/api/security-supervisor`; unauthenticated request rejected with HTTP 401 |
-| Telemetry and incident tables | Deployed | Hatchable migration `005_security_supervisor.sql` |
+| Telemetry and incident tables | Deployed | Migrations `005_security_supervisor.sql` and `006_worker_telemetry.sql`; idempotent `worker_telemetry_events` table exists |
 | Deterministic event thresholds | Implemented | Initial heuristic thresholds; require tuning and false-positive review |
-| Production Worker telemetry forwarding | NOT CONNECTED | Source audit found no Worker-to-Hatchable forwarding call; Hatchable telemetry/session/incident tables returned zero rows during this review |
-| 24/7 availability / uptime SLA | NOT VERIFIED | Deployment does not prove continuous uptime, retries, or recovery; recent Agent Task Runner invocations included HTTP 503 failures |
+| Production Worker telemetry forwarding | IMPLEMENTED IN BRANCH · NOT ACTIVE | `src/hatchable-bridge.mjs` signs sanitized events and asynchronously sends them to both Hatchable endpoints; Cloudflare Worker deployment and secrets are still pending |
+| Agent Task Runner | DEGRADED · PROVIDER SETUP REQUIRED | Recent calls returned HTTP 503; AI ledger showed `provider: null` and zero tokens. Connect a supported account-level AI provider in Hatchable Setup, then rerun the task flow |\n| Hatchable bridge credentials and visibility | NOT CONFIGURED | `SENTINEL_CONTROL_HMAC` is not set; project visibility is `personal`, which blocks anonymous Worker-to-Hatchable requests |\n| 24/7 availability / uptime SLA | NOT VERIFIED | Deployment does not prove continuous uptime, retries, or recovery |
 | AI-assisted incident analysis | NOT VERIFIED | AI provider setup is a separate prerequisite; deterministic ingestion does not require AI |
 | Automatic Cloudflare IP blocking | NOT IMPLEMENTED | Worker remains the enforcement authority; no remote block command is exposed |
 
 ## Required configuration before production telemetry
 
-- Configure a high-entropy secret in Hatchable Setup as `SENTINEL_CONTROL_HMAC`.
-- Configure the same value as the Cloudflare Worker secret `HATCHABLE_CONTROL_HMAC` using Wrangler secret management.
-- Configure a fixed HTTPS Hatchable supervisor URL in the Worker environment. Do not accept an arbitrary destination from a browser request.
+- Configure a high-entropy secret in Hatchable Setup as `SENTINEL_CONTROL_HMAC` (currently missing).
+- Configure the same value as the Cloudflare Worker secret `HATCHABLE_CONTROL_HMAC` using Wrangler secret management (not yet configured).
+- `HATCHABLE_BASE_URL` is pinned in `wrangler.jsonc` to the known Hatchable project. Do not accept an arbitrary destination from a browser request.\n- The Hatchable project is currently private/personal. Set visibility to Public in console Settings only if the dashboard is intended for public access; otherwise create a separate public API-only bridge project. A private project sign-in wall blocks the Worker.
 - Never expose either secret in frontend JavaScript, committed files, build logs, or chat.
 - Keep the Hatchable API protected by HMAC. Do not rely on obscurity or a public URL as authentication.
 - If Hatchable's project visibility must be Public for server-to-server access, review that static dashboard content is intended to be publicly readable; API authorization remains independently required.
 
 ## Event envelope and privacy
 
-The Worker should send only allow-listed event types, a UUID event ID, an optional affected session UUID, outcome, and sanitized metadata. Use a keyed pseudonymous source identifier; do not forward raw IP addresses, cookies, bearer tokens, authorization headers, HMAC signatures, full request bodies, wallet secrets, or unredacted provider errors.
+The Worker bridge sends allow-listed event types, a UUID event ID, outcome, and allow-listed metadata. It does not trust browser-supplied session IDs; session correlation remains null until a server-verified session is available. Use a keyed pseudonymous source identifier; do not forward raw IP addresses, cookies, bearer tokens, authorization headers, HMAC signatures, full request bodies, wallet secrets, or unredacted provider errors.
 
 Recommended event types include `AUTH_FAILURE`, `ACCESS_DENIED`, `INVALID_SIGNATURE`, `REPLAY_DETECTED`, `RATE_LIMITED`, `POLICY_BLOCK`, `SESSION_REVOKED`, `SESSION_EXPIRED`, `SESSION_COMPROMISE`, `ORIGIN_ERROR`, `CSP_VIOLATION`, `INPUT_REJECTED`, and `WALLET_CONSENT_FAILURE`.
 
-## Rollout verification checklist
+## Current integration implementation\n\nThe Sentinel branch now contains `src/hatchable-bridge.mjs`, called from the Worker response path through `ctx.waitUntil`. It signs each request with HMAC-SHA256 over `timestamp.nonce.rawBody`, uses a fresh nonce per endpoint, hashes the source IP with a keyed HMAC, and sends to both `/api/agent-control` (`telemetry.observe`) and `/api/security-supervisor` (`telemetry.ingest`). The Control Plane persists event IDs idempotently in `worker_telemetry_events`; the Supervisor persists the same event in `security_telemetry`.\n\nThe Hatchable project was deployed through v21 with these endpoint changes and migration 006. This is not end-to-end proof: the Worker branch has not yet been deployed, `SENTINEL_CONTROL_HMAC` is missing in Hatchable Setup, the matching Worker secret is not configured, and the project remains private.\n\n## Rollout verification checklist
 
 - [ ] A valid HMAC request is accepted.
 - [ ] Missing or invalid HMAC is rejected.
