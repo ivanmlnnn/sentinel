@@ -7,10 +7,10 @@ Status date: 13 November 2026
 - Hatchable project: `IVTECH Sentinel` (`ivtech-sentinel`)
 - Live deployment: **v22**
 - Runtime endpoint: `/api/agent-task-runner`
-- Mirrored Hatchable sources in this repository: `hatchable/api/agent-control.js`, `hatchable/api/security-supervisor.js`, `hatchable/api/agent-task-runner.js`, and `hatchable/migrations/006_worker_telemetry.sql`
-- Execution model: deterministic command parser and policy checks; **no AI provider/API call is required**.
+- Mirrored sources: `hatchable/api/agent-control.js`, `hatchable/api/security-supervisor.js`, `hatchable/api/agent-task-runner.js`, and `hatchable/migrations/006_worker_telemetry.sql`
+- Execution model: deterministic command parser and policy checks; **no AI provider/API call is required by this Task Runner**.
 
-The deployed Hatchable endpoint sources and telemetry migration were copied into this repository from the v22 project files. Keep these mirrors synchronized whenever Hatchable endpoints or migrations change.
+The deployed Hatchable endpoint sources and telemetry migration were copied into this repository from v22. Keep these mirrors synchronized whenever Hatchable endpoints or migrations change.
 
 ## Manual command grammar
 
@@ -19,33 +19,36 @@ The deployed Hatchable endpoint sources and telemetry migration were copied into
 | `help` / `menu` / `commands` / `bantuan` | Show supported commands |
 | `status` / `security status` | Report validated task-time session boundary |
 | `swap TOKEN_A to TOKEN_B` | Create a review-only swap proposal if `swap.quote` is granted |
-| `payment to account.testnet amount 1.25` | Create a review-only testnet payment proposal if `payment.propose` is granted |
+| `payment to account.testnet amount 1.25` | Create a review-only Testnet payment proposal if `payment.propose` is granted |
 | `trade draft <rationale>` | Create a review-only trade draft if `trade.draft` is granted |
 
-Natural-language requests outside this exact grammar are not interpreted as financial instructions.
+Natural-language trading requests such as “create a DCA strategy”, “buy when RSI crosses 30”, or “rebalance weekly” are **not** interpreted as executable skills by this runtime. Its command grammar is intentionally narrow.
 
 ## Safety boundary
 
-- Every task is tied to a stored session and checks that it is still ACTIVE and unexpired at execution time.
-- The scheduler endpoint claims queued tasks atomically to reduce duplicate execution.
-- Permission checks are applied per proposal type.
-- The runtime only creates rows in `agent_action_proposals`; it does not sign, broadcast, submit orders, or execute swaps/payments.
-- Swap requests are **not live quotes**: no price, route, slippage, or liquidity is fetched by this implementation.
-- The runtime returns `engine: SENTINEL_DETERMINISTIC_RULE_ENGINE`, `ai_provider_required: false`, and `execution_enabled: false`.
+- Every task is tied to a stored application session and checks it is ACTIVE and unexpired at execution time.
+- Scheduler atomically claims queued tasks to reduce duplicate execution.
+- Permission checks apply per proposal type.
+- Runtime only creates rows in `agent_action_proposals`; it does not sign, broadcast, submit orders, or execute swaps/payments.
+- Swap requests are **not live quotes**: no price, route, slippage, or liquidity is fetched.
+- Runtime returns `engine: SENTINEL_DETERMINISTIC_RULE_ENGINE`, `ai_provider_required: false`, and `execution_enabled: false`.
 
 ## Verified test
 
-Hatchable v22 was invoked as the scheduler with a temporary ACTIVE testnet session and a queued `help` task. The endpoint returned HTTP 200, `status: COMPLETED`, the deterministic engine identifier, and `ai_provider_required: false`. The temporary test task, session, and event rows were deleted after verification.
+Hatchable v22 was invoked as scheduler with a temporary ACTIVE Testnet session and queued `help` task. Endpoint returned HTTP 200, `COMPLETED`, deterministic engine identifier, and `ai_provider_required: false`. Temporary test records were deleted.
 
-This is a focused runtime smoke test, not a full end-to-end wallet, Worker, HMAC, swap quote, payment, or transaction-execution test.
+This is a focused runtime smoke test, not a full E2E wallet, Worker, HMAC, swap quote, payment, skill persistence, scheduler, or transaction-execution test.
 
 ## Integration status
 
 - Hatchable Control Plane, Security Supervisor, and manual Task Runner: deployed in v22.
-- Worker-to-Hatchable telemetry: implemented in the Sentinel branch, but not active until the Worker branch is deployed and the matching Cloudflare secret is configured.
-- Hatchable project visibility is still personal/private; anonymous Worker-to-Hatchable requests remain blocked by the platform sign-in wall until the architecture is changed (public API-only project or an explicitly reviewed visibility change).
-- HMAC credential: user configured `SENTINEL_CONTROL_HMAC` in Hatchable Setup; matching `HATCHABLE_CONTROL_HMAC` must be configured in Cloudflare. Do not commit either secret.
-- The main branch/PR state is tracked separately; this document records the Hatchable deployment and source snapshot, not a claim that GitHub auto-deploys Hatchable.
+- Dashboard chat calls Cloudflare Worker `/api/agent/run`; it does not call Hatchable `task.submit`. **Manual Task Runner is not wired into dashboard chat.**
+- Developer Mode only connects a NEAR Testnet wallet and labels itself `PREVIEW ONLY`; it does not create an on-chain restricted FunctionCall key.
+- Hatchable application sessions are database records, not proof of NEAR on-chain delegated-key authorization.
+- Worker-to-Hatchable telemetry is implemented in the Sentinel branch, but not active until Worker deployment and matching Cloudflare secret configuration.
+- Hatchable remains personal/private; anonymous Worker-to-Hatchable requests are blocked by the platform sign-in wall until architecture changes (public API-only project or reviewed visibility change).
+- User configured `SENTINEL_CONTROL_HMAC` in Hatchable Setup; matching `HATCHABLE_CONTROL_HMAC` must be configured in Cloudflare. Never commit either secret.
+- This document records Hatchable deployment/source snapshot, not automatic GitHub↔Hatchable deployment.
 
 ## Operational rule
 
