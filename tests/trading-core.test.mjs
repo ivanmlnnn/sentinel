@@ -190,3 +190,62 @@ test("rejects signed swap intents that change the account, token, amount or rece
   }, fetchImpl);
   assert.equal(rejected.reason, "SIGNED_INTENT_POLICY_MISMATCH");
 });
+
+
+test("creates a live quote only on explicit live mode and verifies provider signature", async () => {
+  const { getTidepoolLiveQuote } = await import("../src/trading-core.mjs");
+  const calls = [];
+  const fetchImpl = async (url, init = {}) => {
+    calls.push({ url, init });
+    if (url.endsWith("/v0/tokens")) return new Response(JSON.stringify([
+      { assetId: input.originAsset, decimals: 6, blockchain: "near", symbol: "USDC" },
+      { assetId: input.destinationAsset, decimals: 24, blockchain: "near", symbol: "wNEAR" }
+    ]), { status: 200 });
+    const request = JSON.parse(init.body);
+    return new Response(JSON.stringify({
+      correlationId: "live-correlation",
+      quoteRequest: request,
+      quote: {
+        amountIn: input.amount, amountOut: "250000000000000000000000",
+        minAmountOut: "247500000000000000000000", depositAddress: "a".repeat(64)
+      },
+      signature: "ed25519:0123456789abcdefghijklmnop"
+    }), { status: 200 });
+  };
+  const result = await getTidepoolLiveQuote(input, fetchImpl, Date.now(), () => true);
+  assert.equal(result.ok, true);
+  assert.equal(result.value.execution_enabled, false);
+  assert.equal(result.value.mode, "LIVE_QUOTE_AWAITING_USER_SIGNATURE");
+  assert.equal(result.value.deposit_address, "a".repeat(64));
+  assert.equal(JSON.parse(calls[1].init.body).dry, false);
+});
+
+test("generates only an exact NEP-413 transfer intent for the requested quote", async () => {
+  const { generateTidepoolSwapIntent } = await import("../src/trading-core.mjs");
+  const depositAddress = "b".repeat(64);
+  const fetchImpl = async () => new Response(JSON.stringify({
+    correlationId: "intent-correlation",
+    intent: {
+      standard: "nep413",
+      payload: {
+        message: JSON.stringify({
+          signer_id: "alice.testnet",
+          verifying_contract: "verifier.tidepool-sandbox.testnet",
+          deadline: new Date(Date.now() + 300000).toISOString(),
+          intents: [{ intent: "transfer", receiver_id: depositAddress, tokens: { [input.originAsset]: input.amount } }]
+        }),
+        nonce: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+        recipient: "verifier.tidepool-sandbox.testnet"
+      }
+    }
+  }), { status: 200 });
+  const result = await generateTidepoolSwapIntent({
+    depositAddress, signerId: "alice.testnet", originAsset: input.originAsset, amount: input.amount
+  }, fetchImpl);
+  assert.equal(result.ok, true);
+  assert.equal(result.value.standard, "nep413");
+  const invalid = await generateTidepoolSwapIntent({
+    depositAddress, signerId: "alice.testnet", originAsset: input.originAsset, amount: "999"
+  }, fetchImpl);
+  assert.equal(invalid.reason, "TIDEPOOL_GENERATED_INTENT_MISMATCH");
+});
