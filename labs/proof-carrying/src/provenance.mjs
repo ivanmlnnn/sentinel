@@ -1,50 +1,63 @@
 import { createHmac, timingSafeEqual, createHash } from "node:crypto";
 
 export function canonical(value) {
+  if (value === null) return "null";
+  if (typeof value === "string" || typeof value === "boolean") return JSON.stringify(value);
+  if (typeof value === "number" && Number.isFinite(value)) return JSON.stringify(value);
   if (Array.isArray(value)) return "[" + value.map(canonical).join(",") + "]";
   if (value && typeof value === "object") return "{" + Object.keys(value).sort().map(k => JSON.stringify(k)+":"+canonical(value[k])).join(",") + "}";
-  return JSON.stringify(value);
+  throw new TypeError("UNSUPPORTED_CANONICAL_VALUE");
 }
 export function digest(value) { return createHash("sha256").update(canonical(value)).digest("hex"); }
 function mac(payload, secret) { return createHmac("sha256", secret).update(canonical(payload)).digest("hex"); }
 export function signEvidence(payload, secret) { return {...payload, signature:mac(payload,secret)}; }
 export function verifyEvidence(evidence, trustStore, now) {
-  if (!evidence || typeof evidence.source_id !== "string" || !evidence.claims || !Number.isSafeInteger(evidence.issued_at) || !Number.isSafeInteger(evidence.expires_at)) return {ok:false,reason:"MALFORMED_EVIDENCE"};
-  const secret = trustStore[evidence.source_id];
-  if (!secret) return {ok:false,reason:"UNKNOWN_SOURCE"};
-  if (evidence.issued_at > now || evidence.expires_at <= now) return {ok:false,reason:"STALE_OR_FUTURE_EVIDENCE"};
+  if (!evidence || typeof evidence.source_id !== "string" || !evidence.claims || typeof evidence.claims !== "object" || Array.isArray(evidence.claims) || !Number.isSafeInteger(evidence.issued_at) || !Number.isSafeInteger(evidence.expires_at)) return {ok:false,reason:"MALFORMED_EVIDENCE"};
+  const secret = trustStore && Object.hasOwn(trustStore,evidence.source_id) ? trustStore[evidence.source_id] : null;
+  if (typeof secret !== "string" || !secret) return {ok:false,reason:"UNKNOWN_SOURCE"};
+  if (!Number.isSafeInteger(now) || evidence.issued_at > now || evidence.expires_at <= now) return {ok:false,reason:"STALE_OR_FUTURE_EVIDENCE"};
   const {signature,...payload}=evidence;
+  if (typeof signature !== "string" || !/^[a-f0-9]{64}$/i.test(signature)) return {ok:false,reason:"BAD_SIGNATURE"};
   const expected=Buffer.from(mac(payload,secret),"hex");
-  let actual; try { actual=Buffer.from(signature,"hex"); } catch { return {ok:false,reason:"BAD_SIGNATURE"}; }
+  const actual=Buffer.from(signature,"hex");
   if (actual.length!==expected.length || !timingSafeEqual(actual,expected)) return {ok:false,reason:"BAD_SIGNATURE"};
   return {ok:true,reason:"AUTHENTICATED"};
 }
+const FIELD_AUTHORITIES = Object.freeze({
+  receiver: new Set(["registry"]),
+  amount: new Set(["contract"]),
+  memo: new Set(["contract"]),
+});
 export function buildProvenanceGraph(intent, evidenceList, trustStore, now) {
   const fields=["receiver","amount","memo"];
   const nodes=[], edges=[];
+  const records=Array.isArray(evidenceList)?evidenceList:[];
   for (const field of fields) {
     const candidates=[];
-    for (const evidence of evidenceList) {
+    for (const evidence of records) {
       const result=verifyEvidence(evidence,trustStore,now);
       if (result.ok && Object.hasOwn(evidence.claims,field)) {
         const node={id:digest({source:evidence.source_id,field,value:evidence.claims[field],issued_at:evidence.issued_at}),source_id:evidence.source_id,field,value:evidence.claims[field],evidence_hash:digest(evidence)};
         nodes.push(node); candidates.push(node);
       }
     }
-    edges.push({field,candidate_ids:candidates.map(x=>x.id),selected_id:candidates.length===1?candidates[0].id:null});
+    const authorized=candidates.filter(x=>FIELD_AUTHORITIES[field].has(x.source_id));
+    const unauthorized=candidates.filter(x=>!FIELD_AUTHORITIES[field].has(x.source_id));
+    edges.push({field,candidate_ids:candidates.map(x=>x.id),authorized_candidate_ids:authorized.map(x=>x.id),unauthorized_candidate_ids:unauthorized.map(x=>x.id),selected_id:authorized.length===1?authorized[0].id:null});
   }
-  return {version:1,intent_hash:digest(intent),nodes,edges,root:digest({intent_hash:digest(intent),nodes,edges})};
+  return {version:2,intent_hash:digest(intent),nodes,edges,root:digest({intent_hash:digest(intent),nodes,edges})};
 }
 export function evaluateProofIntent({intent,evidence,trustStore,now,approvedIntent}) {
   const graph=buildProvenanceGraph(intent,evidence,trustStore,now);
   const failures=[];
   for (const field of ["receiver","amount","memo"]) {
     const edge=graph.edges.find(x=>x.field===field);
-    if (edge.candidate_ids.length===0) failures.push(field+":MISSING_AUTHENTICATED_ORIGIN");
-    else if (edge.candidate_ids.length>1) failures.push(field+":CONFLICTING_ORIGINS");
-    else {
+    if (edge.unauthorized_candidate_ids.length) failures.push(field+":UNAUTHORIZED_FIELD_AUTHORITY");
+    if (edge.authorized_candidate_ids.length===0 && edge.candidate_ids.length===0) failures.push(field+":MISSING_AUTHENTICATED_ORIGIN");
+    else if (edge.authorized_candidate_ids.length>1) failures.push(field+":CONFLICTING_ORIGINS");
+    else if (edge.authorized_candidate_ids.length===1) {
       const node=graph.nodes.find(x=>x.id===edge.selected_id);
-      if (node.value!==intent[field]) failures.push(field+":INTENT_DOES_NOT_MATCH_SOURCE");
+      if (!node || node.value!==intent[field]) failures.push(field+":INTENT_DOES_NOT_MATCH_SOURCE");
     }
   }
   if (approvedIntent && digest(approvedIntent)!==digest(intent)) failures.push("APPROVAL_INVALIDATED_BY_MUTATION");
