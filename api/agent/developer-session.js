@@ -19,6 +19,9 @@ function validAccount(value){
     ACCOUNT.test(value) && (value.endsWith('.testnet') || /^[0-9a-f]{64}$/.test(value));
 }
 function tokenHash(token){return createHash('sha256').update(token).digest('hex');}
+function cookieToken(req){const raw=String(req.headers.cookie||'');const part=raw.split(';').map(x=>x.trim()).find(x=>x.startsWith('sentinel_dev_session='));return part?decodeURIComponent(part.slice('sentinel_dev_session='.length)):'';}
+function setSessionCookie(req,res,token){const secure=String(req.headers['x-forwarded-proto']||'https')==='https';res.setHeader('set-cookie','sentinel_dev_session='+encodeURIComponent(token)+'; Path=/api/agent/developer-session; HttpOnly; SameSite=Strict; Max-Age='+SESSION_SECONDS+(secure?'; Secure':''));}
+function clearSessionCookie(req,res){const secure=String(req.headers['x-forwarded-proto']||'https')==='https';res.setHeader('set-cookie','sentinel_dev_session=; Path=/api/agent/developer-session; HttpOnly; SameSite=Strict; Max-Age=0'+(secure?'; Secure':''));}
 function decodeBase58(value){
   const alphabet='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
   let n=0n;
@@ -116,7 +119,8 @@ async function activate(req,res,body){
     [sessionId,account,JSON.stringify(challenge.permissions),expiresAt.toISOString(),publicKey,hash]);
   await query("INSERT INTO agent_events(session_id,event_type,severity,payload) VALUES($1,'DEVELOPER_SESSION_WALLET_APPROVED','INFO',$2::jsonb)",
     [sessionId,JSON.stringify({account_id:account,network:'testnet',permissions:challenge.permissions,public_key:publicKey,expires_at:expiresAt.toISOString(),approval_standard:'NEP-413',on_chain_access_key_created:false})]);
-  return send(res,201,{session:inserted[0],session_token:sessionToken,expires_at:expiresAt.toISOString(),execution_enabled:false,on_chain_access_key_created:false,notice:'Wallet ownership verified. This is an 8-hour application session only; it is not a delegated FunctionCall key and cannot sign or broadcast transactions.'});
+  setSessionCookie(req,res,sessionToken);
+  return send(res,201,{session:inserted[0],expires_at:expiresAt.toISOString(),execution_enabled:false,on_chain_access_key_created:false,notice:'Wallet ownership verified. This is an 8-hour application session only; it is not a delegated FunctionCall key and cannot sign or broadcast transactions.'});
 }
 async function revoke(req,res){
   const auth=String(req.headers.authorization||'');
@@ -125,9 +129,10 @@ async function revoke(req,res){
   const hash=tokenHash(match[1]);
   const rows=await query("UPDATE agent_sessions SET status='REVOKED',revoked_at=now(),updated_at=now(),token_hash=NULL WHERE token_hash=$1 AND status IN('ACTIVE','FROZEN') RETURNING session_id,account_id",
     [hash]);
-  if(!rows.length)return send(res,404,{error:'ACTIVE_SESSION_NOT_FOUND'});
+  if(!rows.length){clearSessionCookie(req,res);return send(res,404,{error:'ACTIVE_SESSION_NOT_FOUND'});}
   await query("INSERT INTO agent_events(session_id,event_type,severity,payload) VALUES($1,'DEVELOPER_SESSION_REVOKED','INFO',$2::jsonb)",
-    [rows[0].session_id,JSON.stringify({account_id:rows[0].account_id,source:'wallet_owner_bearer_revoke'})]);
+    [rows[0].session_id,JSON.stringify({account_id:rows[0].account_id,source:'wallet_owner_cookie_revoke'})]);
+  clearSessionCookie(req,res);
   return send(res,200,{session_id:rows[0].session_id,status:'REVOKED'});
 }
 async function status(req,res){
