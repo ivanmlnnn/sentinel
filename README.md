@@ -34,7 +34,7 @@ Do not run `git pull` as part of a local-only release unless you intentionally w
 GitHub remains the source-control and backup repository. GitHub Actions deployment workflows are not the deployment path for this operating mode. Historical workflow records below refer only to the revisions and checks they originally ran.
 
 
-**NEAR Sentinel protects NEAR payments from compromised or manipulated AI agents.** AI proposes an intent; Sentinel independently evaluates evidence and policy; the wallet owner approves the exact receiver and amount; a separate signer enforces the final boundary.
+**NEAR Sentinel adds an independent security checkpoint to NEAR payments proposed by AI agents.** The agent proposes an intent; Sentinel evaluates evidence and policy; the connected wallet signs the exact transfer; the isolated Signer Worker independently verifies the final transaction and enforces replay and spend controls.
 
 - **[Judge Evidence Pack](docs/JUDGE_EVIDENCE_PACK.md)** — project explanation, evidence index, reproducible commands and judge walkthrough.
 - **[End-to-End Verification Report](docs/END_TO_END_VERIFICATION.md)** — exact test counts, production HTTP smoke results, deployment scope and provenance attestation.
@@ -99,7 +99,7 @@ The independent local stress lab remains a separate evidence set: its nine check
 
 ## Signed verdict attestation — PR #10
 
-The implementation was merged through [PR #10](https://github.com/ivanmlnnn/sentinel/pull/10). The feature branch is retained as implementation history. The Main Worker signs trusted assessment payloads with Ed25519; the isolated Signer Worker verifies the signature, expiry, and exact sender/receiver/amount/nonce binding before policy evaluation or payment execution.
+The implementation was merged through [PR #10](https://github.com/ivanmlnnn/sentinel/pull/10). The feature branch is retained as implementation history. The Main Worker signs trusted assessment payloads with Ed25519; the isolated Signer Worker verifies the signature, expiry, and exact sender/receiver/amount/nonce binding before accepting the final wallet-signed transaction evidence.
 
 - Format, key provisioning, and verification order: [Signed Verdict documentation](docs/SIGNED_VERDICT.md).
 - Regression tests: [`tests/signed-verdict.test.mjs`](tests/signed-verdict.test.mjs).
