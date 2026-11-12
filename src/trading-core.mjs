@@ -233,6 +233,62 @@ export function validateTidepoolLiveQuote(payload, expected) {
   return { ok: true, value: payload };
 }
 
+function stableStringify(value) {
+  if (Array.isArray(value)) return "[" + value.map(stableStringify).join(",") + "]";
+  if (value && typeof value === "object") {
+    return "{" + Object.keys(value).sort().map(key => JSON.stringify(key) + ":" + stableStringify(value[key])).join(",") + "}";
+  }
+  return JSON.stringify(value);
+}
+
+async function sha256Fingerprint(value) {
+  if (!globalThis.crypto?.subtle) throw new Error("WEB_CRYPTO_UNAVAILABLE");
+  const bytes = new TextEncoder().encode(stableStringify(value));
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+  return "sha256:" + Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
+export async function evaluateTidepoolSwapRisk(providerQuote, expected) {
+  const validation = validateTidepoolLiveQuote(providerQuote, expected);
+  if (!validation.ok) return { ok: false, reason: validation.reason };
+  const request = providerQuote.quoteRequest;
+  const quote = providerQuote.quote;
+  const checks = [
+    { id: "TESTNET_ASSET_ALLOWLIST", status: "PASS" },
+    { id: "EXACT_INPUT_ONLY", status: request.swapType === "EXACT_INPUT" ? "PASS" : "FAIL" },
+    { id: "RECIPIENT_AND_REFUND_BOUND", status: request.recipient === expected.recipient && request.refundTo === expected.recipient ? "PASS" : "FAIL" },
+    { id: "SLIPPAGE_CAP", status: request.slippageTolerance <= MAX_SLIPPAGE_BPS ? "PASS" : "FAIL" },
+    { id: "MINIMUM_OUTPUT_PROTECTED", status: BigInt(quote.minAmountOut) * 10000n >= BigInt(quote.amountOut) * BigInt(10000 - request.slippageTolerance) ? "PASS" : "FAIL" },
+    { id: "QUOTE_EXPIRY_BOUNDED", status: Date.parse(quote.deadline || request.deadline) > Date.now() ? "PASS" : "FAIL" }
+  ];
+  const decision = checks.every(check => check.status === "PASS") ? "ALLOW" : "BLOCK";
+  const quoteHash = await sha256Fingerprint(providerQuote);
+  const policyHash = await sha256Fingerprint({
+    policy_version: "sentinel.swap-risk.v1",
+    decision,
+    checks,
+    quote_hash: quoteHash,
+    expected: {
+      originAsset: expected.originAsset,
+      destinationAsset: expected.destinationAsset,
+      amount: expected.amount,
+      recipient: expected.recipient,
+      slippageTolerance: expected.slippageTolerance
+    }
+  });
+  return {
+    ok: decision === "ALLOW",
+    reason: decision === "ALLOW" ? null : "SENTINEL_SWAP_RISK_BLOCKED",
+    value: {
+      decision,
+      policy_version: "sentinel.swap-risk.v1",
+      quote_hash: quoteHash,
+      policy_hash: policyHash,
+      checks
+    }
+  };
+}
+
 export async function getTidepoolLiveQuote(input, fetchImpl = fetch, now = Date.now(), verifySignature = verifyQuoteSignature) {
   const tokens = await getTidepoolTestnetTokens(fetchImpl);
   const validation = validateTradingQuoteInput(input, tokens);
@@ -251,10 +307,13 @@ export async function getTidepoolLiveQuote(input, fetchImpl = fetch, now = Date.
   let signatureValid = false;
   try { signatureValid = await verifySignature(payload, TIDEPOOL_QUOTE_PUBLIC_KEY) === true; } catch {}
   if (!signatureValid) return { ok: false, reason: "TIDEPOOL_LIVE_QUOTE_SIGNATURE_INVALID" };
+  const risk = await evaluateTidepoolSwapRisk(payload, validation.value);
+  if (!risk.ok) return risk;
   return {
     ok: true,
     value: {
       provider: "Tidepool community testnet",
+      risk_evaluation: risk.value,
       network: "NEAR Testnet",
       mode: "LIVE_QUOTE_AWAITING_USER_SIGNATURE",
       execution_enabled: false,
@@ -284,10 +343,13 @@ export async function verifyTidepoolLiveQuoteBinding(providerQuote, expected, fe
   let signatureValid = false;
   try { signatureValid = await verifySignature(providerQuote, TIDEPOOL_QUOTE_PUBLIC_KEY) === true; } catch {}
   if (!signatureValid) return { ok: false, reason: "TIDEPOOL_LIVE_QUOTE_SIGNATURE_INVALID" };
+  const risk = await evaluateTidepoolSwapRisk(providerQuote, validation.value);
+  if (!risk.ok) return risk;
   return {
     ok: true,
     value: {
       depositAddress: providerQuote.quote.depositAddress,
+      riskEvaluation: risk.value,
       quote: providerQuote.quote,
       quoteRequest: providerQuote.quoteRequest
     }
