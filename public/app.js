@@ -766,9 +766,19 @@ async function renderTradeSkillDraft(prompt) {
     recipientInput.value = typeof connectedAccount === 'string' && connectedAccount.endsWith('.testnet') ? connectedAccount : '';
     recipientInput.required = true;
     const quoteButton = document.createElement('button');
-    quoteButton.type = 'submit';
+    quoteButton.type = 'button';
     quoteButton.className = 'secondary-btn';
-    quoteButton.textContent = 'Get Testnet quote';
+    quoteButton.textContent = 'Get Testnet dry quote';
+    const liveButton = document.createElement('button');
+    liveButton.type = 'button';
+    liveButton.className = 'secondary-btn';
+    liveButton.textContent = 'Review & sign Testnet swap';
+    liveButton.hidden = true;
+    liveButton.disabled = true;
+    const liveStatus = document.createElement('p');
+    liveStatus.className = 'developer-trade-draft-note';
+    liveStatus.setAttribute('aria-live', 'polite');
+    let lastSwapRequest = null;
     const quoteStatus = document.createElement('p');
     quoteStatus.className = 'developer-trade-draft-note';
     quoteStatus.setAttribute('aria-live', 'polite');
@@ -798,15 +808,16 @@ async function renderTradeSkillDraft(prompt) {
         const baseAmount = (BigInt(whole) * (10n ** BigInt(decimals)) +
           BigInt((fraction + '0'.repeat(decimals)).slice(0, decimals) || '0')).toString();
         if (baseAmount === '0') throw new Error('Amount must be greater than zero.');
+        lastSwapRequest = {
+          originAsset: origin.asset_id,
+          destinationAsset: destination.asset_id,
+          amount: baseAmount,
+          recipient: recipientInput.value.trim(),
+          slippageTolerance: 100
+        };
         const quote = await request('/trading/quote', {
           method: 'POST',
-          body: JSON.stringify({
-            originAsset: origin.asset_id,
-            destinationAsset: destination.asset_id,
-            amount: baseAmount,
-            recipient: recipientInput.value.trim(),
-            slippageTolerance: 100
-          })
+          body: JSON.stringify(lastSwapRequest)
         });
         if (quote.mode !== 'QUOTE_ONLY' || quote.execution_enabled !== false) {
           throw new Error('Sentinel rejected a response that was not explicitly quote-only.');
@@ -817,13 +828,122 @@ async function renderTradeSkillDraft(prompt) {
           ' · estimated ' + (quote.quote.estimated_seconds ?? '—') + ' sec';
         quoteDetails.textContent = JSON.stringify(quote, null, 2);
         quoteDetails.hidden = false;
+        liveButton.hidden = false;
+        liveButton.disabled = false;
+        liveStatus.textContent = 'Dry quote verified. No funds moved. Connect the same Testnet wallet to continue.';
       } catch (error) {
         quoteStatus.textContent = error.message || 'Quote request failed.';
       } finally {
         quoteButton.disabled = false;
       }
     });
-    quoteForm.append(recipientLabel, recipientInput, quoteButton, quoteStatus, quoteDetails);
+    liveButton.addEventListener('click', async () => {
+      liveButton.disabled = true;
+      liveStatus.textContent = 'Creating a short-lived live quote. No transfer happens until your wallet signs the exact intent.';
+      try {
+        if (!lastSwapRequest) throw new Error('Request a fresh dry quote first.');
+        if (!connectorReady || !connector || !connectedAccount || !connectedAccount.endsWith('.testnet')) {
+          throw new Error('Connect a NEAR Testnet wallet first.');
+        }
+        if (connectedAccount.toLowerCase() !== recipientInput.value.trim().toLowerCase() ||
+            connectedAccount.toLowerCase() !== lastSwapRequest.recipient.toLowerCase()) {
+          throw new Error('Recipient/refund account must match the connected signing wallet. Refresh the quote after connecting.');
+        }
+        const liveQuote = await request('/trading/live-quote', {
+          method: 'POST',
+          body: JSON.stringify(lastSwapRequest)
+        });
+        if (liveQuote.mode !== 'LIVE_QUOTE_AWAITING_USER_SIGNATURE' ||
+            liveQuote.execution_enabled !== false ||
+            liveQuote.provider_signature_verified !== true ||
+            !/^[a-f0-9]{64}$/i.test(liveQuote.deposit_address || '')) {
+          throw new Error('Sentinel rejected an invalid or unexpected live quote.');
+        }
+        const summary = 'NEAR TESTNET SWAP REVIEW\n\n' +
+          'Input: ' + (liveQuote.quote.amount_in_formatted || liveQuote.quote.amount_in) + ' ' + draft.from_asset + '\n' +
+          'Expected output: ' + (liveQuote.quote.amount_out_formatted || liveQuote.quote.amount_out) + ' ' + draft.to_asset + '\n' +
+          'Minimum output: ' + liveQuote.quote.minimum_amount_out + '\n' +
+          'Wallet: ' + connectedAccount + '\n' +
+          'Provider: Tidepool community Testnet\n\n' +
+          'Continue to request the exact NEP-413 transfer intent? Your wallet will show the signing request next.';
+        if (!window.confirm(summary)) {
+          liveStatus.textContent = 'Cancelled before wallet signing. No transfer was submitted.';
+          return;
+        }
+        const intent = await request('/trading/generate-intent', {
+          method: 'POST',
+          body: JSON.stringify({
+            depositAddress: liveQuote.deposit_address,
+            signerId: connectedAccount,
+            originAsset: lastSwapRequest.originAsset,
+            amount: lastSwapRequest.amount
+          })
+        });
+        if (intent.standard !== 'nep413' || intent.signer_id !== connectedAccount ||
+            intent.deposit_address !== liveQuote.deposit_address ||
+            intent.asset_id !== lastSwapRequest.originAsset ||
+            intent.amount !== lastSwapRequest.amount ||
+            !intent.payload?.message || !intent.payload?.nonce || !intent.payload?.recipient) {
+          throw new Error('Generated intent does not match the reviewed quote. Signing stopped.');
+        }
+        const wallet = await connector.wallet();
+        if (!wallet || typeof wallet.signMessage !== 'function') {
+          throw new Error('This connected wallet does not expose NEP-413 signMessage. No fallback or server-side signing will be used.');
+        }
+        const nonce = Uint8Array.from(atob(intent.payload.nonce), char => char.charCodeAt(0));
+        if (nonce.length !== 32) throw new Error('The provider returned an invalid NEP-413 nonce.');
+        liveStatus.textContent = 'Review the NEP-413 signing request in your wallet…';
+        const signed = await wallet.signMessage({
+          message: intent.payload.message,
+          recipient: intent.payload.recipient,
+          nonce
+        });
+        const publicKey = signed?.publicKey?.toString?.() || signed?.public_key || '';
+        const signature = signed?.signature?.toString?.() || '';
+        if (signed?.accountId && signed.accountId.toLowerCase() !== connectedAccount.toLowerCase()) {
+          throw new Error('Wallet returned a signature for a different account. Submission stopped.');
+        }
+        if (!publicKey.startsWith('ed25519:') || !signature.startsWith('ed25519:')) {
+          throw new Error('Wallet did not return a complete NEP-413 public key and signature. No submission was made.');
+        }
+        liveStatus.textContent = 'Submitting the wallet-signed intent to the NEAR Testnet verifier…';
+        const submitted = await request('/trading/submit-intent', {
+          method: 'POST',
+          body: JSON.stringify({
+            signedData: {
+              standard: 'nep413',
+              payload: intent.payload,
+              public_key: publicKey,
+              signature
+            },
+            expectedSignerId: connectedAccount,
+            expectedDepositAddress: liveQuote.deposit_address,
+            expectedAsset: lastSwapRequest.originAsset,
+            expectedAmount: lastSwapRequest.amount
+          })
+        });
+        liveStatus.textContent = 'Intent submitted. Checking Tidepool settlement status…';
+        let latest = null;
+        for (let attempt = 0; attempt < 15; attempt++) {
+          latest = await request('/trading/status?depositAddress=' + encodeURIComponent(liveQuote.deposit_address), { method: 'GET' });
+          if (['SUCCESS', 'REFUNDED', 'FAILED', 'NOT_FOUND'].includes(String(latest.status).toUpperCase())) break;
+          await new Promise(resolve => window.setTimeout(resolve, 2000));
+        }
+        const finalStatus = String(latest?.status || submitted.status || 'SUBMITTED').toUpperCase();
+        liveStatus.textContent = 'Testnet swap status: ' + finalStatus +
+          (submitted.transaction_hash ? ' · verifier tx ' + submitted.transaction_hash : '') +
+          (latest?.explorer_url ? ' · ' + latest.explorer_url : '') +
+          (finalStatus === 'SUCCESS' ? ' · settlement confirmed by Tidepool status' :
+            ' · not marked successful yet; do not retry blindly');
+        quoteDetails.textContent = JSON.stringify({ live_quote: liveQuote, signed_intent: submitted, settlement: latest }, null, 2);
+        quoteDetails.hidden = false;
+      } catch (error) {
+        liveStatus.textContent = error.message || 'Swap flow stopped. Check wallet activity and provider status before retrying.';
+      } finally {
+        liveButton.disabled = false;
+      }
+    });
+    quoteForm.append(recipientLabel, recipientInput, quoteButton, quoteStatus, liveButton, liveStatus, quoteDetails);
     quotePanel.append(quoteTitle, quoteHelp, quoteForm);
   }
   card.append(heading, summary, details, note, hash, copy);
