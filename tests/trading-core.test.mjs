@@ -44,6 +44,23 @@ function quoteResponse(overrides = {}) {
   };
 }
 
+function liveQuoteResponse(overrides = {}) {
+  const quoteRequest = { ...buildTidepoolDryQuotePayload(input), dry: false };
+  return {
+    correlationId: "live-quote-correlation",
+    quoteRequest,
+    quote: {
+      amountIn: input.amount,
+      amountOut: "250000000000000000000000",
+      minAmountOut: "247500000000000000000000",
+      depositAddress: "a".repeat(64),
+      ...overrides.quote
+    },
+    signature: "ed25519:0123456789abcdefghijklmnop",
+    ...overrides
+  };
+}
+
 test("only exposes Tidepool NEAR testnet assets, not bridged or mainnet assets", () => {
   assert.deepEqual(tokens.map(token => token.symbol), ["USDC", "wNEAR"]);
   assert.ok(tokens.every(token => token.network === "testnet"));
@@ -155,8 +172,10 @@ test("validates a signed live quote only when it binds the exact intent and depo
   }, input).reason, "TIDEPOOL_INVALID_DEPOSIT_ADDRESS");
 });
 
-test("rejects signed swap intents that change the account, token, amount or receiver", async () => {
+test("submits only a signed NEP-413 transfer bound to a verified provider quote", async () => {
   const { submitTidepoolSignedIntent } = await import("../src/trading-core.mjs");
+  const depositAddress = "a".repeat(64);
+  const providerQuote = liveQuoteResponse();
   const signedData = {
     standard: "nep413",
     payload: {
@@ -164,7 +183,7 @@ test("rejects signed swap intents that change the account, token, amount or rece
         signer_id: "alice.testnet",
         verifying_contract: "verifier.tidepool-sandbox.testnet",
         deadline: new Date(Date.now() + 300000).toISOString(),
-        intents: [{ intent: "transfer", receiver_id: "b".repeat(64), tokens: { [input.originAsset]: input.amount } }]
+        intents: [{ intent: "transfer", receiver_id: depositAddress, tokens: { [input.originAsset]: input.amount } }]
       }),
       nonce: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
       recipient: "verifier.tidepool-sandbox.testnet"
@@ -172,23 +191,28 @@ test("rejects signed swap intents that change the account, token, amount or rece
     public_key: "ed25519:" + "1".repeat(32),
     signature: "ed25519:" + "1".repeat(64)
   };
-  const fetchImpl = async () => new Response(JSON.stringify({
-    intentHash: "intent-hash",
-    correlationId: "corr-id"
-  }), { status: 200 });
-  const result = await submitTidepoolSignedIntent({
-    signedData, expectedSignerId: "alice.testnet",
-    expectedDepositAddress: "b".repeat(64), expectedAsset: input.originAsset,
-    expectedAmount: input.amount
-  }, fetchImpl);
+  const fetchImpl = async url => {
+    if (url.endsWith("/v0/tokens")) return new Response(JSON.stringify([
+      { assetId: input.originAsset, decimals: 6, blockchain: "near", symbol: "USDC" },
+      { assetId: input.destinationAsset, decimals: 24, blockchain: "near", symbol: "wNEAR" }
+    ]), { status: 200 });
+    return new Response(JSON.stringify({ intentHash: "intent-hash", correlationId: "corr-id" }), { status: 200 });
+  };
+  const request = {
+    signedData, providerQuote, expectedSignerId: "alice.testnet",
+    expectedDepositAddress: depositAddress, expectedAsset: input.originAsset,
+    expectedDestinationAsset: input.destinationAsset, expectedAmount: input.amount,
+    expectedSlippageTolerance: 100
+  };
+  const result = await submitTidepoolSignedIntent(request, fetchImpl, () => true);
   assert.equal(result.ok, true);
   const altered = { ...signedData, payload: { ...signedData.payload, message: signedData.payload.message.replace("alice.testnet", "mallory.testnet") } };
-  const rejected = await submitTidepoolSignedIntent({
-    signedData: altered, expectedSignerId: "alice.testnet",
-    expectedDepositAddress: "b".repeat(64), expectedAsset: input.originAsset,
-    expectedAmount: input.amount
-  }, fetchImpl);
+  const rejected = await submitTidepoolSignedIntent({ ...request, signedData: altered }, fetchImpl, () => true);
   assert.equal(rejected.reason, "SIGNED_INTENT_POLICY_MISMATCH");
+  const quoteMismatch = await submitTidepoolSignedIntent({
+    ...request, providerQuote: liveQuoteResponse({ quoteRequest: { ...providerQuote.quoteRequest, recipient: "mallory.testnet" } })
+  }, fetchImpl, () => true);
+  assert.equal(quoteMismatch.reason, "TIDEPOOL_LIVE_QUOTE_INTENT_MISMATCH");
 });
 
 
@@ -220,34 +244,44 @@ test("creates a live quote only on explicit live mode and verifies provider sign
   assert.equal(JSON.parse(calls[1].init.body).dry, false);
 });
 
-test("generates only an exact NEP-413 transfer intent for the requested quote", async () => {
+test("generates a NEP-413 intent only when the signed provider quote binds the exact swap", async () => {
   const { generateTidepoolSwapIntent } = await import("../src/trading-core.mjs");
-  const depositAddress = "b".repeat(64);
-  const fetchImpl = async () => new Response(JSON.stringify({
-    correlationId: "intent-correlation",
-    intent: {
-      standard: "nep413",
-      payload: {
-        message: JSON.stringify({
-          signer_id: "alice.testnet",
-          verifying_contract: "verifier.tidepool-sandbox.testnet",
-          deadline: new Date(Date.now() + 300000).toISOString(),
-          intents: [{ intent: "transfer", receiver_id: depositAddress, tokens: { [input.originAsset]: input.amount } }]
-        }),
-        nonce: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-        recipient: "verifier.tidepool-sandbox.testnet"
+  const depositAddress = "a".repeat(64);
+  const providerQuote = liveQuoteResponse();
+  const fetchImpl = async url => {
+    if (url.endsWith("/v0/tokens")) return new Response(JSON.stringify([
+      { assetId: input.originAsset, decimals: 6, blockchain: "near", symbol: "USDC" },
+      { assetId: input.destinationAsset, decimals: 24, blockchain: "near", symbol: "wNEAR" }
+    ]), { status: 200 });
+    return new Response(JSON.stringify({
+      correlationId: "intent-correlation",
+      intent: {
+        standard: "nep413",
+        payload: {
+          message: JSON.stringify({
+            signer_id: "alice.testnet",
+            verifying_contract: "verifier.tidepool-sandbox.testnet",
+            deadline: new Date(Date.now() + 300000).toISOString(),
+            intents: [{ intent: "transfer", receiver_id: depositAddress, tokens: { [input.originAsset]: input.amount } }]
+          }),
+          nonce: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+          recipient: "verifier.tidepool-sandbox.testnet"
+        }
       }
-    }
-  }), { status: 200 });
+    }), { status: 200 });
+  };
   const result = await generateTidepoolSwapIntent({
-    depositAddress, signerId: "alice.testnet", originAsset: input.originAsset, amount: input.amount
-  }, fetchImpl);
+    providerQuote, signerId: "alice.testnet", originAsset: input.originAsset,
+    destinationAsset: input.destinationAsset, amount: input.amount, slippageTolerance: 100
+  }, fetchImpl, () => true);
   assert.equal(result.ok, true);
   assert.equal(result.value.standard, "nep413");
   const invalid = await generateTidepoolSwapIntent({
-    depositAddress, signerId: "alice.testnet", originAsset: input.originAsset, amount: "999"
-  }, fetchImpl);
-  assert.equal(invalid.reason, "TIDEPOOL_GENERATED_INTENT_MISMATCH");
+    providerQuote: liveQuoteResponse({ quoteRequest: { ...providerQuote.quoteRequest, amount: "999" } }),
+    signerId: "alice.testnet", originAsset: input.originAsset,
+    destinationAsset: input.destinationAsset, amount: input.amount
+  }, fetchImpl, () => true);
+  assert.equal(invalid.reason, "TIDEPOOL_LIVE_QUOTE_INTENT_MISMATCH");
 });
 
 
