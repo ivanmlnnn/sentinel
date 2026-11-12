@@ -48,14 +48,19 @@ Existing transaction paths are separate:
 
 ## Hatchable integration status
 
-The Hatchable project has deployed Control Plane and Security Supervisor endpoints. That is deployment evidence only, not proof of production integration.
+Hatchable project `IVTECH Sentinel` is deployed at **v22**. Its Control Plane and Security Supervisor endpoints are deployed, and the Agent Task Runner has been replaced with a deterministic manual command runtime. The deployed source is mirrored in this repository at `hatchable/api/agent-task-runner.js` and documented in `docs/HATCHABLE_MANUAL_AGENT_RUNTIME.md`.
 
-The Sentinel branch now contains `src/hatchable-bridge.mjs` and the Worker response path schedules sanitized HMAC-signed telemetry to both Hatchable `/api/agent-control` and `/api/security-supervisor` endpoints. Hatchable v21 is deployed with idempotent Control Plane telemetry storage and the Supervisor event contract. However, the Worker changes are not yet deployed; the required Hatchable HMAC secret is missing, the matching Worker secret is not configured, and the project visibility is still `personal`, so an anonymous Worker request is blocked by the platform sign-in wall. The new `worker_telemetry_events` table currently has zero rows.\n\nThe Agent Task Runner has returned HTTP 503. The AI usage ledger showed three calls for `haiku` with `provider: null` and zero tokens, consistent with an account-level AI provider connection not being configured. The runner now classifies structured provider-setup errors, but successful model execution remains unverified.
+The manual Task Runner was smoke-tested as the scheduler: a temporary ACTIVE testnet session and queued `help` task returned HTTP 200, `COMPLETED`, `SENTINEL_DETERMINISTIC_RULE_ENGINE`, and `ai_provider_required: false`. Test records were removed afterward. This proves the tested task path, not all financial proposal paths or end-to-end Worker connectivity.
+
+The user has configured `SENTINEL_CONTROL_HMAC` in Hatchable Setup. The matching Cloudflare Worker secret `HATCHABLE_CONTROL_HMAC` and Worker deployment remain outstanding. The Hatchable project is still `personal`/private, so anonymous Worker requests are blocked by the platform sign-in wall. Use a separate public API-only project if the main dashboard must remain private.
 
 Therefore:
+- Hatchable deterministic manual Task Runner: **DEPLOYED v22 · HELP TASK SMOKE-TESTED**.
+- AI provider dependency for the manual Task Runner: **REMOVED**.
 - Worker-to-Hatchable telemetry bridge: **IMPLEMENTED IN BRANCH, NOT DEPLOYED / NOT VERIFIED**.
-- HMAC credentials and public route reachability: **NOT CONFIGURED**.\n- Durable agent session lifecycle through Hatchable: **NOT VERIFIED**.
-- Successful autonomous task execution: **NOT VERIFIED**.
+- HMAC credential in Hatchable: **USER CONFIGURED**; matching Cloudflare secret: **PENDING**.
+- Public reachability of Hatchable endpoints: **BLOCKED BY PRIVATE PROJECT VISIBILITY**.
+- Live swap quote, payment transfer, trade execution, wallet signing/broadcast: **NOT IMPLEMENTED / DISABLED**.
 - 24/7 monitoring or autonomous containment: **NOT CLAIMED**.
 
 ## Release acceptance tests
