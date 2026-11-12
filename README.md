@@ -14,10 +14,10 @@ The current production Workers were deployed directly with Wrangler from the loc
 
 | Component | Production URL | Deployed version |
 |---|---|---|
-| Main Worker | https://sentinel.ivmaladin.workers.dev | `80a8c904-d1b4-4686-be5a-557e3c0da3a9` |
-| Isolated Signer Worker | https://sentinel-signer.ivmaladin.workers.dev | `fe208953-3eff-42a1-9356-9181042eb5f3` |
+| Main Worker | https://sentinel.ivmaladin.workers.dev | `7a350d33-f57d-4294-96c8-d7d9d07adbaf` |
+| Isolated Signer Worker | https://sentinel-signer.ivmaladin.workers.dev | `7571bbe3-d61b-4b7d-a465-adc661a929b2` |
 
-**Verification recorded for this deployment:** `npm test` — 146 passed, 0 failed, 0 skipped; `npm run smoke:test` — all HTTP smoke checks passed (dashboard HTTP 200 and expected protected-route rejections). These checks do not prove a live wallet approval or a successful NEAR payment.
+**Verification recorded for this deployment:** `npm test` — 180 passed, 0 failed, 0 skipped; `npm run smoke:test` — all HTTP smoke checks passed (dashboard HTTP 200 and expected protected-route rejections). These checks do not prove a live wallet approval or a successful NEAR payment.
 
 ### Direct deployment (no GitHub Actions queue)
 
@@ -25,8 +25,8 @@ Run from Debian PRoot in the repository directory:
 
 ```bash
 cd /root/sentinel
-npx wrangler@4.159.0 deploy
-npx wrangler@4.159.0 deploy --config signer-worker/wrangler.jsonc
+npx wrangler@4.160.1 deploy
+npx wrangler@4.160.1 deploy --config signer-worker/wrangler.jsonc
 ```
 
 Do not run `git pull` as part of a local-only release unless you intentionally want to replace the local source with the remote branch. Keep Cloudflare bindings, D1 databases, and runtime secrets configured on their existing Workers.
