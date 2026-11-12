@@ -123,3 +123,8 @@ test("semantic firewall blocks every single-field mutation in deterministic corp
   }
  }
 });
+
+test("semantic firewall blocks null intents",()=>assert.equal(comparePaymentIntents({original:null,proposed:null}).decision,"BLOCK"));
+test("semantic firewall blocks missing receiver field",()=>assert.equal(comparePaymentIntents({original:intent,proposed:{amount:"5",memo:"invoice-42"}}).decision,"BLOCK"));
+test("semantic firewall blocks non-string amount",()=>assert.equal(comparePaymentIntents({original:intent,proposed:{...intent,amount:5}}).decision,"BLOCK"));
+test("semantic firewall blocks array-shaped intent",()=>assert.equal(comparePaymentIntents({original:intent,proposed:[intent.receiver,intent.amount,intent.memo]}).decision,"BLOCK"));
