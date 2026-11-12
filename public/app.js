@@ -719,8 +719,10 @@ developerModeToggle?.addEventListener('change', () => {
   document.body.classList.toggle('sentinel-developer-mode', developerModeEnabled);
   if (developerModeBanner) developerModeBanner.classList.toggle('hidden', !developerModeEnabled);
   const status = document.querySelector('.developer-mode-status');
-  if (status) status.textContent = developerModeEnabled ? 'ON · SKILL DRAFTING' : 'OFF · SAFE CHAT';
-  toast(developerModeEnabled ? 'Developer Mode enabled. Trading requests create drafts only.' : 'Developer Mode disabled.');
+  if (status) status.textContent = developerModeEnabled ? 'ON · PREVIEW ONLY' : 'OFF · SAFE CHAT';
+  toast(developerModeEnabled
+    ? 'Developer preview enabled. Skills remain drafts; no delegated wallet session or automatic execution is active.'
+    : 'Developer Mode disabled.');
 });
 async function renderTradeSkillDraft(prompt) {
   const result = $('agentResult');
