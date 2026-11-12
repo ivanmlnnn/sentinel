@@ -189,6 +189,8 @@ export async function getTidepoolDryQuote(input, fetchImpl = fetch, now = Date.n
 
 const DEPOSIT_ADDRESS_RE = /^[a-f0-9]{64}$/i;
 const SIGNATURE_RE = /^ed25519:[1-9A-HJ-NP-Za-km-z]{32,100}$/;
+const NONCE_RE = /^[A-Za-z0-9+/]{43}=$/;
+const TESTNET_ASSET_RE = /^nep141:[a-z0-9._-]+\.tidepool-sandbox\.testnet$/i;
 
 export function validateTidepoolLiveQuote(payload, expected) {
   if (!payload || typeof payload !== "object" || !payload.quote || !payload.quoteRequest) {
@@ -280,7 +282,7 @@ export async function generateTidepoolSwapIntent(input, fetchImpl = fetch) {
   const { depositAddress, signerId, originAsset, amount } = input;
   if (typeof depositAddress !== "string" || !DEPOSIT_ADDRESS_RE.test(depositAddress) ||
       typeof signerId !== "string" || !ACCOUNT_RE.test(signerId) ||
-      typeof originAsset !== "string" || !/^nep141:[a-z0-9._-]+\\.tidepool-sandbox\\.testnet$/i.test(originAsset) ||
+      typeof originAsset !== "string" || !/^nep141:[a-z0-9._-]+\.tidepool-sandbox\.testnet$/i.test(originAsset) ||
       typeof amount !== "string" || !INTEGER_RE.test(amount) || amount === "0" || amount.length > MAX_AMOUNT_DIGITS) {
     return { ok: false, reason: "INVALID_SWAP_INTENT_REQUEST" };
   }
@@ -297,7 +299,7 @@ export async function generateTidepoolSwapIntent(input, fetchImpl = fetch) {
   const intent = payload?.intent;
   const nep413 = intent?.payload;
   if (intent?.standard !== "nep413" || !nep413 || typeof nep413.message !== "string" ||
-      typeof nep413.nonce !== "string" || typeof nep413.recipient !== "string") {
+      typeof nep413.nonce !== "string" || !NONCE_RE.test(nep413.nonce) || typeof nep413.recipient !== "string") {
     return { ok: false, reason: "TIDEPOOL_INVALID_GENERATED_INTENT" };
   }
   let message;
@@ -339,7 +341,7 @@ export async function submitTidepoolSignedIntent(input, fetchImpl = fetch) {
   const { signedData, expectedSignerId, expectedDepositAddress, expectedAsset, expectedAmount } = input;
   if (!signedData || signedData.standard !== "nep413" || !signedData.payload ||
       typeof signedData.payload.message !== "string" ||
-      typeof signedData.payload.nonce !== "string" ||
+      typeof signedData.payload.nonce !== "string" || !NONCE_RE.test(signedData.payload.nonce) ||
       signedData.payload.recipient !== "verifier.tidepool-sandbox.testnet" ||
       typeof signedData.public_key !== "string" || !SIGNATURE_RE.test(signedData.public_key) ||
       typeof signedData.signature !== "string" || !SIGNATURE_RE.test(signedData.signature)) {
@@ -356,6 +358,8 @@ export async function submitTidepoolSignedIntent(input, fetchImpl = fetch) {
       transfer?.intent !== "transfer" ||
       transfer.receiver_id !== expectedDepositAddress ||
       !DEPOSIT_ADDRESS_RE.test(expectedDepositAddress) ||
+      typeof expectedAsset !== "string" || !TESTNET_ASSET_RE.test(expectedAsset) ||
+      typeof expectedAmount !== "string" || !INTEGER_RE.test(expectedAmount) || expectedAmount === "0" ||
       entries.length !== 1 ||
       entries[0][0] !== expectedAsset ||
       entries[0][1] !== expectedAmount ||
