@@ -43,13 +43,23 @@ This milestone does **not**:
 
 The existing native NEAR payment signer is intentionally not reused as a token-swap signer.
 
-## Next gated milestones
+## Live quote and NEP-413 intent milestone
 
-1. Add client UI for token selection and dry quote display.
-2. Verify Tidepool quote signatures against its documented public key before treating a quote as authenticated.
-3. Add explicit wallet-bound approval over the exact provider quote and policy hash.
-4. Implement a dedicated NEAR Testnet deposit/signing adapter with idempotency and spend limits.
-5. Poll Tidepool status and independently verify the final on-chain receipt.
-6. Add failure, refund, replay, expiry and tampering tests.
+This branch now additionally provides:
+- A separate explicit live-quote endpoint. It uses `dry: false` only after the user chooses the live Testnet flow; it returns a short-lived quote deposit account but does not move funds.
+- Server-side validation of the exact pair, amount, recipient/refund account, slippage, deposit type, deposit address and provider signature.
+- A Tidepool `generate-intent` proxy that only accepts NEP-413 transfer intents matching the live quote's signer, deposit address, token and amount.
+- A signed-intent submission proxy that only accepts NEP-413 payloads for the exact expected signer, verifier, deposit address, token and amount.
+- A status endpoint for polling Tidepool settlement.
+- A UI flow requiring the connected NEAR Testnet wallet, a separate confirmation, and wallet `signMessage`. There is no server-side private key or signing fallback.
+
+The wallet must have the selected test token in its NEAR Intents balance and the required public key registration on the verifier. If it does not, the verifier can reject the signed intent; use Tidepool's documented Testnet faucet/setup flow first. Tidepool is community-operated and custodial for deposit accounts; only valueless test tokens belong here.
+
+## Remaining gated milestones
+
+1. Validate Meteor Wallet and other supported wallets on a funded Testnet account end-to-end.
+2. Independently verify successful settlement using Tidepool status and the NEAR Testnet explorer.
+3. Test refund, partial deposit, expiry, replay, wrong signer, altered amount and provider outage cases.
+4. Keep BUY/SELL, scheduling and mainnet execution disabled until a separate policy and signing design is reviewed.
 
 A dry quote is evidence of a provider price response only. It is not an executed trade.
