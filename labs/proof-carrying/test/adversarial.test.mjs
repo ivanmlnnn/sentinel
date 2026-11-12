@@ -93,3 +93,31 @@ test("portable verifier rejects tampered proof root",()=>{
   assert.match(r.stderr,/INVALID_PROOF/);
  } finally { rmSync(dir,{recursive:true,force:true}); }
 });
+
+test("split-payment window respects exact time boundary",()=>{
+ const rows=[{id:"1",payer:"a",receiver:"b",amount:1,timestamp:0},{id:"2",payer:"a",receiver:"b",amount:1,timestamp:60000}];
+ assert.equal(detectSplitPayments(rows,{windowMs:60000,threshold:1}).length,0);
+});
+test("split-payment detector handles unsorted records",()=>{
+ const rows=[{id:"3",payer:"a",receiver:"b",amount:1,timestamp:30},{id:"1",payer:"a",receiver:"b",amount:1,timestamp:10},{id:"2",payer:"a",receiver:"b",amount:1,timestamp:20}];
+ const hit=detectSplitPayments(rows,{windowMs:60,threshold:2});
+ assert.equal(hit.length,1);
+ assert.equal(hit[0].count,3);
+ assert.equal(hit[0].total,3);
+});
+test("split-payment sliding window scales to 20000 records",()=>{
+ const rows=Array.from({length:20000},(_,i)=>({id:String(i),payer:"p",receiver:"r",amount:1,timestamp:i*1000}));
+ const start=performance.now();
+ const hit=detectSplitPayments(rows,{windowMs:30000,threshold:20});
+ const elapsed=performance.now()-start;
+ assert.equal(hit.length,1);
+ assert.ok(elapsed<5000,"unexpectedly slow split-payment scan: "+elapsed+"ms");
+});
+test("semantic firewall blocks every single-field mutation in deterministic corpus",()=>{
+ for (const field of ["receiver","amount","memo"]) {
+  for (let i=0;i<100;i++) {
+   const changed={...intent,[field]:String(intent[field])+"-"+i};
+   assert.equal(comparePaymentIntents({original:intent,proposed:changed}).decision,"BLOCK",field+" mutation "+i);
+  }
+ }
+});
