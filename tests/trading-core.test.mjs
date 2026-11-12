@@ -249,3 +249,24 @@ test("generates only an exact NEP-413 transfer intent for the requested quote", 
   }, fetchImpl);
   assert.equal(invalid.reason, "TIDEPOOL_GENERATED_INTENT_MISMATCH");
 });
+
+
+test("polls Tidepool status only for a well-formed Testnet deposit account", async () => {
+  const { getTidepoolSwapStatus } = await import("../src/trading-core.mjs");
+  let called = "";
+  const fetchImpl = async url => {
+    called = url;
+    return new Response(JSON.stringify({
+      status: "SUCCESS",
+      correlationId: "status-correlation",
+      swapDetails: { nearTxHashes: ["5sVQTestnetHash"] },
+      tidepool: { explorerUrl: "https://testnet.nearblocks.io/txns/5sVQTestnetHash" }
+    }), { status: 200 });
+  };
+  const result = await getTidepoolSwapStatus("c".repeat(64), fetchImpl);
+  assert.equal(result.ok, true);
+  assert.equal(result.value.status, "SUCCESS");
+  assert.ok(called.includes("depositAddress="));
+  const invalid = await getTidepoolSwapStatus("alice.testnet", fetchImpl);
+  assert.equal(invalid.reason, "INVALID_DEPOSIT_ADDRESS");
+});
