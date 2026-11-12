@@ -1,6 +1,7 @@
 import { getTidepoolDryQuote } from "../../src/trading-core.mjs";
 
-export default async function handler(req, res) {
+export function createQuoteHandler(quoteFn = getTidepoolDryQuote) {
+  return async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   res.setHeader("X-Content-Type-Options", "nosniff");
   if (req.method !== "POST") {
@@ -24,11 +25,14 @@ export default async function handler(req, res) {
   catch { return res.status(400).json({ error: "INVALID_JSON_BODY" }); }
   if (serializedLength > 8000) return res.status(413).json({ error: "REQUEST_TOO_LARGE" });
   try {
-    const result = await getTidepoolDryQuote(body);
+    const result = await quoteFn(body);
     if (!result.ok) return res.status(400).json({ error: result.reason });
     return res.status(200).json(result.value);
   } catch (error) {
     const reason = error instanceof Error ? error.message : "TIDEPOOL_UNAVAILABLE";
     return res.status(502).json({ error: reason });
   }
+  };
 }
+
+export default createQuoteHandler();
