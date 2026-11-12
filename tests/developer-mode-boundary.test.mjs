@@ -9,11 +9,15 @@ const signer = read("../signer-worker/src/index.mjs");
 const paymentContract = read("../payment-contract/src/lib.rs");
 const mainWrangler = read("../wrangler.jsonc");
 
-test("Developer Mode is clearly preview-only and does not claim to activate a wallet session", () => {
-  assert.match(app, /ON · PREVIEW ONLY/);
-  assert.match(app, /no delegated wallet session or automatic execution is active/i);
-  assert.match(html, /BUILDER PREVIEW · NOT A WALLET SESSION/);
-  assert.match(html, /No delegated key is created/);
+test("Developer Mode requires a connected NEAR Testnet wallet and remains off when approval fails", () => {
+  assert.match(app, /requestDeveloperModeWalletApproval/);
+  assert.match(app, /await connector\.connect\(\)/);
+  assert.match(app, /await connector\.getConnectedWallet\(\)/);
+  assert.match(app, /accountId\.endsWith\('\.testnet'\)/);
+  assert.match(app, /catch \(error\) \{[\s\S]*?setDeveloperMode\(false, 'OFF · WALLET APPROVAL REQUIRED'\)/);
+  assert.match(app, /ON · WALLET APPROVED · PREVIEW ONLY/);
+  assert.match(html, /WALLET APPROVED · BUILDER PREVIEW ONLY/);
+  assert.match(html, /no restricted key is created/i);
   assert.doesNotMatch(app, /addFunctionCallKey\s*\(/);
 });
 
