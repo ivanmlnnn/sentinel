@@ -397,7 +397,8 @@ export async function getTidepoolSwapStatus(depositAddress, fetchImpl = fetch) {
     { method: "GET", headers: { accept: "application/json" } },
     fetchImpl
   );
-  if (!payload || typeof payload !== "object" || typeof payload.status !== "string") {
+  const allowedStatuses = new Set(["PENDING_DEPOSIT", "KNOWN_DEPOSIT_TX", "INCOMPLETE_DEPOSIT", "PROCESSING", "SUCCESS", "REFUNDED", "FAILED"]);
+  if (!payload || typeof payload !== "object" || !allowedStatuses.has(payload.status)) {
     return { ok: false, reason: "TIDEPOOL_INVALID_STATUS_RESPONSE" };
   }
   return {
@@ -408,8 +409,7 @@ export async function getTidepoolSwapStatus(depositAddress, fetchImpl = fetch) {
       correlation_id: payload.correlationId || null,
       transactions: Array.isArray(payload.swapDetails?.nearTxHashes) ? payload.swapDetails.nearTxHashes : [],
       explorer_url: payload.tidepool?.explorer?.find(item => typeof item?.url === "string")?.url ||
-        payload.swapDetails?.destinationChainTxHashes?.find(item => typeof item?.explorerUrl === "string")?.explorerUrl || null,
-      raw: payload
+        payload.swapDetails?.destinationChainTxHashes?.find(item => typeof item?.explorerUrl === "string")?.explorerUrl || null
     }
   };
 }
