@@ -64,7 +64,11 @@ Those historical workflow records prove only the checks and deployment steps sho
 
 ## NEAR Testnet payment evidence status
 
-**Status: NOT VERIFIED in this report — no qualifying transaction hash is recorded here.**
+**Status: PAYMENT ACTIVITY EVIDENCED; TRANSACTION-LEVEL ATTRIBUTION / RECEIPT VERIFICATION PENDING.**
+
+A Testnet Explorer screenshot is now committed at [docs/evidence/Screenshot_2026-11-12-05-58-28-799_com.android.chrome.png](https://github.com/ivanmlnnn/sentinel/blob/main/docs/evidence/Screenshot_2026-11-12-05-58-28-799_com.android.chrome.png). The captured account is `freshnook5462.testnet`; its visible transaction table shows 28 transactions and at least two green-status `TRANSFER` rows of **0.01 NEAR each**, sent from `freshnook5462.testnet` to `rawvest6817.testnet`.
+
+This screenshot is valid supporting evidence of visible Testnet transfer activity to the configured recipient. It is not, by itself, enough to independently attribute those transfers to the currently deployed Sentinel signer or verify the exact final receipt: the transaction hashes are truncated in the screenshot, and the screenshot does not expose the full transaction/receipt details. Therefore the correct status is not "no payment evidence"; it is "payment activity evidenced, exact transaction attribution and receipt verification pending."
 
 A successful wallet message approval, a wallet prompt showing 0 NEAR, or a transaction hash returned by a wallet is not by itself proof that Sentinel completed a payment. A fee-bearing wallet action may be an on-chain wallet/contract operation without being the intended recipient payout.
 
