@@ -20,8 +20,8 @@ function validAccount(value){
 }
 function tokenHash(token){return createHash('sha256').update(token).digest('hex');}
 function cookieToken(req){const raw=String(req.headers.cookie||'');const part=raw.split(';').map(x=>x.trim()).find(x=>x.startsWith('sentinel_dev_session='));return part?decodeURIComponent(part.slice('sentinel_dev_session='.length)):'';}
-function setSessionCookie(req,res,token){const secure=String(req.headers['x-forwarded-proto']||'https')==='https';res.setHeader('set-cookie','sentinel_dev_session='+encodeURIComponent(token)+'; Path=/api/agent/developer-session; HttpOnly; SameSite=Strict; Max-Age='+SESSION_SECONDS+(secure?'; Secure':''));}
-function clearSessionCookie(req,res){const secure=String(req.headers['x-forwarded-proto']||'https')==='https';res.setHeader('set-cookie','sentinel_dev_session=; Path=/api/agent/developer-session; HttpOnly; SameSite=Strict; Max-Age=0'+(secure?'; Secure':''));}
+function setSessionCookie(req,res,token){const secure=String(req.headers['x-forwarded-proto']||'https')==='https';res.setHeader('set-cookie','sentinel_dev_session='+encodeURIComponent(token)+'; Path=/api/agent/; HttpOnly; SameSite=Strict; Max-Age='+SESSION_SECONDS+(secure?'; Secure':''));}
+function clearSessionCookie(req,res){const secure=String(req.headers['x-forwarded-proto']||'https')==='https';res.setHeader('set-cookie','sentinel_dev_session=; Path=/api/agent/; HttpOnly; SameSite=Strict; Max-Age=0'+(secure?'; Secure':''));}
 function decodeBase58(value){
   const alphabet='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
   let n=0n;
