@@ -139,3 +139,41 @@ This repository has pre-existing history and earlier project assets. The submiss
 ---
 
 Built by **Ivan Maulana Alaudin · IVTECH**.
+
+
+## Proof-carrying security lab — validation update (12 November 2026)
+
+The `lab/proof-carrying-agent-economy` branch contains an isolated proof-carrying NEAR contract experiment and adversarial validation suite. These are **local build/test results**, not a deployed contract or a live Testnet payment.
+
+### Reproducible local results
+
+| Check | Result | Scope / limitation |
+|---|---:|---|
+| Root Node test suite | **222/222 PASS** | Includes the isolated signer tests below; do not add those counts again. |
+| Isolated signer policy tests | **16/16 PASS** | Includes independent re-evaluation of signed `ALLOW`, and rejection of `WARN`, `BLOCK`, incomplete, high-risk, substituted receiver/amount, and missing allowlist. |
+| Proof-carrying lab suite | **73/73 PASS** | Isolated provenance, semantic-mutation, and proof-verification tests. |
+| Rust contract unit tests | **14/14 PASS** | Local NEAR SDK unit tests; not an on-chain deployment. |
+| Ed25519 mutation matrix | **2,840/2,840 rejected** | 2,328 one-bit message mutations + 512 one-bit signature mutations. |
+| Cross-language digest vector | **MATCH** | Rust and JavaScript produced `79f97f55182728dfd98acd123695dc2aefed18c78ec348c3f56399e40e3a4f37`. |
+| Local D1 race harness | **PASS** | 500 duplicate nonce attempts: 1 accepted / 499 rejected; 1,000 daily-cap attempts: 100 accepted / 900 rejected; 100 idempotency attempts: 1 accepted / 99 rejected; 100 one-time approval attempts: 1 accepted / 99 rejected. Local Miniflare/D1 only. |
+| Proof structure verifier | **PASS** | `PROOF_STRUCTURE_VALID`. |
+| D1 migration/schema validation | **PASS** | 9 main migrations / 10 main tables / 24 indexes; signer worker 1 migration / 3 tables / 7 indexes. |
+
+The local D1 harness does not contact or measure production D1. Rust unit tests and proof verification do not establish that a deployed NEAR contract accepts a live transaction. The local results above should be rerun from the exact submission commit; the historical evidence JSON records its own tested source revision and must not be represented as if it tested later commits.
+
+### Important integration boundary
+
+The isolated proof-carrying contract exposes `pay()` and verifies a domain-separated Ed25519 authorization binding the chain, contract, signer, receiver, amount, approval, nonce, validity window, intent hash, provenance root, evidence snapshot, policy version, and signer-key version. The contract source has passed local Rust unit tests, but **it has not been deployed or exercised on NEAR Testnet**. The existing application signer execution path still verifies a connected-wallet native `Transfer`; it is not yet wired to submit the proof-carrying contract's `pay()` call. Do not describe the proof-carrying contract as the live payment path until that integration and a Testnet end-to-end test are complete.
+
+The isolated signer now independently re-evaluates the signed preflight decision against its own configured receiver allowlist, network/kill-switch policy, amount cap, assessment status, risk score, receiver, and amount before reserving an execution. This strengthens the existing wallet-transfer path but does **not** close the separate contract-integration gap above.
+
+### Reproduce
+
+```bash
+npm test
+node --test tests/isolated-signer-worker.test.mjs
+cd labs/proof-carrying && npm test && npm run verify && npm run test:d1
+cargo test --manifest-path payment-contract/Cargo.toml -- --nocapture
+```
+
+No Testnet payment, wallet approval, production deployment, or remote D1 mutation is implied by these local test results.
