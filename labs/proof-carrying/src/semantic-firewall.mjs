@@ -5,7 +5,12 @@ const CONFUSABLES = new Map([["0","o"],["1","l"],["3","e"],["5","s"],["а","a"],
 export function normalizeIdentifier(value) {
   return String(value).normalize("NFKC").toLowerCase().replace(/[0135аеорсх]/g, ch => CONFUSABLES.get(ch) || ch).replace(/[\u200B-\u200D\uFEFF]/g, "");
 }
-export function comparePaymentIntents({original, proposed, approved}) {
+export function comparePaymentIntents({original, proposed, approved}={}) {
+  const valid = value => value && typeof value==="object" && !Array.isArray(value) &&
+    FIELDS.every(field=>typeof value[field]==="string" && value[field].length>0);
+  if (!valid(original) || !valid(proposed)) {
+    return {decision:"BLOCK",mutations:[{field:"intent",type:"INVALID_PAYMENT_INTENT_SHAPE"}],original_hash:null,proposed_hash:null,drift_count:1};
+  }
   const mutations = [];
   for (const field of FIELDS) {
     if (String(original?.[field] ?? "") !== String(proposed?.[field] ?? "")) {
