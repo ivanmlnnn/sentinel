@@ -53,6 +53,10 @@ The signer must implement the exact layout above and sign the message bytes with
 
 **This signer-side production integration is not complete yet.** The contract ABI has changed, so the existing Main Worker/Signer Worker flow must not be enabled against this contract until it constructs and submits the exact envelope.
 
+## Reference signer encoder
+
+The lab helper `labs/proof-carrying/src/contract-envelope.mjs` implements the same binary layout and can sign with an injected PKCS#8 Ed25519 private key. Its tests verify a deterministic message hash that is also asserted by the Rust contract tests (`79f97f55182728dfd98acd123695dc2aefed18c78ec348c3f56399e40e3a4f37`). This is a cross-language encoding check and test helper, not a production key-custody service or a signer-worker integration.
+
 ## Deployment and migration warning
 
 The contract state layout and storage prefixes changed. Do not upgrade an existing deployed instance in place without a separately reviewed migration. For this experiment, build and deploy a fresh Testnet contract, initialize it, install the proof public key, verify the config view, and only then run controlled Testnet integration tests. No deployment or wallet transaction has been performed by this work.
