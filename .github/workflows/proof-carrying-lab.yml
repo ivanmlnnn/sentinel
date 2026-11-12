@@ -1,0 +1,19 @@
+name: Sentinel Proof-Carrying Lab
+on:
+  push:
+    branches: ["lab/proof-carrying-agent-economy"]
+    paths: ["labs/proof-carrying/**", ".github/workflows/proof-carrying-lab.yml"]
+  pull_request:
+    paths: ["labs/proof-carrying/**", ".github/workflows/proof-carrying-lab.yml"]
+  workflow_dispatch:
+jobs:
+  provenance-and-adversarial-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run isolated provenance lab
+        working-directory: labs/proof-carrying
+        run: npm test
