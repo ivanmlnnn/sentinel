@@ -20,6 +20,20 @@ function toast(message) {
 function short(value) {
   return value && value.length > 26 ? value.slice(0, 10) + '…' + value.slice(-8) : value;
 }
+const NEAR_BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+function encodeBase58(bytes) {
+  let zeros = 0;
+  while (zeros < bytes.length && bytes[zeros] === 0) zeros++;
+  let value = 0n;
+  for (const byte of bytes) value = (value << 8n) | BigInt(byte);
+  let encoded = '';
+  while (value > 0n) {
+    const remainder = Number(value % 58n);
+    encoded = NEAR_BASE58_ALPHABET[remainder] + encoded;
+    value /= 58n;
+  }
+  return '1'.repeat(zeros) + encoded;
+}
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
@@ -899,7 +913,12 @@ async function renderTradeSkillDraft(prompt) {
           nonce
         });
         const publicKey = signed?.publicKey?.toString?.() || signed?.public_key || '';
-        const signature = signed?.signature?.toString?.() || '';
+        const signatureBytes = signed?.signature;
+        const signature = typeof signatureBytes === 'string'
+          ? (signatureBytes.startsWith('ed25519:') ? signatureBytes : 'ed25519:' + signatureBytes)
+          : signatureBytes instanceof Uint8Array
+            ? 'ed25519:' + encodeBase58(signatureBytes)
+            : '';
         if (signed?.accountId && signed.accountId.toLowerCase() !== connectedAccount.toLowerCase()) {
           throw new Error('Wallet returned a signature for a different account. Submission stopped.');
         }
