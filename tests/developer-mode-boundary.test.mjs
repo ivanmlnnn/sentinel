@@ -15,8 +15,8 @@ test("Developer Mode requires a connected NEAR Testnet wallet and remains off wh
   assert.match(app, /await connector\.getConnectedWallet\(\)/);
   assert.match(app, /accountId\.endsWith\('\.testnet'\)/);
   assert.match(app, /catch \(error\) \{[\s\S]*?setDeveloperMode\(false, 'OFF · WALLET APPROVAL REQUIRED'\)/);
-  assert.match(app, /ON · WALLET APPROVED · PREVIEW ONLY/);
-  assert.match(html, /WALLET APPROVED · BUILDER PREVIEW ONLY/);
+  assert.match(app, /ON · WALLET CONNECTED · PREVIEW ONLY/);
+  assert.match(html, /WALLET CONNECTED · BUILDER PREVIEW ONLY/);
   assert.match(html, /no restricted key is created/i);
   assert.doesNotMatch(app, /addFunctionCallKey\s*\(/);
 });
