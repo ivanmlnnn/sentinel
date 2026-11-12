@@ -1,4 +1,6 @@
+import { verifyQuoteSignature } from "@defuse-protocol/one-click-sdk-typescript";
 const TIDEPOOL_BASE_URL = "https://www.usetidepool.tech";
+const TIDEPOOL_QUOTE_PUBLIC_KEY = "ed25519:U1Mu4u1nHnHmgABpCkfDGXt2FZj8k29UGqhkMAu4iWY";
 const ACCOUNT_RE = /^[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet$/;
 const INTEGER_RE = /^(?:0|[1-9][0-9]*)$/;
 const MAX_AMOUNT_DIGITS = 78;
@@ -144,7 +146,7 @@ export async function getTidepoolTestnetTokens(fetchImpl = fetch) {
   return tokens;
 }
 
-export async function getTidepoolDryQuote(input, fetchImpl = fetch, now = Date.now()) {
+export async function getTidepoolDryQuote(input, fetchImpl = fetch, now = Date.now(), verifySignature = verifyQuoteSignature) {
   const tokens = await getTidepoolTestnetTokens(fetchImpl);
   const validation = validateTradingQuoteInput(input, tokens);
   if (!validation.ok) return validation;
@@ -156,6 +158,9 @@ export async function getTidepoolDryQuote(input, fetchImpl = fetch, now = Date.n
   }, fetchImpl);
   const quoteValidation = validateTidepoolDryQuote(payload, validation.value);
   if (!quoteValidation.ok) return quoteValidation;
+  let signatureValid = false;
+  try { signatureValid = verifySignature(payload, TIDEPOOL_QUOTE_PUBLIC_KEY) === true; } catch {}
+  if (!signatureValid) return { ok: false, reason: "TIDEPOOL_QUOTE_SIGNATURE_INVALID" };
   return {
     ok: true,
     value: {
