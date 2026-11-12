@@ -16,6 +16,7 @@
     "url": "https://github.com/ivanmlnnn/sentinel.git"
   },
   "dependencies": {
+    "@defuse-protocol/one-click-sdk-typescript": "0.1.24",
     "near-api-js": "7.3.1"
   }
 }
