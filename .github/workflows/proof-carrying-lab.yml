@@ -17,6 +17,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
+      - name: Test NEAR payment contract
+        run: cargo test --manifest-path payment-contract/Cargo.toml
       - name: Build NEAR payment contract
         run: cargo build --manifest-path payment-contract/Cargo.toml --target wasm32-unknown-unknown --release
       - name: Install repository dependencies
