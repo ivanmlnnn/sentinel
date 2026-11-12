@@ -221,6 +221,10 @@ export function validateTidepoolLiveQuote(payload, expected) {
   if (typeof quote.depositAddress !== "string" || !DEPOSIT_ADDRESS_RE.test(quote.depositAddress)) {
     return { ok: false, reason: "TIDEPOOL_INVALID_DEPOSIT_ADDRESS" };
   }
+  const deadline = Date.parse(quote.deadline || request.deadline);
+  if (!Number.isFinite(deadline) || deadline <= Date.now() || deadline > Date.now() + 11 * 60 * 1000) {
+    return { ok: false, reason: "TIDEPOOL_LIVE_QUOTE_EXPIRED_OR_UNBOUNDED" };
+  }
   if (typeof payload.signature !== "string" || payload.signature.length < 16 || payload.signature.length > 1024) {
     return { ok: false, reason: "TIDEPOOL_LIVE_QUOTE_SIGNATURE_MISSING" };
   }
@@ -399,7 +403,8 @@ export async function getTidepoolSwapStatus(depositAddress, fetchImpl = fetch) {
       deposit_address: depositAddress,
       correlation_id: payload.correlationId || null,
       transactions: Array.isArray(payload.swapDetails?.nearTxHashes) ? payload.swapDetails.nearTxHashes : [],
-      explorer_url: typeof payload.tidepool?.explorerUrl === "string" ? payload.tidepool.explorerUrl : null,
+      explorer_url: payload.tidepool?.explorer?.find(item => typeof item?.url === "string")?.url ||
+        payload.swapDetails?.destinationChainTxHashes?.find(item => typeof item?.explorerUrl === "string")?.explorerUrl || null,
       raw: payload
     }
   };
