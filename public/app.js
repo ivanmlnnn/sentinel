@@ -696,6 +696,474 @@ $('sendReport').addEventListener('click',async () => {
 });
 
 const agentForm = $('agentForm');
+const developerModeToggle = $('developerModeToggle');
+const developerModeBanner = $('developerModeBanner');
+let developerModeEnabled = false;
+developerModeToggle?.addEventListener('change', () => {
+  developerModeEnabled = developerModeToggle.checked;
+  document.body.classList.toggle('sentinel-developer-mode', developerModeEnabled);
+  if (developerModeBanner) developerModeBanner.classList.toggle('hidden', !developerModeEnabled);
+  const status = document.querySelector('.developer-mode-status');
+  if (status) status.textContent = developerModeEnabled ? 'ON · SKILL DRAFTING' : 'OFF · SAFE CHAT';
+  toast(developerModeEnabled ? 'Developer Mode enabled. Trading requests create drafts only.' : 'Developer Mode disabled.');
+});
+function buildTradeSkillDraft(prompt) {
+  const text = String(prompt || '').trim();
+  const action = /\b(sell|jual)\b/i.test(text) ? 'SELL' : /\b(swap|tukar|exchange)\b/i.test(text) ? 'SWAP' : 'BUY';
+  const assets = ['BTC','ETH','NEAR','USDC','USDT','SOL','WNEAR'];
+  const asset = assets.find(symbol => new RegExp('\\b' + symbol + '\\b','i').test(text)) || null;
+  const amountMatch = text.match(/(?:\$\s*)?(\d+(?:\.\d+)?)\s*(USD|USDC|USDT|BTC|ETH|NEAR|SOL|WNEAR)?/i);
+  const amount = amountMatch ? Number(amountMatch[1]) : null;
+  const amountUnit = amountMatch?.[2] ? amountMatch[2].toUpperCase() : (text.includes('
+const GUEST_CHAT_KEY = 'sentinel.guestAgent.messages.v1';
+let guestConversation = [];
+let authenticatedPrompt = '';
+if (GUEST_MODE) {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(GUEST_CHAT_KEY) || '[]');
+    if (Array.isArray(saved)) guestConversation = saved
+      .filter(item => item && ['user', 'assistant'].includes(item.role) && typeof item.content === 'string' && !(item.role === 'assistant' && /^Alo!\\s*👋[\\s\\S]*(?:Here's what I can help with:|What would you like to do\\?)/i.test(item.content.trim())))
+      .slice(-14);
+  } catch { guestConversation = []; }
+}
+function renderGuestConversation(pending = false) {
+  const result = $('agentResult');
+  if (!result) return;
+  const transcript = document.createElement('div');
+  transcript.className = 'guest-chat-transcript telegram-chat-transcript';
+  transcript.setAttribute('aria-label', 'Sentinel AI conversation');
+
+  for (const item of guestConversation) {
+    const article = document.createElement('article');
+    article.className = 'guest-chat-message guest-chat-' + (item.role === 'user' ? 'user' : 'assistant');
+    const label = document.createElement('span');
+    label.textContent = item.role === 'user' ? 'YOU' : 'SENTINEL AI';
+    const message = document.createElement('p');
+    message.textContent = item.content;
+    article.append(label, message);
+    transcript.append(article);
+  }
+
+  if (pending) {
+    const article = document.createElement('article');
+    article.className = 'guest-chat-message guest-chat-assistant guest-chat-pending';
+    const label = document.createElement('span');
+    label.textContent = 'SENTINEL AI';
+    const message = document.createElement('p');
+    message.textContent = 'Thinking through your request…';
+    article.append(label, message);
+    transcript.append(article);
+  }
+
+  const meta = document.createElement('div');
+  meta.className = 'guest-chat-meta';
+  meta.textContent = 'GUEST READ-ONLY · ' + guestConversation.length + ' MESSAGES IN CONTEXT';
+  result.replaceChildren(transcript, meta);
+  result.classList.remove('hidden');
+  result.scrollTop = result.scrollHeight;
+}
+function saveGuestConversation() {
+  try { sessionStorage.setItem(GUEST_CHAT_KEY, JSON.stringify(guestConversation.slice(-14))); } catch {}
+}
+function renderAuthenticatedPending(prompt) {
+ const result = $('agentResult');
+ if (!result) return;
+ result.innerHTML = '<div class="guest-chat-transcript telegram-chat-transcript"><article class="guest-chat-message guest-chat-user"><span>YOU</span><p>' + escapeHtml(prompt) + '</p></article><article class="guest-chat-message guest-chat-assistant guest-chat-pending telegram-agent-bubble"><span>SENTINEL AI</span><p>Thinking through your request…</p><div class="telegram-typing" aria-label="Sentinel is typing"><i></i><i></i><i></i></div></article></div>';
+ result.classList.remove('hidden');
+ result.scrollTop = result.scrollHeight;
+}
+function renderAgentResult(data) {
+  const result = $('agentResult');
+  const status = String(data.status || 'UNKNOWN');
+  const verdict = data.sentinel?.decision || 'NOT_AVAILABLE';
+  const risk = Number.isFinite(Number(data.sentinel?.risk_score)) ? Number(data.sentinel.risk_score) + '/100' : 'Not scored';
+  const proposal = data.proposal || {};
+  const txHash = typeof data.transaction_hash === 'string' ? data.transaction_hash : '';
+  const explorerUrl = typeof data.explorer_url === 'string' &&
+    /^https:\/\/testnet\.nearblocks\.io\/txns\/[1-9A-HJ-NP-Za-km-z]{32,64}$/.test(data.explorer_url)
+    ? data.explorer_url : (txHash
+      ? 'https://testnet.nearblocks.io/txns/' + encodeURIComponent(txHash) : '');
+  const txLink = txHash && explorerUrl
+    ? '<a class="agent-tx-link" href="' + escapeHtml(explorerUrl) + '" target="_blank" rel="noopener noreferrer">' +
+      (data.execution_enabled === true ? 'View RPC-verified Testnet transaction ↗' : 'Check submitted transaction in Testnet Explorer ↗') + '</a>'
+    : '';
+  const approvalId = status === 'AWAITING_HUMAN_APPROVAL' ? String(data.approval_id || '') : '';
+  const policyReason = String(data.reason || '');
+  const policyReasonText = ({
+    TESTNET_ONLY: 'Network policy: payments are restricted to NEAR Testnet. Check the Worker network configuration.',
+    KILL_SWITCH_ACTIVE: 'The signer is locked. Your approval was received, but no transfer was sent.',
+    AMOUNT_LIMIT_OR_POLICY_UNCONFIGURED: 'The amount exceeds the configured limit, or the payment limit is not configured.',
+    RECEIVER_NOT_ALLOWLISTED: 'This recipient is not on the configured receiver allowlist.',
+    TESTNET_RECEIVER_REQUIRED: 'The recipient must be a NEAR Testnet account ending in .testnet.',
+    INVALID_RECEIVER: 'The recipient account ID is invalid.',
+    INVALID_AMOUNT: 'The payment amount is invalid.',
+    ASSESSMENT_INCOMPLETE: 'Sentinel could not complete the required security assessment.',
+    ASSESSMENT_INTENT_MISMATCH: 'The security assessment does not match this exact recipient and amount.',
+    SENTINEL_BLOCK: 'Sentinel security checks blocked this payment.',
+    HUMAN_REVIEW_REQUIRED: 'Sentinel requires additional human review before this payment can proceed.',
+    INVALID_OR_NON_ALLOW_ASSESSMENT: 'Sentinel did not return a valid ALLOW assessment.',
+    PREFLIGHT_UNAVAILABLE: 'The required security preflight could not be completed.',
+    APPROVAL_CLOSED_NO_TRANSFER: 'This approval is closed. No verified transfer was found.',
+    EXECUTION_OUTCOME_UNKNOWN: 'The transaction outcome is not verified. Do not sign or retry again yet.',
+    APPROVAL_NOT_PENDING: 'This approval has already been used or closed. Check its status before creating another proposal.',
+    ISOLATED_SIGNER_NOT_CONFIGURED: 'The isolated payment signer is not configured. No transfer was sent.',
+    ISOLATED_SIGNER_BINDING_MISSING: 'The main Worker is missing its connection to the isolated signer. Configure the SIGNER_SERVICE service binding and redeploy.',
+    AGENT_SIGNER_HMAC_SECRET_MISSING: 'The shared signer authentication secret is missing or shorter than 32 bytes. Set AGENT_SIGNER_HMAC_SECRET on both Sentinel and Sentinel Signer Workers using the same random value (32+ bytes), then redeploy.',
+    SIGNER_ACCOUNT_MUST_BE_TESTNET: 'The configured signer account is not a NEAR Testnet account.',
+    PREFLIGHT_ATTESTATION_NOT_CONFIGURED: 'The signer is missing its security preflight URL, shared HMAC secret, verdict public key, or Testnet signer account configuration.',
+    PAYMENT_CONTRACT_NOT_CONFIGURED: 'The Testnet payment contract is not configured on the isolated signer.',
+    SIGNER_REQUIRES_CONTRACT_SCOPED_FUNCTION_CALL_KEY: 'The signer account key is not restricted to the approved payment contract and pay method.',
+    ISOLATED_SIGNER_REQUEST_FAILED: 'Your wallet returned a transaction hash, but Sentinel could not read the signer verification result. Check the transaction in NEAR Explorer. Do not submit or approve it again until its status is clear.',
+    ISOLATED_SIGNER_UNAVAILABLE: 'Your wallet returned a transaction hash, but the isolated signer could not be reached to verify it. Check the transaction in NEAR Explorer. Do not submit or approve it again until its status is clear.',
+    SIGNER_NOT_CONFIGURED: 'The Testnet signer account or signing key is not configured.',
+    SIGNER_RESTRICTED_KEY_OR_CONTRACT_INVALID: 'The signer key or payment contract configuration failed its security check.',
+    SIGNER_PRIVATE_KEY_INVALID: 'The configured signer private key is malformed or cannot be decoded. No transfer was sent.',
+    SIGNER_KEY_NOT_FOUND_ON_ACCOUNT: 'The signer public key is not registered on the configured NEAR Testnet account. No transfer was sent.',
+    NEAR_RPC_UNAVAILABLE: 'NEAR Testnet RPC could not verify the signer access key. No transfer was sent; check RPC availability before proceeding.',
+    HARD_PAYMENT_LIMIT_EXCEEDED: 'The payment exceeds Sentinel’s hard per-transaction limit of 0.1 NEAR.',
+    DAILY_CAP_UNCONFIGURED_OR_TOO_HIGH: 'The daily Testnet spending cap is missing or exceeds the hard safety limit.',
+    DAILY_SPEND_LIMIT_REACHED: 'The signer has reached its configured daily Testnet spending limit.',
+    SIGNER_PREFLIGHT_UNAVAILABLE: 'The signer could not complete its independent security preflight.',
+    SIGNER_PREFLIGHT_FAILED: 'The signer’s independent security preflight failed.',
+    SIGNED_VERDICT_INVALID_OR_EXPIRED: 'The signed security verdict was invalid or expired.',
+    WALLET_SIGNATURE_INVALID: 'The NEAR wallet signature could not be verified.',
+    WALLET_SIGNATURE_REPLAYED: 'This wallet signature was already used and cannot be reused.',
+    HUMAN_APPROVAL_NOT_VERIFIED: 'The wallet approval did not match this exact payment proposal.',
+    APPROVAL_ALREADY_CLAIMED: 'This approval has already been claimed. Do not sign it again.'
+  })[policyReason] || (policyReason
+    ? 'The signer stopped this payment before broadcast (' + policyReason.replaceAll('_', ' ').toLowerCase() + ').'
+    : '');
+  const signerSetupIssue = [
+    'ISOLATED_SIGNER_NOT_CONFIGURED', 'ISOLATED_SIGNER_BINDING_MISSING',
+    'AGENT_SIGNER_HMAC_SECRET_MISSING', 'SIGNER_NOT_CONFIGURED',
+    'SIGNER_ACCOUNT_MUST_BE_TESTNET', 'PREFLIGHT_ATTESTATION_NOT_CONFIGURED',
+    'PAYMENT_CONTRACT_NOT_CONFIGURED', 'SIGNER_REQUIRES_CONTRACT_SCOPED_FUNCTION_CALL_KEY',
+    'SIGNER_RESTRICTED_KEY_OR_CONTRACT_INVALID'
+  ].includes(policyReason);
+  const rawResponseText = String(data.agent_message || data.message || '').trim();
+  const isInternalResponse = /^[A-Z][A-Z0-9_]{8,}$/.test(rawResponseText);
+  const responseText = rawResponseText && !isInternalResponse
+    ? rawResponseText
+    : status === 'AWAITING_HUMAN_APPROVAL'
+      ? 'Review the amount and recipient before approving.'
+      : status === 'DENIED'
+        ? 'I could not send this payment. The reason and next step are shown in the payment card below.'
+        : status === 'EXECUTED'
+          ? 'Payment sent and verified on NEAR Testnet.'
+          : status === 'UNKNOWN'
+            ? 'The transaction outcome is not yet verified. Do not retry this payment.'
+            : 'Sentinel completed the request.';
+  const hasPaymentContext = Boolean(proposal.receiver_account || proposal.amount_near != null || approvalId || txHash);
+  const showStatusCard = status !== 'NO_PAYMENT_PROPOSED' && (hasPaymentContext || data.sentinel || data.investigation || status === 'DENIED');
+  const walletCanApprove = Boolean(connectedAccount && connectedAccount.endsWith('.testnet'));
+  const recipientCard = proposal.receiver_account
+    ? '<section class="agent-recipient-track-card compact" id="agentRecipientTrackCard" data-account="' + escapeHtml(proposal.receiver_account) + '">' +
+      '<div class="agent-recipient-track-head"><b>RECIPIENT</b><span class="agent-recipient-live-state" id="agentRecipientTrackState">Checking…</span></div>' +
+      '<div class="agent-recipient-account" id="agentRecipientTrackAccount">' + escapeHtml(proposal.receiver_account) + '</div>' +
+      '<div class="agent-recipient-compact-balance"><span>TESTNET BALANCE</span><b id="agentRecipientTrackBalance">Loading…</b></div></section>'
+    : '';
+  const agentCard = showStatusCard
+    ? '<section class="telegram-agent-status agent-payment-card">' +
+      '<div class="agent-proposal-top"><div class="agent-proposal-brand"><span class="agent-proposal-icon">◈</span><span>' + (hasPaymentContext ? 'Payment' : 'Security check') + '</span></div>' +
+      '<span class="agent-state-pill ' + (data.execution_enabled === true ? 'is-success' : '') + '">' + escapeHtml(({ AWAITING_HUMAN_APPROVAL: 'REVIEW PAYMENT', DENIED: signerSetupIssue ? 'SETUP REQUIRED' : 'NOT SENT', EXECUTED: 'SENT · VERIFIED', UNKNOWN: 'CHECK STATUS', FAILED: 'FAILED', EXPIRED: 'EXPIRED', APPROVING: 'PROCESSING' })[status] || status.replaceAll('_', ' ')) + '</span></div>' +
+      ((hasPaymentContext || data.sentinel) ? '<div class="agent-proposal-values">' +
+        (proposal.amount_near != null ? '<div class="agent-proposal-field amount"><span>AMOUNT</span><b>' + escapeHtml(String(proposal.amount_near)) + ' <small>NEAR</small></b></div>' : '') +
+      '</div>' : '') + recipientCard +
+      ((status === 'DENIED' || status === 'UNKNOWN') && policyReason ? '<div class="agent-policy-reason"><span>' + (status === 'UNKNOWN' && txHash ? 'Verification pending' : 'Payment not sent') + '</span><p>' + escapeHtml(policyReasonText || ('Reason code: ' + policyReason)) + '</p></div>' : '') +
+      ((data.sentinel?.decision || data.sentinel?.risk_score != null) ? '<div class="agent-result-grid compact"><span>Security check</span><b>' + escapeHtml(data.sentinel?.decision ? verdict : 'Completed') + (data.sentinel?.risk_score != null && Number.isFinite(Number(data.sentinel.risk_score)) ? ' · Risk ' + escapeHtml(risk) : '') + '</b></div>' : '') +
+      (approvalId && status === 'AWAITING_HUMAN_APPROVAL' ? '<div class="agent-proposal-meta compact"><span>NEAR TESTNET · Expires in 5 minutes</span></div>' : '') +
+      (txHash ? '<p class="agent-result-hash">TRANSACTION HASH · ' + escapeHtml(txHash) + '</p>' : '') + txLink +
+      (approvalId && status === 'AWAITING_HUMAN_APPROVAL' ? '<div class="agent-approval"><p>Review the exact amount and recipient in your NEAR wallet.</p><div class="agent-approval-actions">' +
+        (walletCanApprove
+          ? '<button type="button" class="primary-btn" id="approveAgentPayment">Approve payment <b>↗</b></button>'
+          : '<button type="button" class="primary-btn" id="connectAgentWallet">Open NEAR wallet <b>↗</b></button>') +
+        '</div></div>' : '') +
+      '</section>' : '';
+  result.innerHTML = '<div class="guest-chat-transcript telegram-chat-transcript" aria-label="Sentinel AI conversation">' +
+    (authenticatedPrompt ? '<article class="guest-chat-message guest-chat-user"><span>YOU</span><p>' + escapeHtml(authenticatedPrompt) + '</p></article>' : '') +
+    '<article class="guest-chat-message guest-chat-assistant telegram-agent-bubble"><span>SENTINEL AI</span><p class="telegram-agent-response">' + escapeHtml(responseText) + '</p>' + agentCard + '</article></div>';
+  result.classList.remove('agent-result-enter');
+  void result.offsetWidth;
+  result.classList.add('agent-result-enter');
+  const recipientTrackCard = $('agentRecipientTrackCard');
+  if (recipientTrackCard) {
+    const trackedAccount = recipientTrackCard.dataset.account || '';
+    request('/wallet?account_id=' + encodeURIComponent(trackedAccount)).then(walletData => {
+      if (!recipientTrackCard.isConnected || recipientTrackCard.dataset.account !== trackedAccount) return;
+      const balance = $('agentRecipientTrackBalance');
+      const state = $('agentRecipientTrackState');
+      const block = $('agentRecipientTrackBlock');
+      const explorer = $('agentRecipientTrackExplorer');
+      if (walletData.account_exists) {
+        balance.textContent = Number(walletData.balance_near).toLocaleString('en-US', { maximumFractionDigits: 6 }) + ' NEAR';
+        state.textContent = 'ACCOUNT ACTIVE';
+        block && (block.textContent = 'Finalized block ' + Number(walletData.block_height).toLocaleString('en-US'));
+        explorer && (explorer.href = walletData.explorer_url || 'https://testnet.nearblocks.io/address/' + encodeURIComponent(trackedAccount));
+      } else {
+        balance.textContent = 'Account not found';
+        state.textContent = 'NOT FOUND';
+        block && (block.textContent = 'Not present on NEAR Testnet RPC');
+        if (explorer) explorer.hidden = true;
+      }
+    }).catch(() => {
+      if (!recipientTrackCard.isConnected || recipientTrackCard.dataset.account !== trackedAccount) return;
+      $('agentRecipientTrackBalance').textContent = 'Unavailable';
+      $('agentRecipientTrackState').textContent = 'RPC UNAVAILABLE';
+      const block = $('agentRecipientTrackBlock');
+      if (block) block.textContent = 'Could not verify live account data';
+    });
+  }
+  if (approvalId && !walletCanApprove) {
+    const connectButton = $('connectAgentWallet');
+    connectButton?.addEventListener('click', async () => {
+      connectButton.disabled = true;
+      connectButton.textContent = 'Opening NEAR wallet…';
+      try {
+        if (!connectorReady || !connector) throw new Error('NEAR wallet connector is still loading. Try again in a moment.');
+        if (connectedAccount) await connector.disconnect();
+        await connector.connect();
+        const current = await connector.getConnectedWallet();
+        const account = current.accounts && current.accounts[0];
+        syncWalletUI(account?.accountId, current.wallet?.manifest?.name || 'NEAR wallet');
+        if (!account?.accountId || !account.accountId.endsWith('.testnet')) {
+          throw new Error('Connect a NEAR Testnet account to approve this proposal.');
+        }
+        toast('NEAR Testnet wallet connected. Review the proposal before signing.');
+        renderAgentResult(data);
+      } catch (error) {
+        connectButton.disabled = false;
+        connectButton.textContent = 'Open NEAR wallet ↗';
+        toast(error.message || 'Wallet connection cancelled or unavailable.');
+      }
+    });
+  }
+  if (approvalId && walletCanApprove) {
+    $('approveAgentPayment').addEventListener('click', async () => {
+      const receiver = String(proposal.receiver_account || '').trim().toLowerCase();
+      const amount = String(proposal.amount_near || '');
+      const approveButton = $('approveAgentPayment');
+      approveButton.disabled = true;
+      approveButton.textContent = 'Checking Sentinel policy…';
+      let walletSubmissionStarted = false;
+      try {
+        if (!connectorReady || !connector || !connectedAccount || !connectedAccount.endsWith('.testnet')) {
+          throw new Error('Connect a NEAR Testnet wallet before approving.');
+        }
+        if (connectedAccount.toLowerCase() !== String(connectedAccount).toLowerCase()) {
+          throw new Error('Wallet account changed. Reconnect and review the proposal.');
+        }
+        if (!data.expires_at) throw new Error('Approval expiry is missing. Create a new proposal.');
+        const amountMicro = Math.round(Number(amount) * 1000000);
+        if (!Number.isSafeInteger(amountMicro) || amountMicro <= 0 || amountMicro > 100000) {
+          throw new Error('Invalid payment amount. The Testnet limit is 0.1 NEAR.');
+        }
+
+        const prepared = await request('/agent/approve', {
+          method: 'POST',
+          body: JSON.stringify({ stage: 'prepare', approval_id: approvalId, wallet_account: connectedAccount })
+        });
+        if (prepared.status !== 'READY_TO_SIGN' || prepared.sentinel?.decision !== 'ALLOW' || !prepared.preflight_token) {
+          renderAgentResult(prepared);
+          throw new Error(prepared.reason || 'Sentinel did not authorize this transfer. No wallet transaction was requested.');
+        }
+
+        const wallet = await connector.wallet();
+        if (!wallet || typeof wallet.signAndSendTransaction !== 'function') {
+          throw new Error('The connected wallet does not support native NEAR transfers through signAndSendTransaction.');
+        }
+        const amountYocto = (BigInt(amountMicro) * 1000000000000000000n).toString();
+        approveButton.textContent = 'Confirm exact transfer in your wallet…';
+        walletSubmissionStarted = true;
+        const walletResult = await wallet.signAndSendTransaction({
+          receiverId: receiver,
+          actions: [{ type: 'Transfer', params: { deposit: amountYocto } }]
+        });
+        const transactionHash = walletResult?.transaction?.hash ||
+          walletResult?.transaction_outcome?.id ||
+          walletResult?.transactionHash ||
+          walletResult?.hash ||
+          null;
+        if (typeof transactionHash !== 'string' || !/^[1-9A-HJ-NP-Za-km-z]{32,64}$/.test(transactionHash)) {
+          throw new Error('The wallet did not return a verifiable transaction hash. Do not send again; check the wallet activity first.');
+        }
+
+        approveButton.textContent = 'Verifying wallet transfer on NEAR…';
+        const approved = await request('/agent/approve', {
+          method: 'POST',
+          headers: { 'Idempotency-Key': crypto.randomUUID() },
+          body: JSON.stringify({
+            stage: 'verify',
+            approval_id: approvalId,
+            wallet_account: connectedAccount,
+            transaction_hash: transactionHash,
+            preflight_token: prepared.preflight_token
+          })
+        });
+        renderAgentResult(approved);
+        toast(approved.execution_enabled
+          ? 'Native NEAR transfer verified on Testnet.'
+          : 'Transfer verification: ' + String(approved.status || 'UNKNOWN'));
+      } catch (error) {
+        if (!walletSubmissionStarted) {
+          approveButton.disabled = false;
+          approveButton.textContent = 'Approve payment';
+          toast(error.message || 'Approval stopped. No wallet transfer was requested.');
+          return;
+        }
+        approveButton.disabled = true;
+        approveButton.textContent = 'Transfer submitted · verification required';
+        const note = document.createElement('p');
+        note.className = 'agent-approval-status-note';
+        note.textContent = error.message || 'The wallet may have submitted the transfer, but Sentinel could not verify it. Do not retry until the wallet and Explorer are checked.';
+        approveButton.closest('.agent-approval')?.append(note);
+        toast('Do not send again. Check the wallet activity and transaction status.');
+      }
+    });
+  }
+}
+const skillCards = Array.from(document.querySelectorAll('.sentinel-skill-card'));
+function selectSentinelSkill(card) {
+  if (!card) return;
+  skillCards.forEach(item => item.classList.toggle('is-selected', item === card));
+  const prompt = $('agentPrompt');
+  if (prompt) {
+    prompt.value = card.dataset.prompt || '';
+    prompt.focus();
+    prompt.setSelectionRange(prompt.value.length, prompt.value.length);
+  }
+}
+skillCards.forEach(card => card.addEventListener('click', () => selectSentinelSkill(card)));
+
+const paymentDraftButton = $('usePaymentDraft');
+paymentDraftButton?.addEventListener('click', () => {
+  const receiver = String($('draftReceiver')?.value || '').trim().toLowerCase();
+  const amountText = String($('draftAmount')?.value || '').trim();
+  const amount = Number(amountText);
+  const reason = String($('draftReason')?.value || '').trim();
+  const accountPattern = /^(?:[a-z0-9]+(?:[-_.][a-z0-9]+)*\.)*(?:testnet|near)$/;
+  if (!accountPattern.test(receiver) || receiver.length < 2 || receiver.length > 64) {
+    toast('Enter a valid NEAR recipient account, such as alice.testnet.');
+    $('draftReceiver')?.focus();
+    return;
+  }
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 0.1 || !/^\d+(?:\.\d{1,6})?$/.test(amountText)) {
+    toast('Enter an amount from 0.000001 to 0.1 NEAR (up to 6 decimals).');
+    $('draftAmount')?.focus();
+    return;
+  }
+  const prompt = 'Create a payment proposal to ' + receiver + ' for ' + amountText + ' NEAR.' +
+    (reason ? ' Reason: ' + reason + '.' : '') +
+    ' Run Sentinel policy checks and show the exact proposal for my human approval. Do not execute until I explicitly approve with my connected NEAR Testnet wallet.';
+  const input = $('agentPrompt');
+  input.value = prompt;
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+  skillCards.forEach(card => card.classList.toggle('is-selected', card.dataset.skill === 'payment'));
+  toast('Payment draft ready. Review the prompt, then send it to Sentinel.');
+});
+
+if (agentForm) {
+  agentForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const button = $('agentRunBtn');
+    const prompt = $('agentPrompt').value.trim();
+    if (!prompt) return;
+    if (developerModeEnabled && /\b(buy|sell|swap|trade|beli|jual|tukar|dca)\b/i.test(prompt) && /\b(BTC|ETH|NEAR|USDC|USDT|SOL|WNEAR)\b/i.test(prompt)) { await renderTradeSkillDraft(prompt); toast('Skill draft generated. Trading execution is not connected.'); return; }
+    button.disabled = true;
+    button.classList.add('agent-running');
+    button.innerHTML = '<span class="agent-button-pulse" aria-hidden="true"></span> Agent running <b>…</b>';
+    const result = $('agentResult');
+    result.classList.remove('hidden');
+    result.textContent = 'Calling the AI provider and evaluating the proposed action…';
+    try {
+      if (GUEST_MODE) {
+        guestConversation.push({ role: 'user', content: prompt });
+        guestConversation = guestConversation.slice(-14);
+        saveGuestConversation();
+        renderGuestConversation(true);
+        const data = await request('/guest/agent', {
+          method: 'POST',
+          body: JSON.stringify({ messages: guestConversation })
+        });
+        if (typeof data.message === 'string' && data.message.trim()) {
+          guestConversation.push({ role: 'assistant', content: data.message.trim() });
+          guestConversation = guestConversation.slice(-14);
+          saveGuestConversation();
+        }
+        renderGuestConversation(false);
+        $('agentPrompt').value = '';
+        toast('Completed ' + String(data.skills_used ?? 0) + ' security skill(s) · ' + String(data.prompts_remaining ?? '—') + ' prompts left today');
+      } else {
+        authenticatedPrompt = prompt;
+        renderAuthenticatedPending(prompt);
+        const data = await request('/agent/run', {
+          method: 'POST',
+          headers: { 'Idempotency-Key': crypto.randomUUID() },
+          body: JSON.stringify({ prompt })
+        });
+        renderAgentResult(data);
+        $('agentPrompt').value = '';
+        if (data.status === 'AWAITING_HUMAN_APPROVAL') toast('Review the exact receiver and amount before approving.');
+        else toast('Sentinel replied.');
+      }
+    } catch (error) {
+      if (GUEST_MODE) {
+        renderGuestConversation(false);
+        const errorMessage = document.createElement('p');
+        errorMessage.className = 'guest-chat-error';
+        errorMessage.textContent = error?.message || 'Agent request failed.';
+        result.append(errorMessage);
+      } else {
+        result.innerHTML = '<div class="guest-chat-transcript telegram-chat-transcript"><article class="guest-chat-message guest-chat-user"><span>YOU</span><p>' + escapeHtml(authenticatedPrompt) + '</p></article><article class="guest-chat-message guest-chat-assistant telegram-agent-bubble"><span>SENTINEL AI</span><p class="guest-chat-error">' + escapeHtml(error.message || 'Agent request failed. No transaction was confirmed.') + '</p></article></div>';
+        result.classList.remove('hidden');
+      }
+      toast(error.message || 'Agent request failed.');
+    } finally {
+      button.disabled = false;
+      button.classList.remove('agent-running');
+      button.innerHTML = 'Send message <b>↗</b>';
+    }
+  });
+} 
+if (GUEST_MODE) {
+  const intro = document.querySelector('.agent-lab-intro');
+  if (intro) intro.textContent = 'Guest AI access · up to 10 prompts per day. Ask questions and get security guidance. Wallet investigation is read-only; payment proposals, signing, and transfers are disabled.';
+  const prompt = $('agentPrompt');
+  if (prompt) prompt.placeholder = 'Ask Sentinel about wallet security, anomalies, or how to use the dashboard…';
+  const warning = document.querySelector('.agent-lab-warning');
+  if (warning) warning.innerHTML = '<b>GUEST READ-ONLY MODE</b><span>10 AI prompts per day · no payment proposals · no signing · no transfers.</span>';
+  const submitLabel = $('agentRunBtn');
+  if (submitLabel) submitLabel.innerHTML = 'Send message <b>↗</b>';
+  if (guestConversation.length) renderGuestConversation(false);
+}
+
+// Wallet connection is independent from Privy login; Guest users may connect a NEAR wallet too.
+initTrackWalletTurnstile();
+initWalletCardMotion();
+initWallet();
+loadMetrics();
+loadThreats();
+) ? 'USD' : null);
+  const schedule = /\b(hourly|every hour|per jam)\b/i.test(text) ? 'HOURLY' : /\b(daily|every day|setiap hari|harian)\b/i.test(text) ? 'DAILY' : /\b(weekly|every week|setiap minggu|mingguan|monday|senin|friday|jumat)\b/i.test(text) ? 'WEEKLY' : /\b(monthly|every month|setiap bulan|bulanan)\b/i.test(text) ? 'MONTHLY' : 'ON_DEMAND';
+  return { skill_id: 'sentinel.trade.' + action.toLowerCase() + '.draft', skill_version: 1, action, asset, amount: Number.isFinite(amount) && amount > 0 ? amount : null, amount_unit: amountUnit, schedule, leverage_requested: /\b(leverage|margin|futures|long|short)\b/i.test(text), source_prompt: text, execution_mode: 'DRAFT_ONLY', approval_status: 'NOT_APPROVED', execution_status: 'DISABLED_NO_TRADING_ADAPTER' };
+}
+async function renderTradeSkillDraft(prompt) {
+  const result = $('agentResult'); const draft = buildTradeSkillDraft(prompt);
+  const complete = Boolean(draft.asset && draft.amount && draft.amount_unit);
+  const canonical = JSON.stringify(draft); let fingerprint = 'unavailable';
+  try { const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonical)); fingerprint = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join(''); } catch {}
+  const card = document.createElement('section'); card.className = 'developer-trade-draft';
+  const heading = document.createElement('div'); heading.className = 'developer-trade-draft-heading';
+  const title = document.createElement('strong'); title.textContent = complete ? 'Trading skill draft generated' : 'Trading request needs clarification';
+  const status = document.createElement('span'); status.textContent = 'DRAFT ONLY'; heading.append(title, status);
+  const summary = document.createElement('p'); summary.textContent = complete ? draft.action + ' ' + draft.amount + ' ' + draft.amount_unit + ' · ' + draft.asset + ' · ' + draft.schedule : 'Sentinel could not safely determine the asset and amount. Refine the prompt before creating a reviewable skill.';
+  const details = document.createElement('pre'); details.textContent = JSON.stringify(draft, null, 2);
+  const note = document.createElement('p'); note.className = 'developer-trade-draft-note'; note.textContent = 'Not approved. No wallet signature, quote, swap, buy, sell, or scheduled job was created. Trading execution is not connected yet.';
+  const hash = document.createElement('small'); hash.textContent = 'DRAFT SHA-256 · ' + fingerprint;
+  const copy = document.createElement('button'); copy.type = 'button'; copy.className = 'secondary-btn'; copy.textContent = 'Copy skill JSON';
+  copy.addEventListener('click', async () => { try { await navigator.clipboard.writeText(JSON.stringify(draft, null, 2)); toast('Skill draft copied.'); } catch { toast('Clipboard unavailable.'); } });
+  card.append(heading, summary, details, note, hash, copy); result.replaceChildren(card); result.classList.remove('hidden'); result.scrollTop = result.scrollHeight;
+}
 const GUEST_CHAT_KEY = 'sentinel.guestAgent.messages.v1';
 let guestConversation = [];
 let authenticatedPrompt = '';
