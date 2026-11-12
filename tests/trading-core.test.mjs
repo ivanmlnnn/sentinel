@@ -241,6 +241,8 @@ test("creates a live quote only on explicit live mode and verifies provider sign
   assert.equal(result.value.execution_enabled, false);
   assert.equal(result.value.mode, "LIVE_QUOTE_AWAITING_USER_SIGNATURE");
   assert.equal(result.value.deposit_address, "a".repeat(64));
+  assert.equal(result.value.signed_quote.signature, "ed25519:0123456789abcdefghijklmnop");
+  assert.equal(result.value.signed_quote.quoteRequest.dry, false);
   assert.equal(JSON.parse(calls[1].init.body).dry, false);
 });
 
