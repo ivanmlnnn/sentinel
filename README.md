@@ -164,3 +164,8 @@ Before enabling telemetry forwarding, configure the same high-entropy secret as 
 **Fail-safe rule:** Cloudflare locally enforces every security-critical decision. If Hatchable, its database, the AI provider, or the network is unavailable, sensitive actions remain denied or follow the existing conservative policy. Supervisor telemetry is advisory and cannot authorize, sign, broadcast, or deploy a transaction or production code.
 
 Operational detail: [Security Supervisor Runbook](docs/SECURITY_SUPERVISOR_RUNBOOK.md).
+
+## Readiness and operations
+
+- [Developer Mode and Wallet Authorization Readiness](docs/DEVELOPER_MODE_READINESS.md) — verified preview-only behavior, delegated-session design gates, and Testnet acceptance tests.
+- [Security Supervisor Runbook](docs/SECURITY_SUPERVISOR_RUNBOOK.md) — Hatchable integration status, HMAC rollout, telemetry privacy, incident response, and release gates.
