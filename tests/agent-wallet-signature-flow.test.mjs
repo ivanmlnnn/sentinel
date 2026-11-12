@@ -7,13 +7,17 @@ const approve = readFileSync(new URL("../functions/api/agent-approve.js", import
 const signer = readFileSync(new URL("../signer-worker/src/index.mjs", import.meta.url), "utf8");
 
 test("one approval tap uses the currently connected NEAR wallet for the exact native transfer", () => {
-  assert.match(app, /features:\{ testnet:true, signAndSendTransaction:true \}/);
+  assert.match(app, /features:\\{ testnet:true, signAndSendTransaction:true, signMessage:true \\}/);
   assert.match(app, /const prepared = await request\('\/agent\/approve'/);
   assert.match(app, /prepared\.sentinel\?\.decision !== 'ALLOW'/);
   assert.match(app, /const wallet = await connector\.wallet\(\)/);
   assert.match(app, /wallet\.signAndSendTransaction\(/);
   assert.match(app, /type: 'Transfer', params: \{ deposit: amountYocto \}/);
   assert.match(app, /transaction_hash: transactionHash/);
+  assert.match(app, /signInAndSignMessage/);
+  assert.match(app, /signMessageParams/);
+  assert.match(app, /operation: 'challenge'/);
+  assert.match(app, /operation: 'activate'/);
   assert.doesNotMatch(app, /wallet\.signMessage\(/);
 });
 
