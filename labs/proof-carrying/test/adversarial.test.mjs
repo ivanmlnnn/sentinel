@@ -130,3 +130,21 @@ test("semantic firewall blocks non-string amount",()=>assert.equal(comparePaymen
 test("semantic firewall blocks array-shaped intent",()=>assert.equal(comparePaymentIntents({original:intent,proposed:[intent.receiver,intent.amount,intent.memo]}).decision,"BLOCK"));
 test("independent signer blocks missing intent without throwing",()=>assert.deepEqual(independentSignerCheck({intent:null}).reasons,["INVALID_PAYMENT_INTENT"]));
 test("independent signer blocks malformed intent without throwing",()=>assert.equal(independentSignerCheck({intent:{receiver:"x",amount:5,memo:"m"}}).decision,"BLOCK"));
+
+test("portable verifier rejects malformed JSON without stack trace",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"sentinel-proof-invalid-"));
+ try {
+  const file=join(dir,"bad.json"); writeFileSync(file,"{");
+  const r=spawnSync(process.execPath,[join(labRoot,"src/verify-proof.mjs"),file],{encoding:"utf8",cwd:labRoot});
+  assert.notEqual(r.status,0); assert.match(r.stderr,/INVALID_PROOF/);
+  assert.doesNotMatch(r.stderr,/SyntaxError/);
+ } finally { rmSync(dir,{recursive:true,force:true}); }
+});
+test("portable verifier rejects missing proof fields",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"sentinel-proof-missing-"));
+ try {
+  const file=join(dir,"missing.json"); writeFileSync(file,JSON.stringify({decision:"ALLOW"}));
+  const r=spawnSync(process.execPath,[join(labRoot,"src/verify-proof.mjs"),file],{encoding:"utf8",cwd:labRoot});
+  assert.notEqual(r.status,0); assert.match(r.stderr,/INVALID_PROOF/);
+ } finally { rmSync(dir,{recursive:true,force:true}); }
+});
