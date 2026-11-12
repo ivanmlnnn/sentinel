@@ -25,6 +25,11 @@ This starts an isolated Wrangler/Miniflare Worker with local-only bindings for t
 - **D1 signer integration harness:** local D1 execution of the real signer nonce, spend-reservation, and approval-claim functions.
 - **Portable proof verifier:** checks proof decision and canonical digest against a standalone JSON fixture.
 
+## Evidence and next protocol gate
+
+- [Recorded local run evidence](evidence/local-run-2026-11-12.json)
+- [Proof-carrying contract boundary specification](docs/proof-carrying-payment-v1.md) — design only; not implemented or deployed.
+
 ## Explicit limitations
 
 - HMAC is a lab simplification, not production multi-party identity. Production needs asymmetric source keys, rotation/revocation, authenticated ingestion, and protected key custody.
