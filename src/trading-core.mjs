@@ -159,7 +159,7 @@ export async function getTidepoolDryQuote(input, fetchImpl = fetch, now = Date.n
   const quoteValidation = validateTidepoolDryQuote(payload, validation.value);
   if (!quoteValidation.ok) return quoteValidation;
   let signatureValid = false;
-  try { signatureValid = verifySignature(payload, TIDEPOOL_QUOTE_PUBLIC_KEY) === true; } catch {}
+  try { signatureValid = await verifySignature(payload, TIDEPOOL_QUOTE_PUBLIC_KEY) === true; } catch {}
   if (!signatureValid) return { ok: false, reason: "TIDEPOOL_QUOTE_SIGNATURE_INVALID" };
   return {
     ok: true,
@@ -249,7 +249,7 @@ export async function getTidepoolLiveQuote(input, fetchImpl = fetch, now = Date.
   const quoteValidation = validateTidepoolLiveQuote(payload, validation.value);
   if (!quoteValidation.ok) return quoteValidation;
   let signatureValid = false;
-  try { signatureValid = verifySignature(payload, TIDEPOOL_QUOTE_PUBLIC_KEY) === true; } catch {}
+  try { signatureValid = await verifySignature(payload, TIDEPOOL_QUOTE_PUBLIC_KEY) === true; } catch {}
   if (!signatureValid) return { ok: false, reason: "TIDEPOOL_LIVE_QUOTE_SIGNATURE_INVALID" };
   return {
     ok: true,
