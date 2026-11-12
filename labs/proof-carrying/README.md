@@ -1,6 +1,6 @@
 # Sentinel Proof-Carrying Lab
 
-Isolated reference implementation. This branch does **not** modify production Worker, signer, D1 schema, NEAR contract, or deployed services.
+Isolated reference implementation and contract experiment. This branch modifies the NEAR contract source and CI workflow, but does **not** modify or deploy the production Main Worker, Signer Worker, D1 schema, or live services. The proof-verifying contract is not deployed.
 
 ## Run the proof and adversarial suite
 
@@ -28,7 +28,7 @@ This starts an isolated Wrangler/Miniflare Worker with local-only bindings for t
 ## Evidence and next protocol gate
 
 - [Recorded local run evidence](evidence/local-run-2026-11-12.json)
-- [Proof-carrying contract boundary specification](docs/proof-carrying-payment-v1.md) — design only; not implemented or deployed.
+- [Proof-carrying contract boundary specification](docs/proof-carrying-payment-v1.md) — contract-side Ed25519 verification is implemented and unit-tested on this branch; signer-service integration and deployment remain incomplete.
 
 ## Explicit limitations
 
@@ -36,7 +36,7 @@ This starts an isolated Wrangler/Miniflare Worker with local-only bindings for t
 - The independent signer reference in this lab is not a separately deployed process and does not independently fetch live evidence.
 - The local D1 race suite uses Wrangler/Miniflare local D1. It is not evidence of a remote Cloudflare production D1 race test or regional multi-instance behavior.
 - The semantic firewall detects structured field mutations and selected confusables; it does not understand arbitrary natural-language meaning or OCR documents.
-- The proof verifier checks structure/digest integrity only. It does not validate a signer signature, source authenticity, NEAR transaction inclusion, or final receipt.
-- The current NEAR payment contract still accepts receiver, amount, and approval ID only; it does not verify a provenance root or proof signature on-chain. The proof-carrying contract gate remains **NOT IMPLEMENTED**.
-- No live email, web, API, OCR, NEAR RPC, production signer, or on-chain proof-root integration has been tested.
+- The portable JSON proof verifier checks structure/digest integrity only. The separate binary contract-envelope helper signs/verifies the exact contract message in tests; it is not yet wired into the production signer service.
+- The experiment-branch NEAR contract now requires an Ed25519 proof signature, binds chain/contract/signer/receiver/amount/memo/approval/nonce/time/provenance/evidence/policy/key-version, and enforces replay, expiry, and on-chain spend caps. The old three-argument pay ABI is no longer accepted. This contract is **not deployed**, and the production Main Worker/Signer Worker do not yet construct and submit the new envelope.
+- No live email, web, API, OCR, NEAR RPC, production signer, or Testnet payment integration has been tested. A fresh Testnet deployment is required because the contract state layout changed; do not attempt an in-place upgrade without a reviewed migration.
 - CI results apply only to the exact commit and workflow run shown by GitHub Actions.
