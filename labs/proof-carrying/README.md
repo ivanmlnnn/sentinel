@@ -40,3 +40,18 @@ This starts an isolated Wrangler/Miniflare Worker with local-only bindings for t
 - The experiment-branch NEAR contract now requires an Ed25519 proof signature, binds chain/contract/signer/receiver/amount/memo/approval/nonce/time/provenance/evidence/policy/key-version, and enforces replay, expiry, and on-chain spend caps. The old three-argument pay ABI is no longer accepted. This contract is **not deployed**, and the production Main Worker/Signer Worker do not yet construct and submit the new envelope.
 - No live email, web, API, OCR, NEAR RPC, production signer, or Testnet payment integration has been tested. A fresh Testnet deployment is required because the contract state layout changed; do not attempt an in-place upgrade without a reviewed migration.
 - CI results apply only to the exact commit and workflow run shown by GitHub Actions.
+
+## Recorded validation — 12 November 2026
+
+Latest local validation recorded for this lab:
+
+- Proof lab Node suite: **73/73 passed**, 0 failed.
+- Root repository suite: **222/222 passed**, 0 failed (includes the isolated signer tests; counts are not additive).
+- Isolated signer policy suite: **16/16 passed**, including independent authorization of signed preflight and fail-closed cases for WARN/BLOCK/incomplete/high-risk/substituted intent/missing allowlist.
+- Rust contract unit suite: **14/14 passed**.
+- Ed25519 one-bit mutation matrix: **2,840 vectors rejected** (2,328 message + 512 signature mutations).
+- Rust/JavaScript canonical digest vector matched: `79f97f55182728dfd98acd123695dc2aefed18c78ec348c3f56399e40e3a4f37`.
+- Local-only D1 concurrency harness: duplicate nonce 1/500 accepted; daily cap 100/1,000 accepted; idempotency 1/100 accepted; one-time approval 1/100 accepted. All competing attempts were rejected as expected.
+- D1 schema validation: main 9 migrations / 10 tables / 24 indexes; signer 1 migration / 3 tables / 7 indexes.
+
+**Scope warning:** these are Vercel Sandbox/local Miniflare and local Rust unit-test results. They are not production D1 race measurements, not a Testnet contract deployment, and not a successful live payment. The proof-carrying contract's `pay()` path is still not wired into the application's signer execution flow; the existing signer verifies a connected-wallet native Transfer. A Testnet end-to-end integration test is still required.
