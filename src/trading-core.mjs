@@ -413,3 +413,52 @@ export async function getTidepoolSwapStatus(depositAddress, fetchImpl = fetch) {
     }
   };
 }
+
+
+export async function getTidepoolPublicKeyStatus(input, fetchImpl = fetch) {
+  if (!input || typeof input !== "object" || Array.isArray(input) ||
+      Object.keys(input).some(key => !["accountId", "publicKey"].includes(key))) {
+    return { ok: false, reason: "INVALID_PUBLIC_KEY_STATUS_REQUEST" };
+  }
+  const { accountId, publicKey } = input;
+  if (typeof accountId !== "string" || !ACCOUNT_RE.test(accountId) ||
+      typeof publicKey !== "string" || !SIGNATURE_RE.test(publicKey)) {
+    return { ok: false, reason: "INVALID_PUBLIC_KEY_STATUS_REQUEST" };
+  }
+  const args = new TextEncoder().encode(JSON.stringify({
+    account_id: accountId,
+    public_key: publicKey
+  }));
+  let binary = "";
+  for (const byte of args) binary += String.fromCharCode(byte);
+  const response = await fetchJson("https://rpc.testnet.near.org", {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: "sentinel-key-status",
+      method: "query",
+      params: {
+        request_type: "call_function",
+        finality: "final",
+        account_id: "verifier.tidepool-sandbox.testnet",
+        method_name: "has_public_key",
+        args_base64: btoa(binary)
+      }
+    })
+  }, fetchImpl);
+  if (!Array.isArray(response?.result?.result)) {
+    return { ok: false, reason: "NEAR_RPC_INVALID_KEY_STATUS_RESPONSE" };
+  }
+  let registered;
+  try {
+    const decoded = new TextDecoder().decode(new Uint8Array(response.result.result));
+    registered = JSON.parse(decoded);
+  } catch {
+    return { ok: false, reason: "NEAR_RPC_INVALID_KEY_STATUS_RESPONSE" };
+  }
+  if (typeof registered !== "boolean") {
+    return { ok: false, reason: "NEAR_RPC_INVALID_KEY_STATUS_RESPONSE" };
+  }
+  return { ok: true, value: { account_id: accountId, public_key: publicKey, registered } };
+}
