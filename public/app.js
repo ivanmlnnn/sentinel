@@ -733,7 +733,7 @@ function buildTradeSkillDraft(prompt) {
     amount: Number.isFinite(amount) && amount > 0 ? amount : null,
     amount_unit: amountUnit,
     schedule,
-    leverage_requested: /\b(use|enable|with|pakai|gunakan)\s+(?:any\s+)?(?:leverage|margin|futures)\b/i.test(text),
+    leverage_requested: /\b(use|enable|with|pakai|gunakan)\s+(?:any\s+)?(?:leverage|margin|futures)\b/i.test(text) && !/\b(don't|do not|not|without|jangan|tanpa)\s+(?:use\s+)?(?:any\s+)?(?:leverage|margin|futures)\b/i.test(text),
     source_prompt: text,
     execution_mode: 'DRAFT_ONLY',
     approval_status: 'NOT_APPROVED',
