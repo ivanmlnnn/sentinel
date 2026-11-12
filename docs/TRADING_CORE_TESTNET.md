@@ -8,6 +8,7 @@
 - NEP-413 intent generation restricted to the exact signer, deposit account, input token and amount returned by the live quote.
 - Wallet signing through the connected NEAR Connect wallet's `signMessage` method. The UI requires the signer account to match the recipient/refund account.
 - Signed-intent submission restricted to a single NEP-413 transfer to the exact provider-generated deposit account and amount.
+- Verifier public-key registration preflight via NEAR Testnet RPC, with a one-time wallet-signed `add_public_key` transaction when needed.
 - Tidepool status polling after submission.
 - Separate Vercel API routes and Cloudflare Worker routes for tokens, dry quote, live quote, intent generation, intent submission and status.
 - No generic swap private key, server-side signing, or fallback to the existing native NEAR payment signer.
@@ -33,12 +34,13 @@
 | POST | `/api/trading/generate-intent` | Exact NEP-413 intent for a live quote |
 | POST | `/api/trading/submit-intent` | Validate and submit user-signed intent |
 | GET | `/api/trading/status?depositAddress=...` | Provider settlement status |
+| POST | `/api/trading/key-status` | Check verifier key registration for the connected wallet |
 
 ## Wallet and funding prerequisites
 
 - Connect a NEAR Testnet wallet with NEP-413 `signMessage` support. The current connector filters for `testnet`, `signAndSendTransaction`, and `signMessage`.
 - The wallet must hold the selected test token in its NEAR Intents balance. Use the Tidepool faucet at https://app.usetidepool.tech/faucet and choose **NEAR Testnet → Intents balance**, not Wallet mode. The faucet is site-only, rate-limited, and requires an existing NEAR Testnet account at least three hours old.
-- The account's public key may need to be registered with the Tidepool verifier before its first NEP-413 intent. Follow Tidepool's current wallet/faucet setup instructions.
+- Before the first NEP-413 intent, Sentinel checks whether the wallet public key is registered on the verifier. If not, it requests a separate wallet-approved `add_public_key` transaction (30 Tgas, 1 yoctoNEAR); the app waits for RPC confirmation before continuing.
 - The UI deliberately stops if the wallet cannot return a complete NEP-413 signature. It does not silently switch signing standards.
 - A rejected wallet prompt means no signed intent is submitted. If the wallet prompt completed but the network response timed out, check Tidepool status before attempting again.
 
