@@ -1,7 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import tokensHandler from "../api/trading/tokens.js";
-import quoteHandler from "../api/trading/quote.js";
+import { createQuoteHandler } from "../api/trading/quote.js";
+const quoteHandler = createQuoteHandler(async () => ({
+  ok: true,
+  value: { mode: "QUOTE_ONLY", execution_enabled: false, quote: { amount_out: "250000000000000000000000" } }
+}));
 
 function responseRecorder() {
   return {
