@@ -50,3 +50,30 @@ test('never marks a draft approved or executable', () => {
   assert.equal(draft.approval_status, 'NOT_APPROVED');
   assert.equal(draft.execution_status, 'DISABLED_NO_TRADING_ADAPTER');
 });
+
+
+test('does not infer a swap destination when only one token is named', () => {
+  const draft = buildTradeSkillDraft('Swap 2 USDC');
+  assert.equal(draft.from_asset, 'USDC');
+  assert.equal(draft.to_asset, null);
+});
+
+test('does not infer a trade action from a market question', () => {
+  const draft = buildTradeSkillDraft('What is the ETH price today?');
+  assert.equal(draft.action, null);
+});
+
+test('marks a request incomplete when amount or asset is missing', () => {
+  const noAmount = buildTradeSkillDraft('Buy ETH');
+  const noAsset = buildTradeSkillDraft('Buy $25');
+  assert.equal(noAmount.amount, null);
+  assert.equal(noAsset.asset, null);
+});
+
+test('caps prompt length and never creates an approved or executable draft', () => {
+  const draft = buildTradeSkillDraft('Buy $20 BTC without leverage');
+  assert.equal(draft.leverage_requested, false);
+  assert.equal(draft.approval_status, 'NOT_APPROVED');
+  assert.equal(draft.execution_status, 'DISABLED_NO_TRADING_ADAPTER');
+  assert.equal(buildTradeSkillDraft('x'.repeat(5000)).source_prompt.length, 4000);
+});
