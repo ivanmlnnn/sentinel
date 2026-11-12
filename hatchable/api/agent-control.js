@@ -335,6 +335,8 @@ export default async function (req, res) {
       case 'session.status': result = await handleSessionStatus(body); break;
       case 'task.submit': result = await handleTask(body); break;
       case 'task.status': result = await handleTaskStatus(body); break;
+      case 'skill.create': result = await handleSkillCreate(body); break;
+      case 'skill.list': result = await handleSkillList(body); break;
       default: return res.status(400).json({ error: 'UNKNOWN_OPERATION' });
     }
   } catch {
