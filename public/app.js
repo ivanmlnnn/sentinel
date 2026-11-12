@@ -748,8 +748,9 @@ async function renderTradeSkillDraft(prompt) {
     try { await navigator.clipboard.writeText(JSON.stringify(draft, null, 2)); toast('Skill draft copied.'); }
     catch { toast('Clipboard unavailable.'); }
   });
+  let quotePanel = null;
   if (draft.action === 'SWAP' && complete) {
-    const quotePanel = document.createElement('section');
+    quotePanel = document.createElement('section');
     quotePanel.className = 'developer-trade-quote';
     const quoteTitle = document.createElement('strong');
     quoteTitle.textContent = 'NEAR TESTNET · LIVE DRY QUOTE';
@@ -826,7 +827,7 @@ async function renderTradeSkillDraft(prompt) {
     quotePanel.append(quoteTitle, quoteHelp, quoteForm);
   }
   card.append(heading, summary, details, note, hash, copy);
-  if (typeof quotePanel !== 'undefined') card.append(quotePanel);
+  if (quotePanel) card.append(quotePanel);
   result.replaceChildren(card);
   result.classList.remove('hidden');
   result.scrollTop = result.scrollHeight;
