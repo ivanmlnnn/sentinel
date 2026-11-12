@@ -260,7 +260,7 @@ test("polls Tidepool status only for a well-formed Testnet deposit account", asy
       status: "SUCCESS",
       correlationId: "status-correlation",
       swapDetails: { nearTxHashes: ["5sVQTestnetHash"] },
-      tidepool: { explorerUrl: "https://testnet.nearblocks.io/txns/5sVQTestnetHash" }
+      tidepool: { explorer: [{ label: "swap", url: "https://testnet.nearblocks.io/txns/5sVQTestnetHash" }] }
     }), { status: 200 });
   };
   const result = await getTidepoolSwapStatus("c".repeat(64), fetchImpl);
