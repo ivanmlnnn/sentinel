@@ -735,7 +735,9 @@ async function renderTradeSkillDraft(prompt) {
   details.textContent = JSON.stringify(draft, null, 2);
   const note = document.createElement('p');
   note.className = 'developer-trade-draft-note';
-  note.textContent = 'Not approved. No wallet signature, quote, swap, buy, sell, or scheduled job was created. Trading execution is not connected yet.';
+  note.textContent = draft.action === 'SWAP'
+    ? 'No wallet signature, deposit, or swap is created. The quote preview below is read-only and cannot execute a trade.'
+    : 'Not approved. No wallet signature, trade, or scheduled job was created. BUY / SELL execution is not connected yet.';
   const hash = document.createElement('small');
   hash.textContent = 'DRAFT SHA-256 · ' + fingerprint;
   const copy = document.createElement('button');
@@ -746,6 +748,84 @@ async function renderTradeSkillDraft(prompt) {
     try { await navigator.clipboard.writeText(JSON.stringify(draft, null, 2)); toast('Skill draft copied.'); }
     catch { toast('Clipboard unavailable.'); }
   });
+  if (draft.action === 'SWAP' && complete) {
+    const quotePanel = document.createElement('section');
+    quotePanel.className = 'developer-trade-quote';
+    const quoteTitle = document.createElement('strong');
+    quoteTitle.textContent = 'NEAR TESTNET · LIVE DRY QUOTE';
+    const quoteHelp = document.createElement('p');
+    quoteHelp.textContent = 'Sentinel requests a real provider quote in dry mode. No deposit address is created and no funds move.';
+    const recipientLabel = document.createElement('label');
+    recipientLabel.textContent = 'NEAR TESTNET RECIPIENT / REFUND ACCOUNT';
+    const recipientInput = document.createElement('input');
+    recipientInput.type = 'text';
+    recipientInput.maxLength = 64;
+    recipientInput.autocomplete = 'off';
+    recipientInput.placeholder = 'your-account.testnet';
+    recipientInput.value = typeof connectedAccount === 'string' && connectedAccount.endsWith('.testnet') ? connectedAccount : '';
+    recipientInput.required = true;
+    const quoteButton = document.createElement('button');
+    quoteButton.type = 'submit';
+    quoteButton.className = 'secondary-btn';
+    quoteButton.textContent = 'Get Testnet quote';
+    const quoteStatus = document.createElement('p');
+    quoteStatus.className = 'developer-trade-draft-note';
+    quoteStatus.setAttribute('aria-live', 'polite');
+    const quoteDetails = document.createElement('pre');
+    quoteDetails.hidden = true;
+    const quoteForm = document.createElement('form');
+    quoteForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      quoteButton.disabled = true;
+      quoteStatus.textContent = 'Loading the live Testnet asset list and requesting a dry quote…';
+      quoteDetails.hidden = true;
+      try {
+        if (draft.amount_unit !== draft.from_asset || !draft.amount_text) {
+          throw new Error('The amount unit must exactly match the input asset. Example: swap 0.1 USDC to wNEAR.');
+        }
+        const tokenData = await request('/trading/tokens');
+        const origin = tokenData.tokens?.find(token => token.symbol.toUpperCase() === draft.from_asset.toUpperCase());
+        const destination = tokenData.tokens?.find(token => token.symbol.toUpperCase() === draft.to_asset.toUpperCase());
+        if (!origin || !destination) throw new Error('One of the requested assets is not available on the NEAR Testnet sandbox.');
+        const decimals = Number(origin.decimals);
+        const rawAmount = draft.amount_text;
+        if (!Number.isInteger(decimals) || decimals < 0 || decimals > 30 || !/^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$/.test(rawAmount)) {
+          throw new Error('Invalid decimal amount for the selected asset.');
+        }
+        const [whole, fraction = ''] = rawAmount.split('.');
+        if (fraction.length > decimals) throw new Error('Amount has more decimal places than the input token supports.');
+        const baseAmount = (BigInt(whole) * (10n ** BigInt(decimals)) +
+          BigInt((fraction + '0'.repeat(decimals)).slice(0, decimals) || '0')).toString();
+        if (baseAmount === '0') throw new Error('Amount must be greater than zero.');
+        const quote = await request('/trading/quote', {
+          method: 'POST',
+          body: JSON.stringify({
+            originAsset: origin.asset_id,
+            destinationAsset: destination.asset_id,
+            amount: baseAmount,
+            recipient: recipientInput.value.trim(),
+            slippageTolerance: 100
+          })
+        });
+        if (quote.mode !== 'QUOTE_ONLY' || quote.execution_enabled !== false) {
+          throw new Error('Sentinel rejected a response that was not explicitly quote-only.');
+        }
+        quoteStatus.textContent = (quote.quote.amount_in_formatted || quote.quote.amount_in) + ' ' + origin.symbol +
+          ' → ' + (quote.quote.amount_out_formatted || quote.quote.amount_out) + ' ' + destination.symbol +
+          ' · minimum received ' + quote.quote.minimum_amount_out +
+          ' · estimated ' + (quote.quote.estimated_seconds ?? '—') + ' sec';
+        quoteDetails.textContent = JSON.stringify(quote, null, 2);
+        quoteDetails.hidden = false;
+      } catch (error) {
+        quoteStatus.textContent = error.message || 'Quote request failed.';
+      } finally {
+        quoteButton.disabled = false;
+      }
+    });
+    quoteForm.append(recipientLabel, recipientInput, quoteButton, quoteStatus, quoteDetails);
+    quotePanel.append(quoteTitle, quoteHelp, quoteForm);
+    card.append(quotePanel);
+  }
   card.append(heading, summary, details, note, hash, copy);
   result.replaceChildren(card);
   result.classList.remove('hidden');
