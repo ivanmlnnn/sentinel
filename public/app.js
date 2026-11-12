@@ -1513,15 +1513,26 @@ if (agentForm) {
     const button = $('agentRunBtn');
     const prompt = $('agentPrompt').value.trim();
     if (!prompt) return;
-    if (developerModeEnabled && /\b(buy|sell|swap|trade|beli|jual|tukar|dca)\b/i.test(prompt) && /\b(BTC|ETH|NEAR|USDC|USDT|SOL|WNEAR)\b/i.test(prompt)) { await renderTradeSkillDraft(prompt); toast('Skill draft generated. Trading execution is not connected.'); return; }
     button.disabled = true;
     button.classList.add('agent-running');
     button.innerHTML = '<span class="agent-button-pulse" aria-hidden="true"></span> Agent running <b>…</b>';
     const result = $('agentResult');
     result.classList.remove('hidden');
-    result.textContent = 'Calling the AI provider and evaluating the proposed action…';
+    result.textContent = developerModeEnabled
+      ? 'Running the wallet-approved, AI-independent Sentinel command agent…'
+      : 'Calling the AI provider and evaluating the proposed action…';
     try {
-      if (GUEST_MODE) {
+      if (developerModeEnabled) {
+        const data = await request('/agent/developer-task', {
+          method: 'POST',
+          body: JSON.stringify({ prompt })
+        });
+        renderAgentResult(data);
+        $('agentPrompt').value = '';
+        toast(data.execution_enabled === false
+          ? 'Developer task completed in review-only mode. No transaction was executed.'
+          : 'Developer task completed.');
+      } else if (GUEST_MODE) {
         guestConversation.push({ role: 'user', content: prompt });
         guestConversation = guestConversation.slice(-14);
         saveGuestConversation();
