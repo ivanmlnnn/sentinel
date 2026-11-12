@@ -48,6 +48,8 @@ Tidepool is a community-operated testnet sandbox, not an official NEAR/Defuse/1C
 
 The provider's maker quote signature is verified using the pinned official 1Click TypeScript SDK 0.1.25 and Tidepool's published maker public key. The verifier contract checks the signed intent when it is submitted. The API also checks that the payload is one transfer intent with the exact expected signer, verifier, deposit account, token and amount.
 
+The Vercel preview was smoke-tested with a real 1 USDC → wNEAR live quote: Tidepool returned a 64-hex deposit account, and the maker signature verified successfully with SDK 0.1.25. The temporary smoke endpoint was removed after the test. No wallet signature, token deposit, or swap settlement was performed in that smoke test.
+
 This is not yet a mainnet-ready trading system. BUY/SELL, limit orders, recurring schedules, automated strategies, unattended agent execution, and mainnet integration remain disabled. A successful Testnet swap still needs a live funded-wallet run and independent explorer verification before the feature can be described as end-to-end validated.
 
 ## References
