@@ -32,5 +32,6 @@ This starts an isolated Wrangler/Miniflare Worker with local-only bindings for t
 - The local D1 race suite uses Wrangler/Miniflare local D1. It is not evidence of a remote Cloudflare production D1 race test or regional multi-instance behavior.
 - The semantic firewall detects structured field mutations and selected confusables; it does not understand arbitrary natural-language meaning or OCR documents.
 - The proof verifier checks structure/digest integrity only. It does not validate a signer signature, source authenticity, NEAR transaction inclusion, or final receipt.
+- The current NEAR payment contract still accepts receiver, amount, and approval ID only; it does not verify a provenance root or proof signature on-chain. The proof-carrying contract gate remains **NOT IMPLEMENTED**.
 - No live email, web, API, OCR, NEAR RPC, production signer, or on-chain proof-root integration has been tested.
 - CI results apply only to the exact commit and workflow run shown by GitHub Actions.
