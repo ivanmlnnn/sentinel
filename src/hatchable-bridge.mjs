@@ -123,7 +123,7 @@ export async function captureHatchableTelemetry({ request, response, env, fetchI
     event_id: crypto.randomUUID(),
     event_type: eventType,
     source_hash: sourceHash,
-    session_id: requestBody?.session_id || null,
+    session_id: null,
     outcome: response.status >= 500 ? "FAILED" :
       response.status === 429 ? "BLOCKED" :
       response.status >= 400 ? "DENIED" : "ALLOWED",
