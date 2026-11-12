@@ -1,0 +1,39 @@
+name: Sentinel Trading Core CI
+
+on:
+  push:
+    branches:
+      - feature/sentinel-trading-core-lab
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: trading-core-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Syntax checks
+        run: |
+          node --check src/trading-core.mjs
+          node --check functions/api/trading-tokens.js
+          node --check functions/api/trading-quote.js
+          node --check public/trade-skill-draft.js
+          node --check public/app.js
+      - name: Full test suite
+        run: npm test
