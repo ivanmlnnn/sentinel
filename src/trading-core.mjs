@@ -98,7 +98,12 @@ export function validateTidepoolDryQuote(payload, expected) {
       request.destinationAsset !== expected.destinationAsset ||
       request.amount !== expected.amount ||
       request.recipient !== expected.recipient ||
-      request.refundTo !== expected.recipient) {
+      request.refundTo !== expected.recipient ||
+      request.slippageTolerance !== expected.slippageTolerance ||
+      request.depositType !== "INTENTS" ||
+      request.recipientType !== "INTENTS" ||
+      request.refundType !== "INTENTS" ||
+      request.depositMode !== "SIMPLE") {
     return { ok: false, reason: "TIDEPOOL_QUOTE_INTENT_MISMATCH" };
   }
   for (const key of ["amountIn", "amountOut", "minAmountOut"]) {
@@ -106,7 +111,7 @@ export function validateTidepoolDryQuote(payload, expected) {
       return { ok: false, reason: "TIDEPOOL_INVALID_QUOTE_AMOUNT" };
     }
   }
-  if (BigInt(quote.minAmountOut) > BigInt(quote.amountOut)) {
+  if (quote.amountIn !== expected.amount || BigInt(quote.minAmountOut) > BigInt(quote.amountOut)) {
     return { ok: false, reason: "TIDEPOOL_INVALID_MINIMUM_OUTPUT" };
   }
   if (typeof payload.signature !== "string" || payload.signature.length < 16 || payload.signature.length > 1024) {
