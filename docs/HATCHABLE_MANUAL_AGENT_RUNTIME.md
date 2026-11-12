@@ -7,10 +7,10 @@ Status date: 13 November 2026
 - Hatchable project: `IVTECH Sentinel` (`ivtech-sentinel`)
 - Live deployment: **v22**
 - Runtime endpoint: `/api/agent-task-runner`
-- Source of truth in this repository: `hatchable/api/agent-task-runner.js`
+- Mirrored Hatchable sources in this repository: `hatchable/api/agent-control.js`, `hatchable/api/security-supervisor.js`, `hatchable/api/agent-task-runner.js`, and `hatchable/migrations/006_worker_telemetry.sql`
 - Execution model: deterministic command parser and policy checks; **no AI provider/API call is required**.
 
-The deployed Hatchable source was copied into this repository from the v22 project file. Keep this file synchronized whenever the Hatchable endpoint changes.
+The deployed Hatchable endpoint sources and telemetry migration were copied into this repository from the v22 project files. Keep these mirrors synchronized whenever Hatchable endpoints or migrations change.
 
 ## Manual command grammar
 
