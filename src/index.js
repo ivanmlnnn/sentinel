@@ -29,6 +29,7 @@ const routes = {
   "POST /api/guest/investigate": guestInvestigatePost,
   "POST /api/ai-review": aiReviewPost,
   "POST /api/agent/run": agentRunPost,
+  "POST /api/terminal/run": terminalRunPost,
   "POST /api/guest/agent": guestAgentPost,
   "POST /api/agent/approve": agentApprovePost,
   "POST /api/internal/investigate": internalInvestigatePost,
@@ -116,6 +117,34 @@ function rateLimitResponse() {
 }
 function serviceUnavailable(code) { return apiError(code, 503); }
 
+const TERMINAL_RUNTIME_URL = "https://sentinel-terminal-runtime-production.up.railway.app";
+async function terminalRunPost({ request }) {
+  const authorization = request.headers.get("authorization") || "";
+  if (!/^Bearer [A-Za-z0-9._~-]{12,8192}$/.test(authorization)) return apiError("UNAUTHORIZED", 401);
+  const idempotencyKey = request.headers.get("Idempotency-Key") || "";
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotencyKey)) return apiError("IDEMPOTENCY_KEY_REQUIRED", 400);
+  let body;
+  try { body = await request.clone().json(); } catch { return apiError("INVALID_JSON", 400); }
+  const mode = body?.mode || "user";
+  const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
+  if (!["user", "developer"].includes(mode)) return apiError("INVALID_TERMINAL_MODE", 400);
+  if (!prompt || prompt.length > 4000) return apiError("PROMPT_REQUIRED", 400);
+  try {
+    const upstream = await fetch(TERMINAL_RUNTIME_URL + "/v1/terminal/run", {
+      method: "POST",
+      headers: { authorization, "content-type": "application/json", "idempotency-key": idempotencyKey },
+      body: JSON.stringify({ mode, prompt }),
+      signal: AbortSignal.timeout(30000)
+    });
+    const payload = await upstream.text();
+    return new Response(payload, { status: upstream.status, headers: {
+      "content-type": upstream.headers.get("content-type") || "application/json",
+      "cache-control": "no-store",
+      "x-sentinel-terminal": "railway"
+    }});
+  } catch { return apiError("TERMINAL_RUNTIME_UNAVAILABLE", 502); }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -165,7 +194,7 @@ export default {
           const ip = request.headers.get("CF-Connecting-IP") || "unknown";
           if (!env.API_RATE_LIMITER) return respond(serviceUnavailable("RATE_LIMIT_NOT_CONFIGURED"));
           if (!await enforceRateLimit(env.API_RATE_LIMITER, ip)) return respond(rateLimitResponse());
-          if (request.method === "POST" && ["/api/agent/run", "/api/agent/approve", "/api/guest/agent"].includes(url.pathname)) {
+          if (request.method === "POST" && ["/api/agent/run", "/api/terminal/run", "/api/agent/approve", "/api/guest/agent"].includes(url.pathname)) {
             if (!env.AGENT_RATE_LIMITER) return respond(serviceUnavailable("AGENT_RATE_LIMIT_NOT_CONFIGURED"));
             if (!await enforceRateLimit(env.AGENT_RATE_LIMITER, ip)) return respond(rateLimitResponse());
           }
