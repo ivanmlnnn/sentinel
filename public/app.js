@@ -1523,9 +1523,10 @@ if (agentForm) {
       : 'Calling the AI provider and evaluating the proposed action…';
     try {
       if (developerModeEnabled) {
-        const data = await request('/agent/developer-task', {
+        const data = await request('/terminal/run', {
           method: 'POST',
-          body: JSON.stringify({ prompt })
+          headers: { 'Idempotency-Key': crypto.randomUUID() },
+          body: JSON.stringify({ mode: 'developer', prompt })
         });
         renderAgentResult(data);
         $('agentPrompt').value = '';
@@ -1552,10 +1553,10 @@ if (agentForm) {
       } else {
         authenticatedPrompt = prompt;
         renderAuthenticatedPending(prompt);
-        const data = await request('/agent/run', {
+        const data = await request('/terminal/run', {
           method: 'POST',
           headers: { 'Idempotency-Key': crypto.randomUUID() },
-          body: JSON.stringify({ prompt })
+          body: JSON.stringify({ mode: 'user', prompt })
         });
         renderAgentResult(data);
         $('agentPrompt').value = '';
