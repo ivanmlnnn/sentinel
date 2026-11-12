@@ -1,7 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
-    { "source": "/api/agent/run", "destination": "/api/agent/control" },
     { "source": "/api/security-supervisor", "destination": "/api/agent/supervisor" },
     { "source": "/api/agent-task-runner", "destination": "/api/agent/task-runner" }
   ]
