@@ -51,6 +51,6 @@ test("capture sends sanitized telemetry without raw IP or prompt", async () => {
   assert.equal(calls.length, 2);
   assert.doesNotMatch(JSON.stringify(calls), /203\.0\.113\.8|private prompt/);
   assert.equal(calls[0].body.event_type, "AUTH_FAILURE");
-  assert.equal(calls[0].body.session_id, "6e42a8f0-08e7-4f8d-9c88-cc43d7b0e001");
+  assert.equal(calls[0].body.session_id, null);
   assert.equal(calls[1].body.operation, "telemetry.ingest");
 });
