@@ -18,7 +18,7 @@ test("binary proof envelope signs and verifies with Ed25519", async () => {
   assert.equal(proof.signature.length, 128);
   assert.equal(verify(null, Buffer.from(proof.message), publicKey, Buffer.from(proof.signature, "hex")), true);
   assert.equal(proof.intentHash.length, 64);
-  assert.equal(proof.messageHash.length, 64);
+  assert.equal(proof.messageHash, "79f97f55182728dfd98acd123695dc2aefed18c78ec348c3f56399e40e3a4f37");
 });
 
 test("receiver, amount, memo and deployment domain alter signed bytes", async () => {
