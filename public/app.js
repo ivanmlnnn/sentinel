@@ -875,6 +875,7 @@ async function renderTradeSkillDraft(prompt) {
         if (liveQuote.mode !== 'LIVE_QUOTE_AWAITING_USER_SIGNATURE' ||
             liveQuote.execution_enabled !== false ||
             liveQuote.provider_signature_verified !== true ||
+            !liveQuote.signed_quote || typeof liveQuote.signed_quote !== 'object' ||
             !/^[a-f0-9]{64}$/i.test(liveQuote.deposit_address || '')) {
           throw new Error('Sentinel rejected an invalid or unexpected live quote.');
         }
