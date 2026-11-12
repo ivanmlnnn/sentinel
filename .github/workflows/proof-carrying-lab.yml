@@ -4,7 +4,7 @@ on:
     branches: ["lab/proof-carrying-agent-economy"]
     paths: ["labs/proof-carrying/**", "signer-worker/src/index.mjs", "functions/api/**", "src/**", "migrations-d1/**", "migrations-signer/**", "tests/**", "payment-contract/**", ".github/workflows/proof-carrying-lab.yml"]
   pull_request:
-    paths: ["labs/proof-carrying/**", "signer-worker/src/index.mjs", "functions/api/**", "src/**", "migrations-d1/**", "migrations-signer/**", "tests/**", ".github/workflows/proof-carrying-lab.yml"]
+    paths: ["labs/proof-carrying/**", "signer-worker/src/index.mjs", "functions/api/**", "src/**", "migrations-d1/**", "migrations-signer/**", "tests/**", "payment-contract/**", ".github/workflows/proof-carrying-lab.yml"]
   workflow_dispatch:
 jobs:
   repo-and-adversarial-tests:
