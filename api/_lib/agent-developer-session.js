@@ -1,7 +1,7 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { JsonRpcProvider } from 'near-api-js';
 import { verifyMessage } from 'near-api-js/nep413';
-import { query } from '../_lib/db.js';
+import { query } from './db.js';
 
 const ACCOUNT = /^(?:[a-z0-9]+(?:[-_.][a-z0-9]+)*|[0-9a-f]{64})$/;
 const SESSION_SECONDS = 8 * 60 * 60;
