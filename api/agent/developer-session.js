@@ -6,7 +6,7 @@ import { query } from '../_lib/db.js';
 const ACCOUNT = /^(?:[a-z0-9]+(?:[-_.][a-z0-9]+)*|[0-9a-f]{64})$/;
 const SESSION_SECONDS = 8 * 60 * 60;
 const CHALLENGE_SECONDS = 5 * 60;
-const PERMISSIONS = ['agent.chat','investigate','trade.draft','swap.quote','portfolio.read'];
+const PERMISSIONS = ['agent.chat','investigate','payment.propose','trade.draft','swap.quote','portfolio.read'];
 const PROVIDER = new JsonRpcProvider({ url: process.env.NEAR_RPC_URL || 'https://rpc.testnet.near.org' });
 
 function send(res,status,body){
