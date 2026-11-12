@@ -414,7 +414,8 @@ export async function generateTidepoolSwapIntent(input, fetchImpl = fetch, verif
       signer_id: signerId,
       deposit_address: depositAddress,
       asset_id: originAsset,
-      amount
+      amount,
+      risk_evaluation: quoteBinding.value.riskEvaluation
     }
   };
 }
@@ -476,7 +477,8 @@ export async function submitTidepoolSignedIntent(input, fetchImpl = fetch, verif
       correlation_id: payload.correlationId,
       transaction_hash: payload.tidepool?.txHash || null,
       explorer_url: payload.tidepool?.explorerUrl || null,
-      status: "SUBMITTED"
+      status: "SUBMITTED",
+      risk_evaluation: quoteBinding.value.riskEvaluation
     }
   };
 }
