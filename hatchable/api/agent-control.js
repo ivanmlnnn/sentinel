@@ -227,6 +227,95 @@ async function handleTaskStatus(body) {
   return { status: 200, body: { task: found.rows[0] } };
 }
 
+function decimalToUnits(value) {
+  if (typeof value !== 'string' || !/^(?:0|[1-9][0-9]*)(?:\.[0-9]{1,6})?$/.test(value)) return null;
+  const [whole, fraction = ''] = value.split('.');
+  const units = BigInt(whole) * 1000000n + BigInt((fraction + '000000').slice(0, 6));
+  return units > 0n ? units : null;
+}
+
+function canonical(value) {
+  if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
+  if (value && typeof value === 'object') {
+    return '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}';
+  }
+  return JSON.stringify(value);
+}
+
+function validateSkill(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return { error: 'STRATEGY_OBJECT_REQUIRED' };
+  const kind = String(input.kind || '').toUpperCase();
+  const asset = value => typeof value === 'string' && /^[A-Z0-9._-]{2,32}$/.test(value);
+  if (!['SWAP','DCA','LIMIT_BUY','LIMIT_SELL'].includes(kind)) return { error: 'UNSUPPORTED_SKILL_TYPE' };
+  const common = kind === 'SWAP' ? ['kind','from_asset','to_asset','amount'] :
+    kind === 'DCA' ? ['kind','from_asset','to_asset','amount_per_run','interval_seconds','max_runs','max_total_amount'] :
+    ['kind','base_asset','quote_asset','amount','limit_price'];
+  if (Object.keys(input).some(key => !common.includes(key))) return { error: 'UNKNOWN_STRATEGY_FIELD' };
+  if (kind === 'SWAP' || kind === 'DCA') {
+    if (!asset(input.from_asset) || !asset(input.to_asset) || input.from_asset === input.to_asset) return { error: 'INVALID_ASSET_PAIR' };
+  } else if (!asset(input.base_asset) || !asset(input.quote_asset) || input.base_asset === input.quote_asset) {
+    return { error: 'INVALID_ASSET_PAIR' };
+  }
+  if (kind === 'SWAP') {
+    if (!decimalToUnits(input.amount)) return { error: 'INVALID_AMOUNT' };
+  } else if (kind === 'DCA') {
+    const perRun = decimalToUnits(input.amount_per_run);
+    const total = decimalToUnits(input.max_total_amount);
+    if (!perRun || !total || !Number.isInteger(input.interval_seconds) || input.interval_seconds < 60 || input.interval_seconds > 2592000 ||
+        !Number.isInteger(input.max_runs) || input.max_runs < 1 || input.max_runs > 100 || perRun * BigInt(input.max_runs) > total) {
+      return { error: 'INVALID_DCA_LIMITS' };
+    }
+  } else {
+    if (!decimalToUnits(input.amount) || !decimalToUnits(input.limit_price)) return { error: 'INVALID_LIMIT_ORDER' };
+  }
+  return { strategy: { ...input, kind } };
+}
+
+async function handleSkillCreate(body) {
+  const sessionId = String(body.session_id || '');
+  const accountId = String(body.account_id || '').trim().toLowerCase();
+  const session = await activeSession(sessionId, accountId);
+  if (!session) return { status: 403, body: { error: 'ACTIVE_SESSION_REQUIRED' } };
+  if (!Array.isArray(session.permissions) || !session.permissions.includes('trade.draft')) {
+    return { status: 403, body: { error: 'TRADE_DRAFT_SCOPE_REQUIRED' } };
+  }
+  const name = typeof body.name === 'string' ? body.name.trim() : '';
+  if (name.length < 2 || name.length > 64 || !/^[a-zA-Z0-9][a-zA-Z0-9 _.-]*$/.test(name)) {
+    return { status: 400, body: { error: 'INVALID_SKILL_NAME' } };
+  }
+  const validated = validateSkill(body.strategy);
+  if (validated.error) return { status: 400, body: { error: validated.error } };
+  const strategy = validated.strategy;
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonical(strategy)));
+  const fingerprint = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+  const versionResult = await db.query(
+    'SELECT COALESCE(MAX(version),0)::int AS version FROM agent_skills WHERE account_id = $1 AND name = $2',
+    [accountId, name]
+  );
+  const version = Number(versionResult.rows[0]?.version || 0) + 1;
+  const inserted = await db.query(
+    "INSERT INTO agent_skills (account_id,session_id,name,version,skill_type,network,strategy,fingerprint,status,execution_mode) VALUES ($1,$2,$3,$4,$5,'testnet',$6::jsonb,$7,'DRAFT','PROPOSE_ONLY') RETURNING skill_id,name,version,skill_type,network,fingerprint,status,execution_mode,created_at",
+    [accountId,sessionId,name,version,strategy.kind,JSON.stringify(strategy),fingerprint]
+  );
+  await recordEvent(sessionId, null, 'SKILL_DRAFT_CREATED', 'INFO', {
+    skill_id: inserted.rows[0].skill_id, skill_type: strategy.kind, version, fingerprint,
+    execution_mode: 'PROPOSE_ONLY'
+  });
+  return { status: 201, body: { skill: inserted.rows[0], strategy, validation: 'PASSED', execution_enabled: false } };
+}
+
+async function handleSkillList(body) {
+  const sessionId = String(body.session_id || '');
+  const accountId = String(body.account_id || '').trim().toLowerCase();
+  const session = await activeSession(sessionId, accountId);
+  if (!session) return { status: 403, body: { error: 'ACTIVE_SESSION_REQUIRED' } };
+  const result = await db.query(
+    'SELECT skill_id,name,version,skill_type,network,fingerprint,status,execution_mode,created_at FROM agent_skills WHERE account_id = $1 ORDER BY created_at DESC LIMIT 50',
+    [accountId]
+  );
+  return { status: 200, body: { skills: result.rows, execution_enabled: false } };
+}
+
 export default async function (req, res) {
   let authenticated = false;
   try { authenticated = await authenticate(req); }
