@@ -123,25 +123,22 @@ async function activate(req,res,body){
   return send(res,201,{session:inserted[0],expires_at:expiresAt.toISOString(),execution_enabled:false,on_chain_access_key_created:false,notice:'Wallet ownership verified. This is an 8-hour application session only; it is not a delegated FunctionCall key and cannot sign or broadcast transactions.'});
 }
 async function revoke(req,res){
-  const auth=String(req.headers.authorization||'');
-  const match=auth.match(/^Bearer\s+([A-Za-z0-9_-]{32,128})$/);
-  if(!match)return send(res,401,{error:'SESSION_BEARER_REQUIRED'});
-  const hash=tokenHash(match[1]);
-  const rows=await query("UPDATE agent_sessions SET status='REVOKED',revoked_at=now(),updated_at=now(),token_hash=NULL WHERE token_hash=$1 AND status IN('ACTIVE','FROZEN') RETURNING session_id,account_id",
-    [hash]);
+  const token=cookieToken(req);
+  if(!token)return send(res,401,{error:'SESSION_COOKIE_REQUIRED'});
+  const hash=tokenHash(token);
+  const rows=await query("UPDATE agent_sessions SET status='REVOKED',revoked_at=now(),updated_at=now(),token_hash=NULL WHERE token_hash=$1 AND status IN('ACTIVE','FROZEN') RETURNING session_id,account_id",[hash]);
   if(!rows.length){clearSessionCookie(req,res);return send(res,404,{error:'ACTIVE_SESSION_NOT_FOUND'});}
-  await query("INSERT INTO agent_events(session_id,event_type,severity,payload) VALUES($1,'DEVELOPER_SESSION_REVOKED','INFO',$2::jsonb)",
-    [rows[0].session_id,JSON.stringify({account_id:rows[0].account_id,source:'wallet_owner_cookie_revoke'})]);
+  await query("INSERT INTO agent_events(session_id,event_type,severity,payload) VALUES($1,'DEVELOPER_SESSION_REVOKED','INFO',$2::jsonb)",[rows[0].session_id,JSON.stringify({account_id:rows[0].account_id,source:'wallet_owner_cookie_revoke'})]);
   clearSessionCookie(req,res);
   return send(res,200,{session_id:rows[0].session_id,status:'REVOKED'});
 }
 async function status(req,res){
-  const auth=String(req.headers.authorization||'');
-  const match=auth.match(/^Bearer\s+([A-Za-z0-9_-]{32,128})$/);
-  if(!match)return send(res,401,{error:'SESSION_BEARER_REQUIRED'});
-  const rows=await query("UPDATE agent_sessions SET status='EXPIRED',token_hash=NULL,updated_at=now() WHERE token_hash=$1 AND status='ACTIVE' AND expires_at<=now() RETURNING session_id",[tokenHash(match[1])]);
-  const found=await query("SELECT session_id,account_id,network,status,permissions,expires_at,public_key FROM agent_sessions WHERE token_hash=$1 AND status='ACTIVE' AND expires_at>now()",[tokenHash(match[1])]);
-  if(!found.length)return send(res,404,{error:'ACTIVE_SESSION_NOT_FOUND'});
+  const token=cookieToken(req);
+  if(!token)return send(res,401,{error:'SESSION_COOKIE_REQUIRED'});
+  const hash=tokenHash(token);
+  await query("UPDATE agent_sessions SET status='EXPIRED',token_hash=NULL,updated_at=now() WHERE token_hash=$1 AND status='ACTIVE' AND expires_at<=now()",[hash]);
+  const found=await query("SELECT session_id,account_id,network,status,permissions,expires_at,public_key FROM agent_sessions WHERE token_hash=$1 AND status='ACTIVE' AND expires_at>now()",[hash]);
+  if(!found.length){clearSessionCookie(req,res);return send(res,404,{error:'ACTIVE_SESSION_NOT_FOUND'});}
   await query('UPDATE agent_sessions SET last_seen_at=now() WHERE session_id=$1',[found[0].session_id]);
   return send(res,200,{session:found[0],execution_enabled:false,on_chain_access_key_created:false});
 }
