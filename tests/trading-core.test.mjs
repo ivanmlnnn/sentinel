@@ -134,3 +134,59 @@ test("rejects a dry quote when the provider signature verifier fails", async () 
   assert.equal(result.ok, false);
   assert.equal(result.reason, "TIDEPOOL_QUOTE_SIGNATURE_INVALID");
 });
+
+
+test("validates a signed live quote only when it binds the exact intent and deposit account", async () => {
+  const livePayload = {
+    correlationId: "live-quote-123",
+    quoteRequest: { ...buildTidepoolDryQuotePayload(input), dry: false },
+    quote: {
+      amountIn: "1000000",
+      amountOut: "250000000000000000000000",
+      minAmountOut: "247500000000000000000000",
+      depositAddress: "a".repeat(64)
+    },
+    signature: "ed25519:0123456789abcdefghijklmnop"
+  };
+  const { validateTidepoolLiveQuote } = await import("../src/trading-core.mjs");
+  assert.equal(validateTidepoolLiveQuote(livePayload, input).ok, true);
+  assert.equal(validateTidepoolLiveQuote({
+    ...livePayload, quote: { ...livePayload.quote, depositAddress: "alice.testnet" }
+  }, input).reason, "TIDEPOOL_INVALID_DEPOSIT_ADDRESS");
+});
+
+test("rejects signed swap intents that change the account, token, amount or receiver", async () => {
+  const { submitTidepoolSignedIntent } = await import("../src/trading-core.mjs");
+  const signedData = {
+    standard: "nep413",
+    payload: {
+      message: JSON.stringify({
+        signer_id: "alice.testnet",
+        verifying_contract: "verifier.tidepool-sandbox.testnet",
+        deadline: new Date(Date.now() + 300000).toISOString(),
+        intents: [{ intent: "transfer", receiver_id: "b".repeat(64), tokens: { [input.originAsset]: input.amount } }]
+      }),
+      nonce: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      recipient: "verifier.tidepool-sandbox.testnet"
+    },
+    public_key: "ed25519:" + "1".repeat(32),
+    signature: "ed25519:" + "1".repeat(64)
+  };
+  const fetchImpl = async () => new Response(JSON.stringify({
+    intentHash: "intent-hash",
+    correlationId: "corr-id"
+  }), { status: 200 });
+  const result = await submitTidepoolSignedIntent({
+    signedData, expectedSignerId: "alice.testnet",
+    expectedDepositAddress: "b".repeat(64), expectedAsset: input.originAsset,
+    expectedAmount: input.amount
+  }, fetchImpl);
+  assert.equal(result.ok, true);
+  const altered = { ...signedData, payload: { ...signedData.payload, message: signedData.payload.message.replace("alice.testnet", "mallory.testnet") } };
+  const rejected = await submitTidepoolSignedIntent({
+    signedData: altered, expectedSignerId: "alice.testnet",
+    expectedDepositAddress: "b".repeat(64), expectedAsset: input.originAsset,
+    expectedAmount: input.amount
+  }, fetchImpl);
+  assert.equal(rejected.reason, "SIGNED_INTENT_POLICY_MISMATCH");
+});
