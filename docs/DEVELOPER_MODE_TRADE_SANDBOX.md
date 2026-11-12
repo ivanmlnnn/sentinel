@@ -9,8 +9,10 @@ This branch now includes a server-side Tidepool NEAR Testnet asset-list endpoint
 1. User enables Developer Mode in Ask Sentinel.
 2. User enters a natural-language buy, sell, swap, or DCA request.
 3. Browser creates a constrained draft object with action, recognized asset, amount/unit, schedule, and whether leverage was mentioned.
-4. Browser displays the JSON and its SHA-256 fingerprint.
-5. No approval is recorded and no transaction is submitted. The backend trading adapter and server-side approval protocol must be implemented before execution can be enabled.
+4. Browser displays the structured draft and its SHA-256 fingerprint.
+5. For a complete SWAP draft, the user can request a server-side Tidepool dry quote using a NEAR Testnet recipient/refund account.
+6. Sentinel checks the provider quote against the exact requested asset pair, amount, recipient, slippage, and dry-only mode.
+7. No approval is recorded and no transaction is submitted. Wallet signing, quote signature verification, approval, deposit, execution, and receipt verification remain gated milestones.
 
 ## Why draft-only
 
