@@ -4,7 +4,12 @@ import { evaluateProofIntent, digest } from "./provenance.mjs";
  * Isolated reference policy. This is not a deployed signer; nonceState must
  * come from an atomic, trusted persistence layer in production.
  */
-export function independentSignerCheck({workerVerdict,intent,evidence,signerTrustStore,now,approval,nonceState,limits}) {
+export function independentSignerCheck(input={}) {
+  const {workerVerdict,intent,evidence,signerTrustStore,now,approval,nonceState,limits}=input || {};
+  if (!intent || typeof intent!=="object" || Array.isArray(intent) ||
+      !["receiver","amount","memo"].every(k=>typeof intent[k]==="string" && intent[k].length>0)) {
+    return {decision:"BLOCK",reasons:["INVALID_PAYMENT_INTENT"],signer_policy_decision:"BLOCK",proof:null};
+  }
   const reasons=[];
   const intentHash=digest(intent);
   if (!approval || approval.intent_hash !== intentHash) reasons.push("APPROVAL_INTENT_MISMATCH");
