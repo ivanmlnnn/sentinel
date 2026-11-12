@@ -55,12 +55,24 @@ check(
 );
 
 // Agent routes must reject unauthenticated callers before invoking AI or signer logic.
-for (const path of ["/api/agent/run", "/api/agent/approve"]) {
+for (const path of ["/api/agent/run", "/api/terminal/run", "/api/agent/approve"]) {
   const response = await request(path, {
     method: "POST",
     body: JSON.stringify({})
   });
   check(`POST ${path} rejects a missing bearer token`, response.status === 401,
+    `HTTP ${response.status}; error=${response.body?.error || "none"}`);
+}
+
+// Legacy Developer Mode routes must remain absent until the delegated-session
+// contract, on-chain key verification, and revocation flow are actually implemented.
+for (const path of ["/api/agent/developer-session", "/api/agent/developer-task"]) {
+  const response = await request(path, {
+    method: "POST",
+    body: JSON.stringify({ operation: "challenge" })
+  });
+  check(`POST ${path} remains unavailable while Developer Mode is preview-only`,
+    response.status === 404 && response.body?.error === "NOT_FOUND",
     `HTTP ${response.status}; error=${response.body?.error || "none"}`);
 }
 
