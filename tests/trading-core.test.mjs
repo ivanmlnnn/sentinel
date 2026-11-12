@@ -223,6 +223,8 @@ test("submits only a signed NEP-413 transfer bound to a verified provider quote"
   };
   const result = await submitTidepoolSignedIntent(request, fetchImpl, () => true);
   assert.equal(result.ok, true);
+  assert.equal(result.value.risk_evaluation.decision, "ALLOW");
+  assert.match(result.value.risk_evaluation.policy_hash, /^sha256:[a-f0-9]{64}$/);
   const altered = { ...signedData, payload: { ...signedData.payload, message: signedData.payload.message.replace("alice.testnet", "mallory.testnet") } };
   const rejected = await submitTidepoolSignedIntent({ ...request, signedData: altered }, fetchImpl, () => true);
   assert.equal(rejected.reason, "SIGNED_INTENT_POLICY_MISMATCH");
@@ -295,6 +297,8 @@ test("generates a NEP-413 intent only when the signed provider quote binds the e
   }, fetchImpl, () => true);
   assert.equal(result.ok, true);
   assert.equal(result.value.standard, "nep413");
+  assert.equal(result.value.risk_evaluation.decision, "ALLOW");
+  assert.match(result.value.risk_evaluation.policy_hash, /^sha256:[a-f0-9]{64}$/);
   const invalid = await generateTidepoolSwapIntent({
     providerQuote: liveQuoteResponse({ quoteRequest: { ...providerQuote.quoteRequest, amount: "999" } }),
     signerId: "alice.testnet", originAsset: input.originAsset,
