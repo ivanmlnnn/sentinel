@@ -14,6 +14,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Run isolated provenance lab
+      - name: Run isolated adversarial tests
         working-directory: labs/proof-carrying
         run: npm test
+      - name: Verify portable proof fixture
+        working-directory: labs/proof-carrying
+        run: npm run verify
