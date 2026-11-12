@@ -77,3 +77,14 @@ test('caps prompt length and never creates an approved or executable draft', () 
   assert.equal(draft.execution_status, 'DISABLED_NO_TRADING_ADAPTER');
   assert.equal(buildTradeSkillDraft('x'.repeat(5000)).source_prompt.length, 4000);
 });
+
+
+test('does not interpret a negated preference as a buy instruction', () => {
+  const draft = buildTradeSkillDraft("I don't want to buy BTC");
+  assert.equal(draft.action, null);
+});
+
+test('does not convert a negative quantity into a positive order amount', () => {
+  const draft = buildTradeSkillDraft('Buy -5 ETH');
+  assert.equal(draft.amount, null);
+});
