@@ -910,8 +910,8 @@ async function renderTradeSkillDraft(prompt) {
         });
         if (!keyStatus.registered) {
           const register = window.confirm(
-            'ONE-TIME VERIFIER KEY REGISTRATION\\n\\n' +
-            'This NEAR Testnet account key is not registered on Tidepool\\'s verifier. ' +
+            'ONE-TIME VERIFIER KEY REGISTRATION\n\n' +
+            'This NEAR Testnet account key is not registered on the Tidepool verifier. ' +
             'Sentinel must register the public key before NEP-413 signing. ' +
             'Your wallet will ask you to approve add_public_key on verifier.tidepool-sandbox.testnet. ' +
             'This requires a small amount of NEAR Testnet gas and 1 yoctoNEAR. Continue?'
