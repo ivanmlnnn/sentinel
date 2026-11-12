@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-11-12",
+  "repository": "https://github.com/ivanmlnnn/sentinel",
+  "branch": "lab/proof-carrying-agent-economy",
+  "tested_commit": "6f8efb21d70269c0d92570efaad7e2c387a25179",
+  "environment": {
+    "runner": "Vercel Sandbox",
+    "node": "v24.22.1",
+    "wrangler": "4.160.1",
+    "database": "Wrangler/Miniflare local D1",
+    "network": "local-only D1; no --remote"
+  },
+  "results": {
+    "root_test_suite": {
+      "status": "PASS",
+      "tests": 216,
+      "passed": 216,
+      "failed": 0,
+      "command": "npm test"
+    },
+    "proof_lab_suite": {
+      "status": "PASS",
+      "tests": 70,
+      "passed": 70,
+      "failed": 0,
+      "command": "cd labs/proof-carrying && npm test"
+    },
+    "portable_proof_verifier": {
+      "status": "PASS",
+      "output": "PROOF_STRUCTURE_VALID",
+      "command": "npm run verify"
+    },
+    "local_d1_race_suite": {
+      "status": "PASS",
+      "command": "npm run test:d1",
+      "cases": [
+        {
+          "name": "duplicate nonce claim",
+          "attempts": 500,
+          "accepted": 1,
+          "rejected": 499
+        },
+        {
+          "name": "daily spend cap",
+          "attempts": 1000,
+          "accepted": 100,
+          "rejected": 900,
+          "rejection_reason": "DAILY_SPEND_LIMIT_REACHED"
+        },
+        {
+          "name": "duplicate idempotency key",
+          "attempts": 100,
+          "accepted": 1,
+          "rejected": 99,
+          "rejection_reason": "IDEMPOTENCY_KEY_REUSED"
+        },
+        {
+          "name": "one-time approval claim",
+          "attempts": 100,
+          "accepted": 1,
+          "rejected": 99,
+          "rejection_reason": "APPROVAL_ALREADY_CLAIMED"
+        },
+        {
+          "name": "idempotency key reused across approvals",
+          "attempts": 1,
+          "accepted": 0,
+          "rejected": 1,
+          "rejection_reason": "IDEMPOTENCY_KEY_REUSED"
+        },
+        {
+          "name": "invalid spend amount",
+          "attempts": 1,
+          "accepted": 0,
+          "rejected": 1,
+          "rejection_reason": "INVALID_SPEND_RESERVATION"
+        }
+      ]
+    },
+    "migration_validation": {
+      "status": "PASS",
+      "tested_commit": "ff1fbe434868f5b692363f7deefb0020d86b2dad",
+      "d1_migrations": 9,
+      "d1_tables": 10,
+      "d1_indexes": 24,
+      "signer_migrations": 1,
+      "signer_tables": 3,
+      "signer_indexes": 7,
+      "command": "npm run check:d1"
+    }
+  },
+  "not_verified": [
+    "Remote Cloudflare production D1 concurrency or regional behavior",
+    "NEAR Testnet contract proof-signature or provenance-root verification",
+    "Production independent signer deployment and independent live evidence ingestion",
+    "Rust/WASM contract build in the Vercel sandbox (rustc/cargo unavailable)",
+    "GitHub Actions run status; no status was observed at evidence capture"
+  ],
+  "scope_note": "These results validate the isolated lab, the existing repository tests, and local D1 behavior only. They do not establish production security, on-chain proof verification, or hackathon placement."
+}
