@@ -875,6 +875,8 @@ async function renderTradeSkillDraft(prompt) {
         if (liveQuote.mode !== 'LIVE_QUOTE_AWAITING_USER_SIGNATURE' ||
             liveQuote.execution_enabled !== false ||
             liveQuote.provider_signature_verified !== true ||
+            liveQuote.risk_evaluation?.decision !== 'ALLOW' ||
+            !String(liveQuote.risk_evaluation?.policy_hash || '').startsWith('sha256:') ||
             !liveQuote.signed_quote || typeof liveQuote.signed_quote !== 'object' ||
             !/^[a-f0-9]{64}$/i.test(liveQuote.deposit_address || '')) {
           throw new Error('Sentinel rejected an invalid or unexpected live quote.');
@@ -884,7 +886,9 @@ async function renderTradeSkillDraft(prompt) {
           'Expected output: ' + (liveQuote.quote.amount_out_formatted || liveQuote.quote.amount_out) + ' ' + draft.to_asset + '\n' +
           'Minimum output: ' + liveQuote.quote.minimum_amount_out + '\n' +
           'Wallet: ' + connectedAccount + '\n' +
-          'Provider: Tidepool community Testnet\n\n' +
+          'Provider: Tidepool community Testnet\n' +
+          'Sentinel risk: ' + liveQuote.risk_evaluation.decision + '\n' +
+          'Policy proof: ' + liveQuote.risk_evaluation.policy_hash + '\n\n' +
           'Continue to request the exact NEP-413 transfer intent? Your wallet will show the signing request next.';
         if (!window.confirm(summary)) {
           liveStatus.textContent = 'Cancelled before wallet signing. No transfer was submitted.';
