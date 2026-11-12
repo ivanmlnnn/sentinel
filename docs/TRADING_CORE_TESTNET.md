@@ -28,7 +28,7 @@ Example body:
 }
 ```
 
-Amount is an integer string in the asset's smallest unit. Slippage is basis points; the server defaults to 100 bps and caps at 300 bps. The server always uses a dry quote, INTENTS deposit/refund/recipient types, and a 10-minute request deadline. The provider's quote signature is returned for future verification, but this milestone does not independently verify that signature.
+Amount is an integer string in the asset's smallest unit. Slippage is basis points; the server defaults to 100 bps and caps at 300 bps. The server always uses a dry quote, INTENTS deposit/refund/recipient types, and a 10-minute request deadline. The server verifies the quote signature with the Tidepool maker public key documented by Tidepool, using the official 1Click TypeScript SDK's verifyQuoteSignature implementation. Invalid signatures are rejected before a quote is returned.
 
 ## Important trust boundary
 
