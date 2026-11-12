@@ -757,8 +757,8 @@ async function requestDeveloperModeWalletApproval() {
       throw new Error('Wallet approval was not completed with a NEAR Testnet account.');
     }
     syncWalletUI(accountId, current.wallet?.manifest?.name || 'NEAR wallet');
-    setDeveloperMode(true, 'ON · WALLET APPROVED · PREVIEW ONLY');
-    toast('Wallet connected and approved. Developer preview is active; delegated execution is not enabled.');
+    setDeveloperMode(true, 'ON · WALLET CONNECTED · PREVIEW ONLY');
+    toast('NEAR Testnet wallet connected. Developer preview is active; delegated execution is not enabled.');
   } catch (error) {
     setDeveloperMode(false, 'OFF · WALLET APPROVAL REQUIRED');
     toast(error?.message || 'Wallet approval was rejected. Developer Mode remains OFF.');
