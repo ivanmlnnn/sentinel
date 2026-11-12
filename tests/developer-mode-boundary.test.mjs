@@ -21,7 +21,7 @@ test("Developer Mode requires NEAR Testnet wallet approval and remains off until
   assert.match(app, /catch \(error\) \{[\s\S]*?setDeveloperMode\(false, 'OFF · WALLET APPROVAL REQUIRED'\)/);
   assert.match(app, /ON · WALLET APPROVED · 8H APP SESSION/);
   assert.match(html, /WALLET APPROVED · APPLICATION SESSION ONLY/);
-  assert.match(html, /no restricted key is created/i);
+  assert.match(html, /does not create a FunctionCall key/i);
   assert.doesNotMatch(app, /addFunctionCallKey\s*\(/);
 });
 
