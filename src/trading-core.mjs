@@ -269,23 +269,47 @@ export async function getTidepoolLiveQuote(input, fetchImpl = fetch, now = Date.
         minimum_amount_out: payload.quote.minAmountOut,
         estimated_seconds: Number.isFinite(payload.quote.timeEstimate) ? payload.quote.timeEstimate : null
       },
-      provider_signature_verified: true
+      provider_signature_verified: true,
+      signed_quote: payload
     }
   };
 }
 
-export async function generateTidepoolSwapIntent(input, fetchImpl = fetch) {
+export async function verifyTidepoolLiveQuoteBinding(providerQuote, expected, fetchImpl = fetch, verifySignature = verifyQuoteSignature) {
+  const tokens = await getTidepoolTestnetTokens(fetchImpl);
+  const validation = validateTradingQuoteInput(expected, tokens);
+  if (!validation.ok) return validation;
+  const quoteValidation = validateTidepoolLiveQuote(providerQuote, validation.value);
+  if (!quoteValidation.ok) return quoteValidation;
+  let signatureValid = false;
+  try { signatureValid = await verifySignature(providerQuote, TIDEPOOL_QUOTE_PUBLIC_KEY) === true; } catch {}
+  if (!signatureValid) return { ok: false, reason: "TIDEPOOL_LIVE_QUOTE_SIGNATURE_INVALID" };
+  return {
+    ok: true,
+    value: {
+      depositAddress: providerQuote.quote.depositAddress,
+      quote: providerQuote.quote,
+      quoteRequest: providerQuote.quoteRequest
+    }
+  };
+}
+
+export async function generateTidepoolSwapIntent(input, fetchImpl = fetch, verifySignature = verifyQuoteSignature) {
   if (!input || typeof input !== "object" || Array.isArray(input) ||
-      Object.keys(input).some(key => !["depositAddress", "signerId", "originAsset", "amount"].includes(key))) {
+      Object.keys(input).some(key => !["providerQuote", "signerId", "originAsset", "destinationAsset", "amount", "slippageTolerance"].includes(key))) {
     return { ok: false, reason: "INVALID_SWAP_INTENT_REQUEST" };
   }
-  const { depositAddress, signerId, originAsset, amount } = input;
-  if (typeof depositAddress !== "string" || !DEPOSIT_ADDRESS_RE.test(depositAddress) ||
-      typeof signerId !== "string" || !ACCOUNT_RE.test(signerId) ||
-      typeof originAsset !== "string" || !/^nep141:[a-z0-9._-]+\.tidepool-sandbox\.testnet$/i.test(originAsset) ||
+  const { providerQuote, signerId, originAsset, destinationAsset, amount, slippageTolerance = DEFAULT_SLIPPAGE_BPS } = input;
+  if (typeof signerId !== "string" || !ACCOUNT_RE.test(signerId) ||
+      typeof originAsset !== "string" || typeof destinationAsset !== "string" ||
       typeof amount !== "string" || !INTEGER_RE.test(amount) || amount === "0" || amount.length > MAX_AMOUNT_DIGITS) {
     return { ok: false, reason: "INVALID_SWAP_INTENT_REQUEST" };
   }
+  const quoteBinding = await verifyTidepoolLiveQuoteBinding(providerQuote, {
+    originAsset, destinationAsset, amount, recipient: signerId, slippageTolerance
+  }, fetchImpl, verifySignature);
+  if (!quoteBinding.ok) return quoteBinding;
+  const depositAddress = quoteBinding.value.depositAddress;
   const payload = await fetchJson(TIDEPOOL_BASE_URL + "/v0/generate-intent", {
     method: "POST",
     headers: { "content-type": "application/json", accept: "application/json" },
@@ -333,12 +357,20 @@ export async function generateTidepoolSwapIntent(input, fetchImpl = fetch) {
   };
 }
 
-export async function submitTidepoolSignedIntent(input, fetchImpl = fetch) {
+export async function submitTidepoolSignedIntent(input, fetchImpl = fetch, verifySignature = verifyQuoteSignature) {
   if (!input || typeof input !== "object" || Array.isArray(input) ||
-      Object.keys(input).some(key => !["signedData", "expectedSignerId", "expectedDepositAddress", "expectedAsset", "expectedAmount"].includes(key))) {
+      Object.keys(input).some(key => !["signedData", "providerQuote", "expectedSignerId", "expectedDepositAddress", "expectedAsset", "expectedDestinationAsset", "expectedAmount", "expectedSlippageTolerance"].includes(key))) {
     return { ok: false, reason: "INVALID_SIGNED_INTENT_REQUEST" };
   }
-  const { signedData, expectedSignerId, expectedDepositAddress, expectedAsset, expectedAmount } = input;
+  const { signedData, providerQuote, expectedSignerId, expectedDepositAddress, expectedAsset, expectedDestinationAsset, expectedAmount, expectedSlippageTolerance = DEFAULT_SLIPPAGE_BPS } = input;
+  const quoteBinding = await verifyTidepoolLiveQuoteBinding(providerQuote, {
+    originAsset: expectedAsset, destinationAsset: expectedDestinationAsset, amount: expectedAmount,
+    recipient: expectedSignerId, slippageTolerance: expectedSlippageTolerance
+  }, fetchImpl, verifySignature);
+  if (!quoteBinding.ok) return quoteBinding;
+  if (quoteBinding.value.depositAddress !== expectedDepositAddress) {
+    return { ok: false, reason: "LIVE_QUOTE_DEPOSIT_ADDRESS_MISMATCH" };
+  }
   if (!signedData || signedData.standard !== "nep413" || !signedData.payload ||
       typeof signedData.payload.message !== "string" ||
       typeof signedData.payload.nonce !== "string" || !NONCE_RE.test(signedData.payload.nonce) ||
