@@ -790,7 +790,7 @@ async function renderTradeSkillDraft(prompt) {
         if (!origin || !destination) throw new Error('One of the requested assets is not available on the NEAR Testnet sandbox.');
         const decimals = Number(origin.decimals);
         const rawAmount = draft.amount_text;
-        if (!Number.isInteger(decimals) || decimals < 0 || decimals > 30 || !/^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$/.test(rawAmount)) {
+        if (!Number.isInteger(decimals) || decimals < 0 || decimals > 30 || !/^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/.test(rawAmount)) {
           throw new Error('Invalid decimal amount for the selected asset.');
         }
         const [whole, fraction = ''] = rawAmount.split('.');
