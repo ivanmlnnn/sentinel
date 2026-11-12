@@ -1523,10 +1523,9 @@ if (agentForm) {
       : 'Calling the AI provider and evaluating the proposed action…';
     try {
       if (developerModeEnabled) {
-        const data = await request('/terminal/run', {
+        const data = await request('/agent/developer-task', {
           method: 'POST',
-          headers: { 'Idempotency-Key': crypto.randomUUID() },
-          body: JSON.stringify({ mode: 'developer', prompt })
+          body: JSON.stringify({ prompt })
         });
         renderAgentResult(data);
         $('agentPrompt').value = '';
