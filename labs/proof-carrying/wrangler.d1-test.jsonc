@@ -1,0 +1,15 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "sentinel-d1-race-lab",
+  "main": "./d1-race-worker.mjs",
+  "compatibility_date": "2026-11-08",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB2",
+      "database_name": "db2",
+      "database_id": "80a08a93-4353-4dba-914d-a436afd040c9",
+      "migrations_dir": "../../migrations-signer"
+    }
+  ]
+}
