@@ -29,10 +29,13 @@ export function detectSplitPayments(payments, {windowMs=60000, threshold=1}={}) 
   const findings=[];
   for (const [key,list] of groups) {
     const sorted=[...list].sort((a,b)=>a.timestamp-b.timestamp);
-    for (let i=0;i<sorted.length;i++) {
-      const window=sorted.filter(x=>x.timestamp>=sorted[i].timestamp && x.timestamp<sorted[i].timestamp+windowMs);
-      if (window.length>threshold) {
-        findings.push({key,count:window.length,total:window.reduce((n,x)=>n+Number(x.amount),0),transaction_ids:window.map(x=>x.id ?? null)});
+    let left=0;
+    for (let right=0;right<sorted.length;right++) {
+      while (sorted[right].timestamp-sorted[left].timestamp>=windowMs) left++;
+      const count=right-left+1;
+      if (count>threshold) {
+        const window=sorted.slice(left,right+1);
+        findings.push({key,count,total:window.reduce((n,x)=>n+Number(x.amount),0),transaction_ids:window.map(x=>x.id ?? null)});
         break;
       }
     }
