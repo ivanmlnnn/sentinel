@@ -1,5 +1,5 @@
-import { query } from '../_lib/db.js';
-import { authenticate, readBody, parseBody } from '../_lib/auth.js';
+import { query } from './db.js';
+import { authenticate, readBody, parseBody } from './auth.js';
 export const config={api:{bodyParser:false}};
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,HEX64=/^[0-9a-f]{64}$/i;
 const TYPES=new Set(['AUTH_FAILURE','AUTH_SUCCESS','ACCESS_DENIED','INVALID_SIGNATURE','REPLAY_DETECTED','RATE_LIMITED','POLICY_BLOCK','SESSION_REVOKED','SESSION_EXPIRED','SESSION_COMPROMISE','ORIGIN_ERROR','CSP_VIOLATION','INPUT_REJECTED','ADMIN_CONFIG_CHANGE','WALLET_CONSENT_FAILURE','REQUEST_ALLOWED']);
