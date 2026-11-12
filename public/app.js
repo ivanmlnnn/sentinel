@@ -770,6 +770,11 @@ async function renderTradeSkillDraft(prompt) {
     quoteTitle.textContent = 'NEAR TESTNET · LIVE DRY QUOTE';
     const quoteHelp = document.createElement('p');
     quoteHelp.textContent = 'Sentinel requests a real provider quote in dry mode. No deposit address is created and no funds move.';
+    const faucetLink = document.createElement('a');
+    faucetLink.href = 'https://app.usetidepool.tech/faucet';
+    faucetLink.target = '_blank';
+    faucetLink.rel = 'noopener noreferrer';
+    faucetLink.textContent = 'Get Testnet tokens · choose NEAR Intents balance';
     const recipientLabel = document.createElement('label');
     recipientLabel.textContent = 'NEAR TESTNET RECIPIENT / REFUND ACCOUNT';
     const recipientInput = document.createElement('input');
@@ -963,7 +968,7 @@ async function renderTradeSkillDraft(prompt) {
       }
     });
     quoteForm.append(recipientLabel, recipientInput, quoteButton, quoteStatus, liveButton, liveStatus, quoteDetails);
-    quotePanel.append(quoteTitle, quoteHelp, quoteForm);
+    quotePanel.append(quoteTitle, quoteHelp, faucetLink, quoteForm);
   }
   card.append(heading, summary, details, note, hash, copy);
   if (quotePanel) card.append(quotePanel);
