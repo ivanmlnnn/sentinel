@@ -46,7 +46,7 @@
 
 Tidepool is a community-operated testnet sandbox, not an official NEAR/Defuse/1Click service. Its deposit accounts are custodial and its test tokens have no monetary value. Never send real funds or mainnet assets to Tidepool.
 
-The provider's maker quote signature is verified using the pinned official 1Click TypeScript SDK and Tidepool's published maker public key. The verifier contract checks the signed intent when it is submitted. The API also checks that the payload is one transfer intent with the exact expected signer, verifier, deposit account, token and amount.
+The provider's maker quote signature is verified using the pinned official 1Click TypeScript SDK 0.1.25 and Tidepool's published maker public key. The verifier contract checks the signed intent when it is submitted. The API also checks that the payload is one transfer intent with the exact expected signer, verifier, deposit account, token and amount.
 
 This is not yet a mainnet-ready trading system. BUY/SELL, limit orders, recurring schedules, automated strategies, unattended agent execution, and mainnet integration remain disabled. A successful Testnet swap still needs a live funded-wallet run and independent explorer verification before the feature can be described as end-to-end validated.
 
