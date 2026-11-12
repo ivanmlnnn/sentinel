@@ -174,6 +174,39 @@ mod tests{
   assert!(long.is_err());
  }
 
+
+ #[test]fn contract_rejects_amount_and_memo_substitution(){
+  let now=50_000_000_000u64;let key=SigningKey::from_bytes(&[25;32]);let mut c=fresh_contract(&key,now);
+  let sig=signed_args(&key,"receiver.testnet",500,"approval-f","nonce-f","invoice-f",now-1,now+60_000_000_000);
+  let amount=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||c.pay(AccountId::from_str("receiver.testnet").unwrap(),U128(501),
+   "approval-f".into(),"nonce-f".into(),"invoice-f".into(),U64(now-1),U64(now+60_000_000_000),"05".repeat(32),"06".repeat(32),"policy-v1".into(),sig.clone())));
+  assert!(amount.is_err(),"amount substitution must fail");
+  let memo=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||c.pay(AccountId::from_str("receiver.testnet").unwrap(),U128(500),
+   "approval-f".into(),"nonce-f".into(),"invoice-mutated".into(),U64(now-1),U64(now+60_000_000_000),"05".repeat(32),"06".repeat(32),"policy-v1".into(),sig)));
+  assert!(memo.is_err(),"memo substitution must fail");
+ }
+ #[test]fn key_rotation_invalidates_previous_signatures(){
+  let now=60_000_000_000u64;let key1=SigningKey::from_bytes(&[26;32]);let key2=SigningKey::from_bytes(&[27;32]);let mut c=fresh_contract(&key1,now);
+  let sig=signed_args(&key1,"receiver.testnet",500,"approval-g","nonce-g","invoice-g",now-1,now+60_000_000_000);
+  set_test_context("owner.testnet",now);c.set_proof_signer_key(to_hex(&key2.verifying_key().to_bytes()));
+  assert_eq!(c.signer_key_version,2);
+  set_test_context("agent.testnet",now);
+  let result=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||c.pay(AccountId::from_str("receiver.testnet").unwrap(),U128(500),
+   "approval-g".into(),"nonce-g".into(),"invoice-g".into(),U64(now-1),U64(now+60_000_000_000),"05".repeat(32),"06".repeat(32),"policy-v1".into(),sig)));
+  assert!(result.is_err(),"signature from rotated-out key must fail");
+ }
+ #[test]fn on_chain_daily_cap_rejects_second_valid_payment_over_budget(){
+  let now=70_000_000_000u64;let key=SigningKey::from_bytes(&[28;32]);let mut c=fresh_contract(&key,now);c.max_payment_yocto=700;c.max_daily_payment_yocto=1000;
+  let sig1=signed_args(&key,"receiver.testnet",700,"approval-h","nonce-h","invoice-h",now-1,now+60_000_000_000);
+  let _=c.pay(AccountId::from_str("receiver.testnet").unwrap(),U128(700),"approval-h".into(),"nonce-h".into(),"invoice-h".into(),
+   U64(now-1),U64(now+60_000_000_000),"05".repeat(32),"06".repeat(32),"policy-v1".into(),sig1);
+  let sig2=signed_args(&key,"receiver.testnet",700,"approval-i","nonce-i","invoice-i",now-1,now+60_000_000_000);
+  let result=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||c.pay(AccountId::from_str("receiver.testnet").unwrap(),U128(700),
+   "approval-i".into(),"nonce-i".into(),"invoice-i".into(),U64(now-1),U64(now+60_000_000_000),"05".repeat(32),"06".repeat(32),"policy-v1".into(),sig2)));
+  assert!(result.is_err(),"second valid proof must still respect the on-chain daily cap");
+  assert!(!c.used_approvals.contains(&"approval-i".to_string()));
+ }
+
  #[test]fn strict_hex_decoder(){assert_eq!(decode_hex::<2>("00aF"),Some([0,175]));assert_eq!(decode_hex::<2>("00af00"),None);assert_eq!(decode_hex::<2>("00xz"),None);assert_eq!(decode_hex::<2>("00é"),None);}
  #[test]fn intent_hash_binds_receiver_amount_and_memo(){let r=AccountId::from_str("receiver.testnet").unwrap();let o=AccountId::from_str("other.testnet").unwrap();let h=intent_hash(&r,123,"invoice-42");assert_ne!(h,intent_hash(&r,123,"invoice-43"));assert_ne!(h,intent_hash(&o,123,"invoice-42"));assert_ne!(h,intent_hash(&r,124,"invoice-42"));}
 }
