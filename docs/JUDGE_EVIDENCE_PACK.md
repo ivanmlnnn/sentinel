@@ -136,6 +136,18 @@ The full test and production evidence is itemized in [End-to-End Verification Re
 
 The report provides direct workflow evidence for the automated security suite, production HTTP smoke checks, Worker deployments and source provenance.
 
+### 3.5a Uploaded Testnet transfer screenshot
+
+The repository also includes an Explorer screenshot captured on 12 November 2026:
+
+- [Open the committed screenshot](https://github.com/ivanmlnnn/sentinel/blob/main/docs/evidence/Screenshot_2026-11-12-05-58-28-799_com.android.chrome.png)
+- Visible sender account: `freshnook5462.testnet`.
+- Visible destination: `rawvest6817.testnet`.
+- Visible activity: two green-status rows labeled `TRANSFER`, each showing **0.01 NEAR**.
+- The screenshot shows the sender account overview and a 28-transaction history.
+
+This is evidence of Testnet transfer activity to the configured recipient and must be included in the judge evidence review. However, the screenshot truncates both transaction hashes and does not show the detailed execution outcome / final receipt. Do not describe the two rows as independently verified Sentinel payouts until the full hashes are opened and correlated with the deployed Sentinel signer, the expected payment path, exact amount, and successful recipient Transfer receipt. The evidence status is therefore **transfer activity evidenced; exact transaction attribution and receipt verification pending**.
+
 ### 3.5 Recipient account — independent Explorer view
 
 Sentinel's configured tracked/allowed recipient account is **`rawvest6817.testnet`**. Its public NEAR Testnet account page is available directly through NearBlocks:
