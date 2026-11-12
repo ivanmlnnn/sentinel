@@ -15,8 +15,8 @@ test("Developer Mode requires a connected NEAR Testnet wallet and remains off wh
   assert.match(app, /await connector\.getConnectedWallet\(\)/);
   assert.match(app, /accountId\.endsWith\('\.testnet'\)/);
   assert.match(app, /catch \(error\) \{[\s\S]*?setDeveloperMode\(false, 'OFF · WALLET APPROVAL REQUIRED'\)/);
-  assert.match(app, /ON · WALLET CONNECTED · PREVIEW ONLY/);
-  assert.match(html, /WALLET CONNECTED · BUILDER PREVIEW ONLY/);
+  assert.match(app, /ON · WALLET APPROVED · 8H APP SESSION/);\n  assert.match(app, /signMessageParams/);\n  assert.match(app, /operation: 'challenge'/);\n  assert.match(app, /operation: 'activate'/);\n  assert.match(app, /revokeDeveloperSession/);
+  assert.match(html, /WALLET APPROVED · APPLICATION SESSION ONLY/);
   assert.match(html, /no restricted key is created/i);
   assert.doesNotMatch(app, /addFunctionCallKey\s*\(/);
 });
@@ -34,3 +34,4 @@ test("existing payment contract only accepts its configured signer and is not a 
   assert.match(paymentContract, /pub fn pay\(/);
   assert.doesNotMatch(mainWrangler, /PAYMENT_CONTRACT_ID|DEVELOPER_SESSION_CONTRACT_ID/);
 });
+\nconst developerSessionApi = read("../api/_lib/agent-developer-session.js");\n\ntest("NEP-413 Developer Mode verifies a one-use Testnet challenge and issues only a bounded app session", () => {\n  assert.match(developerSessionApi, /verifyMessage/);\n  assert.match(developerSessionApi, /SESSION_SECONDS = 8 \\* 60 \\* 60/);\n  assert.match(developerSessionApi, /CHALLENGE_SECONDS = 5 \\* 60/);\n  assert.match(developerSessionApi, /used_at IS NULL AND expires_at>now\\(\\)/);\n  assert.match(developerSessionApi, /HttpOnly/);\n  assert.match(developerSessionApi, /on_chain_access_key_created:false/);\n});\n
