@@ -2,7 +2,7 @@
 
 ### A pre-sign security checkpoint for AI agents on NEAR.
 
-**An agent can propose a payment. Sentinel checks the destination. A human approves the exact intent. A separate Testnet signer enforces the final limits.**
+**An agent can propose a payment. Sentinel checks the destination. The connected wallet signs the exact Testnet transfer; an isolated Worker independently verifies the resulting transaction and applies replay and spend controls.**
 
 Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verified threat registry, then returns a deterministic verdict: `ALLOW`, `WARN`, `BLOCK`, or `INCOMPLETE`.
 
@@ -14,10 +14,10 @@ The current production Workers were deployed directly with Wrangler from the loc
 
 | Component | Production URL | Deployed version |
 |---|---|---|
-| Main Worker | https://sentinel.ivmaladin.workers.dev | `80a8c904-d1b4-4686-be5a-557e3c0da3a9` |
-| Isolated Signer Worker | https://sentinel-signer.ivmaladin.workers.dev | `fe208953-3eff-42a1-9356-9181042eb5f3` |
+| Main Worker | https://sentinel.ivmaladin.workers.dev | `7a350d33-f57d-4294-96c8-d7d9d07adbaf` |
+| Isolated Signer Worker | https://sentinel-signer.ivmaladin.workers.dev | `7571bbe3-d61b-4b7d-a465-adc661a929b2` |
 
-**Verification recorded for this deployment:** `npm test` — 146 passed, 0 failed, 0 skipped; `npm run smoke:test` — all HTTP smoke checks passed (dashboard HTTP 200 and expected protected-route rejections). These checks do not prove a live wallet approval or a successful NEAR payment.
+**Verification recorded for this deployment:** `npm test` — 180 passed, 0 failed, 0 skipped; `npm run smoke:test` — all HTTP smoke checks passed (dashboard HTTP 200 and expected protected-route rejections). These checks do not prove a live wallet approval or a successful NEAR payment.
 
 ### Direct deployment (no GitHub Actions queue)
 
@@ -25,8 +25,8 @@ Run from Debian PRoot in the repository directory:
 
 ```bash
 cd /root/sentinel
-npx wrangler@4.159.0 deploy
-npx wrangler@4.159.0 deploy --config signer-worker/wrangler.jsonc
+npx wrangler@4.160.1 deploy
+npx wrangler@4.160.1 deploy --config signer-worker/wrangler.jsonc
 ```
 
 Do not run `git pull` as part of a local-only release unless you intentionally want to replace the local source with the remote branch. Keep Cloudflare bindings, D1 databases, and runtime secrets configured on their existing Workers.
@@ -34,13 +34,14 @@ Do not run `git pull` as part of a local-only release unless you intentionally w
 GitHub remains the source-control and backup repository. GitHub Actions deployment workflows are not the deployment path for this operating mode. Historical workflow records below refer only to the revisions and checks they originally ran.
 
 
-**NEAR Sentinel protects NEAR payments from compromised or manipulated AI agents.** AI proposes an intent; Sentinel independently evaluates evidence and policy; the wallet owner approves the exact receiver and amount; a separate signer enforces the final boundary.
+**NEAR Sentinel adds an independent security checkpoint to NEAR payments proposed by AI agents.** The agent proposes an intent; Sentinel evaluates evidence and policy; the connected wallet signs the exact transfer; the isolated Signer Worker independently verifies the final transaction and enforces replay and spend controls.
 
 - **[Judge Evidence Pack](docs/JUDGE_EVIDENCE_PACK.md)** — project explanation, evidence index, reproducible commands and judge walkthrough.
 - **[End-to-End Verification Report](docs/END_TO_END_VERIFICATION.md)** — exact test counts, production HTTP smoke results, deployment scope and provenance attestation.
 - **[Independent Local Stress Lab](docs/INDEPENDENT_LOCAL_STRESS_LAB.md)** — nine local simulation checks, raw concurrency/load outcomes, and a strict boundary between simulated results and live D1/NEAR verification.
 - **[Gemini AI Provider Setup](docs/DEPLOYMENT_STATUS_AND_AI_PROVIDER.md#gemini-ai-provider)** — Gemini API integration, runtime secret setup, tool-calling compatibility, and verification steps.
-- **[NEAR Ecosystem Integration & Wallet-to-Agent Flow](docs/NEAR_ECOSYSTEM_INTEGRATION.md)** — the actual NEAR-native flow, identity separation, NEP-413 approval, restricted FunctionCall signer, and payment contract.
+- **[NEAR Ecosystem Integration & Wallet-to-Agent Flow](docs/NEAR_ECOSYSTEM_INTEGRATION.md)** — current native-transfer and Tidepool NEP-413 flows, identity separation, and implementation boundaries.
+- **[Developer Mode Session Design](docs/DEVELOPER_MODE_SESSION_DESIGN.md)** — why Developer Mode is currently preview-only and the contract, wallet, and backend gates required before one-approval delegated execution.
 - **[Signed Verdict Attestation](docs/SIGNED_VERDICT.md)** — Ed25519-signed assessment integrity at the isolated signer boundary; merged in [PR #10](https://github.com/ivanmlnnn/sentinel/pull/10).
 - **[Tracked recipient in NEAR Testnet Explorer](https://testnet.nearblocks.io/address/rawvest6817.testnet)** — inspect the public account activity for `rawvest6817.testnet` independently.
 - **[Merged security architecture — PR #3](https://github.com/ivanmlnnn/sentinel/pull/3)** — isolated signer, actor-bound approval and replay protections.
@@ -78,6 +79,9 @@ The independent local stress lab remains a separate evidence set: its nine check
 
 ## What is implemented
 
+**Developer Mode status:** preview only. The toggle creates trading-skill drafts; it does not add a delegated access key or activate autonomous wallet execution. See the [Developer Mode Session Design](docs/DEVELOPER_MODE_SESSION_DESIGN.md).
+
+
 - NEAR account-state checks through FastNear JSON-RPC.
 - Live read-only NEAR Testnet account state and indexed native transaction, receipt, and fungible-token transfer evidence through NearBlocks Testnet API; provider coverage and pagination are surfaced rather than assumed complete.
 - Evidence completeness tracking; missing or unavailable data is not treated as safe.
@@ -87,15 +91,15 @@ The independent local stress lab remains a separate evidence set: its nine check
 - Privy-authenticated investigation, Gemini-powered AI review, and authenticated/guest agent routes.
 - Google Gemini tool-calling agent whose output is treated as an untrusted proposal.
 - Actor-bound, exact-intent, five-minute human approval plus signer-side one-time approval claim.
-- Separate signer Worker, private service binding, signer-owned D1 ledger, HMAC-SHA256 timestamp/nonce protection, replay ledger, Ed25519-signed preflight verdict verification, NEP-413 wallet signature verification, receiver allowlist, spend caps, kill switch, and conservative `UNKNOWN` handling.
+- Separate Signer Worker, private service binding, signer-owned D1 ledger, HMAC-SHA256 timestamp/nonce protection, replay ledger, Ed25519-signed preflight verdict verification, receiver allowlist, spend caps, kill switch, conservative `UNKNOWN` handling, and final RPC verification of the exact wallet-signed native transfer. NEP-413 signing is used by the separate Tidepool swap-intent flow.
 - Merged Ed25519-signed, short-lived preflight verdicts from PR #10. The payload binds sender, receiver, exact microNEAR amount, nonce, expiry, decision, risk score, assessment status, and assessment ID; the isolated signer verifies the signature and exact intent before policy evaluation and payment execution.
-- Contract-scoped NEAR FunctionCall signer path and final transaction/receipt verification, as documented in the existing deployment evidence.
+- Source-level payment-contract code and a restricted FunctionCall-key validator are present, but the current native-payment route verifies a wallet-signed `Transfer`; it does not execute that payout through the payment contract. Do not claim contract-scoped payouts until a configured deployed contract and matching live transaction evidence exist.
 - Legacy in-process signing path disabled.
 - Aggregate-only public metrics, private admin report handling, per-investigation owner checks for AI review, bounded JSON parsing, same-origin API mutation checks, security response headers, and CI security checks.
 
 ## Signed verdict attestation — PR #10
 
-The implementation was merged through [PR #10](https://github.com/ivanmlnnn/sentinel/pull/10). The feature branch is retained as implementation history. The Main Worker signs trusted assessment payloads with Ed25519; the isolated Signer Worker verifies the signature, expiry, and exact sender/receiver/amount/nonce binding before policy evaluation or payment execution.
+The implementation was merged through [PR #10](https://github.com/ivanmlnnn/sentinel/pull/10). The feature branch is retained as implementation history. The Main Worker signs trusted assessment payloads with Ed25519; the isolated Signer Worker verifies the signature, expiry, and exact sender/receiver/amount/nonce binding before accepting the final wallet-signed transaction evidence.
 
 - Format, key provisioning, and verification order: [Signed Verdict documentation](docs/SIGNED_VERDICT.md).
 - Regression tests: [`tests/signed-verdict.test.mjs`](tests/signed-verdict.test.mjs).

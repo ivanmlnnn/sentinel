@@ -1,72 +1,94 @@
 # NEAR Ecosystem Integration & Wallet-to-Agent Flow
 
-## Judge summary
+## Implementation status — 12 November 2026
 
-NEAR Sentinel is not a generic Cloudflare security dashboard with a NEAR label. Its core security boundary is built around NEAR account state, NEAR transaction evidence, NEAR wallet message approval (NEP-413), a NEAR FunctionCall access key, and a NEAR payment contract.
+This document describes the source currently present on `feature/sentinel-trading-core-lab`. Do not merge separate prototypes or source-only contracts into claims about the active production flow.
 
-**The agent proposes; Sentinel evaluates; the connected wallet owner authorizes the exact payment; a separately restricted NEAR signer executes through the payment contract.** The AI model is not the authority that moves funds.
+**Current native payment path:** the agent proposes; Sentinel evaluates; the connected NEAR wallet signs and sends the exact native Testnet `Transfer`; the isolated Signer Worker independently verifies that transaction and its receipt against NEAR RPC. The Signer Worker does not hold or use the user's wallet private key to sign that transfer.
 
-## What happens when a user connects
+**Current Developer Mode:** preview only. It drafts trading skills. It does not create a delegated access key, persistent wallet session, background job, or automatic trade executor.
 
-Wallet connection and agent activation are related, but they are not the same action:
+## What happens in the current native payment flow
 
 1. **Application sign-in (Privy):** the user authenticates to Sentinel. This establishes the application session used by protected agent and investigation routes.
-2. **Agent interaction:** the authenticated user can ask the AI agent to propose a NEAR payment/action. The model may produce a `request_near_payment` tool proposal. That output is treated as untrusted input, not authorization.
-3. **Sentinel preflight:** Sentinel validates the proposed receiver and amount, queries NEAR Testnet account/access-key state and indexed transaction/receipt/token evidence, and applies deterministic policy. The result is `ALLOW`, `WARN`, `BLOCK`, or `INCOMPLETE`. Missing or incomplete evidence is not silently treated as safe.
-4. **Human approval:** an eligible proposal creates an actor-bound, short-lived approval for the exact receiver and amount. No funds move merely because the agent proposed an action or the scanner returned `ALLOW`.
-5. **NEAR wallet authorization (NEP-413):** the user connects/uses a NEAR Testnet wallet that supports NEP-413 and signs a domain-separated message binding the approval ID, wallet account, exact receiver, amount, network and expiry. This is a wallet message signature, not a blockchain transaction and not a transfer of funds.
-6. **Independent signer checks:** the approval endpoint rechecks the actor, exact intent and fresh Sentinel assessment. The isolated Signer Worker independently verifies the NEP-413 signature against NEAR RPC state, checks the nonce and one-time approval claim, receiver allowlist, spending caps and kill switch.
-7. **Restricted on-chain execution:** the Signer Worker uses a NEAR FunctionCall access key scoped to the configured payment contract and the single `pay` method. The payment contract enforces its own limits and one-time approval ID, then emits the native NEAR payout.
-8. **Receipt-level verification:** the signer checks the transaction and successful native Transfer receipt against the exact approved recipient and amount. An ambiguous result is not reported as success and is not blindly retried.
+2. **Agent interaction:** the user asks the AI agent to prepare a NEAR payment. The model's output is an untrusted proposal, not authorization.
+3. **Sentinel preflight:** Sentinel validates the proposed receiver and amount, checks available NEAR Testnet evidence, and applies deterministic policy. Missing or incomplete evidence is not silently treated as safe.
+4. **Human approval record:** an eligible proposal creates an actor-bound, short-lived approval for the exact receiver and amount. This record does not move funds.
+5. **Wallet transaction approval:** the connected NEAR wallet is asked to sign and send the exact native NEAR `Transfer`. The wallet is the transaction signer and sender. The user sees and approves the transaction in the wallet.
+6. **Independent verification:** the Main Worker calls the private Signer Worker through a Cloudflare service binding. The Signer Worker validates the actor-bound approval, one-time claim, preflight token, spend reservation, and then verifies the exact transaction hash, sender, receiver, amount, success status, and Transfer receipt against NEAR RPC.
+7. **Final state:** only a matching, successful final transaction is reported as executed. Ambiguous RPC results are not reported as success and are not blindly retried.
 
-## The three identities must not be confused
+The Signer Worker is an independent policy and verification boundary. In this active path it verifies the wallet-signed transaction; it does not autonomously sign or originate the user's native transfer.
+
+## The identities must not be confused
 
 | Identity | Purpose | Authority |
 |---|---|---|
 | Privy-authenticated application user | Accesses Sentinel's protected app/agent routes | Application session; not a NEAR signing key |
-| User's connected NEAR wallet | Signs the exact human approval message with NEP-413 | Authorizes the bound payment intent; the message signature itself does not transfer funds |
-| Sentinel runtime signer | Executes the approved payment-contract call | Separate restricted FunctionCall key; not the user's wallet key and not a FullAccess key |
+| Connected NEAR wallet | Signs and sends the exact native Testnet transfer | Controls the account and approves the transaction |
+| Main Worker | Validates proposal, policy, approval and preflight | Cannot use the user's wallet private key |
+| Isolated Signer Worker | Validates approval and verifies final transaction/receipt | Independent policy and evidence boundary; does not sign the user's transfer |
 
-The Main Worker does not hold the runtime NEAR signing private key. It calls the private Signer Worker through a Cloudflare service binding with authenticated, replay-protected internal requests. The signer maintains its own nonce, approval-claim and spending ledgers.
+## Separate Tidepool swap flow
 
-## NEAR-native integrations already present in the implementation
+The repository also contains a separate Testnet swap integration through Tidepool:
 
-- **NEAR FastNear JSON-RPC:** account-state and access-key permission queries, transaction submission and transaction/receipt verification paths.
-- **NearBlocks Testnet API:** indexed native transaction, receipt and fungible-token transfer evidence for investigations, with pagination/completeness handling.
-- **NEP-413:** human wallet-message approval bound to the exact payment intent, verified by the isolated signer.
-- **NEAR FunctionCall access-key model:** signer enforces the configured payment contract as receiver and `pay` as the only allowed method; FullAccess and over-broad permissions are rejected.
-- **NEAR payment contract:** contract-level per-payment/daily caps and one-time approval IDs; native NEAR payout is emitted by the contract and checked at receipt level.
+- Sentinel requests and validates provider quotes, including quote signature and exact intent fields.
+- The connected wallet may register a public key on `verifier.tidepool-sandbox.testnet` using `add_public_key`.
+- The wallet then signs a NEP-413 message bound to the provider's generated intent.
+- Sentinel submits the wallet-signed intent and polls the provider's settlement status.
+
+This is not the native payment approval path. The NEP-413 message signature is requested for the swap intent; it is not a persistent session and does not create general authority for an agent to transact without further wallet interaction.
+
+## Payment contract and FunctionCall-key status
+
+The repository contains `payment-contract/src/lib.rs`. Its `pay()` method accepts calls only from its configured `signer_id`, and the contract itself holds the balance from which payouts are made. The source file alone does not prove a contract is deployed or initialized.
+
+The current main and Signer Wrangler configurations do not provide a `PAYMENT_CONTRACT_ID` or Developer Session contract binding. The active Signer Worker `execute()` path verifies the wallet-signed native transfer; it does not call the contract's `pay()` method. A source-level `assertRestrictedFunctionCallKey()` validator exists, but the active `execute()` path does not invoke it.
+
+Consequently, do not claim that current native payments are executed by a contract-scoped FunctionCall key or that a deployed Sentinel payment contract is currently the payout executor. To make that claim, record the deployed account ID, Wasm/code hash, initialization transaction, contract configuration, and a live transaction whose receipt proves the contract payout.
+
+## Developer Mode delegated sessions — not yet implemented
+
+The current browser imports `@hot-labs/near-connect@0.12.0`. It does not use FastNear's `addFunctionCallKey()`. The Developer Mode toggle only changes local UI state and creates trading-skill drafts.
+
+FastNear `@fastnear/near-connect@0.14.1` documents a limited FunctionCall key flow: the user approves an on-chain `AddKey` once, and the resulting key can sign zero-deposit function calls to one contract and an explicit method list without another popup. Wallets must advertise `features.addFunctionCallKey: true`. Non-zero-deposit transactions still require wallet approval. The key cannot perform arbitrary native transfers or call arbitrary contracts. Its allowance limits gas spending, not the value that a contract transfers.
+
+That capability alone is not enough to enable Sentinel Developer Mode. The existing payment contract rejects a normal user's delegated key because `pay()` requires `predecessor_account_id == signer_id`. A dedicated, audited per-user escrow/session contract is required to enforce user balance, expiry, per-transaction and daily caps, replay protection, and revocation. See [Developer Mode Session Design](DEVELOPER_MODE_SESSION_DESIGN.md).
+
+Until that contract, backend verification, compatible-wallet flow, revoke path, integration tests, and Testnet evidence exist, Developer Mode must remain **Preview only**.
 
 ## Accurate feature boundaries
 
-Do not conflate the above integrations with other NEAR ecosystem products:
+Do not conflate the following:
 
-- **NEP-413 is not Chain Signatures.** Sentinel uses NEP-413 for a wallet owner's message-based approval. This does not mean Sentinel currently uses NEAR's MPC Chain Signatures protocol.
-- **The payment approval flow is not NEAR Intents.** Sentinel has an agent-proposed, policy-checked and human-approved payment flow; do not claim solver-based NEAR Intents execution unless a separate integration is implemented and evidenced.
-- **NEAR Testnet integration is not Aurora integration.** Do not claim Aurora/EVM cross-contract execution without a deployed integration and verifiable transaction/receipt evidence.
+- **NEP-413 is not Chain Signatures.** NEP-413 is used for wallet message signing in the Tidepool swap-intent flow. It is not NEAR MPC Chain Signatures.
+- **The payment approval flow is not NEAR Intents.** No solver-based NEAR Intents execution is established by this integration.
+- **NEAR Testnet is not Aurora.** Do not claim Aurora/EVM cross-contract execution without a deployed and verifiable integration.
+- **A FunctionCall key is not a full wallet session.** It is limited to one receiver contract and a method list; the contract must still enforce value limits and application policy.
+- **A local Developer Mode toggle is not authorization.** A session is active only after the exact on-chain key and contract-side session state have been independently verified.
 
-These are possible future expansion paths, not prerequisites to explain the existing NEAR-specific architecture.
+## Evidence and verification boundary
 
-## Evidence and honest verification boundary
+Source implementation, automated tests, Worker deployment records, wallet interaction, and live blockchain transactions are different evidence categories:
 
-Source implementation, automated tests, Cloudflare deployment records and live blockchain transactions are different evidence categories:
-
-- The repository's judge/evidence documents link the implementation and regression tests for NEP-413 validation, nonce/replay rejection, exact FunctionCall permission checks, kill switch, fail-closed preflight and payout receipt matching.
-- Linked GitHub Actions records establish successful Cloudflare Worker deployment steps and production HTTP smoke checks.
-- These deployment and regression records do **not**, by themselves, prove that a user connected a wallet in the browser, that an AI provider returned a live answer at the time of judging, or that a Sentinel-originated payout occurred.
-- For a live payout claim, show the exact transaction hash and independently verify the Testnet signer, payment contract, recipient, amount, final status and successful native Transfer receipt in NEAR Explorer/RPC. Do not substitute an unrelated transaction.
+- Automated tests establish the behavior covered by those tests on the tested revision.
+- Production HTTP smoke checks establish the tested HTTP/auth behavior; they do not prove wallet popups or blockchain execution.
+- A Worker deployment record proves a Worker version was published; it does not prove a wallet signed a transaction.
+- A live payment claim requires an exact transaction hash and independent verification of sender, receiver, amount, final status, and successful native Transfer receipt.
+- A contract-payout claim additionally requires the contract account, code hash, initialization/configuration, and receipt-level evidence showing the contract as the execution boundary.
 
 ## Suggested 60-second judge explanation
 
-> "A user signs in to Sentinel, then asks the AI agent to propose a NEAR payment. The agent cannot authorize or sign it. Sentinel independently checks NEAR account and transaction evidence and applies deterministic security policy. If the intent is eligible, the user approves the exact receiver and amount with a NEP-413 signature from their NEAR wallet. A separate private signer verifies that approval and uses a restricted NEAR FunctionCall key to call our payment contract. The contract enforces spending limits and one-time approvals, and Sentinel checks the final payout receipt. This makes the wallet a human authorization layer and the agent an untrusted proposer—not an unrestricted wallet operator."
+> "Sentinel treats the AI as an untrusted proposer. It checks NEAR Testnet evidence, applies deterministic policy, and creates a short-lived approval for the exact payment. The user then approves the exact native NEAR transfer in their connected wallet. Our isolated Signer Worker independently checks the approval, replay controls, spend limits, and the final transaction and receipt against NEAR RPC. The AI cannot sign with the user's wallet, and a proposal or an ALLOW verdict alone never moves funds."
 
-## Relevant source and evidence
+## Relevant source
 
 - `functions/api/agent.js` and `functions/api/agent-approve.js` — agent proposal and approval routes.
-- `functions/api/investigate.js` and `functions/api/internal-investigate.js` — investigation and internal preflight.
-- `signer-worker/src/index.mjs` — isolated signer, NEP-413 verification, permission checks and transaction/receipt verification.
-- `payment-contract/src/lib.rs` — payment contract and payout constraints.
+- `signer-worker/src/index.mjs` — approval reservations, policy checks, replay protection, and final wallet transaction verification.
+- `src/trading-core.mjs` and `public/app.js` — Tidepool quote and NEP-413 swap-intent flow.
+- `payment-contract/src/lib.rs` — source for the separate Sentinel payment contract; not evidence of deployment.
+- [Developer Mode Session Design](DEVELOPER_MODE_SESSION_DESIGN.md)
 - [Judge Evidence Pack](JUDGE_EVIDENCE_PACK.md)
 - [Secure Agent Pipeline](SECURE_AGENT_PIPELINE.md)
 - [End-to-End Verification Report](END_TO_END_VERIFICATION.md)
-

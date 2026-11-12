@@ -235,7 +235,14 @@ async function initWallet() {
       const account = event.accounts && event.accounts[0];
       syncWalletUI(account?.accountId, event.wallet?.manifest?.name || 'NEAR wallet');
     });
-    connector.on('wallet:signOut', () => syncWalletUI(null, null));
+    connector.on('wallet:signOut', () => {
+      syncWalletUI(null, null);
+      if (developerModeEnabled || developerModePending) {
+        setDeveloperMode(false, 'OFF · WALLET DISCONNECTED');
+        if (developerModeToggle) developerModeToggle.disabled = false;
+        developerModePending = false;
+      }
+    });
 
     try {
       const current = await connector.getConnectedWallet();
@@ -714,13 +721,60 @@ const agentForm = $('agentForm');
 const developerModeToggle = $('developerModeToggle');
 const developerModeBanner = $('developerModeBanner');
 let developerModeEnabled = false;
-developerModeToggle?.addEventListener('change', () => {
-  developerModeEnabled = developerModeToggle.checked;
+let developerModePending = false;
+
+function setDeveloperMode(enabled, statusText) {
+  developerModeEnabled = Boolean(enabled);
+  if (developerModeToggle) developerModeToggle.checked = developerModeEnabled;
   document.body.classList.toggle('sentinel-developer-mode', developerModeEnabled);
   if (developerModeBanner) developerModeBanner.classList.toggle('hidden', !developerModeEnabled);
   const status = document.querySelector('.developer-mode-status');
-  if (status) status.textContent = developerModeEnabled ? 'ON · SKILL DRAFTING' : 'OFF · SAFE CHAT';
-  toast(developerModeEnabled ? 'Developer Mode enabled. Trading requests create drafts only.' : 'Developer Mode disabled.');
+  if (status) status.textContent = statusText || (developerModeEnabled ? 'ON · WALLET CONNECTED · PREVIEW ONLY' : 'OFF · SAFE CHAT');
+}
+
+async function requestDeveloperModeWalletApproval() {
+  if (developerModePending) return;
+  developerModePending = true;
+  if (developerModeToggle) {
+    developerModeToggle.checked = false;
+    developerModeToggle.disabled = true;
+  }
+  setDeveloperMode(false, 'WAITING FOR WALLET APPROVAL');
+  try {
+    if (!connectorReady || !connector) {
+      throw new Error('NEAR wallet connector is not ready. Refresh and try again.');
+    }
+    if (!connectedAccount) {
+      if (!Array.isArray(connector.availableWallets) || connector.availableWallets.length === 0) {
+        throw new Error('No compatible NEAR Testnet wallet is available in this browser.');
+      }
+      await connector.connect();
+    }
+    const current = await connector.getConnectedWallet();
+    const account = current?.accounts?.[0];
+    const accountId = account?.accountId;
+    if (!accountId || !accountId.endsWith('.testnet')) {
+      throw new Error('Wallet approval was not completed with a NEAR Testnet account.');
+    }
+    syncWalletUI(accountId, current.wallet?.manifest?.name || 'NEAR wallet');
+    setDeveloperMode(true, 'ON · WALLET CONNECTED · PREVIEW ONLY');
+    toast('NEAR Testnet wallet connected. Developer preview is active; delegated execution is not enabled.');
+  } catch (error) {
+    setDeveloperMode(false, 'OFF · WALLET APPROVAL REQUIRED');
+    toast(error?.message || 'Wallet approval was rejected. Developer Mode remains OFF.');
+  } finally {
+    developerModePending = false;
+    if (developerModeToggle) developerModeToggle.disabled = false;
+  }
+}
+
+developerModeToggle?.addEventListener('change', () => {
+  if (developerModeToggle.checked) {
+    void requestDeveloperModeWalletApproval();
+    return;
+  }
+  setDeveloperMode(false, 'OFF · SAFE CHAT');
+  toast('Developer Mode disabled.');
 });
 async function renderTradeSkillDraft(prompt) {
   const result = $('agentResult');
