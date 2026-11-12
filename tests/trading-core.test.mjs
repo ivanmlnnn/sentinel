@@ -270,3 +270,27 @@ test("polls Tidepool status only for a well-formed Testnet deposit account", asy
   const invalid = await getTidepoolSwapStatus("alice.testnet", fetchImpl);
   assert.equal(invalid.reason, "INVALID_DEPOSIT_ADDRESS");
 });
+
+
+test("checks Tidepool verifier key registration through the NEAR Testnet RPC", async () => {
+  const { getTidepoolPublicKeyStatus } = await import("../src/trading-core.mjs");
+  const fetchImpl = async (url, init) => {
+    assert.equal(url, "https://rpc.testnet.near.org");
+    const body = JSON.parse(init.body);
+    assert.equal(body.params.method_name, "has_public_key");
+    assert.equal(body.params.account_id, "verifier.tidepool-sandbox.testnet");
+    const result = new TextEncoder().encode("true");
+    return new Response(JSON.stringify({ result: { result: [...result] } }), { status: 200 });
+  };
+  const result = await getTidepoolPublicKeyStatus({
+    accountId: "alice.testnet",
+    publicKey: "ed25519:" + "1".repeat(32)
+  }, fetchImpl);
+  assert.equal(result.ok, true);
+  assert.equal(result.value.registered, true);
+  const invalid = await getTidepoolPublicKeyStatus({
+    accountId: "alice.near",
+    publicKey: "ed25519:" + "1".repeat(32)
+  }, fetchImpl);
+  assert.equal(invalid.reason, "INVALID_PUBLIC_KEY_STATUS_REQUEST");
+});
