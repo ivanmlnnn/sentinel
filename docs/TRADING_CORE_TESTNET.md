@@ -37,7 +37,7 @@
 ## Wallet and funding prerequisites
 
 - Connect a NEAR Testnet wallet with NEP-413 `signMessage` support. The current connector filters for `testnet`, `signAndSendTransaction`, and `signMessage`.
-- The wallet must hold the selected test token in its NEAR Intents balance.
+- The wallet must hold the selected test token in its NEAR Intents balance. Use the Tidepool faucet at https://app.usetidepool.tech/faucet and choose **NEAR Testnet → Intents balance**, not Wallet mode. The faucet is site-only, rate-limited, and requires an existing NEAR Testnet account at least three hours old.
 - The account's public key may need to be registered with the Tidepool verifier before its first NEP-413 intent. Follow Tidepool's current wallet/faucet setup instructions.
 - The UI deliberately stops if the wallet cannot return a complete NEP-413 signature. It does not silently switch signing standards.
 - A rejected wallet prompt means no signed intent is submitted. If the wallet prompt completed but the network response timed out, check Tidepool status before attempting again.
