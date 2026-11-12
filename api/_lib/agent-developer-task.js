@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { query } from '../_lib/db.js';
+import { query } from './db.js';
 
 function send(res,status,body){res.setHeader('cache-control','no-store');return res.status(status).json(body);}
 function cookieToken(req){const raw=String(req.headers.cookie||'');const part=raw.split(';').map(x=>x.trim()).find(x=>x.startsWith('sentinel_dev_session='));return part?decodeURIComponent(part.slice('sentinel_dev_session='.length)):'';}
