@@ -2,7 +2,7 @@ const ASSETS = ['BTC', 'ETH', 'NEAR', 'USDC', 'USDT', 'SOL', 'WNEAR'];
 
 export function buildTradeSkillDraft(prompt) {
   const text = String(prompt || '').trim().slice(0, 4000);
-  const negatedAction = /\b(don't|do not|never|jangan|tidak|bukan)\s+(?:buy|sell|swap|trade|beli|jual|tukar)\b/i.test(text);
+  const negatedAction = /\b(don't|do not|never|jangan|tidak|bukan)\s+(?:(?:want|wanna|need|ingin|mau)\s+to\s+)?(?:buy|sell|swap|trade|beli|jual|tukar)\b/i.test(text);
   const action = negatedAction ? null
     : /\b(sell|jual)\b/i.test(text) ? 'SELL'
     : /\b(swap|tukar|exchange)\b/i.test(text) ? 'SWAP'
@@ -11,7 +11,7 @@ export function buildTradeSkillDraft(prompt) {
     symbol,
     index: text.search(new RegExp('\\b' + symbol + '\\b', 'i'))
   })).filter(item => item.index >= 0).sort((a, b) => a.index - b.index);
-  const amountMatch = text.match(/\$\s*(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?)\s*(USD|USDC|USDT|BTC|ETH|NEAR|SOL|WNEAR)\b/i);
+  const amountMatch = text.match(/(?<![-\w.])(?:\$\s*(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?)\s*(USD|USDC|USDT|BTC|ETH|NEAR|SOL|WNEAR)\b)/i);
   const amount = amountMatch ? Number(amountMatch[1] || amountMatch[2]) : null;
   const amountUnit = amountMatch?.[3] ? amountMatch[3].toUpperCase() : (amountMatch?.[1] ? 'USD' : null);
   const schedule = /\b(hourly|every hour|per jam)\b/i.test(text) ? 'HOURLY'
