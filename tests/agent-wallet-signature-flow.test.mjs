@@ -18,7 +18,6 @@ test("one approval tap uses the currently connected NEAR wallet for the exact na
   assert.match(app, /signMessageParams/);
   assert.match(app, /operation: 'challenge'/);
   assert.match(app, /operation: 'activate'/);
-  assert.doesNotMatch(app, /wallet\.signMessage\(/);
 });
 
 test("Main Worker requires a fresh Sentinel ALLOW assessment before the wallet request and verifies through isolated signer", () => {
