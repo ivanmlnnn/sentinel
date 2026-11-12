@@ -31,3 +31,22 @@ These are intended product principles, not a claim that all five capabilities ar
 3. Implement a sandbox runner with tool allowlists and deterministic policy enforcement.
 4. Add proof records, anomaly detection, circuit-breaker state, and replay-safe execution.
 5. Connect only audited, scoped on-chain capabilities after Testnet integration tests.
+
+## Security Supervisor and persistent runtime boundary — 12 November 2026
+
+The second specialist is the **Security Supervisor**, separate from the Runtime Agent. It is intended to inspect session lifecycle signals and correlate production telemetry such as authentication failures, invalid signatures, replay attempts, rate-limit events, origin errors, and wallet-consent failures.
+
+The Hatchable implementation currently provides an HMAC-authenticated event-ingestion endpoint, telemetry/incident persistence, initial deterministic thresholds, and a session-freeze path for specified compromise/replay signals. The endpoint rejects unauthenticated requests. These checks establish an authenticated ingestion boundary; they do not establish that production Cloudflare traffic is already being forwarded.
+
+### Runtime / uptime truth
+
+- A deployed API endpoint is not the same as a continuously running process.
+- The design is event-driven and scheduler-backed; no interactive terminal should be required to remain open.
+- 24/7 availability, scheduler retries, heartbeat freshness, dead-letter handling, and recovery after provider/database outages still require configuration and end-to-end monitoring.
+- Do not display a green “online” status merely because the deployment exists. Use explicit states such as `CONFIGURED`, `HEALTHY`, `DEGRADED`, and `UNKNOWN`, backed by recent heartbeat/telemetry timestamps.
+
+### Authority and least privilege
+
+The Supervisor may record events, correlate patterns, create incidents, and freeze only the affected agent session for explicitly defined high-confidence signals. It must not have permission to modify production code, deploy, alter Cloudflare policy, access wallet secrets, or approve transactions. Cloudflare remains the enforcement authority; the isolated Signer remains an independent transaction boundary. If the Supervisor is unavailable, Cloudflare enforcement continues without waiting for it.
+
+See [Security Supervisor Runbook](SECURITY_SUPERVISOR_RUNBOOK.md) for rollout gates and test cases.
