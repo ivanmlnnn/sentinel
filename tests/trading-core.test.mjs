@@ -61,6 +61,23 @@ function liveQuoteResponse(overrides = {}) {
   };
 }
 
+test("risk evaluation emits a quote-bound proof and blocks a weakened minimum output", async () => {
+  const { evaluateTidepoolSwapRisk } = await import("../src/trading-core.mjs");
+  const valid = await evaluateTidepoolSwapRisk(liveQuoteResponse(), input);
+  assert.equal(valid.ok, true);
+  assert.equal(valid.value.decision, "ALLOW");
+  assert.match(valid.value.quote_hash, /^sha256:[a-f0-9]{64}$/);
+  assert.match(valid.value.policy_hash, /^sha256:[a-f0-9]{64}$/);
+  assert.ok(valid.value.checks.every(check => check.status === "PASS"));
+  const weak = liveQuoteResponse({
+    quote: { minAmountOut: "1" }
+  });
+  const blocked = await evaluateTidepoolSwapRisk(weak, input);
+  assert.equal(blocked.ok, false);
+  assert.equal(blocked.reason, "SENTINEL_SWAP_RISK_BLOCKED");
+  assert.equal(blocked.value.decision, "BLOCK");
+});
+
 test("only exposes Tidepool NEAR testnet assets, not bridged or mainnet assets", () => {
   assert.deepEqual(tokens.map(token => token.symbol), ["USDC", "wNEAR"]);
   assert.ok(tokens.every(token => token.network === "testnet"));
