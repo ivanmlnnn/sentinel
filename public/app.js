@@ -889,6 +889,61 @@ async function renderTradeSkillDraft(prompt) {
           liveStatus.textContent = 'Cancelled before wallet signing. No transfer was submitted.';
           return;
         }
+        const wallet = await connector.wallet();
+        if (!wallet || typeof wallet.signMessage !== 'function' ||
+            typeof wallet.signAndSendTransaction !== 'function') {
+          throw new Error('This wallet must support both NEP-413 message signing and Testnet transactions. No fallback signing is available.');
+        }
+        const walletSnapshot = await connector.getConnectedWallet();
+        let walletAccount = walletSnapshot?.accounts?.find(account => account.accountId?.toLowerCase() === connectedAccount.toLowerCase());
+        if (!walletAccount && typeof wallet.getAccounts === 'function') {
+          const walletAccounts = await wallet.getAccounts();
+          walletAccount = walletAccounts?.find(account => account.accountId?.toLowerCase() === connectedAccount.toLowerCase());
+        }
+        const walletPublicKey = walletAccount?.publicKey?.toString?.() || walletAccount?.publicKey || '';
+        if (!walletPublicKey.startsWith('ed25519:')) {
+          throw new Error('Could not read the connected wallet public key. Reconnect the Testnet wallet and try again.');
+        }
+        let keyStatus = await request('/trading/key-status', {
+          method: 'POST',
+          body: JSON.stringify({ accountId: connectedAccount, publicKey: walletPublicKey })
+        });
+        if (!keyStatus.registered) {
+          const register = window.confirm(
+            'ONE-TIME VERIFIER KEY REGISTRATION\\n\\n' +
+            'This NEAR Testnet account key is not registered on Tidepool\\'s verifier. ' +
+            'Sentinel must register the public key before NEP-413 signing. ' +
+            'Your wallet will ask you to approve add_public_key on verifier.tidepool-sandbox.testnet. ' +
+            'This requires a small amount of NEAR Testnet gas and 1 yoctoNEAR. Continue?'
+          );
+          if (!register) {
+            liveStatus.textContent = 'Cancelled before key registration. No swap was submitted.';
+            return;
+          }
+          liveStatus.textContent = 'Requesting one-time verifier public-key registration in your wallet…';
+          await wallet.signAndSendTransaction({
+            receiverId: 'verifier.tidepool-sandbox.testnet',
+            actions: [{
+              type: 'FunctionCall',
+              params: {
+                methodName: 'add_public_key',
+                args: { public_key: walletPublicKey },
+                gas: '30000000000000',
+                deposit: '1'
+              }
+            }]
+          });
+          let registered = false;
+          for (let attempt = 0; attempt < 10; attempt++) {
+            keyStatus = await request('/trading/key-status', {
+              method: 'POST',
+              body: JSON.stringify({ accountId: connectedAccount, publicKey: walletPublicKey })
+            });
+            if (keyStatus.registered === true) { registered = true; break; }
+            await new Promise(resolve => window.setTimeout(resolve, 1500));
+          }
+          if (!registered) throw new Error('Verifier key registration was not confirmed. No NEP-413 swap intent was signed or submitted.');
+        }
         const intent = await request('/trading/generate-intent', {
           method: 'POST',
           body: JSON.stringify({
@@ -904,10 +959,6 @@ async function renderTradeSkillDraft(prompt) {
             intent.amount !== lastSwapRequest.amount ||
             !intent.payload?.message || !intent.payload?.nonce || !intent.payload?.recipient) {
           throw new Error('Generated intent does not match the reviewed quote. Signing stopped.');
-        }
-        const wallet = await connector.wallet();
-        if (!wallet || typeof wallet.signMessage !== 'function') {
-          throw new Error('This connected wallet does not expose NEP-413 signMessage. No fallback or server-side signing will be used.');
         }
         const nonce = Uint8Array.from(atob(intent.payload.nonce), char => char.charCodeAt(0));
         if (nonce.length !== 32) throw new Error('The provider returned an invalid NEP-413 nonce.');
