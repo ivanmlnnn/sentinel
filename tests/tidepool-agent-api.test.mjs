@@ -121,6 +121,24 @@ test("maps Tidepool JSON:API errors without retrying or leaking credentials", as
   assert.equal(calls, 1);
 });
 
+test("preserves the same idempotency key when an execution outcome is uncertain", async () => {
+  let calls = 0;
+  const client = createTidepoolAgentClient({
+    apiKey: "naa_test_key",
+    grantToken: "ngt_test_grant",
+    fetchImpl: async url => {
+      calls++;
+      if (new URL(url).pathname.endsWith("/policy")) return response({ policy });
+      throw new Error("network lost after request dispatch");
+    }
+  });
+  await assert.rejects(
+    client.requestOwnerApprovedSwap("agent_12345678", swap, "sentinel-retry-key-001"),
+    error => error.code === "TIDEPOOL_PROVIDER_UNAVAILABLE" && error.idempotencyKey === "sentinel-retry-key-001"
+  );
+  assert.equal(calls, 2);
+});
+
 test("rejects malformed IDs, asset IDs, amounts, and non-Tidepool paths", async () => {
   const client = createTidepoolAgentClient({ apiKey: "naa_test_key", fetchImpl: async () => response({}) });
   await assert.rejects(client.getAgent("../external"), error => error.code === "TIDEPOOL_AGENT_ID_INVALID");
