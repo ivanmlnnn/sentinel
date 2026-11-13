@@ -91,3 +91,17 @@
 .trading-research-card{border-color:rgba(94,208,198,.26)}
 .trading-research-card .skill-card-icon{color:#8ce0d4}
 @media(max-width:480px){.trading-agent-market{align-items:flex-start;flex-direction:column}.trading-agent-provenance{align-items:flex-start;flex-direction:column}}
+
+
+.trading-backtest-actions{display:grid;gap:9px;padding-top:4px}
+.trading-backtest-actions>button{width:fit-content}
+.trading-backtest-result:empty{display:none}
+.trading-backtest-result{padding:11px;border:1px solid rgba(116,211,202,.18);border-radius:10px;background:rgba(0,0,0,.12)}
+.trading-backtest-summary{display:grid;gap:9px}
+.trading-backtest-summary>b,.trading-backtest-summary>small{font:700 9px/1.5 "IBM Plex Mono",monospace;color:#9eb9b5;letter-spacing:.05em}
+.trading-backtest-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.trading-backtest-metrics>div{display:grid;gap:5px;min-width:0;padding:9px;border-radius:8px;background:rgba(255,255,255,.035)}
+.trading-backtest-metrics small{font:700 8px "IBM Plex Mono",monospace;color:#8fa8a2}
+.trading-backtest-metrics strong{font:700 13px "IBM Plex Mono",monospace;color:#d8e9e4;overflow-wrap:anywhere}
+.trading-backtest-summary p{margin:0;color:#c5d0b7;font-size:10px;line-height:1.55}
+@media(max-width:480px){.trading-backtest-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
