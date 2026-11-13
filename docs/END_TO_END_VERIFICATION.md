@@ -208,7 +208,7 @@ A separate [Independent Local Stress Lab report](INDEPENDENT_LOCAL_STRESS_LAB.md
 
 ## 9. Gemini provider migration — 11 November 2026
 
-The authenticated Agent, Guest Agent, and AI Review routes have been migrated from Anthropic Messages API calls to the shared Google Gemini adapter in `functions/api/_gemini.js`.
+Historical snapshot: this earlier revision migrated the authenticated Agent, Guest Agent, and AI Review routes from Anthropic to a Google Gemini adapter. The current branch instead uses Cloudflare Workers AI through `functions/api/_ai.js` and `env.AI`; this section is retained as historical migration evidence only.
 
 | Area | Implementation |
 |---|---|
