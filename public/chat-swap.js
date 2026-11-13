@@ -455,12 +455,33 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
     const originOption = el("option", formatToken(token)); originOption.value = token.asset_id; originSelect.append(originOption);
     const destinationOption = el("option", formatToken(token)); destinationOption.value = token.asset_id; destSelect.append(destinationOption);
   }
-  const initialOrigin = tokens.filter(token => token.symbol.toUpperCase() === parsed.from);
-  const initialDestination = tokens.filter(token => token.symbol.toUpperCase() === parsed.to);
-  if (initialOrigin.length === 1) originSelect.value = initialOrigin[0].asset_id;
-  else originSelect.value = "";
-  if (initialDestination.length === 1) destSelect.value = initialDestination[0].asset_id;
-  else destSelect.value = "";
+  // Symbols such as ETH and USDC exist on several testnets. Resolve a deterministic
+  // supported default instead of leaving the native selects empty when matches are ambiguous.
+  const preferredChain = symbol => {
+    const key = String(symbol || "").toUpperCase();
+    if (key === "NEAR" || key === "WNEAR") return "near";
+    if (key === "BNB") return "bsc";
+    if (key === "SOL") return "sol";
+    if (key === "BTC" || key === "WBTC") return "btc";
+    if (key === "XLM") return "stellar";
+    if (key === "XRP") return "xrp";
+    if (key === "SUI") return "sui";
+    if (key === "ETH") return "eth";
+    return "near";
+  };
+  const chooseInitialToken = symbol => {
+    const matches = tokens.filter(token => String(token.symbol).toUpperCase() === String(symbol).toUpperCase());
+    if (!matches.length) return null;
+    const preferred = preferredChain(symbol);
+    return matches.find(token => String(token.blockchain).toLowerCase() === preferred) ||
+      matches.find(token => String(token.blockchain).toLowerCase() === "near") ||
+      matches.find(token => CHAIN_IDS[String(token.blockchain).toLowerCase()]) ||
+      matches[0];
+  };
+  const initialOrigin = chooseInitialToken(parsed.from);
+  const initialDestination = chooseInitialToken(parsed.to);
+  originSelect.value = initialOrigin?.asset_id || "";
+  destSelect.value = initialDestination?.asset_id || "";
   originSelect.className = "swap-native-select";
   destSelect.className = "swap-native-select";
   const originPicker = createSwapTokenPicker(originSelect, tokens, parsed.from, () => activeNearAccount, () => { defaults(); invalidate(); });
@@ -484,7 +505,8 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
     if (key === "near") {
       if (!connector) throw new Error("NEAR wallet connector is not ready. Refresh and retry.");
       if (!activeNearAccount) {
-        if (!connector.availableWallets?.length) throw new Error("No NEAR Testnet wallet is available in this browser.");
+        // Do not gate the user's click on an asynchronously populated wallet list.
+        // Let NEAR Connect open its selector so users can choose/install a compatible wallet.
         await connector.connect();
         const current = await connector.getConnectedWallet();
         const account = current.accounts?.[0];
@@ -517,7 +539,10 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
   fields.append(walletBar);
   connectButton.addEventListener("click", async () => {
     const { origin, dest } = defaults();
-    if (!origin || !dest) { status.textContent = "Choose both assets before connecting a wallet."; return; }
+    if (!origin || !dest) {
+      status.textContent = "Select a valid origin and destination asset from the Tidepool registry first.";
+      return;
+    }
     connectButton.disabled = true;
     connectButton.textContent = "Connecting…";
     try {
