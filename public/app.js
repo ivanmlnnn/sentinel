@@ -757,8 +757,8 @@ async function requestDeveloperModeWalletApproval() {
       throw new Error('Wallet approval was not completed with a NEAR Testnet account.');
     }
     syncWalletUI(accountId, current.wallet?.manifest?.name || 'NEAR wallet');
-    setDeveloperMode(true, 'ON · WALLET CONNECTED · PREVIEW ONLY');
-    toast('NEAR Testnet wallet connected. Developer preview is active; delegated execution is not enabled.');
+    setDeveloperMode(true, 'CONNECTED · DEVELOPER SESSION · EXECUTION RESTRICTED');
+    toast('NEAR Testnet wallet connected. Developer tasks route to Railway; autonomous signing remains disabled until delegated authorization is configured.');
   } catch (error) {
     setDeveloperMode(false, 'OFF · WALLET APPROVAL REQUIRED');
     toast(error?.message || 'Wallet approval was rejected. Developer Mode remains OFF.');
@@ -1451,7 +1451,7 @@ if (agentForm) {
     result.classList.remove('hidden');
     result.textContent = developerModeEnabled
       ? 'Developer Mode preview is active. Trading requests remain draft-only…'
-      : 'Calling the AI provider and evaluating the proposed action…';
+      : (developerModeEnabled ? 'Sending task to Railway Developer Agent…' : 'Sending task to Railway User Agent…');
     try {
       if (developerModeEnabled && /\b(buy|sell|swap|trade|beli|jual|tukar|dca)\b/i.test(prompt) && /\b(BTC|ETH|NEAR|USDC|USDT|SOL|WNEAR)\b/i.test(prompt)) {
         await renderTradeSkillDraft(prompt);
@@ -1481,7 +1481,7 @@ if (agentForm) {
         const data = await request('/terminal/run', {
           method: 'POST',
           headers: { 'Idempotency-Key': crypto.randomUUID() },
-          body: JSON.stringify({ mode: 'user', prompt })
+          body: JSON.stringify({ mode: developerModeEnabled ? 'developer' : 'user', prompt, wallet_account: developerModeEnabled ? connectedAccount : null })
         });
         renderAgentResult(data);
         $('agentPrompt').value = '';
