@@ -50,7 +50,7 @@ test("uses only prior completed candles and fills on the next candle open", () =
   assert.equal(result.value.sample.fills_use_next_candle_open, true);
   assert.ok(result.value.trades.length >= 1);
   const first = result.value.trades[0];
-  assert.ok(Date.parse(first.entry_at) > Date.parse(first.signal_at));
+  assert.ok(Date.parse(first.entry_at) > Date.parse(first.entry_signal_at));
   assert.ok(first.entry_price > candles.find(c => new Date(c.timestamp).toISOString() === first.entry_at).open);
 });
 
