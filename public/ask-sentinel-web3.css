@@ -85,3 +85,132 @@
 .developer-trade-draft>p{color:#9ab4c8!important;line-height:1.65!important}
 @media(hover:none){.sentinel-rail-action:hover,.sentinel-skill-card:hover,.swap-connect-button:hover{transform:none!important}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;will-change:auto!important}}
+
+
+/* Unified dashboard Web3 skin — inherit the live dashboard palette instead of
+   introducing a second cyan/violet brand system. */
+:root{
+  --as-accent:var(--mint,#55f0a8);
+  --as-accent-2:var(--green,#55e6a2);
+  --as-panel:var(--surface,#0d131b);
+  --as-panel-2:var(--surface2,#111a24);
+  --as-border:var(--line,#24313d);
+  --as-fg:var(--text,#e9f0f4);
+  --as-subtle:var(--muted,#8797a5);
+}
+@keyframes as-ambient-drift{0%,100%{transform:translate3d(-2%,0,0) scale(1)}50%{transform:translate3d(2%,-1.5%,0) scale(1.06)}}
+@keyframes as-border-flow{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+@keyframes as-scanline{0%{transform:translateY(-110%);opacity:0}12%{opacity:.22}88%{opacity:.12}100%{transform:translateY(110%);opacity:0}}
+@keyframes as-dot-pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--as-accent) 0%,transparent)}50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--as-accent) 12%,transparent)}}
+.agent-lab-grid{align-items:stretch!important;gap:16px!important}
+.agent-lab-panel,.sentinel-command-rail{
+  color:var(--as-fg)!important;
+  border:1px solid color-mix(in srgb,var(--as-accent) 22%,var(--as-border))!important;
+  border-radius:18px!important;
+  background:
+    radial-gradient(ellipse at 8% 0%,color-mix(in srgb,var(--as-accent) 11%,transparent),transparent 43%),
+    radial-gradient(ellipse at 100% 100%,color-mix(in srgb,var(--as-accent-2) 7%,transparent),transparent 38%),
+    linear-gradient(145deg,var(--as-panel-2),var(--as-panel))!important;
+  box-shadow:0 18px 55px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.035)!important;
+}
+.agent-lab-panel{overflow:hidden!important}
+.agent-lab-panel:after{
+  content:"";position:absolute;pointer-events:none;z-index:0;top:-42%;right:-22%;
+  width:56%;aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(circle,color-mix(in srgb,var(--as-accent) 10%,transparent),transparent 68%);
+  filter:blur(12px);animation:as-ambient-drift 10s ease-in-out infinite;
+}
+.agent-chat-header,.agent-welcome,.agent-quick-start,.agent-chat-form{position:relative;z-index:1}
+.agent-chat-header{border-color:var(--as-border)!important;background:color-mix(in srgb,var(--as-panel) 78%,transparent)!important;backdrop-filter:blur(16px)!important}
+.agent-chat-avatar,.agent-welcome-avatar{
+  border:1px solid color-mix(in srgb,var(--as-accent) 45%,transparent)!important;
+  background:radial-gradient(circle at 35% 25%,color-mix(in srgb,var(--as-accent) 90%,white),color-mix(in srgb,var(--as-accent) 38%,#10251d) 58%,#09120f)!important;
+  box-shadow:0 0 24px color-mix(in srgb,var(--as-accent) 15%,transparent)!important;
+}
+.agent-chat-identity strong,.agent-welcome-copy strong,.sentinel-command-rail h3{color:var(--as-fg)!important}
+.agent-chat-identity span,.agent-welcome-copy p,.sentinel-rail-copy{color:var(--as-subtle)!important}
+.agent-chat-ready{color:var(--as-accent)!important}
+.agent-chat-ready i,.sentinel-rail-live i,.sentinel-rail-status-dot{background:var(--as-accent)!important;box-shadow:0 0 12px color-mix(in srgb,var(--as-accent) 65%,transparent)!important;animation:as-dot-pulse 2.8s ease-in-out infinite}
+.agent-welcome{
+  border:1px solid color-mix(in srgb,var(--as-accent) 18%,var(--as-border))!important;
+  border-radius:14px!important;
+  background:linear-gradient(115deg,color-mix(in srgb,var(--as-accent) 7%,var(--as-panel)),color-mix(in srgb,var(--as-panel-2) 92%,transparent))!important;
+}
+.agent-quick-label,.agent-compose-label,.sentinel-rail-eyebrow{color:var(--as-accent)!important;letter-spacing:.13em!important}
+.sentinel-skill-card{
+  border:1px solid color-mix(in srgb,var(--as-accent) 16%,var(--as-border))!important;
+  border-radius:12px!important;
+  background:linear-gradient(145deg,color-mix(in srgb,var(--as-panel-2) 94%,var(--as-accent)),var(--as-panel))!important;
+  color:var(--as-fg)!important;
+}
+.sentinel-skill-card .skill-card-icon,.sentinel-rail-icon{
+  border:1px solid color-mix(in srgb,var(--as-accent) 25%,transparent)!important;
+  background:color-mix(in srgb,var(--as-accent) 9%,var(--as-panel))!important;
+  color:var(--as-accent)!important;
+}
+.sentinel-skill-card b,.sentinel-rail-action b{color:var(--as-fg)!important}
+.sentinel-skill-card small,.sentinel-rail-action small{color:var(--as-subtle)!important}
+.sentinel-skill-card:hover,.sentinel-skill-card.is-selected{
+  border-color:color-mix(in srgb,var(--as-accent) 62%,var(--as-border))!important;
+  background:linear-gradient(120deg,color-mix(in srgb,var(--as-accent) 11%,var(--as-panel-2)),var(--as-panel))!important;
+  box-shadow:0 9px 28px color-mix(in srgb,var(--as-accent) 10%,transparent),inset 0 0 0 1px color-mix(in srgb,var(--as-accent) 8%,transparent)!important;
+}
+.agent-compose-box{
+  border:1px solid color-mix(in srgb,var(--as-accent) 28%,var(--as-border))!important;
+  border-radius:14px!important;background:color-mix(in srgb,var(--as-panel) 94%,black)!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.035)!important;
+}
+.agent-compose-box:focus-within{
+  border-color:color-mix(in srgb,var(--as-accent) 72%,var(--as-border))!important;
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--as-accent) 9%,transparent),0 0 28px color-mix(in srgb,var(--as-accent) 9%,transparent)!important;
+}
+.agent-compose-box textarea{color:var(--as-fg)!important;caret-color:var(--as-accent)!important;background:transparent!important}
+.agent-compose-box textarea::placeholder{color:var(--as-subtle)!important}
+.agent-compose-bottom{border-color:var(--as-border)!important}
+.agent-compose-bottom>span{color:var(--as-subtle)!important}
+.agent-chat-form .primary-btn,.agent-compose-bottom .primary-btn{
+  border:1px solid color-mix(in srgb,var(--as-accent) 55%,transparent)!important;
+  border-radius:10px!important;
+  background:linear-gradient(110deg,var(--as-accent),var(--as-accent-2))!important;
+  color:#07130e!important;font-weight:800!important;
+  box-shadow:0 7px 24px color-mix(in srgb,var(--as-accent) 15%,transparent)!important;
+}
+.agent-lab-warning{
+  border:1px solid color-mix(in srgb,var(--as-accent) 18%,var(--as-border))!important;
+  border-radius:10px!important;background:color-mix(in srgb,var(--as-accent) 4%,var(--as-panel))!important;
+}
+.agent-lab-warning b{color:var(--as-accent)!important}.agent-lab-warning span{color:var(--as-subtle)!important}
+.sentinel-command-rail{padding:22px!important;overflow:hidden!important}
+.sentinel-command-rail:after{
+  content:"";position:absolute;pointer-events:none;inset:-100% 0 auto;height:65%;
+  background:linear-gradient(transparent,color-mix(in srgb,var(--as-accent) 5%,transparent),transparent);
+  animation:as-scanline 8s linear infinite;
+}
+.sentinel-rail-head,.sentinel-command-rail h3,.sentinel-rail-copy,.sentinel-rail-actions,.sentinel-rail-status{position:relative;z-index:1}
+.sentinel-rail-live{color:var(--as-accent)!important}
+.sentinel-command-rail h3{font-size:22px!important}
+.sentinel-rail-action{
+  border:1px solid color-mix(in srgb,var(--as-accent) 17%,var(--as-border))!important;
+  border-radius:12px!important;
+  background:linear-gradient(115deg,color-mix(in srgb,var(--as-accent) 5%,var(--as-panel-2)),var(--as-panel))!important;
+  color:var(--as-fg)!important;
+}
+.sentinel-rail-action:hover,.sentinel-rail-action:focus-visible{
+  border-color:color-mix(in srgb,var(--as-accent) 58%,var(--as-border))!important;
+  background:linear-gradient(115deg,color-mix(in srgb,var(--as-accent) 10%,var(--as-panel-2)),var(--as-panel))!important;
+  box-shadow:0 8px 28px color-mix(in srgb,var(--as-accent) 9%,transparent)!important;
+}
+.sentinel-rail-arrow{color:var(--as-accent)!important}
+.sentinel-rail-status{
+  border:1px solid color-mix(in srgb,var(--as-accent) 20%,var(--as-border))!important;
+  border-radius:10px!important;background:color-mix(in srgb,var(--as-accent) 5%,var(--as-panel))!important;
+}
+.sentinel-rail-status b{color:var(--as-accent)!important}.sentinel-rail-status small{color:var(--as-subtle)!important}
+@media(hover:hover){
+ .sentinel-skill-card:hover,.sentinel-rail-action:hover{transform:translateY(-3px) scale(1.008)!important}
+ .agent-chat-form .primary-btn:hover,.agent-compose-bottom .primary-btn:hover{transform:translateY(-2px)!important;filter:brightness(1.06)!important}
+}
+@media(max-width:850px){.sentinel-command-rail{padding:18px!important}}
+@media(prefers-reduced-motion:reduce){
+ .agent-lab-panel:after,.sentinel-command-rail:after,.agent-chat-ready i,.sentinel-rail-live i,.sentinel-rail-status-dot{animation:none!important}
+}
