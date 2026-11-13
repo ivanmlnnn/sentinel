@@ -28,6 +28,11 @@ test("Developer Mode stays off until NEP-413 wallet signature is server-verified
   assert.match(app, /ON · REVOCATION NOT CONFIRMED/);
   assert.match(app, /ON · WALLET APPROVED · 8H APP SESSION/);
   assert.match(app, /mode: developerModeEnabled \? 'developer' : 'user'/);
+  assert.match(app, /function isExplicitPaymentProposalPrompt\(prompt\)/);
+  assert.match(app, /const paymentProposalPrompt = isExplicitPaymentProposalPrompt\(prompt\)/);
+  assert.match(app, /paymentProposalPrompt\\s*\\? await request\\('\/agent\/run'/);
+  assert.match(app, /body: JSON\\.stringify\\(\\{ prompt \\}\\)/);
+  assert.match(app, /: await request\\('\/terminal\/run'/);
   assert.doesNotMatch(app, /completeDeveloperWalletRedirect/);
   assert.match(app, /if \(developerModeEnabled\) \{[\s\S]*?operation: 'revoke'[\s\S]*?await connector\.disconnect\(\)/);
   assert.match(app, /data\.agent === 'developer'/);
