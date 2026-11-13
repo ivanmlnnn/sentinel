@@ -1,4 +1,5 @@
 const CHAIN_IDS = { eth: "0xaa36a7", base: "0x14a34", arb: "0x66eee", bsc: "0x61" };
+const NATIVE_EVM_SYMBOLS = { eth: new Set(["ETH"]), base: new Set(["ETH"]), arb: new Set(["ETH"]), bsc: new Set(["BNB"]) };
 const TERMINAL = new Set(["SUCCESS", "REFUNDED", "FAILED"]);
 
 export function parseChatSwapPrompt(prompt) {
@@ -164,7 +165,7 @@ async function executeEvmDeposit(args) {
     throw new Error("Live quote amount or origin asset does not match the reviewed request.");
   }
   const tx = { from: account };
-  if (token.contract_address) {
+  if (token.contract_address !== null && token.contract_address !== undefined && token.contract_address !== "") {
     if (!tokenAddressValid(token)) throw new Error("Token contract address is invalid.");
     const contractCode = await provider.request({ method: "eth_getCode", params: [token.contract_address, "latest"] });
     if (typeof contractCode !== "string" || contractCode === "0x" || contractCode === "0x0") {
@@ -173,6 +174,9 @@ async function executeEvmDeposit(args) {
     tx.to = token.contract_address; tx.value = "0x0";
     tx.data = encodeErc20Transfer(liveQuote.deposit_address, swap.amount);
   } else {
+    if (!NATIVE_EVM_SYMBOLS[token.blockchain]?.has(token.symbol.toUpperCase())) {
+      throw new Error("Token has no verified contract address and is not the native asset for this EVM chain. Refusing to send native coin.");
+    }
     tx.to = liveQuote.deposit_address; tx.value = "0x" + BigInt(swap.amount).toString(16);
   }
   const summary = "WALLET DEPOSIT REVIEW\n\nNetwork: " + token.blockchain.toUpperCase() +
