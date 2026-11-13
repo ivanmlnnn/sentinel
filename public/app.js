@@ -1450,15 +1450,10 @@ if (agentForm) {
     const result = $('agentResult');
     result.classList.remove('hidden');
     result.textContent = developerModeEnabled
-      ? 'Developer Mode preview is active. Trading requests remain draft-only…'
-      : (developerModeEnabled ? 'Sending task to Railway Developer Agent…' : 'Sending task to Railway User Agent…');
+      ? 'Sending task to Railway Developer Agent…'
+      : 'Sending task to Railway User Agent…';
     try {
-      if (developerModeEnabled && /\b(buy|sell|swap|trade|beli|jual|tukar|dca)\b/i.test(prompt) && /\b(BTC|ETH|NEAR|USDC|USDT|SOL|WNEAR)\b/i.test(prompt)) {
-        await renderTradeSkillDraft(prompt);
-        toast('Skill draft generated. Trading execution is not connected.');
-        $('agentPrompt').value = '';
-        return;
-      } else if (GUEST_MODE) {
+      if (GUEST_MODE) {
         guestConversation.push({ role: 'user', content: prompt });
         guestConversation = guestConversation.slice(-14);
         saveGuestConversation();
