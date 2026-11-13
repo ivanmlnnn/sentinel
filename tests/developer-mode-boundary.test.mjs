@@ -26,6 +26,8 @@ test("Developer Mode stays off until NEP-413 wallet signature is server-verified
   assert.match(app, /activated\?\.session\?\.status !== 'ACTIVE'/);
   assert.match(app, /ON · WALLET APPROVED · 8H APP SESSION/);
   assert.match(app, /mode: developerModeEnabled \? 'developer' : 'user'/);
+  assert.match(app, /data\.agent === 'developer'/);
+  assert.match(app, /PLAN ONLY/);
   assert.match(html, /WALLET APPROVED · APPLICATION SESSION ONLY/);
   assert.match(html, /does not create a FunctionCall key/i);
   assert.doesNotMatch(app, /addFunctionCallKey\s*\(/);
