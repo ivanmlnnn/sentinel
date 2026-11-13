@@ -42,6 +42,8 @@ test("uses only prior completed candles and fills on the next candle open", () =
   const result = runHistoricalBacktest(candles, { symbol: "XBTUSD", timeframeMs: 300_000, feeBps: 10, slippageBps: 5 });
   assert.equal(result.ok, true);
   assert.equal(result.value.safety.paper_only, true);
+  assert.equal(result.value.execution_enabled, false);
+  assert.equal(result.value.execution_authorized, false);
   assert.equal(result.value.safety.execution_authorized, false);
   assert.equal(result.value.safety.short_positions_enabled, false);
   assert.equal(result.value.sample.signal_uses_previous_completed_candles, true);
