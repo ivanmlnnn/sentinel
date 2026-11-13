@@ -167,7 +167,7 @@ export async function onRequestPost({ request, env }) {
       "UPDATE developer_sessions SET status = 'EXPIRED', token_hash = NULL WHERE token_hash = ? AND actor = ? AND status = 'ACTIVE' AND datetime(expires_at) <= CURRENT_TIMESTAMP"
     ).bind(hash, identity.sub).run();
     const session = await env.DB.prepare(
-      "SELECT session_id, account_id, network, status, permissions, expires_at, public_key FROM developer_sessions WHERE token_hash = ? AND actor = ? AND status = 'ACTIVE' AND expires_at > CURRENT_TIMESTAMP"
+      "SELECT session_id, account_id, network, status, permissions, expires_at, public_key FROM developer_sessions WHERE token_hash = ? AND actor = ? AND status = 'ACTIVE' AND datetime(expires_at) > CURRENT_TIMESTAMP"
     ).bind(hash, identity.sub).first();
     if (!session) return new Response(JSON.stringify({ error: "ACTIVE_SESSION_NOT_FOUND" }), { status: 404, headers: { "content-type": "application/json", "cache-control": "no-store", "set-cookie": cookie("", 0) } });
     await env.DB.prepare("UPDATE developer_sessions SET last_seen_at = CURRENT_TIMESTAMP WHERE session_id = ?").bind(session.session_id).run();
