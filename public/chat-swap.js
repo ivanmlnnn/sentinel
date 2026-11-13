@@ -159,6 +159,94 @@ async function executeNearIntents(args) {
   const settled = await pollStatus(request, liveQuote.deposit_address, liveQuote.deposit_memo, statusNode);
   detailsNode.textContent = JSON.stringify({ submission: submitted, settlement: settled }, null, 2);
 }
+async function executeNearWalletDeposit(args) {
+  const { connector, connectedAccount, liveQuote, swap, statusNode, detailsNode, request, onSubmitted } = args;
+  if (!connector || !nearAccount(connectedAccount)) throw new Error("Connect Meteor or another NEAR Testnet wallet first.");
+  if (swap.refundTo.toLowerCase() !== connectedAccount.toLowerCase()) {
+    throw new Error("Refund address must equal the connected Meteor account.");
+  }
+  if (liveQuote.deposit_type !== "INTENTS" || !/^[a-f0-9]{64}$/i.test(liveQuote.deposit_address || "")) {
+    throw new Error("Tidepool did not return a valid NEAR Intents deposit address.");
+  }
+  if (String(swap.origin.blockchain).toLowerCase() !== "near" ||
+      typeof swap.origin.contract_address !== "string" ||
+      !/^[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet$/i.test(swap.origin.contract_address)) {
+    throw new Error("Selected NEAR asset has no verified NEP-141 Testnet contract.");
+  }
+  if (liveQuote.quote?.amount_in !== swap.amount ||
+      liveQuote.quote_request?.amount !== swap.amount ||
+      liveQuote.quote_request?.originAsset !== swap.originAsset) {
+    throw new Error("Live quote amount or origin asset does not match the reviewed request.");
+  }
+  const wallet = await connector.wallet();
+  if (!wallet || typeof wallet.signAndSendTransaction !== "function") {
+    throw new Error("Connected Meteor wallet does not support NEAR Testnet transactions.");
+  }
+  const snapshot = await connector.getConnectedWallet();
+  const selectedAccount = snapshot?.accounts?.find(item =>
+    item.accountId?.toLowerCase() === connectedAccount.toLowerCase()
+  );
+  if (!selectedAccount) throw new Error("Meteor connection changed. Reconnect and request a fresh quote.");
+  const review = [
+    "METEOR WALLET DEPOSIT REVIEW",
+    "",
+    "Network: NEAR TESTNET",
+    "Wallet: " + connectedAccount,
+    "Token contract: " + swap.origin.contract_address,
+    "Token: " + swap.origin.symbol,
+    "Exact amount (base units): " + swap.amount,
+    "Receiver: verifier.tidepool-sandbox.testnet",
+    "Deposit reference: " + liveQuote.deposit_address,
+    "",
+    "Meteor will request approval for ft_transfer_call. The transfer credits this quote's Tidepool Intents deposit. Native NEAR is needed for gas."
+  ].join("\n");
+  if (!window.confirm(review)) throw new Error("Cancelled before Meteor approval. No token transfer was submitted.");
+  statusNode.textContent = "Approve the exact NEAR token deposit in Meteor…";
+  const result = await wallet.signAndSendTransaction({
+    receiverId: swap.origin.contract_address,
+    actions: [{
+      type: "FunctionCall",
+      params: {
+        methodName: "ft_transfer_call",
+        args: {
+          receiver_id: "verifier.tidepool-sandbox.testnet",
+          amount: swap.amount,
+          msg: liveQuote.deposit_address
+        },
+        gas: "100000000000000",
+        deposit: "1"
+      }
+    }]
+  });
+  const txHash = result?.transaction?.hash || result?.transaction_outcome?.id ||
+    result?.transactionHash || result?.hash || null;
+  onSubmitted();
+  statusNode.textContent = "Meteor wallet transfer submitted. Waiting for Tidepool to credit and settle the swap…";
+  detailsNode.textContent = JSON.stringify({
+    origin: "NEAR TESTNET",
+    token_contract: swap.origin.contract_address,
+    amount: swap.amount,
+    deposit_address: liveQuote.deposit_address,
+    wallet_result: result
+  }, null, 2);
+  if (typeof txHash === "string" && txHash.length >= 8 && !/\\s/.test(txHash)) {
+    try {
+      await request("/trading/deposit-submit", {
+        method: "POST",
+        body: JSON.stringify({ txHash, depositAddress: liveQuote.deposit_address, nearSenderAccount: connectedAccount })
+      });
+    } catch (error) {
+      statusNode.textContent = "Wallet transfer submitted; automatic Tidepool tracking is continuing. " + (error.message || "");
+    }
+  }
+  const settled = await pollStatus(request, liveQuote.deposit_address, liveQuote.deposit_memo, statusNode);
+  detailsNode.textContent = JSON.stringify({ origin_tx_hash: txHash, settlement: settled }, null, 2);
+  if (String(settled?.status || "").toUpperCase() !== "SUCCESS") {
+    statusNode.textContent = "Tidepool status: " + String(settled?.status || "PENDING").toUpperCase() +
+      ". Do not send again; wait for settlement or check the deposit status.";
+  }
+}
+
 async function executeEvmDeposit(args) {
   const { request, token, liveQuote, swap, refundInput, statusNode, detailsNode, onSubmitted } = args;
   const { provider, account } = await connectEvm(refundInput, token.blockchain);
@@ -382,7 +470,21 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
   const renderTokens = () => {
     list.replaceChildren();
     const entries = tokenList.filter(token => String(token.blockchain || "").toLowerCase() === activeChain);
-    if (!entries.length) { list.append(el("p", "No Tidepool assets on this network.", "swap-token-empty")); return; }
+    if (activeChain === "near") {
+      const gasBalance = balances.get("__near_native__");
+      const gasRow = el("div", undefined, "swap-token-option swap-token-gas-balance");
+      const gasIdentity = el("span", undefined, "swap-token-identity");
+      gasIdentity.append(chainLogo("near"), el("span", undefined, "swap-token-copy"));
+      gasIdentity.lastChild.append(el("strong", "NEAR"), el("small", "Native NEAR · gas balance"));
+      const gasValue = el("span", undefined, "swap-token-value");
+      gasValue.append(
+        el("strong", gasBalance?.value ?? "—", "swap-token-balance"),
+        el("small", gasBalance?.note || "Refresh to read Meteor balance", "swap-token-balance-note")
+      );
+      gasRow.append(gasIdentity, gasValue);
+      list.append(gasRow);
+    }
+    if (!entries.length && activeChain !== "near") { list.append(el("p", "No Tidepool assets on this network.", "swap-token-empty")); return; }
     for (const token of entries) {
       const item = el("button", undefined, "swap-token-option" + (token.asset_id === select.value ? " is-current" : ""));
       item.type = "button";
@@ -418,6 +520,15 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
       try { balances.set(token.asset_id, await readSwapWalletBalance(token, walletAccount)); }
       catch (error) { balances.set(token.asset_id, { value: null, note: error?.message || "Balance unavailable" }); }
     }));
+    if (activeChain === "near") {
+      try {
+        balances.set("__near_native__", await readSwapWalletBalance(
+          { blockchain: "near", symbol: "NEAR", decimals: 24, contract_address: null }, walletAccount
+        ));
+      } catch (error) {
+        balances.set("__near_native__", { value: null, note: error?.message || "Native NEAR balance unavailable" });
+      }
+    }
     balanceStamp.textContent = "Updated " + new Date().toLocaleTimeString();
     loading = false;
     refresh.disabled = false;
@@ -472,7 +583,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     if (key === "XLM") return "stellar";
     if (key === "XRP") return "xrp";
     if (key === "SUI") return "sui";
-    if (key === "ETH") return "eth";
+    if (key === "ETH") return "near";
     return "near";
   };
   const chooseInitialToken = symbol => {
@@ -756,7 +867,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
           "Continue to show the exact manual deposit instructions? No wallet prompt will open in Sentinel.");
       if (!window.confirm(summary)) throw new Error("Cancelled before wallet approval. No transaction was submitted.");
       if (liveQuote.deposit_type === "INTENTS" && swap.origin.blockchain === "near") {
-        await executeNearIntents({ request, connector: getConnector(), connectedAccount: activeNearAccount, liveQuote, swap, statusNode: status, detailsNode: details, encodeBase58, onSubmitted: () => { submitted = true; } });
+        await executeNearWalletDeposit({ request, connector: getConnector(), connectedAccount: activeNearAccount, liveQuote, swap, statusNode: status, detailsNode: details, onSubmitted: () => { submitted = true; } });
       } else if (liveQuote.deposit_type === "ORIGIN_CHAIN" && CHAIN_IDS[swap.origin.blockchain]) {
         await executeEvmDeposit({ request, token: swap.origin, liveQuote, swap, refundInput, statusNode: status, detailsNode: details, onSubmitted: () => { submitted = true; } });
       } else if (liveQuote.deposit_type === "ORIGIN_CHAIN") {
