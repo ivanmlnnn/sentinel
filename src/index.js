@@ -127,14 +127,14 @@ async function terminalRunPost({ request }) {
   try { body = await request.clone().json(); } catch { return apiError("INVALID_JSON", 400); }
   const mode = body?.mode || "user";
   const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
-  if (mode === "developer") return apiError("DEVELOPER_DELEGATION_NOT_CONFIGURED", 409);
+  if (mode === "developer" && (!/^[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet$/.test(String(body?.wallet_account || "")))) return apiError("DEVELOPER_WALLET_REQUIRED", 400);
   if (mode !== "user") return apiError("INVALID_TERMINAL_MODE", 400);
   if (!prompt || prompt.length > 4000) return apiError("PROMPT_REQUIRED", 400);
   try {
     const upstream = await fetch(TERMINAL_RUNTIME_URL + "/v1/terminal/run", {
       method: "POST",
       headers: { authorization, "content-type": "application/json", "idempotency-key": idempotencyKey },
-      body: JSON.stringify({ mode, prompt }),
+      body: JSON.stringify({ mode, prompt, ...(mode === "developer" ? { wallet_account: body.wallet_account } : {}) }),
       signal: AbortSignal.timeout(30000)
     });
     const payload = await upstream.text();
