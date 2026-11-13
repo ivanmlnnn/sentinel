@@ -1,7 +1,8 @@
-import { json, readTextLimited } from "./_shared.js";
+import { json, readTextLimited, verifyPrivyAccessToken } from "./_shared.js";
 import { getTidepoolLiveQuote } from "../../src/trading-core.mjs";
 
-export async function onRequestPost({ request }) {
+export async function onRequestPost({ request, env }) {
+  if (!await verifyPrivyAccessToken(request, env)) return json({ error: "UNAUTHORIZED" }, 401);
   const bodyResult = await readTextLimited(request, 8000);
   if (!bodyResult.ok) return json({ error: bodyResult.reason === "BODY_TOO_LARGE" ? "REQUEST_TOO_LARGE" : "INVALID_BODY" }, bodyResult.reason === "BODY_TOO_LARGE" ? 413 : 400);
   let body;
