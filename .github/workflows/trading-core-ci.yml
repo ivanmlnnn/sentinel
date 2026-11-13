@@ -33,6 +33,8 @@ jobs:
           node --check src/trading-core.mjs
           node --check src/trading-intelligence.mjs
           node --check src/market-data.mjs
+          node --check src/trading-agents.mjs
+          node --check functions/api/trading-agent.js
           node --check functions/api/trading-analysis.js
           node --check src/index.js
           node --check functions/api/trading-tokens.js
