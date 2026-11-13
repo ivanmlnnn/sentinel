@@ -42,6 +42,10 @@ The defensible contribution is this composition, its explicit trust boundaries, 
 | Aurora / EVM execution | **Not integrated** | No Aurora bridge or EVM cross-contract execution is claimed |
 | Mainnet payments | **Not enabled / not claimed** | The documented payment flow is NEAR Testnet; do not use this README as evidence of mainnet readiness |
 
+### Independent AI and human review pack
+
+The [AI Audit Index](https://github.com/ivanmlnnn/sentinel/blob/lab/proof-carrying-agent-economy/docs/AI_AUDIT_INDEX.md) and [machine-readable audit manifest](https://github.com/ivanmlnnn/sentinel/blob/lab/proof-carrying-agent-economy/docs/AI_AUDIT_MANIFEST.json) map the full scope, source files, tests, evidence provenance, reproduction commands, and explicit production/lab/unverified boundaries for independent review by coding agents and human judges. They deliberately distinguish local evidence from production and Testnet proof.
+
 ### Proof-carrying execution — PCPI and contract-level proof lab
 
 Sentinel has two related but distinct proof-carrying experiments. They must not be described as one production feature:
