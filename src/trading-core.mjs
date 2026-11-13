@@ -11,7 +11,7 @@ const MAX_AMOUNT_DIGITS = 78;
 const DEFAULT_SLIPPAGE_BPS = 100;
 const MAX_SLIPPAGE_BPS = 300;
 const SUPPORTED_TESTNET_CHAINS = new Set(["near", "eth", "base", "arb", "bsc", "sol", "stellar", "sui", "btc", "xrp"]);
-const ASSET_ID_RE = /^nep141:[a-z0-9._-]{1,160}$/i;
+const ASSET_ID_RE = /^nep141:[a-z0-9._-]{1,150}\\.testnet$/i;
 const SIGNATURE_RE = /^ed25519:[1-9A-HJ-NP-Za-km-z]{32,100}$/;
 const NONCE_RE = /^[A-Za-z0-9+/]{43}=$/;
 const TERMINAL_STATUSES = new Set(["SUCCESS", "REFUNDED", "FAILED"]);
@@ -34,7 +34,7 @@ function isPlausibleDepositAddress(value) {
 }
 
 function expectedDepositAddressValid(address, expected) {
-  if (expected.depositType === "INTENTS") return address === VERIFIER_ACCOUNT;
+  if (expected.depositType === "INTENTS") return IMPLICIT_NEAR_ACCOUNT_RE.test(address);
   return isValidChainAddress(expected.originBlockchain, address);
 }
 
@@ -523,6 +523,7 @@ export async function submitTidepoolSignedIntent(input, fetchImpl = fetch, verif
   if (quoteBinding.value.depositType !== "INTENTS" ||
       quoteBinding.value.originBlockchain !== "near" ||
       quoteBinding.value.depositAddress !== expectedDepositAddress ||
+      !IMPLICIT_NEAR_ACCOUNT_RE.test(expectedDepositAddress) ||
       expectedRefundTo !== expectedSignerId) {
     return { ok: false, reason: "LIVE_QUOTE_DEPOSIT_ADDRESS_OR_SIGNER_MISMATCH" };
   }
@@ -544,7 +545,7 @@ export async function submitTidepoolSignedIntent(input, fetchImpl = fetch, verif
       message.verifying_contract !== VERIFIER_ACCOUNT ||
       transfer?.intent !== "transfer" ||
       transfer.receiver_id !== expectedDepositAddress ||
-      expectedDepositAddress !== VERIFIER_ACCOUNT ||
+      !IMPLICIT_NEAR_ACCOUNT_RE.test(expectedDepositAddress) ||
       typeof expectedAsset !== "string" || !ASSET_ID_RE.test(expectedAsset) ||
       typeof expectedAmount !== "string" || !INTEGER_RE.test(expectedAmount) || expectedAmount === "0" ||
       entries.length !== 1 ||
