@@ -561,17 +561,20 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       routeChains.sort((a, b) => (a === "near" ? -1 : 0) - (b === "near" ? -1 : 0));
       for (let index = 0; index < routeChains.length; index++) {
         const chain = routeChains[index];
-        if (!walletAddressFor(chain)) await connectWalletForChain(chain);
-        const partialAddresses = [walletAddressFor(origin.blockchain), walletAddressFor(dest.blockchain)].filter(Boolean);
-        if (partialAddresses.length) {
-          walletStateText.textContent = partialAddresses.map(shortWalletAddress).join(" · ");
-          walletState.classList.add("is-connected");
-        }
-        const nextChain = routeChains.slice(index + 1).find(next => !walletAddressFor(next));
-        if (nextChain) {
-          connectButton.textContent = "Connect " + nextChain.toUpperCase() + " wallet";
-          status.textContent = chain.toUpperCase() + " wallet connected. Tap again to connect the " + nextChain.toUpperCase() + " wallet.";
-          return;
+        const wasConnected = Boolean(walletAddressFor(chain));
+        if (!wasConnected) {
+          await connectWalletForChain(chain);
+          const partialAddresses = [walletAddressFor(origin.blockchain), walletAddressFor(dest.blockchain)].filter(Boolean);
+          if (partialAddresses.length) {
+            walletStateText.textContent = partialAddresses.map(shortWalletAddress).join(" · ");
+            walletState.classList.add("is-connected");
+          }
+          const nextChain = routeChains.slice(index + 1).find(next => !walletAddressFor(next));
+          if (nextChain) {
+            connectButton.textContent = "Connect " + nextChain.toUpperCase() + " wallet";
+            status.textContent = chain.toUpperCase() + " wallet connected. Tap again to connect the " + nextChain.toUpperCase() + " wallet.";
+            return;
+          }
         }
       }
       const addresses = [walletAddressFor(origin.blockchain), walletAddressFor(dest.blockchain)].filter(Boolean);
