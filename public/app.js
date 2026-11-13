@@ -288,6 +288,16 @@ async function initWallet() {
     button.disabled = true;
     try {
       if (connectedAccount) {
+        if (developerModeEnabled) {
+          const revoked = await request('/agent/developer-session', {
+            method: 'POST',
+            body: JSON.stringify({ operation: 'revoke' })
+          });
+          if (revoked?.status !== 'REVOKED') {
+            throw new Error('Sentinel did not confirm session revocation. Wallet remains connected.');
+          }
+          setDeveloperMode(false, 'OFF · SESSION REVOKED');
+        }
         await connector.disconnect();
         syncWalletUI(null, null);
         toast('NEAR wallet disconnected.');
