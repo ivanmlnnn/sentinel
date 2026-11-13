@@ -8,6 +8,91 @@ Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verifi
 
 ## Judge start here — 5-minute evidence path
 
+## Current architecture, originality, and honest feature boundaries
+
+### What is original about Sentinel
+
+Sentinel should not be presented as a novel risk-score formula. Recipient-risk scoring by itself is an established and relatively easy-to-reproduce idea. The engineering contribution is the NEAR-specific security workflow that places independent evidence collection and deterministic policy between an untrusted AI proposal and a restricted signing path:
+
+1. **NEAR-native evidence:** query NEAR account/access-key state through FastNear JSON-RPC and indexed native transaction, receipt, and FT-transfer history through NearBlocks Testnet API. Pagination and evidence completeness are surfaced; unavailable evidence is not silently treated as safe.
+2. **Explainable policy:** combine observable evidence, verified deployment-local threat reports, contract-code-hash observations, and explicit outgoing-activity thresholds into `ALLOW`, `WARN`, `BLOCK`, or `INCOMPLETE`. A risk score is a decision-support signal, not a proof of fraud or safety. Only a verified threat-registry match can trigger the configured hard `BLOCK`; behavioral thresholds produce review warnings.
+3. **Agent is a proposer, not an authority:** model output and tool results are untrusted. A proposal is revalidated server-side and bound to the exact sender, receiver, amount, assessment, and nonce.
+4. **Human authorization is separate:** a wallet owner signs a domain-separated NEP-413 message for the exact intent. NEP-413 message signing is not itself a transfer.
+5. **Independent execution boundary:** a separate private Cloudflare Signer Worker verifies the signed preflight verdict (Ed25519), NEP-413 approval, freshness, replay state, receiver allowlist, spend caps, and kill-switch policy before using a restricted NEAR FunctionCall access key.
+6. **On-chain policy and outcome checking:** the Rust payment contract enforces its own payment ceiling and one-time approval IDs; the signer checks the final transaction and native Transfer receipt against the approved recipient and amount.
+
+The defensible contribution is this composition, its explicit trust boundaries, fail-closed behavior, and evidence trail—not a claim that the underlying risk-score concept, NEP-413, Ed25519, or FunctionCall keys were invented by this project. The design is reproducible and can be copied; originality should be judged on the implemented integration, threat model, tests, and independently verifiable evidence.
+
+### NEAR ecosystem depth — what is and is not integrated
+
+| Capability | Current status | Accurate description |
+|---|---|---|
+| NEAR Testnet RPC and account/access-key inspection | Implemented in source | FastNear JSON-RPC integration; provider availability affects completeness |
+| NEAR indexed transaction/receipt/FT evidence | Implemented in source | NearBlocks Testnet API with pagination/completeness handling |
+| NEP-413 | Implemented in source | Human wallet-message approval bound to the exact intent; not a transfer |
+| Restricted FunctionCall access key | Implemented in source | Contract receiver and `pay` method are constrained; FullAccess is rejected |
+| Rust NEAR payment contract | Source and build/test path present | Per-payment/daily policy and one-time approval IDs; distinguish source/build evidence from deployed-contract and payout evidence |
+| Isolated Signer Worker | Implemented and deployed in recorded Worker releases | Separate Worker and signer-owned state; this is service/process isolation, **not a hardware TEE** |
+| Ed25519 signed verdict | Merged in PR #10 | Short-lived signed assessment binds sender, receiver, exact amount, nonce, decision, status, and assessment ID |
+| NEAR Intents | **Not integrated** | No solver-based NEAR Intents execution is claimed |
+| TEE / hardware enclave | **Not implemented** | Cloudflare Worker isolation is not Intel SGX, AMD SEV, ARM CCA, or another attested TEE |
+| Chain Signatures / MPC | **Not integrated** | NEP-413 is not Chain Signatures |
+| Aurora / EVM execution | **Not integrated** | No Aurora bridge or EVM cross-contract execution is claimed |
+| Mainnet payments | **Not enabled / not claimed** | The documented payment flow is NEAR Testnet; do not use this README as evidence of mainnet readiness |
+
+### Signing, kill switch, and payment evidence
+
+The source contains an isolated signer, exact-intent checks, one-time approval/replay controls, receiver and method restrictions, spending limits, and a kill-switch enforcement path. A kill switch being implemented is not the same as proving its current runtime configuration or that it was triggered during a live incident. Do not publish secret values or imply that a specific runtime state is externally verified unless a current deployment/configuration artifact proves it.
+
+A successful test suite, a successful Worker deployment, an HTTP smoke check, a wallet message signature, or a screenshot of account activity is **not** proof of a Sentinel-originated payment. The current evidence report records visible Testnet transfer activity to the configured recipient, but exact transaction attribution and final receipt verification remain pending. A payment may be called verified only when the exact transaction hash, signer, contract receiver, successful execution, recipient, amount, and final native Transfer receipt are independently checked. See [Independent Local Stress Lab](docs/INDEPENDENT_LOCAL_STRESS_LAB.md) and [End-to-End Verification Report](docs/END_TO_END_VERIFICATION.md).
+
+### Hosting and runtime
+
+The application is hosted as **Cloudflare Workers**, with a Main Worker and a separate private Signer Worker; Cloudflare D1 is used for persistent application/signer state. This is not merely a static Cloudflare Pages dashboard. The frontend/dashboard, API routes, private service binding, D1 databases, and Worker secrets have distinct roles. Deployment version IDs and the exact release path are recorded in the deployment/evidence sections below. Cloudflare hosting does not imply a TEE or hardware-backed signer isolation.
+
+The current source runtime was migrated by [PR #20](https://github.com/ivanmlnnn/sentinel/pull/20) to the native Cloudflare Workers AI binding (default model `@cf/qwen/qwen3.8-27b` in that PR). Model output remains untrusted and cannot authorize payments. Earlier Gemini PRs and Gemini-specific workflow records below are historical; they must not be read as the current provider architecture. Live inference still depends on the deployed Workers AI binding, account eligibility, and usage limits.
+
+### Stress-test and verification evidence — read the scope, not only the PASS count
+
+The [Independent Local Stress Lab report](docs/INDEPENDENT_LOCAL_STRESS_LAB.md) records **9/9 local simulation checks passed**. This is useful evidence for the tested local shared-SQLite model, but it is not a Cloudflare D1 or production load benchmark.
+
+| Local simulation | Load | Recorded result |
+|---|---:|---|
+| Nonce race | 500 requests | 1 accepted; 499 rejected |
+| Approval race | 500 requests | 1 accepted; 499 rejected |
+| Idempotency race | 500 requests | 1 accepted; 499 rejected |
+| Spend-cap race | 100 requests | 39 accepted; 61 rejected; 195,000 micro-units reserved of 200,000 |
+| Simulated multi-instance signer claim | 8 instances / 400 requests | 1 accepted; 399 rejected |
+| Local HTTP load | 1,000 requests / 32 workers | 1,000 HTTP 200; 0 errors; p50 3.575 ms; p95 6.807 ms; p99 1,235.08 ms |
+| RPC fault-injection model | 500 cases | 100 success; 400 fail-closed; 0 unexpected |
+| Contract-input fuzz policy model | 10,000 iterations / 9 seeds | 0 mismatches |
+| Synthetic E2E state machine | 50 simulated payments | 50 model transitions verified; 0 real chain transactions |
+
+**Important limitations:** the lab used SQLite WAL, a local Python HTTP server, deterministic RPC fault injection, a simplified contract policy model, and synthetic transaction/receipt IDs. It contacted no public endpoint, submitted zero real NEAR transactions, and executed zero Cloudflare D1 stress requests. Its p95/p99 are local Python-server measurements, not Worker production latency. The contract fuzz test is not fuzzing the compiled Rust/WASM contract. The 50 synthetic payments are not on-chain payments.
+
+Separate from that lab, the current README deployment record reports **146 automated tests passed, 0 failed, 0 skipped**, plus production HTTP smoke checks. These prove only the automated checks and HTTP behaviors recorded for that revision. They do not establish D1 distributed concurrency, a live wallet approval, a successful Sentinel-originated payment, or mainnet readiness. Dedicated production D1 concurrency, deployed multi-instance signer races, production load/latency, live RPC saturation/recovery, actual contract fuzzing, and receipt-verified concurrent payments remain release gates.
+
+### AI assistance, third-party components, and references
+
+**AI assistance disclosure:** AI-assisted tools were used during development to support planning, code review/debugging, test and documentation drafting. The project maintainer is responsible for reviewing and accepting repository changes. AI-generated output is not treated as security evidence, a source of authorization, or a substitute for executing tests and independently checking transactions. The README does not claim that an AI model independently designed, audited, or certified Sentinel.
+
+**Third-party components and services:** NEAR Protocol / NEP-413 and NEAR account-key model; FastNear JSON-RPC; NearBlocks API; Cloudflare Workers, D1, Workers AI and Wrangler; Privy authentication; HOT Labs NEAR Connect; Rust and the NEAR SDK; Node.js and the project’s npm dependencies. Their names and protocols remain the property of their respective owners. See package manifests and lockfiles for exact dependency versions.
+
+**Selected technical references:**
+- [NEAR Protocol documentation](https://docs.near.org/)
+- [NEAR account access keys](https://docs.near.org/protocol/accounts-contracts/access-keys)
+- [NEP-413: Signed message](https://github.com/near/NEPs/blob/master/neps/nep-0413.md)
+- [NEAR smart contracts](https://docs.near.org/smart-contracts/what-is)
+- [Cloudflare Workers documentation](https://developers.cloudflare.com/workers/)
+- [Cloudflare D1 documentation](https://developers.cloudflare.com/d1/)
+- [Cloudflare Workers AI documentation](https://developers.cloudflare.com/workers-ai/)
+- [FastNear](https://fastnear.com/)
+- [NearBlocks API](https://api.nearblocks.io/)
+- [Privy documentation](https://docs.privy.io/)
+- [RFC 8032 — Ed25519](https://www.rfc-editor.org/rfc/rfc8032)
+- [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
+
+
 ## Current production deployment — 12 November 2026
 
 The current production Workers were deployed directly with Wrangler from the local repository, not by a GitHub Actions deployment queue.
@@ -39,7 +124,7 @@ GitHub remains the source-control and backup repository. GitHub Actions deployme
 - **[Judge Evidence Pack](docs/JUDGE_EVIDENCE_PACK.md)** — project explanation, evidence index, reproducible commands and judge walkthrough.
 - **[End-to-End Verification Report](docs/END_TO_END_VERIFICATION.md)** — exact test counts, production HTTP smoke results, deployment scope and provenance attestation.
 - **[Independent Local Stress Lab](docs/INDEPENDENT_LOCAL_STRESS_LAB.md)** — nine local simulation checks, raw concurrency/load outcomes, and a strict boundary between simulated results and live D1/NEAR verification.
-- **[Gemini AI Provider Setup](docs/DEPLOYMENT_STATUS_AND_AI_PROVIDER.md#gemini-ai-provider)** — Gemini API integration, runtime secret setup, tool-calling compatibility, and verification steps.
+- **[NEAR Ecosystem Integration & Wallet-to-Agent Flow](docs/NEAR_ECOSYSTEM_INTEGRATION.md)** — NEAR-native approval, restricted signer, payment-contract flow, and explicit exclusions (Intents, TEE, Chain Signatures).
 - **[NEAR Ecosystem Integration & Wallet-to-Agent Flow](docs/NEAR_ECOSYSTEM_INTEGRATION.md)** — the actual NEAR-native flow, identity separation, NEP-413 approval, restricted FunctionCall signer, and payment contract.
 - **[Signed Verdict Attestation](docs/SIGNED_VERDICT.md)** — Ed25519-signed assessment integrity at the isolated signer boundary; merged in [PR #10](https://github.com/ivanmlnnn/sentinel/pull/10).
 - **[Tracked recipient in NEAR Testnet Explorer](https://testnet.nearblocks.io/address/rawvest6817.testnet)** — inspect the public account activity for `rawvest6817.testnet` independently.
