@@ -44,7 +44,6 @@ curl -i https://sentinel-terminal-runtime-production.up.railway.app/health
 
 Expected health response includes `status: online`, Developer Mode enabled, and `developer_mode: strategy-planning-only`. A deployment marked SUCCESS is not a substitute for this public HTTP check. Do not replace the managed Railway Function with a generic `railway up` deployment.
 
-Do not replace the Railway function with a generic `railway up` deployment unless the service has explicitly been converted to a repository-backed service; this function is managed as a Railway Function source.
 
 ## 5. Test the live flow (still required)
 
