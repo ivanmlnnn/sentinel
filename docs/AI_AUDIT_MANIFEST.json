@@ -9,7 +9,9 @@
     "pull_request": 42,
     "pull_request_url": "https://github.com/ivanmlnnn/sentinel/pull/42",
     "status": "OPEN_DRAFT_NOT_MERGEABLE",
-    "production_branch": "main"
+    "production_branch": "main",
+    "implementation_snapshot_commit": "ed86e0fd76f47e8ecebe33a926e0e39542ae6bbe",
+    "documentation_and_workflow_updates": "Documentation and CI-trigger updates were committed after the implementation snapshot; inspect the current PR head for the latest documentation."
   },
   "verdict_policy": {
     "production_claims_must_be_limited_to_main": true,
@@ -113,10 +115,40 @@
       "required_action": "Rerun all commands on the exact PR head and attach fresh raw logs/evidence JSON."
     },
     "github_ci_for_audit_target": {
-      "commit": "ed86e0fd76f47e8ecebe33a926e0e39542ae6bbe",
+      "commit": "202c21e92506f006f304e55277c49e2d599651a4",
       "github_actions_runs_found": 0,
-      "combined_status": "Vercel success status only",
-      "interpretation": "Vercel preview deployment status is not proof that repository tests, Rust tests, or security workflows passed."
+      "combined_status": "Vercel status failure due account build-rate limit; no GitHub Actions run found for this branch head",
+      "interpretation": "The Vercel preview failure is an account/build quota status, not a test failure. It also does not prove code correctness. No lab CI result is currently available for this PR head."
+    },
+    "production_main_baseline_ci": {
+      "commit": "67f9896fc81068d9ad17eb119f33895eaf82c6b2",
+      "runs": [
+        {
+          "name": "Sentinel Security CI",
+          "id": 43109875344,
+          "url": "https://github.com/ivanmlnnn/sentinel/actions/runs/43109875344",
+          "conclusion": "success"
+        },
+        {
+          "name": "Deploy Sentinel to Cloudflare Workers",
+          "id": 43109875176,
+          "url": "https://github.com/ivanmlnnn/sentinel/actions/runs/43109875176",
+          "conclusion": "success"
+        },
+        {
+          "name": "CodeQL Security Analysis",
+          "id": 43109874994,
+          "url": "https://github.com/ivanmlnnn/sentinel/actions/runs/43109874994",
+          "conclusion": "success"
+        },
+        {
+          "name": "Sentinel checks",
+          "id": 43109874900,
+          "url": "https://github.com/ivanmlnnn/sentinel/actions/runs/43109874900",
+          "conclusion": "success"
+        }
+      ],
+      "scope": "These runs validate/deploy the main branch baseline at the stated SHA. They do not validate the proof-carrying lab branch or the new contract envelope."
     }
   },
   "local_reproduction_commands": [
@@ -137,7 +169,8 @@
     "Live proof-carrying NEAR payment and final receipt verification.",
     "Independent external evidence authentication by the contract.",
     "Hardware TEE remote attestation.",
-    "External AI reviewers' conclusions or hackathon outcome."
+    "External AI reviewers' conclusions or hackathon outcome.",
+    "A successful GitHub Actions run for PR #42 / lab branch head."
   ],
   "review_instructions": [
     "Read README.md first, then docs/AI_AUDIT_INDEX.md and this JSON manifest.",
