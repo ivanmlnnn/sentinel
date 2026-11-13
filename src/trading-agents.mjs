@@ -1,5 +1,4 @@
 const SIGNALS = new Set(["BUY", "SELL", "HOLD"]);
-const DIRECTIONS = new Set(["BUY", "SELL"]);
 const RISK_LEVELS = new Set(["LOW", "MEDIUM", "HIGH"]);
 
 export function parseAgentJson(raw) {
