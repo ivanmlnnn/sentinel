@@ -124,10 +124,7 @@ export function createTidepoolAgentClient({
     getApproval: (agentId, approvalId) => request("GET", agentPath(agentId, "approvals/" + encodeURIComponent(requiredString(approvalId, "APPROVAL_ID_REQUIRED")))),
     getStatus: (correlationId, waitMs = 30_000) => {
       const id = requiredString(correlationId, "CORRELATION_ID_REQUIRED");
-      const url = new URL(API_PREFIX + "status", API_ORIGIN);
-      url.searchParams.set("correlation_id", id);
-      url.searchParams.set("wait_ms", String(waitMs));
-      return request("GET", "status?" + url.searchParams.toString(), { waitMs });
+      return request("GET", "status?correlation_id=" + encodeURIComponent(id), { waitMs });
     },
     dryRunSwap: (agentId, swap) => {
       validateSwap(swap);
@@ -140,6 +137,7 @@ export function createTidepoolAgentClient({
       const policyResponse = await request("GET", agentPath(agentId, "policy"));
       const policy = policyResponse?.policy || policyResponse?.data?.policy || policyResponse;
       if (policy?.owner_approval !== true) throw new TidepoolAgentApiError("OWNER_APPROVAL_POLICY_REQUIRED", 409);
+      if (policy?.frozen === true) throw new TidepoolAgentApiError("AGENT_FROZEN_BY_POLICY", 409);
       if (!Array.isArray(policy.actions) || !policy.actions.includes("swap")) throw new TidepoolAgentApiError("SWAP_NOT_ALLOWED_BY_POLICY", 403);
       if (policy.assets !== "any" && (!Array.isArray(policy.assets) ||
           !policy.assets.includes(swap.origin_asset) || !policy.assets.includes(swap.destination_asset))) {
