@@ -4,7 +4,7 @@ Status date: 13 November 2026
 
 ## Current release status
 
-**Deployed: Testnet application-session flow and read-only Railway Developer Agent.**
+**Deployed components: Testnet application-session flow and read-only Railway Developer Agent.**
 **Not enabled: delegated wallet signing, autonomous swaps, and autonomous payments.**
 
 The production Cloudflare Worker and D1 session migration were deployed from the feature branch using the guarded Termux deployment script. The Railway service `sentinel-terminal-runtime` also has a successful production deployment of the Developer Agent runtime. These deployment records establish that the components were published; they do not by themselves prove a complete browser-to-wallet-to-Railway transaction flow.
