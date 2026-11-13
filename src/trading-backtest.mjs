@@ -151,6 +151,8 @@ export function runHistoricalBacktest(candles, {
       symbol,
       strategy: "EMA20/EMA50 alignment + RSI14 momentum + ATR14 volatility guard + volume z-score confirmation",
       execution_model: "LONG_ONLY_SPOT_NEXT_CANDLE_OPEN",
+      execution_enabled: false,
+      execution_authorized: false,
       sample: {
         candles: candles.length,
         warmup_candles: WINDOW,
