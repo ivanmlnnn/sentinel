@@ -188,3 +188,44 @@
  .sentinel-swap-message .swap-connect-button{width:100%}
  .sentinel-swap-message .swap-token-panel{width:calc(100vw - 56px);max-width:calc(100vw - 56px)}
 }
+
+
+/* Mobile-safe token picker: escape chat-card overflow and stay in viewport. */
+.sentinel-swap-message,
+.sentinel-swap-message .developer-trade-quote,
+.sentinel-swap-message .swap-token-picker{min-width:0!important;max-width:100%!important}
+.sentinel-swap-message .swap-token-panel{
+  position:fixed!important;z-index:10000!important;left:12px;right:auto;
+  width:min(390px,calc(100vw - 24px))!important;max-width:calc(100vw - 24px)!important;
+  max-height:min(68dvh,560px)!important;overflow-x:hidden!important;overflow-y:auto!important;
+  overscroll-behavior:contain;box-sizing:border-box!important;
+}
+.sentinel-swap-message .swap-chain-options{width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
+.sentinel-swap-message .swap-token-list{width:100%;min-width:0}
+.sentinel-swap-message .swap-token-option{min-width:0;max-width:100%;overflow:hidden}
+.sentinel-swap-message .swap-token-identity{min-width:0;flex:1}
+.sentinel-swap-message .swap-token-copy{min-width:0;overflow:hidden}
+.sentinel-swap-message .swap-token-copy strong,.sentinel-swap-message .swap-token-copy small{overflow-wrap:anywhere}
+.sentinel-swap-message .swap-token-value{flex:0 0 auto;max-width:42%;overflow-wrap:anywhere}
+.swap-token-logo{
+  display:inline-grid!important;place-items:center;flex:0 0 30px;width:30px;height:30px;
+  border-radius:50%;background:#e9edf5;color:#18202d;font:800 13px/1 Inter,Arial,sans-serif;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);letter-spacing:-.04em
+}
+.swap-token-trigger .swap-token-logo{width:25px;height:25px;flex-basis:25px;font-size:12px}
+.token-logo-eth,.token-logo-weth{background:#e8e5ff;color:#6254c8}
+.token-logo-usdc{background:#dcecff;color:#2775ca}
+.token-logo-usdt{background:#d8f3e7;color:#168b68}
+.token-logo-wbtc,.token-logo-btc{background:#fff0d6;color:#d88b19}
+.token-logo-wnear,.token-logo-near{background:#dff5e8;color:#25875d}
+.token-logo-sol{background:#eee3ff;color:#7548bd}
+.token-logo-sui{background:#d9efff;color:#2779b8}
+.token-logo-bnb{background:#fff0c7;color:#bd8614}
+.token-logo-xrp{background:#e5e8ed;color:#343a45}
+.token-logo-xlm{background:#e6e2ff;color:#6254c8}
+@media(max-width:560px){
+ .sentinel-swap-message{width:100%!important;max-width:100%!important;overflow:visible!important}
+ .sentinel-swap-message .developer-trade-quote.swap-modern-card{width:100%!important;max-width:100%!important;min-width:0!important}
+ .sentinel-swap-message .swap-token-trigger{min-width:0!important;width:100%!important}
+ .sentinel-swap-message .swap-token-panel{width:calc(100vw - 24px)!important;max-width:calc(100vw - 24px)!important}
+}
