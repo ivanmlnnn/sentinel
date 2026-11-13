@@ -395,6 +395,13 @@ function chainLogo(chain) {
   wrap.append(img);
   return wrap;
 }
+function tokenLogo(token) {
+  const symbol = String(token?.symbol || "ASSET").toUpperCase();
+  const glyphs = { ETH: "♦", WETH: "♦", USDC: "$", USDT: "₮", WNEAR: "N", NEAR: "N", WBTC: "₿", BTC: "₿", XAUT: "Au", SOL: "◎", SUI: "S", BNB: "◆", XRP: "X", XLM: "✦" };
+  const logo = el("span", glyphs[symbol] || symbol.slice(0, 2), "swap-token-logo token-logo-" + symbol.toLowerCase().replace(/[^a-z0-9-]/g, ""));
+  logo.setAttribute("aria-label", symbol + " token");
+  return logo;
+}
 function shortWalletAddress(value) {
   const text = String(value || "");
   return text.length > 18 ? text.slice(0, 8) + "…" + text.slice(-6) : text;
@@ -409,7 +416,7 @@ function formatUnitsForDisplay(raw, decimals) {
   const fraction = (value % base).toString().padStart(places, "0").slice(0, 6).replace(/0+$/, "");
   return fraction ? whole.toString() + "." + fraction : whole.toString();
 }
-async function readSwapWalletBalance(token, nearWalletAccount) {
+async function readSwapWalletBalance(token, nearWalletAccount, request) {
   const chain = String(token.blockchain || "").toLowerCase();
   if (CHAIN_IDS[chain]) {
     const provider = getInjectedEvmProvider();
@@ -432,27 +439,21 @@ async function readSwapWalletBalance(token, nearWalletAccount) {
   }
   if (chain === "near") {
     if (!nearAccount(nearWalletAccount)) return { value: null, note: "Connect a NEAR Testnet wallet" };
-    const params = token.contract_address
-      ? { request_type: "call_function", finality: "final", account_id: token.contract_address, method_name: "ft_balance_of", args_base64: btoa(JSON.stringify({ account_id: nearWalletAccount })) }
-      : { request_type: "view_account", finality: "final", account_id: nearWalletAccount };
-    const response = await fetch("https://rpc.testnet.near.org", {
-      method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: "sentinel-swap-balance", method: "query", params })
+    if (typeof request !== "function") return { value: null, note: "Sentinel balance proxy unavailable" };
+    const payload = await request("/trading-balance", {
+      method: "POST",
+      body: JSON.stringify(token.contract_address
+        ? { accountId: nearWalletAccount, assetId: token.asset_id }
+        : { accountId: nearWalletAccount, native: true })
     });
-    if (!response.ok) throw new Error("NEAR RPC HTTP " + response.status);
-    const payload = await response.json();
-    if (payload.error) throw new Error(payload.error.message || "NEAR RPC balance error");
-    if (token.contract_address) {
-      const bytes = payload.result?.result;
-      if (!Array.isArray(bytes)) throw new Error("NEAR FT balance response is invalid");
-      const raw = JSON.parse(new TextDecoder().decode(new Uint8Array(bytes)));
-      return { raw: String(raw), value: formatUnitsForDisplay(raw, token.decimals), note: "Wallet balance" };
+    if (typeof payload.raw !== "string" || !/^(?:0|[1-9][0-9]*)$/.test(payload.raw)) {
+      throw new Error("NEAR balance API returned an invalid value");
     }
-    return { raw: String(payload.result?.amount || "0"), value: formatUnitsForDisplay(payload.result?.amount || "0", token.decimals), note: "Wallet balance" };
+    return { raw: payload.raw, value: formatUnitsForDisplay(payload.raw, payload.decimals ?? token.decimals), note: "Meteor wallet balance" };
   }
   return { value: null, note: "Wallet balance adapter not connected for " + chain.toUpperCase() };
 }
-function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccount, onSelected) {
+function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccount, onSelected, request) {
   const root = el("div", undefined, "swap-token-picker");
   const trigger = el("button", undefined, "swap-token-trigger");
   trigger.type = "button";
@@ -481,7 +482,7 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
     const name = el("strong", token ? token.symbol : (initialSymbol || "Select token"));
     const network = el("span", token ? String(token.blockchain).toUpperCase() : "Choose network");
     const chevron = el("span", "▾", "swap-token-chevron");
-    trigger.replaceChildren(token ? chainLogo(token.blockchain) : el("span", "◈", "swap-token-placeholder"), name, network, chevron);
+    trigger.replaceChildren(token ? tokenLogo(token) : el("span", "◈", "swap-token-placeholder"), name, network, chevron);
     trigger.classList.toggle("is-selected", Boolean(token));
   };
   const renderChains = () => {
@@ -519,7 +520,7 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
       const item = el("button", undefined, "swap-token-option" + (token.asset_id === select.value ? " is-current" : ""));
       item.type = "button";
       const identity = el("span", undefined, "swap-token-identity");
-      identity.append(chainLogo(token.blockchain), el("span", undefined, "swap-token-copy"));
+      identity.append(tokenLogo(token), el("span", undefined, "swap-token-copy"));
       identity.lastChild.append(el("strong", token.symbol), el("small", String(token.name || token.symbol) + " · " + String(token.blockchain).toUpperCase()));
       const balance = balances.get(token.asset_id);
       const amount = el("strong", balance?.value !== null && balance?.value !== undefined ? balance.value : "—", "swap-token-balance");
@@ -547,13 +548,13 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
     const entries = tokenList.filter(token => String(token.blockchain || "").toLowerCase() === activeChain);
     const walletAccount = typeof nearWalletAccount === "function" ? nearWalletAccount() : nearWalletAccount;
     await Promise.all(entries.map(async token => {
-      try { balances.set(token.asset_id, await readSwapWalletBalance(token, walletAccount)); }
+      try { balances.set(token.asset_id, await readSwapWalletBalance(token, walletAccount, request)); }
       catch (error) { balances.set(token.asset_id, { value: null, note: error?.message || "Balance unavailable" }); }
     }));
     if (activeChain === "near") {
       try {
         balances.set("__near_native__", await readSwapWalletBalance(
-          { blockchain: "near", symbol: "NEAR", decimals: 24, contract_address: null }, walletAccount
+          { blockchain: "near", symbol: "NEAR", decimals: 24, contract_address: null }, walletAccount, request
         ));
       } catch (error) {
         balances.set("__near_native__", { value: null, note: error?.message || "Native NEAR balance unavailable" });
@@ -614,8 +615,8 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   }
   originSelect.className = "swap-native-select";
   destSelect.className = "swap-native-select";
-  const originPicker = createSwapTokenPicker(originSelect, tokens, parsed.from, () => activeNearAccount, () => { defaults(); invalidate(); });
-  const destinationPicker = createSwapTokenPicker(destSelect, tokens, parsed.to, () => activeNearAccount, () => { defaults(); invalidate(); });
+  const originPicker = createSwapTokenPicker(originSelect, tokens, parsed.from, () => activeNearAccount, () => { defaults(); invalidate(); }, request);
+  const destinationPicker = createSwapTokenPicker(destSelect, tokens, parsed.to, () => activeNearAccount, () => { defaults(); invalidate(); }, request);
   const refundInput = null;
   const initialAccount = getConnectedAccount();
   let activeNearAccount = initialAccount && nearAccount(initialAccount) ? initialAccount : null;
