@@ -7,7 +7,7 @@ const APP_ID = 'cmw78k7rd00ix0ilgf5ubvn5y';
 
 function describeGuestAuthFailure(error) {
   const code = String(error?.privyErrorCode || error?.code || error?.name || 'UNKNOWN').slice(0, 80);
-  const detail = String(error?.message || 'No error message returned by Privy').replace(/\\s+/g, ' ').slice(0, 180);
+  const detail = String(error?.message || 'No error message returned by Privy').replace(/\s+/g, ' ').slice(0, 180);
   const diagnostic = (code + ' ' + detail).toLowerCase();
 
   if (/guest.{0,30}(disabled|not enabled|not allowed)|(?:disabled|not enabled).{0,30}guest/.test(diagnostic)) {
