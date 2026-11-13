@@ -1,5 +1,5 @@
 import { buildTradeSkillDraft } from './trade-skill-draft.js';
-import { renderChatSwap } from './chat-swap.js?v=20261114-wallet-session7';
+import { renderChatSwap } from './chat-swap.js?v=20261114-wallet-session8';
 const $ = id => document.getElementById(id);
 const API = '/api';
 const GUEST_MODE = Boolean(window.SENTINEL_GUEST);
@@ -307,7 +307,7 @@ async function initWallet() {
     const { NearConnector } = module;
     connector = new NearConnector({
       network: 'testnet',
-      features: { testnet: true, signAndSendTransaction: true },
+      features: { testnet: true },
       autoConnect: false
     });
     await connector.whenManifestLoaded;
