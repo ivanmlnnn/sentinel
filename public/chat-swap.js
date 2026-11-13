@@ -251,6 +251,154 @@ function renderManualDeposit(panel, liveQuote, token, swap, request, statusNode,
   panel.append(hashInput, submitHash);
 }
 
+
+function formatUnitsForDisplay(raw, decimals) {
+  const places = Number(decimals);
+  if (!Number.isInteger(places) || places < 0 || places > 30) return "—";
+  const value = BigInt(raw);
+  const base = 10n ** BigInt(places);
+  const whole = value / base;
+  const fraction = (value % base).toString().padStart(places, "0").slice(0, 6).replace(/0+$/, "");
+  return fraction ? whole.toString() + "." + fraction : whole.toString();
+}
+async function readSwapWalletBalance(token, nearWalletAccount) {
+  const chain = String(token.blockchain || "").toLowerCase();
+  if (CHAIN_IDS[chain]) {
+    const provider = window.ethereum;
+    if (!provider || typeof provider.request !== "function") return { value: null, note: "Connect an EVM wallet" };
+    const accounts = await provider.request({ method: "eth_accounts" });
+    const account = accounts?.[0];
+    if (!evmAddress(account)) return { value: null, note: "Connect an EVM wallet" };
+    const currentChain = String(await provider.request({ method: "eth_chainId" })).toLowerCase();
+    if (currentChain !== CHAIN_IDS[chain]) return { value: null, note: "Switch wallet to " + chain.toUpperCase() };
+    let raw;
+    if (token.contract_address) {
+      if (!tokenAddressValid(token)) return { value: null, note: "Invalid token contract" };
+      const data = "0x70a08231" + account.slice(2).toLowerCase().padStart(64, "0");
+      raw = await provider.request({ method: "eth_call", params: [{ to: token.contract_address, data }, "latest"] });
+    } else {
+      raw = await provider.request({ method: "eth_getBalance", params: [account, "latest"] });
+    }
+    if (typeof raw !== "string" || !/^0x[0-9a-f]+$/i.test(raw)) return { value: null, note: "Balance unavailable" };
+    return { value: formatUnitsForDisplay(BigInt(raw).toString(), token.decimals), note: "Wallet balance" };
+  }
+  if (chain === "near") {
+    if (!nearAccount(nearWalletAccount)) return { value: null, note: "Connect a NEAR Testnet wallet" };
+    const params = token.contract_address
+      ? { request_type: "call_function", finality: "final", account_id: token.contract_address, method_name: "ft_balance_of", args_base64: btoa(JSON.stringify({ account_id: nearWalletAccount })) }
+      : { request_type: "view_account", finality: "final", account_id: nearWalletAccount };
+    const response = await fetch("https://rpc.testnet.near.org", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: "sentinel-swap-balance", method: "query", params })
+    });
+    if (!response.ok) throw new Error("NEAR RPC HTTP " + response.status);
+    const payload = await response.json();
+    if (payload.error) throw new Error(payload.error.message || "NEAR RPC balance error");
+    if (token.contract_address) {
+      const bytes = payload.result?.result;
+      if (!Array.isArray(bytes)) throw new Error("NEAR FT balance response is invalid");
+      const raw = JSON.parse(new TextDecoder().decode(new Uint8Array(bytes)));
+      return { value: formatUnitsForDisplay(raw, token.decimals), note: "Wallet balance" };
+    }
+    return { value: formatUnitsForDisplay(payload.result?.amount || "0", token.decimals), note: "Wallet balance" };
+  }
+  return { value: null, note: "Wallet balance adapter not connected for " + chain.toUpperCase() };
+}
+function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccount, onSelected) {
+  const root = el("div", undefined, "swap-token-picker");
+  const trigger = el("button", undefined, "swap-token-trigger");
+  trigger.type = "button";
+  trigger.setAttribute("aria-haspopup", "dialog");
+  trigger.setAttribute("aria-expanded", "false");
+  const panel = el("div", undefined, "swap-token-panel");
+  panel.hidden = true;
+  const panelHead = el("div", undefined, "swap-token-panel-head");
+  panelHead.append(el("strong", "Select token"), el("span", "LIVE TESTNET REGISTRY"));
+  const chainRow = el("div", undefined, "swap-chain-options");
+  const list = el("div", undefined, "swap-token-list");
+  const panelFoot = el("div", undefined, "swap-token-panel-foot");
+  const balanceStamp = el("span", "Balances not checked");
+  const refresh = el("button", "Refresh balances ↻", "swap-balance-refresh");
+  refresh.type = "button";
+  panelFoot.append(balanceStamp, refresh);
+  panel.append(panelHead, chainRow, list, panelFoot);
+  const chains = [...new Set(tokenList.map(token => String(token.blockchain || "").toLowerCase()))].filter(Boolean);
+  let activeChain = tokenList.find(token => token.asset_id === select.value)?.blockchain || chains[0] || "";
+  const balances = new Map();
+  let loading = false;
+  const selectedToken = () => tokenList.find(token => token.asset_id === select.value);
+  const syncTrigger = () => {
+    const token = selectedToken();
+    trigger.replaceChildren();
+    const name = el("strong", token ? token.symbol : (initialSymbol || "Select token"));
+    const network = el("span", token ? String(token.blockchain).toUpperCase() : "Choose network");
+    const chevron = el("span", "▾", "swap-token-chevron");
+    trigger.append(name, network, chevron);
+    trigger.classList.toggle("is-selected", Boolean(token));
+  };
+  const renderChains = () => {
+    chainRow.replaceChildren();
+    for (const chain of chains) {
+      const button = el("button", chain.toUpperCase(), "swap-chain-chip" + (chain === activeChain ? " is-active" : ""));
+      button.type = "button";
+      button.addEventListener("click", () => { activeChain = chain; renderChains(); renderTokens(); });
+      chainRow.append(button);
+    }
+  };
+  const renderTokens = () => {
+    list.replaceChildren();
+    const entries = tokenList.filter(token => String(token.blockchain || "").toLowerCase() === activeChain);
+    if (!entries.length) { list.append(el("p", "No Tidepool assets on this network.", "swap-token-empty")); return; }
+    for (const token of entries) {
+      const item = el("button", undefined, "swap-token-option" + (token.asset_id === select.value ? " is-current" : ""));
+      item.type = "button";
+      const identity = el("span", undefined, "swap-token-identity");
+      identity.append(el("strong", token.symbol), el("small", String(token.name || token.symbol) + " · " + String(token.blockchain).toUpperCase()));
+      const balance = balances.get(token.asset_id);
+      const amount = el("strong", balance?.value !== null && balance?.value !== undefined ? balance.value : "—", "swap-token-balance");
+      const note = el("small", balance?.note || "Balance not checked", "swap-token-balance-note");
+      const value = el("span", undefined, "swap-token-value");
+      value.append(amount, note);
+      item.append(identity, value);
+      item.addEventListener("click", () => {
+        select.value = token.asset_id;
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        syncTrigger();
+        panel.hidden = true;
+        trigger.setAttribute("aria-expanded", "false");
+        onSelected(token);
+      });
+      list.append(item);
+    }
+  };
+  const refreshBalances = async () => {
+    if (loading) return;
+    loading = true;
+    refresh.disabled = true;
+    refresh.textContent = "Refreshing…";
+    balanceStamp.textContent = "Reading connected wallet";
+    const entries = tokenList.filter(token => String(token.blockchain || "").toLowerCase() === activeChain);
+    await Promise.all(entries.map(async token => {
+      try { balances.set(token.asset_id, await readSwapWalletBalance(token, nearWalletAccount)); }
+      catch (error) { balances.set(token.asset_id, { value: null, note: error?.message || "Balance unavailable" }); }
+    }));
+    balanceStamp.textContent = "Updated " + new Date().toLocaleTimeString();
+    loading = false;
+    refresh.disabled = false;
+    refresh.textContent = "Refresh balances ↻";
+    renderTokens();
+  };
+  trigger.addEventListener("click", () => {
+    panel.hidden = !panel.hidden;
+    trigger.setAttribute("aria-expanded", String(!panel.hidden));
+    if (!panel.hidden) refreshBalances();
+  });
+  refresh.addEventListener("click", refreshBalances);
+  syncTrigger(); renderChains(); renderTokens();
+  root.append(trigger, select, panel);
+  return { root, sync: syncTrigger, close: () => { panel.hidden = true; trigger.setAttribute("aria-expanded", "false"); } };
+}
+
 export async function renderChatSwap({ prompt, result, request, connector, connectedAccount, encodeBase58, guestMode }) {
   const parsed = parseChatSwapPrompt(prompt);
   const card = el("section", undefined, "developer-trade-draft");
@@ -265,17 +413,22 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
   const tokensResponse = await request("/trading/tokens", { method: "GET" });
   const tokens = tokensResponse.tokens;
   if (!Array.isArray(tokens) || !tokens.length) throw new Error("Tidepool did not return a usable testnet token registry.");
-  const matches = symbol => tokens.filter(token => token.symbol.toUpperCase() === symbol);
   const amountInput = document.createElement("input"); amountInput.value = parsed.amount; amountInput.inputMode = "decimal";
   const originSelect = document.createElement("select"), destSelect = document.createElement("select");
-  const addOptions = (select, symbol) => {
-    const found = matches(symbol);
-    const first = el("option", found.length ? "Choose exact " + symbol + " network…" : "Asset not found: " + symbol);
-    first.value = ""; select.append(first);
-    for (const token of found) { const option = el("option", formatToken(token)); option.value = token.asset_id; select.append(option); }
-    if (found.length === 1) select.value = found[0].asset_id;
-  };
-  addOptions(originSelect, parsed.from); addOptions(destSelect, parsed.to);
+  for (const token of tokens) {
+    const originOption = el("option", formatToken(token)); originOption.value = token.asset_id; originSelect.append(originOption);
+    const destinationOption = el("option", formatToken(token)); destinationOption.value = token.asset_id; destSelect.append(destinationOption);
+  }
+  const initialOrigin = tokens.filter(token => token.symbol.toUpperCase() === parsed.from);
+  const initialDestination = tokens.filter(token => token.symbol.toUpperCase() === parsed.to);
+  if (initialOrigin.length === 1) originSelect.value = initialOrigin[0].asset_id;
+  else originSelect.value = "";
+  if (initialDestination.length === 1) destSelect.value = initialDestination[0].asset_id;
+  else destSelect.value = "";
+  originSelect.className = "swap-native-select";
+  destSelect.className = "swap-native-select";
+  const originPicker = createSwapTokenPicker(originSelect, tokens, parsed.from, connectedAccount, () => { defaults(); invalidate(); });
+  const destinationPicker = createSwapTokenPicker(destSelect, tokens, parsed.to, connectedAccount, () => { defaults(); invalidate(); });
   const recipientInput = document.createElement("input"); recipientInput.autocomplete = "off"; recipientInput.placeholder = "Destination wallet address";
   const refundInput = document.createElement("input"); refundInput.autocomplete = "off"; refundInput.placeholder = "Refund address on origin chain";
   const slippage = document.createElement("select");
@@ -293,8 +446,21 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
   defaults();
   const fields = el("div", undefined, "developer-trade-quote");
   addField(fields, "Amount · " + parsed.from, amountInput);
-  addField(fields, "Origin asset / network", originSelect);
-  addField(fields, "Destination asset / network", destSelect);
+  addField(fields, "You pay · origin asset / network", originPicker.root);
+  const flipButton = el("button", "⇅", "swap-flip-button");
+  flipButton.type = "button";
+  flipButton.title = "Switch origin and destination";
+  flipButton.setAttribute("aria-label", "Switch origin and destination");
+  flipButton.addEventListener("click", () => {
+    const currentOrigin = originSelect.value, currentDestination = destSelect.value;
+    originSelect.value = currentDestination;
+    destSelect.value = currentOrigin;
+    originSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    destSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    originPicker.sync(); destinationPicker.sync(); invalidate();
+  });
+  fields.append(flipButton);
+  addField(fields, "You receive · destination asset / network", destinationPicker.root);
   addField(fields, "Destination recipient", recipientInput);
   addField(fields, "Origin refund address", refundInput);
   addField(fields, "Maximum slippage", slippage);
@@ -305,8 +471,8 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
   fields.append(quoteButton, status, approveButton, details); card.append(fields);
   let swap = null, dryQuote = null;
   const invalidate = () => { approveButton.disabled = true; dryQuote = null; swap = null; };
-  originSelect.addEventListener("change", () => { defaults(); invalidate(); });
-  destSelect.addEventListener("change", () => { defaults(); invalidate(); });
+  originSelect.addEventListener("change", () => { defaults(); originPicker.sync(); invalidate(); });
+  destSelect.addEventListener("change", () => { defaults(); destinationPicker.sync(); invalidate(); });
   for (const input of [amountInput, recipientInput, refundInput, slippage]) input.addEventListener("change", invalidate);
   quoteButton.addEventListener("click", async () => {
     quoteButton.disabled = true; approveButton.disabled = true;
