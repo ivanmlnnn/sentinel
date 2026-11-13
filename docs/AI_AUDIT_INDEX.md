@@ -85,6 +85,20 @@ The lab README records a later **222/222** root-suite and **16/16** isolated sig
 
 At the time this index was created, GitHub reported **zero GitHub Actions workflow runs** for audit commit `ed86e0fd76f47e8ecebe33a926e0e39542ae6bbe`. The combined status contained a Vercel success status only. A Vercel preview deployment is not evidence that the repository test workflow passed.
 
+### Main-branch CI baseline — not lab-branch proof
+
+The current `main` baseline at commit `67f9896fc81068d9ad17eb119f33895eaf82c6b2` has four successful workflow runs:
+- [Sentinel Security CI #43109875344](https://github.com/ivanmlnnn/sentinel/actions/runs/43109875344) — success.
+- [Cloudflare deployment #43109875176](https://github.com/ivanmlnnn/sentinel/actions/runs/43109875176) — success, including automated tests, migrations and production smoke test.
+- [CodeQL #43109874994](https://github.com/ivanmlnnn/sentinel/actions/runs/43109874994) — success.
+- [Sentinel checks #43109874900](https://github.com/ivanmlnnn/sentinel/actions/runs/43109874900) — success, including Node tests, Worker bundle checks, offline prompt-injection demo, and NEAR WASM build.
+
+These runs are evidence for the **main branch baseline only**. They do not validate PR #42's lab-only signer changes or its new contract proof envelope.
+
+### Current lab-branch CI status
+
+No GitHub Actions run was found for PR #42 branch head `202c21e92506f006f304e55277c49e2d599651a4`. The Vercel status for that commit reports an account build-rate-limit failure; that is not a code-test failure, but it is also not a successful test result. The lab workflow must run successfully on the current PR head before its branch test totals can be treated as fresh CI evidence.
+
 ## 6. Reproduce locally
 
 Use Node.js 22+ and Rust toolchain with `wasm32-unknown-unknown`:
