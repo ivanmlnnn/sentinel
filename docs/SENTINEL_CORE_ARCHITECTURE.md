@@ -82,18 +82,18 @@ The model's response is not a trusted security decision. The backend validates t
 
 ## 6. User Agent payment path
 
-The current native NEAR payment path is a proposal-and-wallet-approval workflow:
+The current native NEAR payment path is implemented in source as a proposal-and-wallet-approval workflow, but the branch Wrangler kill switch is set to fail closed. Do not expect payment proposals to proceed until a reviewed Testnet release deliberately enables the main and signer kill switches together. When enabled for controlled testing:
 
 1. The authenticated User Agent receives a clear request to create a payment proposal.
 2. The backend validates receiver and amount and stores an actor-bound pending proposal with a short expiry.
 3. The user explicitly selects the wallet approval action for that exact receiver and amount.
 4. The approval API verifies ownership/actor binding and expiry, performs a fresh trusted investigation, and evaluates deterministic authorization policy.
 5. The browser wallet signs and broadcasts the exact native NEAR Transfer. Sentinel does not take the user's seed phrase or private key.
-6. The Main Worker calls the isolated Signer Worker through a private service binding, authenticated with timestamp, nonce, and HMAC-SHA256.
-7. The Signer Worker independently checks request authentication, replay/idempotency state, approval claim, spend policy and kill switch, then queries NEAR RPC to verify the submitted transaction and successful exact transfer.
+6. The Main Worker calls the isolated Signer Worker through the `SIGNER_SERVICE` service binding, authenticated with timestamp, nonce, and HMAC-SHA256. The current branch config disables the Signer's public `workers.dev` endpoint.
+7. The Signer Worker independently checks request authentication, replay/idempotency state, approval claim, spend policy and kill switch, then queries NEAR RPC to verify the submitted transaction and successful exact transfer. It does not sign or broadcast the user's native Transfer.
 8. If the final result cannot be established, the system must preserve an unknown/conservative status rather than claim success.
 
-The payment-contract source and restricted FunctionCall-key validator in the repository are not proof that the current native payment route uses a deployed contract. The current native payment verification path checks the wallet-signed Transfer. Do not describe this as a contract-scoped payout unless a configured deployed contract and matching transaction evidence exist.
+The payment-contract source and restricted FunctionCall-key validator in the repository are not proof that the current native payment route uses a deployed contract. The current native payment verification path checks the wallet-signed Transfer. The helper `assertRestrictedFunctionCallKey()` is not called by the active Signer `execute()` path. Do not describe this as a contract-scoped payout unless a configured deployed contract and matching transaction evidence exist.
 
 ## 7. Developer Mode path
 
