@@ -1,5 +1,5 @@
 import { buildTradeSkillDraft } from './trade-skill-draft.js';
-import { renderChatSwap } from './chat-swap.js?v=20261114-chat-swap1';
+import { renderChatSwap } from './chat-swap.js?v=20261114-swap-wallet3';
 const $ = id => document.getElementById(id);
 const API = '/api';
 const GUEST_MODE = Boolean(window.SENTINEL_GUEST);
@@ -1522,7 +1522,7 @@ if (agentForm) {
       if (!GUEST_MODE) renderAuthenticatedPending(prompt);
       const swapRequest = (path, options = {}) => request(path, { ...options, signal: swapController.signal });
       try {
-        await renderChatSwap({ prompt, result: $('agentResult'), request: swapRequest, connector, connectedAccount, connectedWalletName, encodeBase58, guestMode: GUEST_MODE });
+        await renderChatSwap({ prompt, result: $('agentResult'), request: swapRequest, connector, connectedAccount, connectedWalletName, encodeBase58, guestMode: GUEST_MODE, onWalletConnected: syncWalletUI });
         if (activeChatSwapController === swapController) $('agentPrompt').value = '';
       } catch (error) {
         if (swapController.signal.aborted || activeChatSwapController !== swapController) return;
