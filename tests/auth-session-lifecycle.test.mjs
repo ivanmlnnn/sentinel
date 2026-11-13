@@ -27,3 +27,16 @@ test("email login clears a previous Guest marker", () => {
 test("dashboard imports the cache-busted app bundle", () => {
   assert.match(auth, /app\.js\?v=20261111-future-console2/);
 });
+
+
+test("Guest login reports Privy disabled-feature errors separately", () => {
+  assert.match(auth, /function describeGuestAuthFailure/);
+  assert.match(auth, /Privy rejected Guest login because Guest Accounts appear to be disabled/);
+  assert.match(auth, /error\?\.privyErrorCode/);
+});
+
+test("Guest login distinguishes network and origin errors instead of blaming Guest settings for every failure", () => {
+  assert.match(auth, /Could not reach Privy to create a Guest session/);
+  assert.match(auth, /Privy rejected this site origin or app configuration/);
+  assert.match(auth, /Guest login failed \(' \+ code \+ '\): ' \+ detail/);
+});
