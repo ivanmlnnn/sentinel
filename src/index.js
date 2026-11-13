@@ -130,7 +130,7 @@ async function terminalRunPost({ request }) {
   const mode = body?.mode || "user";
   const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
   if (mode === "developer" && (!/^[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet$/.test(String(body?.wallet_account || "")))) return apiError("DEVELOPER_WALLET_REQUIRED", 400);
-  if (mode !== "user") return apiError("INVALID_TERMINAL_MODE", 400);
+  if (mode !== "user" && mode !== "developer") return apiError("INVALID_TERMINAL_MODE", 400);
   if (!prompt || prompt.length > 4000) return apiError("PROMPT_REQUIRED", 400);
   try {
     const upstream = await fetch(TERMINAL_RUNTIME_URL + "/v1/terminal/run", {
@@ -198,7 +198,7 @@ export default {
           const ip = request.headers.get("CF-Connecting-IP") || "unknown";
           if (!env.API_RATE_LIMITER) return respond(serviceUnavailable("RATE_LIMIT_NOT_CONFIGURED"));
           if (!await enforceRateLimit(env.API_RATE_LIMITER, ip)) return respond(rateLimitResponse());
-          if (request.method === "POST" && ["/api/agent/run", "/api/terminal/run", "/api/agent/developer-session", "/api/agent/approve", "/api/guest/agent"].includes(url.pathname)) {
+          if (request.method === "POST" && ["/api/agent/run", "/api/terminal/run", "/api/agent/approve", "/api/guest/agent"].includes(url.pathname)) {
             if (!env.AGENT_RATE_LIMITER) return respond(serviceUnavailable("AGENT_RATE_LIMIT_NOT_CONFIGURED"));
             if (!await enforceRateLimit(env.AGENT_RATE_LIMITER, ip)) return respond(rateLimitResponse());
           }
