@@ -1,4 +1,4 @@
-import { json, readTextLimited } from "./_shared.js";
+import { json, readTextLimited, verifyPrivyAccessToken } from "./_shared.js";
 import { getTidepoolPublicKeyStatus } from "../../src/trading-core.mjs";
 
 export async function onRequestPost({ request, env }) {
