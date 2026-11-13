@@ -40,6 +40,7 @@ export class TidepoolAgentApiError extends Error {
     this.retryable = details.retryable === true;
     this.requestId = details.requestId || null;
     this.correlationId = details.correlationId || null;
+    this.idempotencyKey = details.idempotencyKey || null;
   }
 }
 
@@ -90,7 +91,7 @@ export function createTidepoolAgentClient({
         signal: AbortSignal.timeout(waitMs === undefined ? timeoutMs : waitMs + 5000)
       });
     } catch {
-      throw new TidepoolAgentApiError("TIDEPOOL_PROVIDER_UNAVAILABLE", 502, { retryable: true });
+      throw new TidepoolAgentApiError("TIDEPOOL_PROVIDER_UNAVAILABLE", 502, { retryable: true, idempotencyKey });
     }
     let payload;
     try { payload = await readJsonLimited(response); }
@@ -100,7 +101,8 @@ export function createTidepoolAgentClient({
       throw new TidepoolAgentApiError(error?.code || "TIDEPOOL_REQUEST_FAILED", response.status, {
         layer: error?.layer,
         retryable: error?.meta?.retryable,
-        requestId: payload?.meta?.request_id
+        requestId: payload?.meta?.request_id,
+        idempotencyKey
       });
     }
     return payload;
@@ -150,7 +152,8 @@ export function createTidepoolAgentClient({
       });
       if (result?.status !== "PENDING_APPROVAL" || typeof result?.details?.approval_id !== "string") {
         throw new TidepoolAgentApiError("OWNER_APPROVAL_NOT_HELD", 502, {
-          correlationId: result?.correlation_id || null
+          correlationId: result?.correlation_id || null,
+          idempotencyKey
         });
       }
       return result;
