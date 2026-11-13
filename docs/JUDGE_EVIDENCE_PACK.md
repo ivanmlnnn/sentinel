@@ -6,12 +6,12 @@
 
 ## Current production deployment — 12 November 2026
 
-The current production Workers were deployed directly with Wrangler from the local repository, not by a GitHub Actions deployment queue.
+The last recorded direct Wrangler deployment snapshot is dated 12 November 2026. The deployment IDs below are historical evidence, not a fresh verification of the current PR head. The current branch now sets Signer `workers_dev=false` and `NEAR_AGENT_KILL_SWITCH=true`; these branch settings have not been applied to production by this documentation update.
 
 | Component | Production URL | Deployed version |
 |---|---|---|
 | Main Worker | https://sentinel.ivmaladin.workers.dev | `80a8c904-d1b4-4686-be5a-557e3c0da3a9` |
-| Isolated Signer Worker | https://sentinel-signer.ivmaladin.workers.dev | `fe208953-3eff-42a1-9356-9181042eb5f3` |
+| Isolated Signer Worker | Internal `SIGNER_SERVICE` binding (intended); historical deployment snapshot exposed a `workers.dev` URL | `fe208953-3eff-42a1-9356-9181042eb5f3` (historical) |
 
 **Verification recorded for this deployment:** `npm test` — 146 passed, 0 failed, 0 skipped; `npm run smoke:test` — all HTTP smoke checks passed (dashboard HTTP 200 and expected protected-route rejections). These checks do not prove a live wallet approval or a successful NEAR payment.
 
@@ -182,7 +182,7 @@ PASS
 
 The attack demo is deliberately described as an **offline regression simulation**. It demonstrates the application-level guard's expected fail-closed behavior; it does not impersonate a live LLM attack, submit a NEAR transaction, or prove a live payout.
 
-For the isolated Signer Worker bundle check:
+For the isolated Signer Worker bundle check (historical workflow evidence; current branch config differs):
 
 ```bash
 npx wrangler@4.159.0 deploy --config signer-worker/wrangler.jsonc --dry-run
@@ -212,7 +212,7 @@ Relevant implementation:
 
 ## 6. Deployment status: distinguish what each record proves
 
-The repository contains real NEAR Testnet RPC and NearBlocks Testnet API integrations. The deployment records above establish successful Cloudflare Worker deployments and smoke checks. The maintainer has also reported that the payment contract was previously deployed and that existing runtime configuration was reused.
+The repository contains real NEAR Testnet RPC and NearBlocks Testnet API integrations. The deployment records above establish successful Cloudflare Worker deployments and smoke checks for their named revisions. They do not establish that the current active native payment path uses the payment contract; the current branch source verifies wallet-signed native Transfers.
 
 For a strict independent review, keep these statements separate:
 
