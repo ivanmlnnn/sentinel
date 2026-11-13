@@ -19,6 +19,7 @@ import { onRequestPost as tradingGenerateIntentPost } from "../functions/api/tra
 import { onRequestPost as tradingSubmitIntentPost } from "../functions/api/trading-submit-intent.js";
 import { onRequestGet as tradingStatusGet } from "../functions/api/trading-status.js";
 import { onRequestPost as tradingKeyStatusPost } from "../functions/api/trading-key-status.js";
+import { onRequestPost as tradingDepositSubmitPost } from "../functions/api/trading-deposit-submit.js";
 
 const MAX_API_BODY_BYTES = 65536;
 const routes = {
@@ -44,7 +45,8 @@ const routes = {
   "POST /api/trading/generate-intent": tradingGenerateIntentPost,
   "POST /api/trading/submit-intent": tradingSubmitIntentPost,
   "GET /api/trading/status": tradingStatusGet,
-  "POST /api/trading/key-status": tradingKeyStatusPost
+  "POST /api/trading/key-status": tradingKeyStatusPost,
+  "POST /api/trading/deposit/submit": tradingDepositSubmitPost
 };
 
 async function validateBoundedJsonBody(request) {
@@ -153,7 +155,7 @@ export default {
           const ip = request.headers.get("CF-Connecting-IP") || "unknown";
           if (!env.API_RATE_LIMITER) return respond(serviceUnavailable("RATE_LIMIT_NOT_CONFIGURED"));
           if (!await enforceRateLimit(env.API_RATE_LIMITER, ip)) return respond(rateLimitResponse());
-          if (request.method === "POST" && ["/api/agent/run", "/api/agent/approve", "/api/guest/agent", "/api/trading/agent", "/api/trading/backtest"].includes(url.pathname)) {
+          if (request.method === "POST" && ["/api/agent/run", "/api/agent/approve", "/api/guest/agent", "/api/trading/agent", "/api/trading/backtest", "/api/trading/live-quote", "/api/trading/generate-intent", "/api/trading/submit-intent", "/api/trading/key-status", "/api/trading/deposit/submit"].includes(url.pathname)) {
             if (!env.AGENT_RATE_LIMITER) return respond(serviceUnavailable("AGENT_RATE_LIMIT_NOT_CONFIGURED"));
             if (!await enforceRateLimit(env.AGENT_RATE_LIMITER, ip)) return respond(rateLimitResponse());
           }
