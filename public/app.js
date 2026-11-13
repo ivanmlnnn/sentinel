@@ -1,5 +1,5 @@
 import { buildTradeSkillDraft } from './trade-skill-draft.js';
-import { renderChatSwap } from './chat-swap.js?v=20261114-wallet-session8';
+import { renderChatSwap } from './chat-swap.js?v=20261114-meteor-shared1';
 const $ = id => document.getElementById(id);
 const API = '/api';
 const GUEST_MODE = Boolean(window.SENTINEL_GUEST);
@@ -283,6 +283,7 @@ async function connectNearWalletFromGesture() {
     }
     syncWalletUI(account.accountId, current.wallet?.manifest?.name || 'NEAR wallet');
     toast('NEAR wallet connected: ' + (current.wallet?.manifest?.name || 'NEAR wallet'));
+    return account.accountId;
   } catch (error) {
     console.error('NEAR wallet connection error:', error);
     const message = error?.message || 'Wallet connection was cancelled or unavailable.';
@@ -1567,7 +1568,7 @@ if (agentForm) {
       if (!GUEST_MODE) renderAuthenticatedPending(prompt);
       const swapRequest = (path, options = {}) => request(path, { ...options, signal: swapController.signal });
       try {
-        await renderChatSwap({ prompt, result: $('agentResult'), request: swapRequest, connector: () => connector, connectedAccount: () => connectedAccount, connectedWalletName, encodeBase58, guestMode: GUEST_MODE, onWalletConnected: syncWalletUI });
+        await renderChatSwap({ prompt, result: $('agentResult'), request: swapRequest, connector: () => connector, connectedAccount: () => connectedAccount, connectedWalletName, encodeBase58, guestMode: GUEST_MODE, onWalletConnected: syncWalletUI, onConnectNearWallet: connectNearWalletFromGesture });
         if (activeChatSwapController === swapController) $('agentPrompt').value = '';
       } catch (error) {
         if (swapController.signal.aborted || activeChatSwapController !== swapController) return;
