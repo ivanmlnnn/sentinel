@@ -136,3 +136,38 @@
 .swap-balance-refresh:disabled{opacity:.55;cursor:wait}
 .swap-flip-button{justify-self:center!important;width:38px!important;height:38px;display:grid!important;place-items:center;padding:0!important;border:1px solid rgba(130,227,223,.28)!important;border-radius:50%!important;background:#10272b!important;color:#9ce8db!important;font-size:19px!important;cursor:pointer}
 @media(max-width:480px){.swap-token-panel{width:min(330px,calc(100vw - 42px));left:auto;right:0}.swap-token-trigger{min-width:130px}}
+
+
+/* Polished Web3 swap surface */
+.swap-modern-card{position:relative;overflow:visible;gap:13px;padding:clamp(14px,3vw,20px);border-color:rgba(107,218,205,.28);background:linear-gradient(145deg,rgba(13,47,49,.78),rgba(5,19,25,.94) 62%);box-shadow:0 18px 55px rgba(0,0,0,.2),inset 0 1px rgba(255,255,255,.035)}
+.swap-wallet-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid rgba(130,227,223,.14);border-radius:12px;background:rgba(0,0,0,.18)}
+.swap-wallet-state{display:flex;align-items:center;gap:8px;min-width:0;color:#9fb8b2;font:600 10px "IBM Plex Mono",monospace}
+.swap-wallet-state.is-connected{color:#a6edcf}
+.swap-wallet-state-icon{display:grid;place-items:center;width:25px;height:25px;border-radius:50%;background:rgba(92,207,183,.12);color:#8ce6cf;font-size:15px}
+.swap-connect-button{flex:0 0 auto;padding:9px 13px!important;border:1px solid rgba(113,222,202,.38)!important;border-radius:999px!important;background:linear-gradient(135deg,rgba(62,180,156,.22),rgba(28,106,103,.2))!important;color:#c5fff0!important;font:700 10px "IBM Plex Mono",monospace!important;letter-spacing:.02em;transition:transform .2s ease,border-color .2s ease,background .2s ease}
+.swap-connect-button:hover:not(:disabled){transform:translateY(-1px);border-color:rgba(132,255,225,.7)!important;background:rgba(59,169,147,.3)!important}
+.swap-connect-button:disabled{opacity:.55;cursor:wait}
+.swap-chain-logo{display:inline-grid;flex:0 0 auto;place-items:center;width:25px;height:25px;border-radius:50%;background:rgba(255,255,255,.92);overflow:hidden}
+.swap-chain-logo img{display:block;width:15px;height:15px;object-fit:contain}
+.swap-chain-logo>span{font:800 8px "IBM Plex Mono",monospace;color:#102126}
+.swap-token-placeholder{display:grid;place-items:center;width:25px;height:25px;border-radius:50%;background:rgba(255,255,255,.08);color:#9ce8db}
+.swap-token-trigger{min-height:44px;padding:8px 12px!important;box-shadow:0 4px 18px rgba(0,0,0,.14);transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+.swap-token-trigger:hover{transform:translateY(-1px);border-color:rgba(135,255,225,.6)!important;box-shadow:0 7px 22px rgba(0,0,0,.2)}
+.swap-token-panel{animation:swap-panel-in .18s cubic-bezier(.2,.8,.2,1);transform-origin:top left;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+@keyframes swap-panel-in{from{opacity:0;transform:translateY(-5px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+.swap-chain-chip{display:flex!important;align-items:center;gap:6px;transition:background .18s ease,border-color .18s ease,transform .18s ease}
+.swap-chain-chip .swap-chain-logo{width:20px;height:20px}
+.swap-chain-chip .swap-chain-logo img{width:12px;height:12px}
+.swap-chain-chip:hover{transform:translateY(-1px)}
+.swap-token-identity{display:flex;align-items:center;gap:9px}
+.swap-token-identity .swap-chain-logo{width:30px;height:30px}
+.swap-token-copy{display:grid;gap:4px;min-width:0}
+.swap-token-option{transition:background .16s ease,border-color .16s ease,transform .16s ease}
+.swap-token-option:hover{transform:translateX(2px)}
+.swap-flip-button{transition:transform .2s ease,background .2s ease}
+.swap-flip-button:hover{transform:rotate(180deg);background:#174047!important}
+.swap-modern-card label{display:grid;gap:9px}
+.swap-modern-card input,.swap-modern-card select:not(.swap-native-select){border-radius:10px;transition:border-color .18s ease,box-shadow .18s ease}
+.swap-modern-card input:focus,.swap-modern-card select:focus-visible{outline:none;border-color:rgba(119,232,213,.65);box-shadow:0 0 0 3px rgba(90,205,183,.1)}
+@media(prefers-reduced-motion:reduce){.swap-token-panel,.swap-token-trigger,.swap-chain-chip,.swap-token-option,.swap-flip-button,.swap-connect-button{animation:none!important;transition:none!important}}
+@media(max-width:480px){.swap-wallet-bar{align-items:flex-start;flex-direction:column}.swap-connect-button{width:100%}.swap-token-panel{max-width:calc(100vw - 34px)}}
