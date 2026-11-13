@@ -221,7 +221,6 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
     first.value = ""; select.append(first);
     for (const token of found) { const option = el("option", formatToken(token)); option.value = token.asset_id; select.append(option); }
     if (found.length === 1) select.value = found[0].asset_id;
-    else if (found.some(token => token.blockchain === "near")) select.value = found.find(token => token.blockchain === "near").asset_id;
   };
   addOptions(originSelect, parsed.from); addOptions(destSelect, parsed.to);
   const recipientInput = document.createElement("input"); recipientInput.autocomplete = "off"; recipientInput.placeholder = "Destination wallet address";
