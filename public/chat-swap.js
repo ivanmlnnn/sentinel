@@ -706,8 +706,41 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   walletState.classList.toggle("is-connected", Boolean(walletAccountAtRender));
   const connectButton = el("button", walletAccountAtRender ? "Checking route wallets…" : "Connect required wallets", "swap-connect-button");
   connectButton.type = "button";
-  walletBar.append(walletState, connectButton);
+  const disconnectButton = el("button", "Disconnect NEAR", "swap-disconnect-button");
+  disconnectButton.type = "button";
+  disconnectButton.hidden = !nearAccount(walletAccountAtRender);
+  walletBar.append(walletState, connectButton, disconnectButton);
   fields.append(walletBar);
+  disconnectButton.addEventListener("click", async () => {
+    if (!nearAccount(getConnectedAccount()) && !activeNearAccount) {
+      status.textContent = "No connected NEAR wallet session to disconnect.";
+      disconnectButton.hidden = true;
+      return;
+    }
+    disconnectButton.disabled = true;
+    disconnectButton.textContent = "Disconnecting…";
+    try {
+      if (typeof onDisconnectNearWallet !== "function") throw new Error("Dashboard disconnect handler is unavailable.");
+      await onDisconnectNearWallet();
+      activeNearAccount = null;
+      dryQuote = null;
+      swap = null;
+      walletStateText.textContent = "Wallet not connected";
+      walletState.classList.remove("is-connected");
+      disconnectButton.hidden = true;
+      connectButton.textContent = "Connect required wallets";
+      approveButton.disabled = true;
+      approveButton.hidden = true;
+      status.textContent = "NEAR wallet disconnected from Sentinel. Connect again before requesting a new quote.";
+      originPicker.refresh();
+      destinationPicker.refresh();
+    } catch (error) {
+      status.textContent = error?.message || "Could not disconnect the NEAR wallet.";
+    } finally {
+      disconnectButton.disabled = false;
+      disconnectButton.textContent = "Disconnect NEAR";
+    }
+  });
   connectButton.addEventListener("click", async () => {
     const { origin, dest } = defaults();
     if (!origin || !dest) {
@@ -749,6 +782,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         const partialAddresses = [walletAddressFor(origin.blockchain), walletAddressFor(dest.blockchain)].filter(Boolean);
         walletStateText.textContent = partialAddresses.map(shortWalletAddress).join(" · ");
         walletState.classList.add("is-connected");
+        disconnectButton.hidden = false;
 
         const nextChain = routeChains.find(chain => chain !== "near" && !walletAddressFor(chain));
         if (nextChain) {
@@ -774,6 +808,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       const addresses = [walletAddressFor(origin.blockchain), walletAddressFor(dest.blockchain)].filter(Boolean);
       walletStateText.textContent = addresses.map(shortWalletAddress).join(" · ");
       walletState.classList.add("is-connected");
+      disconnectButton.hidden = !nearAccount(activeNearAccount || getConnectedAccount());
       connectButton.textContent = "Get verified quote";
       status.textContent = "Wallet connected. Verifying route and quote…";
       originPicker.refresh(); destinationPicker.refresh();
@@ -808,6 +843,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     if (detected.length) {
       walletStateText.textContent = detected.map(shortWalletAddress).join(" · ");
       walletState.classList.add("is-connected");
+      disconnectButton.hidden = !nearAccount(activeNearAccount || getConnectedAccount());
     }
     connectButton.textContent = missingChains.length
       ? "Connect " + missingChains[0].toUpperCase() + " wallet"
