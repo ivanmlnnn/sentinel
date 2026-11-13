@@ -198,6 +198,53 @@ async function executeEvmDeposit(args) {
   const settled = await pollStatus(request, liveQuote.deposit_address, liveQuote.deposit_memo, statusNode);
   detailsNode.textContent = JSON.stringify({ origin_tx_hash: txHash, settlement: settled }, null, 2);
 }
+function renderManualDeposit(panel, liveQuote, token, swap, request, statusNode, detailsNode, onSubmitted) {
+  const instructions = el("pre");
+  instructions.textContent = [
+    "MANUAL ORIGIN-CHAIN DEPOSIT · SENTINEL WALLET ADAPTER NOT ENABLED",
+    "Origin: " + token.blockchain.toUpperCase() + " TESTNET",
+    "Asset: " + token.symbol,
+    "Exact amount: " + (liveQuote.quote.amount_in_formatted || liveQuote.quote.amount_in) + " " + token.symbol,
+    "Exact base-unit amount: " + liveQuote.quote.amount_in,
+    "Deposit address: " + liveQuote.deposit_address,
+    liveQuote.deposit_memo ? "REQUIRED MEMO / DESTINATION TAG: " + liveQuote.deposit_memo : "",
+    "Recipient: " + swap.recipient,
+    "Refund address: " + swap.refundTo,
+    "Minimum output: " + liveQuote.quote.minimum_amount_out,
+    "Deadline: " + liveQuote.deadline,
+    "Send only the exact asset, amount and network above. Paste the origin-chain transaction hash below. A hash is not proof of settlement; wait for Tidepool SUCCESS."
+  ].filter(Boolean).join("\n");
+  panel.append(instructions);
+  const hashInput = document.createElement("input");
+  hashInput.autocomplete = "off"; hashInput.spellcheck = false;
+  hashInput.placeholder = "Origin-chain transaction hash / signature";
+  const submitHash = el("button", "Submit deposit hash & track", "secondary-btn");
+  submitHash.type = "button";
+  submitHash.addEventListener("click", async () => {
+    const txHash = hashInput.value.trim();
+    if (txHash.length < 8 || txHash.length > 200 || /\s/.test(txHash)) {
+      statusNode.textContent = "Enter a valid transaction hash from the selected origin chain.";
+      return;
+    }
+    submitHash.disabled = true;
+    try {
+      statusNode.textContent = "Submitting deposit transaction reference to Tidepool…";
+      const body = { txHash, depositAddress: liveQuote.deposit_address };
+      if (liveQuote.deposit_memo) body.memo = liveQuote.deposit_memo;
+      const submitted = await request("/trading/deposit-submit", { method: "POST", body: JSON.stringify(body) });
+      onSubmitted();
+      detailsNode.textContent = JSON.stringify({ deposit_submission: submitted }, null, 2);
+      statusNode.textContent = "Deposit reference accepted. Waiting for Tidepool settlement…";
+      const settled = await pollStatus(request, liveQuote.deposit_address, liveQuote.deposit_memo, statusNode);
+      detailsNode.textContent = JSON.stringify({ deposit_submission: submitted, settlement: settled }, null, 2);
+    } catch (error) {
+      statusNode.textContent = error.message || "Deposit reference failed. Verify the hash and retry without sending funds again.";
+      submitHash.disabled = false;
+    }
+  });
+  panel.append(hashInput, submitHash);
+}
+
 export async function renderChatSwap({ prompt, result, request, connector, connectedAccount, encodeBase58, guestMode }) {
   const parsed = parseChatSwapPrompt(prompt);
   const card = el("section", undefined, "developer-trade-draft");
@@ -294,6 +341,7 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
   approveButton.addEventListener("click", async () => {
     approveButton.disabled = true; quoteButton.disabled = true;
     let submitted = false;
+    let manualOnly = false;
     try {
       if (!swap || !dryQuote) throw new Error("Request a fresh quote before approval.");
       if (guestMode) throw new Error("Guest mode cannot approve or sign transactions.");
@@ -303,8 +351,8 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
       } else if (CHAIN_IDS[swap.origin.blockchain]) {
         const wallet = await connectEvm(refundInput, swap.origin.blockchain);
         if (wallet.account.toLowerCase() !== swap.refundTo.toLowerCase()) throw new Error("Connected EVM wallet differs from reviewed refund address. Request a fresh quote.");
-      } else {
-        throw new Error("No audited in-chat wallet adapter for this origin chain yet. Quote is available, but wallet approval is disabled rather than guessing the transaction format.");
+      } else if (!swap.refundTo) {
+        throw new Error("Enter the refund address on the selected origin chain.");
       }
       status.textContent = "Agent 2: requesting a fresh signed live quote and deterministic risk evaluation…";
       const liveQuote = await request("/trading/live-quote", { method: "POST", body: JSON.stringify(swap) });
@@ -328,15 +376,23 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
         await executeNearIntents({ request, connector, connectedAccount, liveQuote, swap, statusNode: status, detailsNode: details, encodeBase58, onSubmitted: () => { submitted = true; } });
       } else if (liveQuote.deposit_type === "ORIGIN_CHAIN" && CHAIN_IDS[swap.origin.blockchain]) {
         await executeEvmDeposit({ request, token: swap.origin, liveQuote, swap, refundInput, statusNode: status, detailsNode: details, onSubmitted: () => { submitted = true; } });
+      } else if (liveQuote.deposit_type === "ORIGIN_CHAIN") {
+        manualOnly = true;
+        status.textContent = "Quote and risk checks passed. Use the exact deposit instructions below with your chain wallet, then submit its transaction hash for tracking.";
+        renderManualDeposit(fields, liveQuote, swap.origin, swap, request, status, details, () => {
+          submitted = true;
+          approveButton.disabled = true;
+          approveButton.textContent = "Deposit submitted · status tracked";
+        });
       } else {
-        throw new Error("Provider deposit type does not match an audited wallet adapter. No transaction was sent.");
+        throw new Error("Provider deposit type does not match a supported deposit flow. No transaction was sent.");
       }
     } catch (error) {
       status.textContent = error.message || "Swap flow stopped. Check wallet activity and Tidepool status before retrying.";
     } finally {
       quoteButton.disabled = false;
-      approveButton.disabled = submitted;
-      approveButton.textContent = submitted ? "Swap submitted · status tracked" : "Review & approve swap";
+      approveButton.disabled = submitted || manualOnly;
+      approveButton.textContent = submitted ? "Swap submitted · status tracked" : manualOnly ? "Manual deposit instructions ready" : "Review & approve swap";
     }
   });
   result.replaceChildren(card); result.classList.remove("hidden"); result.scrollTop = result.scrollHeight;
