@@ -49,8 +49,10 @@ function encodeErc20Transfer(to, amount) {
   return "0xa9059cbb" + to.slice(2).toLowerCase().padStart(64, "0") + BigInt(amount).toString(16).padStart(64, "0");
 }
 async function connectEvm(refundInput, chain) {
-  const provider = window.ethereum;
-  if (!provider || typeof provider.request !== "function") throw new Error("No injected EVM wallet found. Connect MetaMask or another EIP-1193 wallet.");
+  const providers = Array.isArray(window.ethereum?.providers) ? window.ethereum.providers : [window.ethereum];
+  const provider = providers.find(item => item && typeof item.request === "function" && !item.isBraveWallet) ||
+    providers.find(item => item && typeof item.request === "function");
+  if (!provider) throw new Error("No injected EVM wallet found. Install or unlock an EIP-1193 wallet, then retry.");
   const accounts = await provider.request({ method: "eth_requestAccounts" });
   const account = accounts?.[0];
   if (!evmAddress(account)) throw new Error("EVM wallet did not return a valid address.");
@@ -364,10 +366,13 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
   const renderChains = () => {
     chainRow.replaceChildren();
     for (const chain of chains) {
-      const button = el("button", undefined, "swap-chain-chip" + (chain === activeChain ? " is-active" : ""));
+      const supported = chain === "near" || Boolean(CHAIN_IDS[chain]);
+      const button = el("button", undefined, "swap-chain-chip" + (chain === activeChain ? " is-active" : "") + (supported ? "" : " is-unavailable"));
       button.type = "button";
-      button.append(chainLogo(chain), el("span", chain.toUpperCase()));
-      button.addEventListener("click", () => { activeChain = chain; renderChains(); renderTokens(); refreshBalances(); });
+      button.disabled = !supported;
+      button.title = supported ? "Select " + chain.toUpperCase() : chain.toUpperCase() + " wallet adapter is not integrated yet";
+      button.append(chainLogo(chain), el("span", chain.toUpperCase()), ...(supported ? [] : [el("small", "SOON")]));
+      if (supported) button.addEventListener("click", () => { activeChain = chain; renderChains(); renderTokens(); refreshBalances(); });
       chainRow.append(button);
     }
   };
@@ -503,7 +508,7 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
   const walletStateIcon = el("span", "◈", "swap-wallet-state-icon");
   const walletStateText = el("span", connectedAccount ? shortWalletAddress(connectedAccount) : "Wallet not connected");
   walletState.append(walletStateIcon, walletStateText);
-  const connectButton = el("button", connectedAccount ? "Connect route wallets" : "Connect wallet", "swap-connect-button");
+  const connectButton = el("button", "Connect wallet & get quote", "swap-connect-button");
   connectButton.type = "button";
   walletBar.append(walletState, connectButton);
   fields.append(walletBar);
@@ -519,10 +524,11 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
       walletStateText.textContent = addresses.map(shortWalletAddress).join(" · ");
       walletState.classList.add("is-connected");
       connectButton.textContent = "Wallets connected ✓";
-      status.textContent = "Wallet connection verified for the selected route. Balances can now be refreshed.";
+      status.textContent = "Wallet connected. Verifying route and quote…";
       originPicker.refresh(); destinationPicker.refresh();
+      quoteButton.click();
     } catch (error) {
-      connectButton.textContent = "Connect wallet";
+      connectButton.textContent = "Connect wallet & get quote";
       status.textContent = error.message || "Wallet connection failed.";
     } finally { connectButton.disabled = false; }
   });
@@ -543,11 +549,11 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
   fields.append(flipButton);
   addField(fields, "You receive · destination asset / network", destinationPicker.root);
   addField(fields, "Maximum slippage", slippage);
-  const status = el("p", "Select exact networks and addresses, then request a quote.");
+  const status = el("p", "Connect your wallet to verify the route and fetch a quote.");
   const details = el("pre"); details.hidden = true;
-  const quoteButton = el("button", "Get verified quote", "secondary-btn"); quoteButton.type = "button";
-  const approveButton = el("button", "Review & approve swap", "primary-btn"); approveButton.type = "button"; approveButton.disabled = true;
-  fields.append(quoteButton, status, approveButton, details); card.append(fields);
+  const quoteButton = el("button", "Get verified quote", "secondary-btn"); quoteButton.type = "button"; quoteButton.hidden = true;
+  const approveButton = el("button", "Approve swap", "primary-btn"); approveButton.type = "button"; approveButton.disabled = true; approveButton.hidden = true;
+  fields.append(status, approveButton, details); card.append(fields);
   let swap = null, dryQuote = null;
   const invalidate = () => { approveButton.disabled = true; dryQuote = null; swap = null; };
   originSelect.addEventListener("change", () => { defaults(); originPicker.sync(); invalidate(); connectButton.textContent = "Connect route wallets"; });
@@ -592,9 +598,9 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
         " → " + (dryQuote.quote.amount_out_formatted || dryQuote.quote.amount_out) + " " + destination.symbol +
         ". Agent 2 risk gate runs on the fresh signed quote before approval.";
       details.textContent = JSON.stringify({ route: { origin: formatToken(origin), destination: formatToken(destination) }, dry_quote: dryQuote }, null, 2);
-      details.hidden = false;
+      details.hidden = true;
       if (guestMode) status.textContent += " Guest mode is quote-only; sign in to approve.";
-      else approveButton.disabled = false;
+      else { approveButton.disabled = false; approveButton.hidden = false; }
     } catch (error) { status.textContent = error.message || "Quote request failed."; }
     finally { quoteButton.disabled = false; }
   });
@@ -654,7 +660,7 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
     } finally {
       quoteButton.disabled = false;
       approveButton.disabled = submitted || manualOnly;
-      approveButton.textContent = submitted ? "Swap submitted · status tracked" : manualOnly ? "Manual deposit instructions ready" : "Review & approve swap";
+      approveButton.textContent = submitted ? "Swap submitted · status tracked" : manualOnly ? "Manual deposit instructions ready" : "Approve swap";
     }
   });
   result.replaceChildren(card); result.classList.remove("hidden"); result.scrollTop = result.scrollHeight;
