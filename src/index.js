@@ -12,6 +12,7 @@ import { onRequestPost as privyWebhookPost } from "../functions/api/privy-webhoo
 import { onRequestGet as tradingTokensGet } from "../functions/api/trading-tokens.js";
 import { onRequestGet as tradingAnalysisGet } from "../functions/api/trading-analysis.js";
 import { onRequestPost as tradingAgentPost } from "../functions/api/trading-agent.js";
+import { onRequestPost as tradingBacktestPost } from "../functions/api/trading-backtest.js";
 import { onRequestPost as tradingQuotePost } from "../functions/api/trading-quote.js";
 import { onRequestPost as tradingLiveQuotePost } from "../functions/api/trading-live-quote.js";
 import { onRequestPost as tradingGenerateIntentPost } from "../functions/api/trading-generate-intent.js";
@@ -37,6 +38,7 @@ const routes = {
   "GET /api/trading/tokens": tradingTokensGet,
   "GET /api/trading/analysis": tradingAnalysisGet,
   "POST /api/trading/agent": tradingAgentPost,
+  "POST /api/trading/backtest": tradingBacktestPost,
   "POST /api/trading/quote": tradingQuotePost,
   "POST /api/trading/live-quote": tradingLiveQuotePost,
   "POST /api/trading/generate-intent": tradingGenerateIntentPost,
@@ -151,7 +153,7 @@ export default {
           const ip = request.headers.get("CF-Connecting-IP") || "unknown";
           if (!env.API_RATE_LIMITER) return respond(serviceUnavailable("RATE_LIMIT_NOT_CONFIGURED"));
           if (!await enforceRateLimit(env.API_RATE_LIMITER, ip)) return respond(rateLimitResponse());
-          if (request.method === "POST" && ["/api/agent/run", "/api/agent/approve", "/api/guest/agent", "/api/trading/agent"].includes(url.pathname)) {
+          if (request.method === "POST" && ["/api/agent/run", "/api/agent/approve", "/api/guest/agent", "/api/trading/agent", "/api/trading/backtest"].includes(url.pathname)) {
             if (!env.AGENT_RATE_LIMITER) return respond(serviceUnavailable("AGENT_RATE_LIMIT_NOT_CONFIGURED"));
             if (!await enforceRateLimit(env.AGENT_RATE_LIMITER, ip)) return respond(rateLimitResponse());
           }
