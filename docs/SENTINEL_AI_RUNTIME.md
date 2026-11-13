@@ -1,12 +1,12 @@
 # Sentinel AI Runtime
 
-Updated: 11 November 2026
+Updated: 13 November 2026
 
 ## Runtime architecture
 
 Sentinel owns the agent runtime, system instructions, skill registry, tool schemas, conversation normalization, tool execution loop, result interpretation, quotas, audit events, and security policy boundaries.
 
-Inference is provided through the native Cloudflare Workers AI binding (env.AI). The default model is @cf/qwen/qwen3.8-27b, selected from Cloudflare's current model catalog for multilingual reasoning and function calling. The model is an inference dependency; it is not Sentinel's policy engine and it is not trained or hosted as a new foundation model by this repository.
+Inference is provided through the native Cloudflare Workers AI binding (env.AI). The default model is @cf/zai-org/glm-4.7-flash, pinned as the current repository default in `functions/api/_ai.js` and `wrangler.jsonc`. The model is an inference dependency; it is not Sentinel's policy engine and it is not trained or hosted as a new foundation model by this repository.
 
 No Gemini or Anthropic API key is required by the Sentinel Agent or Guest Agent routes. The adapter normalizes model text and function calls into Sentinel's internal tool protocol.
 
@@ -59,7 +59,7 @@ For how-to questions, Sentinel explains prerequisites, example prompts, the exec
 
 The Main Worker binds Workers AI in wrangler.jsonc with an AI binding named AI. Optional model override: SENTINEL_AI_MODEL. It must be a valid Workers AI model identifier. The default is pinned in functions/api/_ai.js.
 
-Cloudflare Workers AI usage is subject to the account's plan, model availability, and usage/pricing limits. This migration removes the Gemini API key dependency; it does not promise unlimited or universally free inference.
+Cloudflare Workers AI usage is subject to the account's plan, model availability, and usage/pricing limits. The current binding-based runtime does not require a Gemini or Anthropic API key; it does not promise unlimited or universally free inference.
 
 ## Verification status
 
