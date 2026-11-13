@@ -141,7 +141,7 @@ test("preserves the same idempotency key when an execution outcome is uncertain"
 
 test("rejects malformed IDs, asset IDs, amounts, and non-Tidepool paths", async () => {
   const client = createTidepoolAgentClient({ apiKey: "naa_test_key", fetchImpl: async () => response({}) });
-  await assert.rejects(client.getAgent("../external"), error => error.code === "TIDEPOOL_AGENT_ID_INVALID");
-  await assert.rejects(client.dryRunSwap("agent_12345678", { ...swap, amount: "0" }), error => error.code === "SWAP_AMOUNT_INVALID");
+  assert.throws(() => client.getAgent("../external"), error => error.code === "TIDEPOOL_AGENT_ID_INVALID");
+  assert.throws(() => client.dryRunSwap("agent_12345678", { ...swap, amount: "0" }), error => error.code === "SWAP_AMOUNT_INVALID");
   assert.throws(() => createTidepoolAgentClient({ apiKey: "wrong" }), error => error.code === "TIDEPOOL_AGENT_API_KEY_INVALID");
 });
