@@ -739,11 +739,9 @@ async function requestDeveloperModeWalletApproval() {
     developerModeToggle.checked = false;
     developerModeToggle.disabled = true;
   }
-  setDeveloperMode(false, 'WAITING FOR WALLET APPROVAL');
+  setDeveloperMode(false, 'VERIFYING NEAR TESTNET WALLET');
   try {
-    if (!connectorReady || !connector) {
-      throw new Error('NEAR wallet connector is not ready. Refresh and try again.');
-    }
+    if (!connectorReady || !connector) throw new Error('NEAR wallet connector is not ready. Refresh and try again.');
     if (!connectedAccount) {
       if (!Array.isArray(connector.availableWallets) || connector.availableWallets.length === 0) {
         throw new Error('No compatible NEAR Testnet wallet is available in this browser.');
@@ -751,17 +749,65 @@ async function requestDeveloperModeWalletApproval() {
       await connector.connect();
     }
     const current = await connector.getConnectedWallet();
-    const account = current?.accounts?.[0];
-    const accountId = account?.accountId;
-    if (!accountId || !accountId.endsWith('.testnet')) {
-      throw new Error('Wallet approval was not completed with a NEAR Testnet account.');
-    }
+    const accountId = current?.accounts?.[0]?.accountId;
+    if (!accountId || !accountId.endsWith('.testnet')) throw new Error('A NEAR Testnet account is required.');
     syncWalletUI(accountId, current.wallet?.manifest?.name || 'NEAR wallet');
-    setDeveloperMode(true, 'CONNECTED · DEVELOPER SESSION · EXECUTION RESTRICTED');
-    toast('NEAR Testnet wallet connected. Developer tasks route to Railway; autonomous signing remains disabled until delegated authorization is configured.');
+
+    const challenge = await request('/agent/developer-session', {
+      method: 'POST',
+      body: JSON.stringify({ operation: 'challenge', account_id: accountId })
+    });
+    if (challenge.signing_standard !== 'NEP-413' || !challenge.payload?.message ||
+        !challenge.payload?.recipient || !challenge.payload?.nonce || !challenge.challenge_id) {
+      throw new Error('Sentinel returned an invalid wallet challenge.');
+    }
+    const nonceBinary = atob(challenge.payload.nonce);
+    const nonce = Uint8Array.from(nonceBinary, ch => ch.charCodeAt(0));
+    if (nonce.length !== 32) throw new Error('Wallet challenge nonce is invalid.');
+    const wallet = await connector.wallet();
+    if (!wallet || typeof wallet.signMessage !== 'function') {
+      throw new Error('Selected wallet does not support NEP-413 message signing.');
+    }
+    setDeveloperMode(false, 'WAITING FOR NEP-413 SIGNATURE');
+    const signed = await wallet.signMessage({
+      message: challenge.payload.message,
+      recipient: challenge.payload.recipient,
+      nonce,
+      callbackUrl: challenge.payload.callbackUrl,
+      state: challenge.challenge_id
+    });
+    const signedAccount = signed?.accountId || accountId;
+    const publicKey = String(signed?.publicKey || '');
+    let signature = signed?.signature;
+    if (signature instanceof Uint8Array) {
+      let binary = '';
+      for (const byte of signature) binary += String.fromCharCode(byte);
+      signature = btoa(binary);
+    } else if (typeof signature !== 'string') {
+      throw new Error('Wallet did not return a verifiable NEP-413 signature. Retry the approval.');
+    }
+    if (signedAccount !== accountId || !publicKey.startsWith('ed25519:')) {
+      throw new Error('Wallet signature account or public key does not match the connected account.');
+    }
+    const activated = await request('/agent/developer-session', {
+      method: 'POST',
+      body: JSON.stringify({
+        operation: 'activate',
+        challenge_id: challenge.challenge_id,
+        account_id: accountId,
+        public_key: publicKey,
+        signature
+      })
+    });
+    if (activated?.session?.status !== 'ACTIVE' || activated.session.account_id !== accountId ||
+        activated.session.network !== 'testnet' || activated.execution_enabled !== false) {
+      throw new Error('Sentinel did not confirm an active, restricted Developer application session.');
+    }
+    setDeveloperMode(true, 'ON · WALLET APPROVED · 8H APP SESSION');
+    toast('NEAR Testnet wallet signature verified. Developer application session is active; transaction execution remains disabled.');
   } catch (error) {
     setDeveloperMode(false, 'OFF · WALLET APPROVAL REQUIRED');
-    toast(error?.message || 'Wallet approval was rejected. Developer Mode remains OFF.');
+    toast(error?.message || 'Wallet approval failed. Developer Mode remains OFF.');
   } finally {
     developerModePending = false;
     if (developerModeToggle) developerModeToggle.disabled = false;
@@ -773,8 +819,9 @@ developerModeToggle?.addEventListener('change', () => {
     void requestDeveloperModeWalletApproval();
     return;
   }
+  void request('/agent/developer-session', { method: 'POST', body: JSON.stringify({ operation: 'revoke' }) }).catch(error => toast(error?.message || 'Could not revoke the Developer session.'));
   setDeveloperMode(false, 'OFF · SAFE CHAT');
-  toast('Developer Mode disabled.');
+  toast('Developer application session revoke requested.');
 });
 async function renderTradeSkillDraft(prompt) {
   const result = $('agentResult');
