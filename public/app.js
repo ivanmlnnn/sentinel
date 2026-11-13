@@ -859,6 +859,8 @@ async function renderTradeSkillDraft(prompt) {
     liveButton.addEventListener('click', async () => {
       liveButton.disabled = true;
       liveStatus.textContent = 'Creating a short-lived live quote. No transfer happens until your wallet signs the exact intent.';
+      let intentSubmitted = false;
+      let terminalSettlement = false;
       try {
         if (!lastSwapRequest) throw new Error('Request a fresh dry quote first.');
         if (!connectorReady || !connector || !connectedAccount || !connectedAccount.endsWith('.testnet')) {
@@ -1007,6 +1009,7 @@ async function renderTradeSkillDraft(prompt) {
             expectedSlippageTolerance: lastSwapRequest.slippageTolerance
           })
         });
+        intentSubmitted = true;
         liveStatus.textContent = 'Intent submitted. Checking Tidepool settlement status…';
         let latest = null;
         for (let attempt = 0; attempt < 15; attempt++) {
@@ -1015,6 +1018,7 @@ async function renderTradeSkillDraft(prompt) {
           await new Promise(resolve => window.setTimeout(resolve, 2000));
         }
         const finalStatus = String(latest?.status || submitted.status || 'SUBMITTED').toUpperCase();
+        terminalSettlement = ['SUCCESS', 'REFUNDED', 'FAILED'].includes(finalStatus);
         liveStatus.textContent = 'Testnet swap status: ' + finalStatus +
           (submitted.transaction_hash ? ' · verifier tx ' + submitted.transaction_hash : '') +
           (latest?.explorer_url ? ' · ' + latest.explorer_url : '') +
@@ -1025,7 +1029,12 @@ async function renderTradeSkillDraft(prompt) {
       } catch (error) {
         liveStatus.textContent = error.message || 'Swap flow stopped. Check wallet activity and provider status before retrying.';
       } finally {
-        liveButton.disabled = false;
+        // Once a signed intent has been submitted, never let a second click
+        // create another deposit while the first provider settlement is pending.
+        liveButton.disabled = intentSubmitted && !terminalSettlement;
+        liveButton.textContent = intentSubmitted && !terminalSettlement
+          ? 'Swap submitted · status pending'
+          : 'Review & sign Testnet swap';
       }
     });
     quoteForm.append(recipientLabel, recipientInput, quoteButton, quoteStatus, liveButton, liveStatus, quoteDetails);
