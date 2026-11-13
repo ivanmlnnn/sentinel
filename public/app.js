@@ -1459,6 +1459,33 @@ function renderTradingAgentResult(data) {
 }
 
 const skillCards = Array.from(document.querySelectorAll('.sentinel-skill-card'));
+document.querySelectorAll('[data-side-action]').forEach(action => action.addEventListener('click', () => {
+  const target = action.dataset.sideAction;
+  if (target === 'wallet') {
+    $('walletBtn')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    $('walletBtn')?.click();
+    return;
+  }
+  if (target === 'scan') {
+    $('receiver')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    $('receiver')?.focus({ preventScroll: true });
+    toast('Enter a public NEAR account, then run Track wallet.');
+    return;
+  }
+  if (target === 'threats') {
+    $('threats')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('reportBtn')?.focus({ preventScroll: true });
+    return;
+  }
+  if (target === 'trading') {
+    if (GUEST_MODE) { toast('Dual-agent market research requires an authenticated session.'); return; }
+    const card = document.querySelector('[data-skill="trading"]');
+    if (card) selectSentinelSkill(card);
+    $('agentPrompt')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    $('agentPrompt')?.focus({ preventScroll: true });
+    toast('Research prompt ready. Review it and press Send to run both agents.');
+  }
+}));
 if (GUEST_MODE) document.querySelector('[data-skill="trading"]')?.classList.add('hidden');
 function selectSentinelSkill(card) {
   if (!card) return;
