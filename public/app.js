@@ -49,12 +49,19 @@ async function request(path, options = {}) {
     }
   }
   let response;
+  const tradingRequest = path.startsWith('/trading/');
+  const controller = tradingRequest && typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timeoutId = controller ? window.setTimeout(() => controller.abort(), 20000) : null;
   try {
-    response = await fetch(API + path, { ...options, headers });
+    response = await fetch(API + path, { ...options, headers, ...(controller ? { signal: controller.signal } : {}) });
   } catch (cause) {
-    const error = new Error('Sentinel API connection failed before wallet approval. Check network and retry.');
+    const error = cause?.name === 'AbortError'
+      ? new Error('Tidepool request timed out after 20 seconds. No wallet transaction was approved. Check Sentinel API/Tidepool availability and retry.')
+      : new Error('Sentinel API connection failed before wallet approval. Check network and retry.');
     error.cause = cause;
     throw error;
+  } finally {
+    if (timeoutId !== null) window.clearTimeout(timeoutId);
   }
   const contentType = response.headers.get('content-type') || 'unknown';
   const raw = await response.text();
@@ -1469,7 +1476,27 @@ if (agentForm) {
     const button = $('agentRunBtn');
     const prompt = $('agentPrompt').value.trim();
     if (!prompt) return;
-    if (!developerModeEnabled && /\b(swap|tukar|exchange)\s+\d/i.test(prompt)) { authenticatedPrompt = prompt; if (!GUEST_MODE) renderAuthenticatedPending(prompt); await renderChatSwap({ prompt, result: $('agentResult'), request, connector, connectedAccount, connectedWalletName, encodeBase58, guestMode: GUEST_MODE }); $('agentPrompt').value = ''; return; }
+    if (!developerModeEnabled && /\b(swap|tukar|exchange)\s+\d/i.test(prompt)) {
+      authenticatedPrompt = prompt;
+      button.disabled = true;
+      button.classList.add('agent-running');
+      button.innerHTML = '<span class="agent-button-pulse" aria-hidden="true"></span> Preparing swap <b>…</b>';
+      if (!GUEST_MODE) renderAuthenticatedPending(prompt);
+      try {
+        await renderChatSwap({ prompt, result: $('agentResult'), request, connector, connectedAccount, connectedWalletName, encodeBase58, guestMode: GUEST_MODE });
+        $('agentPrompt').value = '';
+      } catch (error) {
+        const result = $('agentResult');
+        result.innerHTML = '<div class="guest-chat-transcript telegram-chat-transcript"><article class="guest-chat-message guest-chat-user"><span>YOU</span><p>' + escapeHtml(prompt) + '</p></article><article class="guest-chat-message guest-chat-assistant telegram-agent-bubble"><span>SENTINEL AI · SWAP ERROR</span><p class="guest-chat-error">' + escapeHtml(error?.message || 'Swap request failed before wallet approval.') + '</p><p>No wallet transaction was approved. You can retry after checking the API connection.</p></article></div>';
+        result.classList.remove('hidden');
+        toast(error?.message || 'Swap request failed before wallet approval.');
+      } finally {
+        button.disabled = false;
+        button.classList.remove('agent-running');
+        button.innerHTML = 'Send message <b>↗</b>';
+      }
+      return;
+    }
     if (developerModeEnabled && /\b(buy|sell|swap|trade|beli|jual|tukar|dca)\b/i.test(prompt) && /\b(BTC|ETH|NEAR|USDC|USDT|SOL|WNEAR)\b/i.test(prompt)) { await renderTradeSkillDraft(prompt); toast('Skill draft generated. Trading execution is not connected.'); return; }
     button.disabled = true;
     button.classList.add('agent-running');
