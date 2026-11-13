@@ -11,7 +11,7 @@ const MAX_AMOUNT_DIGITS = 78;
 const DEFAULT_SLIPPAGE_BPS = 100;
 const MAX_SLIPPAGE_BPS = 300;
 const SUPPORTED_TESTNET_CHAINS = new Set(["near", "eth", "base", "arb", "bsc", "sol", "stellar", "sui", "btc", "xrp"]);
-const ASSET_ID_RE = /^nep141:[a-z0-9._-]{1,150}\\.testnet$/i;
+const ASSET_ID_RE = /^nep141:[a-z0-9._-]{1,150}\.testnet$/i;
 const SIGNATURE_RE = /^ed25519:[1-9A-HJ-NP-Za-km-z]{32,100}$/;
 const NONCE_RE = /^[A-Za-z0-9+/]{43}=$/;
 const TERMINAL_STATUSES = new Set(["SUCCESS", "REFUNDED", "FAILED"]);
