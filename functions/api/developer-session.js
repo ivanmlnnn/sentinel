@@ -106,7 +106,7 @@ export async function onRequestPost({ request, env }) {
     ).bind(challengeId, identity.sub, account, message, recipient, nonce, JSON.stringify(PERMISSIONS), expiresAt).run();
     return json({
       challenge_id: challengeId,
-      payload: { message, recipient, nonce: b64(nonce), callbackUrl: new URL(request.url).origin + "/api/agent/developer-session" },
+      payload: { message, recipient, nonce: b64(nonce) },
       expires_at: expiresAt,
       signing_standard: "NEP-413",
       permissions: PERMISSIONS,
