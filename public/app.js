@@ -12,6 +12,7 @@ if (GUEST_MODE) {
 let connector = null;
 let connectedAccount = null;
 let connectedWalletName = null;
+let activeChatSwapController = null;
 let connectorReady = false;
 
 function toast(message) {
@@ -40,46 +41,75 @@ function escapeHtml(value) {
 }
 async function request(path, options = {}) {
   const headers = {'content-type':'application/json', ...(options.headers || {})};
-  if (typeof window.getSentinelAccessToken === 'function') {
-    try {
-      const token = await window.getSentinelAccessToken();
-      if (token) headers.authorization = 'Bearer ' + token;
-    } catch (error) {
-      console.warn('Could not refresh Privy access token for API request:', error);
-    }
-  }
-  let response;
   const tradingRequest = path.startsWith('/trading/');
   const controller = tradingRequest && typeof AbortController !== 'undefined' ? new AbortController() : null;
-  const timeoutId = controller ? window.setTimeout(() => controller.abort(), 20000) : null;
+  const externalSignal = options.signal;
+  const timeoutMs = 10000;
+  let timedOut = false;
+  let timeoutId = null;
+  let abortListener = null;
+  if (controller) {
+    timeoutId = window.setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
+    if (externalSignal) {
+      if (externalSignal.aborted) controller.abort();
+      else {
+        abortListener = () => controller.abort();
+        externalSignal.addEventListener('abort', abortListener, { once: true });
+      }
+    }
+  }
+  const abortPromise = controller ? new Promise((_, reject) => {
+    if (controller.signal.aborted) reject(new DOMException('Request aborted', 'AbortError'));
+    else controller.signal.addEventListener('abort', () => reject(new DOMException('Request aborted', 'AbortError')), { once: true });
+  }) : null;
   try {
-    response = await fetch(API + path, { ...options, headers, ...(controller ? { signal: controller.signal } : {}) });
+    if (typeof window.getSentinelAccessToken === 'function') {
+      try {
+        const tokenPromise = window.getSentinelAccessToken();
+        const token = await (abortPromise ? Promise.race([tokenPromise, abortPromise]) : tokenPromise);
+        if (token) headers.authorization = 'Bearer ' + token;
+      } catch (error) {
+        if (error?.name === 'AbortError') throw error;
+        console.warn('Could not refresh Privy access token for API request:', error);
+      }
+    }
+    const fetchOptions = { ...options, headers };
+    delete fetchOptions.signal;
+    if (controller) fetchOptions.signal = controller.signal;
+    const response = await (abortPromise
+      ? Promise.race([fetch(API + path, fetchOptions), abortPromise])
+      : fetch(API + path, fetchOptions));
+    const contentType = response.headers.get('content-type') || 'unknown';
+    const raw = await response.text();
+    let data = null;
+    try { data = raw ? JSON.parse(raw) : null; } catch {}
+    if (!response.ok) {
+      const reason = typeof data?.error === 'string' ? data.error :
+        typeof data?.reason === 'string' ? data.reason : 'API returned a non-JSON error response';
+      const detail = typeof data?.detail === 'string' ? ': ' + data.detail :
+        typeof data?.provider_message === 'string' ? ': ' + data.provider_message : '';
+      const error = new Error('Sentinel API HTTP ' + response.status + ' (' + contentType + '): ' + reason + detail);
+      error.data = data;
+      throw error;
+    }
+    if (!data || typeof data !== 'object') {
+      throw new Error('Sentinel API returned invalid JSON (HTTP ' + response.status + ', ' + contentType + '). Wallet was not opened.');
+    }
+    return data;
   } catch (cause) {
+    if (cause?.name === 'AbortError') {
+      if (externalSignal?.aborted) throw new DOMException('This request was superseded by your latest prompt.', 'AbortError');
+      if (timedOut) throw new Error('Sentinel request timed out after 10 seconds. No wallet transaction was approved. Try again or check the API/Tidepool connection.');
+    }
     const error = cause?.name === 'AbortError'
-      ? new Error('Tidepool request timed out after 20 seconds. No wallet transaction was approved. Check Sentinel API/Tidepool availability and retry.')
-      : new Error('Sentinel API connection failed before wallet approval. Check network and retry.');
+      ? new Error('Sentinel request was cancelled before wallet approval.')
+      : cause instanceof Error ? cause : new Error('Sentinel API connection failed before wallet approval.');
     error.cause = cause;
     throw error;
   } finally {
     if (timeoutId !== null) window.clearTimeout(timeoutId);
+    if (externalSignal && abortListener) externalSignal.removeEventListener('abort', abortListener);
   }
-  const contentType = response.headers.get('content-type') || 'unknown';
-  const raw = await response.text();
-  let data = null;
-  try { data = raw ? JSON.parse(raw) : null; } catch {}
-  if (!response.ok) {
-    const reason = typeof data?.error === 'string' ? data.error :
-      typeof data?.reason === 'string' ? data.reason : 'API returned a non-JSON error response';
-    const detail = typeof data?.detail === 'string' ? ': ' + data.detail :
-      typeof data?.provider_message === 'string' ? ': ' + data.provider_message : '';
-    const error = new Error('Sentinel API HTTP ' + response.status + ' (' + contentType + '): ' + reason + detail);
-    error.data = data;
-    throw error;
-  }
-  if (!data || typeof data !== 'object') {
-    throw new Error('Sentinel API returned invalid JSON (HTTP ' + response.status + ', ' + contentType + '). Wallet was not opened.');
-  }
-  return data;
 }
 function syncWalletUI(accountId, walletName) {
   connectedAccount = accountId || null;
@@ -1478,22 +1508,30 @@ if (agentForm) {
     if (!prompt) return;
     if (!developerModeEnabled && /\b(swap|tukar|exchange)\s+\d/i.test(prompt)) {
       authenticatedPrompt = prompt;
-      button.disabled = true;
+      if (activeChatSwapController) activeChatSwapController.abort();
+      const swapController = new AbortController();
+      activeChatSwapController = swapController;
+      button.disabled = false;
       button.classList.add('agent-running');
-      button.innerHTML = '<span class="agent-button-pulse" aria-hidden="true"></span> Preparing swap <b>…</b>';
+      button.innerHTML = 'Send new prompt <b>↗</b>';
       if (!GUEST_MODE) renderAuthenticatedPending(prompt);
+      const swapRequest = (path, options = {}) => request(path, { ...options, signal: swapController.signal });
       try {
-        await renderChatSwap({ prompt, result: $('agentResult'), request, connector, connectedAccount, connectedWalletName, encodeBase58, guestMode: GUEST_MODE });
-        $('agentPrompt').value = '';
+        await renderChatSwap({ prompt, result: $('agentResult'), request: swapRequest, connector, connectedAccount, connectedWalletName, encodeBase58, guestMode: GUEST_MODE });
+        if (activeChatSwapController === swapController) $('agentPrompt').value = '';
       } catch (error) {
+        if (swapController.signal.aborted || activeChatSwapController !== swapController) return;
         const result = $('agentResult');
-        result.innerHTML = '<div class="guest-chat-transcript telegram-chat-transcript"><article class="guest-chat-message guest-chat-user"><span>YOU</span><p>' + escapeHtml(prompt) + '</p></article><article class="guest-chat-message guest-chat-assistant telegram-agent-bubble"><span>SENTINEL AI · SWAP ERROR</span><p class="guest-chat-error">' + escapeHtml(error?.message || 'Swap request failed before wallet approval.') + '</p><p>No wallet transaction was approved. You can retry after checking the API connection.</p></article></div>';
+        result.innerHTML = '<div class="guest-chat-transcript telegram-chat-transcript"><article class="guest-chat-message guest-chat-user"><span>YOU</span><p>' + escapeHtml(prompt) + '</p></article><article class="guest-chat-message guest-chat-assistant telegram-agent-bubble"><span>SENTINEL AI · SWAP ERROR</span><p class="guest-chat-error">' + escapeHtml(error?.message || 'Swap request failed before wallet approval.') + '</p><p>No wallet transaction was approved. Send a new prompt to retry.</p></article></div>';
         result.classList.remove('hidden');
         toast(error?.message || 'Swap request failed before wallet approval.');
       } finally {
-        button.disabled = false;
-        button.classList.remove('agent-running');
-        button.innerHTML = 'Send message <b>↗</b>';
+        if (activeChatSwapController === swapController) {
+          activeChatSwapController = null;
+          button.disabled = false;
+          button.classList.remove('agent-running');
+          button.innerHTML = 'Send message <b>↗</b>';
+        }
       }
       return;
     }
