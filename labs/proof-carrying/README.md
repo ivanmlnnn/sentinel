@@ -1,6 +1,12 @@
 # Sentinel Proof-Carrying Lab
 
-Isolated reference implementation and contract experiment. This branch modifies the NEAR contract source and CI workflow, but does **not** modify or deploy the production Main Worker, Signer Worker, D1 schema, or live services. The proof-verifying contract is not deployed.
+Isolated reference implementation and contract experiment. This branch modifies the NEAR contract source, the isolated Signer Worker source, tests, and CI workflow. These branch changes are **not deployed to production**. The proof-verifying contract is not deployed. Do not confuse source changes present on this branch with production deployment.
+
+## Independent review entry point
+
+- [AI and human audit index](../../docs/AI_AUDIT_INDEX.md) — architecture map, exact source paths, production/lab/reference status, evidence provenance, reproduction commands, limitations, and reviewer protocol.
+- [Machine-readable audit manifest](../../docs/AI_AUDIT_MANIFEST.json) — structured JSON scope and evidence ledger for automated review.
+- [PR #42](https://github.com/ivanmlnnn/sentinel/pull/42) — this experiment remains Draft until CI, conflict resolution, and independent review are complete.
 
 ## Run the proof and adversarial suite
 
