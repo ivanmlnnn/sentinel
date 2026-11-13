@@ -1,10 +1,16 @@
 # Developer Mode — Delegated Session Design
 
-**Status: NOT IMPLEMENTED / NOT ENABLED IN PRODUCTION (12 November 2026).**
+**Status: Application-session flow implemented in feature branch; not deployed or end-to-end verified. Delegated transaction execution remains NOT IMPLEMENTED. (13 November 2026).**
 
 This document is the implementation boundary for a future one-approval Developer Mode. It intentionally distinguishes a wallet access key from a complete autonomous trading system.
 
-## What the current repository actually does
+## Current feature-branch session implementation
+
+The branch `fix/developer-mode-railway-terminal` adds a D1-backed one-use NEP-413 challenge and eight-hour application session. The challenge is bound to the Privy actor, NEAR Testnet account, Production origin, recipient, nonce, and expiry. The backend verifies the NEP-413 signature against the Testnet RPC before issuing an HttpOnly Secure SameSite=Strict cookie. Production forwards that cookie to Railway; Railway calls the Production session-status endpoint and checks the active session account before accepting Developer Agent work. Session status is restored on wallet reconnect and a revoke operation is issued on toggle-off or wallet disconnect.
+
+This feature-branch code is not yet live: the D1 migration and Worker have not been deployed, Railway's source is staged, and a real wallet signature round-trip has not been tested. The application session does not create an on-chain FunctionCall key or grant transaction execution.
+
+## What the current production repository actually does
 
 - The browser currently loads `@hot-labs/near-connect@0.12.0`. It does not call FastNear's `addFunctionCallKey()`.
 - The Developer Mode toggle is a local UI state. It creates structured trading drafts; it does not create an access key, a wallet session, a scheduled job, or an autonomous executor.
