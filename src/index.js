@@ -181,7 +181,8 @@ export default {
       (request.headers.get("accept") || "").includes("text/html");
     const isSensitiveFlow =
       /^\/(?:api|auth|oauth|login|logout|callback|signin|signout)(?:\/|$)/i.test(url.pathname);
-    if (isDocumentNavigation && !isSensitiveFlow && url.search) {
+    const isDeveloperWalletCallback = url.pathname === "/" && url.searchParams.get("developer_session_callback") === "1";
+    if (isDocumentNavigation && !isSensitiveFlow && !isDeveloperWalletCallback && url.search) {
       url.search = "";
       return respond(Response.redirect(url.toString(), 302));
     }
