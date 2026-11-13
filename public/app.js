@@ -745,8 +745,7 @@ async function restoreDeveloperSession(accountId) {
     });
     if (data?.session?.status === 'ACTIVE' && data.session.account_id === accountId &&
         data.session.network === 'testnet' && data.execution_enabled === false) {
-      sessionStorage.removeItem('sentinel_dev_challenge');
-    setDeveloperMode(true, 'ON · WALLET APPROVED · 8H APP SESSION');
+      setDeveloperMode(true, 'ON · WALLET APPROVED · 8H APP SESSION');
     } else {
       setDeveloperMode(false, 'OFF · SAFE CHAT');
     }
