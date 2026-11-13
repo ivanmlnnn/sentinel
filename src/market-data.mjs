@@ -11,7 +11,7 @@ function parseNumber(value) {
 export async function getKrakenOhlcv({ pair = "XBTUSD", interval = 5, limit = 60 } = {}, fetchImpl = fetch, now = Date.now()) {
   if (typeof pair !== "string" || !PAIRS.has(pair)) return { ok: false, reason: "MARKET_PAIR_NOT_ALLOWLISTED" };
   if (!Number.isInteger(interval) || !INTERVALS.has(interval)) return { ok: false, reason: "MARKET_INTERVAL_UNSUPPORTED" };
-  if (!Number.isInteger(limit) || limit < 50 || limit > 120) return { ok: false, reason: "MARKET_CANDLE_LIMIT_INVALID" };
+  if (!Number.isInteger(limit) || limit < 50 || limit > 500) return { ok: false, reason: "MARKET_CANDLE_LIMIT_INVALID" };
   if (!Number.isFinite(now)) return { ok: false, reason: "MARKET_CLOCK_INVALID" };
   const url = new URL(KRAKEN_OHLC_URL);
   url.searchParams.set("pair", pair);
