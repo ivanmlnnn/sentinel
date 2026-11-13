@@ -150,3 +150,34 @@ Do not assume this repository is secure because its README says so. Inspect sour
 **Sentinel explores proof-carrying autonomous payment execution for NEAR:** the agent's proposed action is checked against evidence and policy, the signer re-evaluates a signed preflight on the lab branch, and an experimental Rust contract requires an Ed25519 proof envelope bound to the payment context. The contract proof path remains a lab implementation, not a deployed end-to-end payment system.
 
 The goal is to make each security claim independently inspectable—not to claim unanimous AI approval, certification, or a guaranteed hackathon result.
+
+
+## 10. Copy-paste prompt for independent AI reviewers
+
+```text
+You are an independent security reviewer. Audit the NEAR Sentinel repository at the exact branch and commit stated in docs/AI_AUDIT_INDEX.md. Do not trust README claims without source inspection.
+
+First read:
+1. docs/AI_AUDIT_INDEX.md
+2. docs/AI_AUDIT_MANIFEST.json
+3. labs/proof-carrying/README.md
+4. labs/proof-carrying/docs/proof-carrying-payment-v1.md
+5. labs/proof-carrying/evidence/local-run-2026-11-12.json
+
+Then inspect the referenced implementation and test files. Separate main/production code from lab-only, reference-only, planned, and unverified code. Verify that each evidence result belongs to the exact tested commit; do not repeat test totals as current if the commit differs. Do not treat Vercel preview deployment as test evidence or local Miniflare as production D1 evidence.
+
+Review cryptographic encoding and domain separation, signer key custody/rotation, caller and chain binding, replay/expiry, approval and spend-cap enforcement, reservation ordering, failure/rollback behavior, storage migration, transfer semantics, external evidence authenticity, and threat-model gaps.
+
+Run the reproduction commands if your environment allows. Report exact commands, environment, commit SHA, exit codes, raw test totals, and failures. If you cannot run a check, label it NOT RUN rather than PASS.
+
+Return:
+- Scope and exact commit inspected
+- Production vs lab capability matrix
+- Evidence table with exact provenance
+- Confirmed findings with file/line and severity
+- Exploitability and preconditions
+- Missing tests and deployment gates
+- Separate verdicts: VERIFIED, PARTIALLY VERIFIED, UNVERIFIED, FAILED
+
+Do not award a security certification or predict hackathon results. Be skeptical, specific, and fair. Identify both strengths and weaknesses.
+```
