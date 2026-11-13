@@ -8,8 +8,8 @@
 - Separate live-quote endpoint, invoked only after the user explicitly chooses the Testnet swap flow. It requests `dry: false` and returns a per-quote INTENTS deposit account. It does not itself move funds.
 - NEP-413 intent generation revalidates the original Tidepool-signed live quote on the server and binds signer, deposit account, input/output assets, amount, recipient/refund account and slippage to it.
 - Signed-intent submission independently revalidates the same provider quote and rejects any changed deposit address, signer, token, amount, recipient or slippage before contacting the provider.
-- Wallet signing through the connected NEAR Connect wallet's `signMessage` method. The current official NEAR Connect manifest includes Meteor Wallet and advertises `signMessage`, `signAndSendTransaction`, and `testnet` support for its Meteor executor. Selecting Meteor in the wallet picker therefore opens Meteor's own approval experience; the same connector also supports other compatible NEAR wallets. The UI requires the signer account to match the recipient/refund account.
-- Signed-intent submission restricted to a single NEP-413 transfer to the exact provider-generated deposit account and amount.
+- NEAR wallet funding through the connected NEAR Connect wallet's `signAndSendTransaction` method. Selecting Meteor opens its native transaction approval for the exact NEP-141 `ft_transfer_call`; the selected NEAR account must match the refund account.
+- NEAR wallet-origin deposits use a single NEP-141 `ft_transfer_call` to the verifier, bound to the exact provider-generated deposit account and amount.
 - Verifier public-key registration preflight via NEAR Testnet RPC, with a one-time wallet-signed `add_public_key` transaction when needed.
 - Tidepool status polling after submission.
 - Separate Vercel API routes and Cloudflare Worker routes for tokens, dry quote, live quote, intent generation, intent submission and status.
@@ -22,8 +22,8 @@
 3. The user selects **Review & sign Testnet swap**. Sentinel requests a fresh live quote and verifies its provider signature.
 4. Sentinel checks that the connected Testnet account is also the quote recipient and refund account, then displays the risk decision and SHA-256 policy proof before wallet signing.
 5. The browser returns the original signed provider quote to Sentinel. Sentinel independently rechecks the maker signature and exact quote fields before requesting a NEP-413 intent for that quote's deposit account, token and input amount.
-6. The connected wallet signs the exact message and nonce returned by Tidepool. Sentinel never constructs or signs the message itself.
-7. Sentinel revalidates the signed provider quote again, then validates the wallet-signed payload's signer, verifier, receiver, token, amount and deadline before submitting it to Tidepool.
+6. The connected NEAR wallet approves the exact `ft_transfer_call` transaction to the verifier; its `msg` is the provider-generated per-quote deposit address.
+7. Tidepool observes the deposit, credits the quote deposit and performs settlement.
 8. Sentinel polls Tidepool status. A swap is only described as successful when the provider reports `SUCCESS`.
 
 ## Endpoints
@@ -41,8 +41,8 @@
 ## Wallet and funding prerequisites
 
 - Connect a NEAR Testnet wallet with NEP-413 `signMessage` support. The current connector filters for `testnet`, `signAndSendTransaction`, and `signMessage`; Meteor Wallet currently advertises all three capabilities in the NEAR Connect manifest. Choose Meteor Wallet in the wallet picker when you want its wallet-native approval prompt.
-- The wallet must hold the selected test token in its NEAR Intents balance. Use the Tidepool faucet at https://app.usetidepool.tech/faucet and choose **NEAR Testnet → Intents balance**, not Wallet mode. The faucet is site-only, rate-limited, and requires an existing NEAR Testnet account at least three hours old.
-- Before the first NEP-413 intent, Sentinel checks whether the wallet public key is registered on the verifier. If not, it requests a separate wallet-approved `add_public_key` transaction (30 Tgas, 1 yoctoNEAR); the app waits for RPC confirmation before continuing.
+- The connected Meteor/NEAR Testnet wallet can fund a quote directly from its NEP-141 token balance. Sentinel uses the selected token contract's `ft_transfer_call` to `verifier.tidepool-sandbox.testnet`, with the exact quote deposit address as `msg`; Tidepool credits that per-quote Intents deposit. This is distinct from signing a NEP-413 transfer using an already-funded Intents balance.
+- The wallet needs enough native NEAR for Testnet gas. The token picker displays both each NEP-141 wallet token balance and native NEAR gas balance separately. Use the Tidepool faucet at https://app.usetidepool.tech/faucet and choose **NEAR Testnet → Wallet (NEP-141)** for wallet-held test tokens; **Intents balance** is a separate funding source and is not counted as Meteor wallet funds.
 - The UI deliberately stops if the wallet cannot return a complete NEP-413 signature. It does not silently switch signing standards.
 - A rejected wallet prompt means no signed intent is submitted. If the wallet prompt completed but the network response timed out, check Tidepool status before attempting again.
 
@@ -64,3 +64,8 @@ This is not yet a mainnet-ready trading system. BUY/SELL, limit orders, recurrin
 - Submit intent: https://www.usetidepool.tech/docs/api-reference/submit-intent
 - NEAR Connect: https://www.npmjs.com/package/@hot-labs/near-connect
 - Meteor Wallet SDK and NEAR Connect executor: https://github.com/Meteor-Wallet/meteor_wallet_sdk
+
+
+## Meteor wallet-balance funding
+
+For NEAR-origin swaps, the selected asset must be a NEP-141 token listed by Tidepool on NEAR Testnet. Sentinel reads `ft_balance_of` from that token contract for the connected Meteor account. It also reads the native NEAR account balance separately for gas; native NEAR is not silently treated as a swappable Tidepool asset. The deposit approval calls `ft_transfer_call` on the selected token contract with `receiver_id: verifier.tidepool-sandbox.testnet`, the exact quoted base-unit amount, and `msg: <quote depositAddress>`. Tidepool's documented wallet-balance deposit path credits that address inside the verifier. The UI waits for `/v0/status`; only provider `SUCCESS` means the swap succeeded. Never retry a pending deposit by sending a second transfer.
