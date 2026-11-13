@@ -35,6 +35,8 @@ jobs:
           node --check src/market-data.mjs
           node --check src/trading-agents.mjs
           node --check src/trading-agent-orchestrator.mjs
+          node --check src/trading-backtest.mjs
+          node --check functions/api/trading-backtest.js
           node --check functions/api/trading-agent.js
           node --check functions/api/trading-analysis.js
           node --check src/index.js
