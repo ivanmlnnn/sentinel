@@ -62,7 +62,7 @@ async function connectEvm(refundInput, chain) {
     currentChain = String(await provider.request({ method: "eth_chainId" })).toLowerCase();
   }
   if (currentChain !== wantedChain) throw new Error("Wallet network does not match the selected origin chain.");
-  refundInput.value = account;
+  if (refundInput) refundInput.value = account;
   return { provider, account, chainId: wantedChain };
 }
 async function pollStatus(request, depositAddress, depositMemo, statusNode) {
@@ -252,6 +252,31 @@ function renderManualDeposit(panel, liveQuote, token, swap, request, statusNode,
 }
 
 
+
+const CHAIN_LOGOS = {
+  eth: "ethereum", ethereum: "ethereum", base: "base", arb: "arbitrum",
+  arbitrum: "arbitrum", bsc: "binance", near: "nearprotocol",
+  sol: "solana", solana: "solana", sui: "sui"
+};
+function chainLogo(chain) {
+  const key = String(chain || "").toLowerCase();
+  const slug = CHAIN_LOGOS[key];
+  const wrap = el("span", undefined, "swap-chain-logo");
+  if (!slug) { wrap.textContent = key.slice(0, 2).toUpperCase() || "◈"; return wrap; }
+  const img = document.createElement("img");
+  img.alt = key.toUpperCase() + " logo";
+  img.loading = "lazy";
+  img.decoding = "async";
+  img.src = "https://cdn.simpleicons.org/" + slug;
+  img.addEventListener("error", () => { wrap.replaceChildren(el("span", key.slice(0, 2).toUpperCase())); });
+  wrap.append(img);
+  return wrap;
+}
+function shortWalletAddress(value) {
+  const text = String(value || "");
+  return text.length > 18 ? text.slice(0, 8) + "…" + text.slice(-6) : text;
+}
+
 function formatUnitsForDisplay(raw, decimals) {
   const places = Number(decimals);
   if (!Number.isInteger(places) || places < 0 || places > 30) return "—";
@@ -333,14 +358,15 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
     const name = el("strong", token ? token.symbol : (initialSymbol || "Select token"));
     const network = el("span", token ? String(token.blockchain).toUpperCase() : "Choose network");
     const chevron = el("span", "▾", "swap-token-chevron");
-    trigger.append(name, network, chevron);
+    trigger.replaceChildren(token ? chainLogo(token.blockchain) : el("span", "◈", "swap-token-placeholder"), name, network, chevron);
     trigger.classList.toggle("is-selected", Boolean(token));
   };
   const renderChains = () => {
     chainRow.replaceChildren();
     for (const chain of chains) {
-      const button = el("button", chain.toUpperCase(), "swap-chain-chip" + (chain === activeChain ? " is-active" : ""));
+      const button = el("button", undefined, "swap-chain-chip" + (chain === activeChain ? " is-active" : ""));
       button.type = "button";
+      button.append(chainLogo(chain), el("span", chain.toUpperCase()));
       button.addEventListener("click", () => { activeChain = chain; renderChains(); renderTokens(); refreshBalances(); });
       chainRow.append(button);
     }
@@ -353,7 +379,8 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
       const item = el("button", undefined, "swap-token-option" + (token.asset_id === select.value ? " is-current" : ""));
       item.type = "button";
       const identity = el("span", undefined, "swap-token-identity");
-      identity.append(el("strong", token.symbol), el("small", String(token.name || token.symbol) + " · " + String(token.blockchain).toUpperCase()));
+      identity.append(chainLogo(token.blockchain), el("span", undefined, "swap-token-copy"));
+      identity.lastChild.append(el("strong", token.symbol), el("small", String(token.name || token.symbol) + " · " + String(token.blockchain).toUpperCase()));
       const balance = balances.get(token.asset_id);
       const amount = el("strong", balance?.value !== null && balance?.value !== undefined ? balance.value : "—", "swap-token-balance");
       const note = el("small", balance?.note || "Balance not checked", "swap-token-balance-note");
@@ -378,8 +405,9 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
     refresh.textContent = "Refreshing…";
     balanceStamp.textContent = "Reading connected wallet";
     const entries = tokenList.filter(token => String(token.blockchain || "").toLowerCase() === activeChain);
+    const walletAccount = typeof nearWalletAccount === "function" ? nearWalletAccount() : nearWalletAccount;
     await Promise.all(entries.map(async token => {
-      try { balances.set(token.asset_id, await readSwapWalletBalance(token, nearWalletAccount)); }
+      try { balances.set(token.asset_id, await readSwapWalletBalance(token, walletAccount)); }
       catch (error) { balances.set(token.asset_id, { value: null, note: error?.message || "Balance unavailable" }); }
     }));
     balanceStamp.textContent = "Updated " + new Date().toLocaleTimeString();
@@ -396,10 +424,10 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
   refresh.addEventListener("click", refreshBalances);
   syncTrigger(); renderChains(); renderTokens();
   root.append(trigger, select, panel);
-  return { root, sync: syncTrigger, close: () => { panel.hidden = true; trigger.setAttribute("aria-expanded", "false"); } };
+  return { root, sync: syncTrigger, refresh: refreshBalances, close: () => { panel.hidden = true; trigger.setAttribute("aria-expanded", "false"); } };
 }
 
-export async function renderChatSwap({ prompt, result, request, connector, connectedAccount, encodeBase58, guestMode }) {
+export async function renderChatSwap({ prompt, result, request, connector, connectedAccount, encodeBase58, guestMode, onWalletConnected }) {
   const parsed = parseChatSwapPrompt(prompt);
   const card = el("section", undefined, "developer-trade-draft");
   const heading = el("div", undefined, "developer-trade-draft-heading");
@@ -429,8 +457,37 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
   destSelect.className = "swap-native-select";
   const originPicker = createSwapTokenPicker(originSelect, tokens, parsed.from, connectedAccount, () => { defaults(); invalidate(); });
   const destinationPicker = createSwapTokenPicker(destSelect, tokens, parsed.to, connectedAccount, () => { defaults(); invalidate(); });
-  const recipientInput = document.createElement("input"); recipientInput.autocomplete = "off"; recipientInput.placeholder = "Destination wallet address";
-  const refundInput = document.createElement("input"); refundInput.autocomplete = "off"; refundInput.placeholder = "Refund address on origin chain";
+  const refundInput = null;
+  let activeNearAccount = connectedAccount && nearAccount(connectedAccount) ? connectedAccount : null;
+  let activeEvmAccount = null;
+  const walletAddressFor = chain => {
+    const key = String(chain || "").toLowerCase();
+    if (key === "near") return activeNearAccount;
+    if (CHAIN_IDS[key]) return activeEvmAccount;
+    return null;
+  };
+  const connectWalletForChain = async chain => {
+    const key = String(chain || "").toLowerCase();
+    if (CHAIN_IDS[key]) {
+      const wallet = await connectEvm(null, key);
+      activeEvmAccount = wallet.account;
+      return wallet.account;
+    }
+    if (key === "near") {
+      if (!connector) throw new Error("NEAR wallet connector is not ready. Refresh and retry.");
+      if (!activeNearAccount) {
+        if (!connector.availableWallets?.length) throw new Error("No NEAR Testnet wallet is available in this browser.");
+        await connector.connect();
+        const current = await connector.getConnectedWallet();
+        const account = current.accounts?.[0];
+        if (!nearAccount(account?.accountId)) throw new Error("NEAR wallet did not return a valid Testnet account.");
+        activeNearAccount = account.accountId;
+        onWalletConnected?.(account.accountId, current.wallet?.manifest?.name || "NEAR wallet");
+      }
+      return activeNearAccount;
+    }
+    throw new Error("Wallet adapter is not integrated for " + key.toUpperCase() + ". Select a connected EVM or NEAR Testnet network.");
+  };
   const slippage = document.createElement("select");
   for (const pair of [["50","0.5%"],["100","1%"],["200","2%"],["300","3%"]]) {
     const option = el("option", pair[1]); option.value = pair[0]; if (pair[0] === "100") option.selected = true; slippage.append(option);
@@ -438,14 +495,38 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
   const defaults = () => {
     const origin = tokens.find(token => token.asset_id === originSelect.value);
     const dest = tokens.find(token => token.asset_id === destSelect.value);
-    if (connectedAccount && nearAccount(connectedAccount)) {
-      if (dest?.blockchain === "near" && !recipientInput.value) recipientInput.value = connectedAccount;
-      if (origin?.blockchain === "near" && !refundInput.value) refundInput.value = connectedAccount;
-    }
+    return { origin, dest };
   };
-  defaults();
-  const fields = el("div", undefined, "developer-trade-quote");
-  addField(fields, "Amount · " + parsed.from, amountInput);
+  const fields = el("div", undefined, "developer-trade-quote swap-modern-card");
+  const walletBar = el("div", undefined, "swap-wallet-bar");
+  const walletState = el("div", undefined, "swap-wallet-state");
+  const walletStateIcon = el("span", "◈", "swap-wallet-state-icon");
+  const walletStateText = el("span", connectedAccount ? shortWalletAddress(connectedAccount) : "Wallet not connected");
+  walletState.append(walletStateIcon, walletStateText);
+  const connectButton = el("button", connectedAccount ? "Connect route wallets" : "Connect wallet", "swap-connect-button");
+  connectButton.type = "button";
+  walletBar.append(walletState, connectButton);
+  fields.append(walletBar);
+  connectButton.addEventListener("click", async () => {
+    const { origin, dest } = defaults();
+    if (!origin || !dest) { status.textContent = "Choose both assets before connecting a wallet."; return; }
+    connectButton.disabled = true;
+    connectButton.textContent = "Connecting…";
+    try {
+      const routeChains = [...new Set([origin.blockchain, dest.blockchain].map(value => String(value).toLowerCase()))];
+      for (const chain of routeChains) await connectWalletForChain(chain);
+      const addresses = [walletAddressFor(origin.blockchain), walletAddressFor(dest.blockchain)].filter(Boolean);
+      walletStateText.textContent = addresses.map(shortWalletAddress).join(" · ");
+      walletState.classList.add("is-connected");
+      connectButton.textContent = "Wallets connected ✓";
+      status.textContent = "Wallet connection verified for the selected route. Balances can now be refreshed.";
+      originPicker.refresh(); destinationPicker.refresh();
+    } catch (error) {
+      connectButton.textContent = "Connect wallet";
+      status.textContent = error.message || "Wallet connection failed.";
+    } finally { connectButton.disabled = false; }
+  });
+  addField(fields, "Amount", amountInput);
   addField(fields, "You pay · origin asset / network", originPicker.root);
   const flipButton = el("button", "⇅", "swap-flip-button");
   flipButton.type = "button";
@@ -461,8 +542,6 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
   });
   fields.append(flipButton);
   addField(fields, "You receive · destination asset / network", destinationPicker.root);
-  addField(fields, "Destination recipient", recipientInput);
-  addField(fields, "Origin refund address", refundInput);
   addField(fields, "Maximum slippage", slippage);
   const status = el("p", "Select exact networks and addresses, then request a quote.");
   const details = el("pre"); details.hidden = true;
@@ -471,9 +550,9 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
   fields.append(quoteButton, status, approveButton, details); card.append(fields);
   let swap = null, dryQuote = null;
   const invalidate = () => { approveButton.disabled = true; dryQuote = null; swap = null; };
-  originSelect.addEventListener("change", () => { defaults(); originPicker.sync(); invalidate(); });
-  destSelect.addEventListener("change", () => { defaults(); destinationPicker.sync(); invalidate(); });
-  for (const input of [amountInput, recipientInput, refundInput, slippage]) input.addEventListener("change", invalidate);
+  originSelect.addEventListener("change", () => { defaults(); originPicker.sync(); invalidate(); connectButton.textContent = "Connect route wallets"; });
+  destSelect.addEventListener("change", () => { defaults(); destinationPicker.sync(); invalidate(); connectButton.textContent = "Connect route wallets"; });
+  for (const input of [amountInput, slippage]) input.addEventListener("change", invalidate);
   quoteButton.addEventListener("click", async () => {
     quoteButton.disabled = true; approveButton.disabled = true;
     status.textContent = "Agent 1: resolving exact token IDs and requesting Tidepool dry quote…";
@@ -481,18 +560,18 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
       const origin = tokens.find(token => token.asset_id === originSelect.value);
       const destination = tokens.find(token => token.asset_id === destSelect.value);
       if (!origin || !destination) throw new Error("Choose exact origin and destination assets from the live token registry.");
-      let refundTo = refundInput.value.trim();
-      if (CHAIN_IDS[origin.blockchain] && !guestMode) {
-        const wallet = await connectEvm(refundInput, origin.blockchain); refundTo = wallet.account;
-      }
+      const recipient = walletAddressFor(destination.blockchain);
+      const refundTo = walletAddressFor(origin.blockchain);
+      if (!recipient || !refundTo) throw new Error("Connect the wallet(s) for both selected networks before requesting a quote. Recipient and refund addresses are taken automatically from the connected wallet.");
+      if (destination.blockchain === "near" && !nearAccount(recipient)) throw new Error("Connected destination wallet is not a valid NEAR Testnet account.");
+      if (CHAIN_IDS[destination.blockchain] && !evmAddress(recipient)) throw new Error("Connected destination wallet is not a valid EVM address.");
+      if (origin.blockchain === "near" && !nearAccount(refundTo)) throw new Error("Connected origin wallet is not a valid NEAR Testnet account.");
+      if (CHAIN_IDS[origin.blockchain] && !evmAddress(refundTo)) throw new Error("Connected origin wallet is not a valid EVM address.");
       const requestBody = {
         originAsset: origin.asset_id, destinationAsset: destination.asset_id,
         amount: decimalToUnits(amountInput.value.trim(), Number(origin.decimals)),
-        recipient: recipientInput.value.trim(), refundTo, slippageTolerance: Number(slippage.value)
+        recipient, refundTo, slippageTolerance: Number(slippage.value)
       };
-      if (origin.blockchain === "near" && (!connectedAccount || refundTo.toLowerCase() !== connectedAccount.toLowerCase())) {
-        throw new Error("For Meteor/NEAR origin, connect your NEAR Testnet wallet and use that account as refund address.");
-      }
       dryQuote = await request("/trading/quote", { method: "POST", body: JSON.stringify(requestBody) });
       if (dryQuote.mode !== "QUOTE_ONLY" || dryQuote.execution_enabled !== false ||
           dryQuote.origin_chain !== origin.blockchain || dryQuote.destination_chain !== destination.blockchain) {
