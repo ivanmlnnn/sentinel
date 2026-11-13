@@ -341,7 +341,7 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
     for (const chain of chains) {
       const button = el("button", chain.toUpperCase(), "swap-chain-chip" + (chain === activeChain ? " is-active" : ""));
       button.type = "button";
-      button.addEventListener("click", () => { activeChain = chain; renderChains(); renderTokens(); });
+      button.addEventListener("click", () => { activeChain = chain; renderChains(); renderTokens(); refreshBalances(); });
       chainRow.append(button);
     }
   };
