@@ -268,7 +268,6 @@ async function initWallet() {
     $('walletConnectionState').textContent = walletCount
       ? 'Not connected — ' + walletCount + ' compatible Testnet wallet(s) found. Connect to autofill your account.'
       : 'No compatible Testnet wallet is currently available. You can still check any public account.';
-    await completeDeveloperWalletRedirect();
     console.info('NEAR Connect ready. Network: testnet. Testnet-compatible wallets:', walletCount);
   } catch (error) {
     console.error('NEAR Connect initialization failed:', error);
