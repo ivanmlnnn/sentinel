@@ -152,6 +152,16 @@ async function executeEvmDeposit(args) {
   if (account.toLowerCase() !== swap.refundTo.toLowerCase()) throw new Error("Connected EVM account differs from the reviewed refund address. Request a fresh quote.");
   if (!evmAddress(liveQuote.deposit_address)) throw new Error("Tidepool returned an invalid EVM deposit address.");
   if (liveQuote.deposit_memo) throw new Error("This EVM route unexpectedly requires a memo; automatic deposit is disabled.");
+  const latestAccounts = await provider.request({ method: "eth_accounts" });
+  const latestChain = String(await provider.request({ method: "eth_chainId" })).toLowerCase();
+  if (!Array.isArray(latestAccounts) || latestAccounts[0]?.toLowerCase() !== account.toLowerCase() ||
+      latestChain !== CHAIN_IDS[token.blockchain]) {
+    throw new Error("Wallet account or network changed after quote review. Request a fresh quote.");
+  }
+  if (liveQuote.quote?.amount_in !== swap.amount || liveQuote.quote_request?.amount !== swap.amount ||
+      liveQuote.quote_request?.originAsset !== swap.originAsset) {
+    throw new Error("Live quote amount or origin asset does not match the reviewed request.");
+  }
   const tx = { from: account };
   if (token.contract_address) {
     if (!tokenAddressValid(token)) throw new Error("Token contract address is invalid.");
