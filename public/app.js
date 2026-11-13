@@ -1567,7 +1567,7 @@ if (agentForm) {
       if (!GUEST_MODE) renderAuthenticatedPending(prompt);
       const swapRequest = (path, options = {}) => request(path, { ...options, signal: swapController.signal });
       try {
-        await renderChatSwap({ prompt, result: $('agentResult'), request: swapRequest, connector, connectedAccount, connectedWalletName, encodeBase58, guestMode: GUEST_MODE, onWalletConnected: syncWalletUI });
+        await renderChatSwap({ prompt, result: $('agentResult'), request: swapRequest, connector: () => connector, connectedAccount: () => connectedAccount, connectedWalletName, encodeBase58, guestMode: GUEST_MODE, onWalletConnected: syncWalletUI });
         if (activeChatSwapController === swapController) $('agentPrompt').value = '';
       } catch (error) {
         if (swapController.signal.aborted || activeChatSwapController !== swapController) return;
