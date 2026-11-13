@@ -5,6 +5,23 @@ import { PrivyProvider, usePrivy, useGuestAccounts } from 'https://esm.sh/@privy
 
 const APP_ID = 'cmw78k7rd00ix0ilgf5ubvn5y';
 
+function describeGuestAuthFailure(error) {
+  const code = String(error?.privyErrorCode || error?.code || error?.name || 'UNKNOWN').slice(0, 80);
+  const detail = String(error?.message || 'No error message returned by Privy').replace(/\\s+/g, ' ').slice(0, 180);
+  const diagnostic = (code + ' ' + detail).toLowerCase();
+
+  if (/guest.{0,30}(disabled|not enabled|not allowed)|(?:disabled|not enabled).{0,30}guest/.test(diagnostic)) {
+    return 'Privy rejected Guest login because Guest Accounts appear to be disabled. Enable Guest Accounts in Privy Dashboard → Settings → Advanced settings, then retry.';
+  }
+  if (/network|fetch|failed to fetch|load failed|connection|timeout|timed out/.test(diagnostic)) {
+    return 'Could not reach Privy to create a Guest session. Check the connection, browser content blockers, and retry.';
+  }
+  if (/origin|domain|redirect|unauthorized|not allowed/.test(diagnostic)) {
+    return 'Privy rejected this site origin or app configuration. Check the allowed domains/origins for the Sentinel Privy app.';
+  }
+  return 'Guest login failed (' + code + '): ' + detail;
+}
+
 const WAYANG_PALETTES = [
   ['#8bd4ef','#e8df78','#164c50'], ['#e8df78','#f2a66f','#53352e'],
   ['#9be2c4','#8bd4ef','#174b45'], ['#d7a8f4','#e8df78','#40345b'],
@@ -168,12 +185,18 @@ function AuthGate() {
         })
       ]);
     } catch (error) {
-      console.error('Privy Guest Account creation failed:', error);
+      console.error('Privy Guest Account creation failed:', {
+        name: error?.name || null,
+        code: error?.code || null,
+        privyErrorCode: error?.privyErrorCode || null,
+        status: error?.status || error?.statusCode || null,
+        message: String(error?.message || 'Unknown Privy error').slice(0, 240)
+      });
       window.SENTINEL_GUEST = false;
       try { sessionStorage.removeItem('sentinel_privy_guest'); } catch {}
       setAuthError(error?.message === 'GUEST_SESSION_TIMEOUT'
-        ? 'Guest session timed out. Retry or use email sign-in.'
-        : 'Guest access could not be started. Check that Guest Accounts are enabled in Privy and try again.');
+        ? 'Guest session timed out after 15 seconds. Retry or use email sign-in.'
+        : describeGuestAuthFailure(error));
       setGuestLoading(false);
     } finally {
       window.clearTimeout(timeoutId);
