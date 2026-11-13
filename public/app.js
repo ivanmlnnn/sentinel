@@ -1372,6 +1372,7 @@ function renderTradingAgentResult(data) {
 }
 
 const skillCards = Array.from(document.querySelectorAll('.sentinel-skill-card'));
+if (GUEST_MODE) document.querySelector('[data-skill="trading"]')?.classList.add('hidden');
 function selectSentinelSkill(card) {
   if (!card) return;
   skillCards.forEach(item => item.classList.toggle('is-selected', item === card));
