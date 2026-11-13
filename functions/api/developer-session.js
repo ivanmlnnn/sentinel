@@ -127,7 +127,7 @@ export async function onRequestPost({ request, env }) {
     }
     const recipient = new URL(request.url).host.toLowerCase();
     const claimed = await env.DB.prepare(
-      "UPDATE developer_session_challenges SET used_at = CURRENT_TIMESTAMP WHERE challenge_id = ? AND actor = ? AND account_id = ? AND recipient = ? AND used_at IS NULL AND expires_at > CURRENT_TIMESTAMP RETURNING message, nonce, permissions"
+      "UPDATE developer_session_challenges SET used_at = CURRENT_TIMESTAMP WHERE challenge_id = ? AND actor = ? AND account_id = ? AND recipient = ? AND used_at IS NULL AND datetime(expires_at) > CURRENT_TIMESTAMP RETURNING message, nonce, permissions"
     ).bind(challengeId, identity.sub, account, recipient).first();
     if (!claimed) return json({ error: "CHALLENGE_EXPIRED_USED_OR_MISMATCHED" }, 409);
     try {
@@ -164,7 +164,7 @@ export async function onRequestPost({ request, env }) {
   const hash = await tokenHash(token);
   if (body.operation === "status") {
     await env.DB.prepare(
-      "UPDATE developer_sessions SET status = 'EXPIRED', token_hash = NULL WHERE token_hash = ? AND actor = ? AND status = 'ACTIVE' AND expires_at <= CURRENT_TIMESTAMP"
+      "UPDATE developer_sessions SET status = 'EXPIRED', token_hash = NULL WHERE token_hash = ? AND actor = ? AND status = 'ACTIVE' AND datetime(expires_at) <= CURRENT_TIMESTAMP"
     ).bind(hash, identity.sub).run();
     const session = await env.DB.prepare(
       "SELECT session_id, account_id, network, status, permissions, expires_at, public_key FROM developer_sessions WHERE token_hash = ? AND actor = ? AND status = 'ACTIVE' AND expires_at > CURRENT_TIMESTAMP"
