@@ -2,12 +2,12 @@
 
 ## Live market-data adapter
 
-Sentinel reads public Kraken Spot OHLC data through the fixed endpoint https://api.kraken.com/0/public/OHLC. Pair and interval are allowlisted; callers cannot supply a URL. The adapter validates the provider envelope, bounds the response body, converts numeric OHLCV values, limits history, and excludes Kraken's final still-forming candle. Stale data and provider errors fail closed.
+Sentinel reads public Kraken Spot OHLC data through the fixed endpoint https://api.kraken.com/0/public/OHLC. Pair and interval are allowlisted; callers cannot supply a URL. The adapter validates the provider envelope, bounds the response body, converts numeric OHLCV values, limits the data retained for analysis, and excludes Kraken's final still-forming candle. Stale data and provider errors fail closed.
 
 Initial pairs: XBTUSD, ETHUSD, SOLUSD, ADAUSD, DOTUSD, LINKUSD, XRPUSD, AVAXUSD.
 Intervals: 1, 5, 15, 30, 60, 240, 1440, 10080, 21600 minutes.
 
-Kraken documents public OHLC rate limits and a bounded historical OHLC response. Sentinel requests only 60 completed candles for this strategy. See https://docs.kraken.com/api/docs/rest-api/get-ohlc-data and https://support.kraken.com/articles/206548367-what-are-the-api-rate-limits-.
+Kraken documents public OHLC rate limits and a bounded historical OHLC response. Sentinel retains only 60 completed candles for this strategy after receiving the provider response. See https://docs.kraken.com/api/docs/rest-api/get-ohlc-data and https://support.kraken.com/articles/206548367-what-are-the-api-rate-limits-.
 
 ## Deterministic market analysis
 
