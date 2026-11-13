@@ -1549,12 +1549,12 @@ paymentDraftButton?.addEventListener('click', () => {
 function isExplicitPaymentProposalPrompt(prompt) {
   const text = String(prompt || '').trim();
   const patterns = [
-    /^(?:please\\s+)?(?:(?:i\\s+(?:want|would like)\\s+to\\s+)?(?:send|transfer))\\s+((?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?)\\s*(?:near|Ⓝ)\\s+to\\s+[a-z0-9]+(?:[-_.][a-z0-9]+)*$/i,
-    /^(?:please\\s+)?(?:(?:i\\s+(?:want|would like)\\s+to\\s+)?(?:send|transfer))\\s+(?:to\\s+)?[a-z0-9]+(?:[-_.][a-z0-9]+)*\\s+(?:an?\\s+amount\\s+of\\s+)?(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\\s*(?:near|Ⓝ)$/i,
-    /^(?:saya\\s+)?(?:mau|ingin|hendak)\\s+(?:mengirim|kirim|transfer)\\s+(?:near\\s+)?(?:ke\\s+)?[a-z0-9]+(?:[-_.][a-z0-9]+)*\\s+(?:sebesar\\s+)?(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\\s*(?:near|Ⓝ)$/i,
-    /^(?:saya\\s+)?(?:mau|ingin|hendak)\\s+(?:mengirim|kirim|transfer)\\s+(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\\s*(?:near|Ⓝ)\\s+ke\\s+[a-z0-9]+(?:[-_.][a-z0-9]+)*$/i,
-    /^(?:kirim|transfer)\\s+ke\\s+[a-z0-9]+(?:[-_.][a-z0-9]+)*\\s+(?:sebesar\\s+)?(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\\s*(?:near|Ⓝ)$/i,
-    /^(?:please\\s+)?(?:create|make|propose|buat|ajukan)\\s+(?:a\\s+)?payment\\s+proposal\\s+to\\s+[a-z0-9]+(?:[-_.][a-z0-9]+)*\\s+for\\s+(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\\s*(?:near|Ⓝ)(?:[.!?\\s]|$)/i
+    /^(?:please\s+)?(?:(?:i\s+(?:want|would like)\s+to\s+)?(?:send|transfer))\s+((?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?)\s*(?:near|Ⓝ)\s+to\s+[a-z0-9]+(?:[-_.][a-z0-9]+)*$/i,
+    /^(?:please\s+)?(?:(?:i\s+(?:want|would like)\s+to\s+)?(?:send|transfer))\s+(?:to\s+)?[a-z0-9]+(?:[-_.][a-z0-9]+)*\s+(?:an?\s+amount\s+of\s+)?(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\s*(?:near|Ⓝ)$/i,
+    /^(?:saya\s+)?(?:mau|ingin|hendak)\s+(?:mengirim|kirim|transfer)\s+(?:near\s+)?(?:ke\s+)?[a-z0-9]+(?:[-_.][a-z0-9]+)*\s+(?:sebesar\s+)?(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\s*(?:near|Ⓝ)$/i,
+    /^(?:saya\s+)?(?:mau|ingin|hendak)\s+(?:mengirim|kirim|transfer)\s+(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\s*(?:near|Ⓝ)\s+ke\s+[a-z0-9]+(?:[-_.][a-z0-9]+)*$/i,
+    /^(?:kirim|transfer)\s+ke\s+[a-z0-9]+(?:[-_.][a-z0-9]+)*\s+(?:sebesar\s+)?(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\s*(?:near|Ⓝ)$/i,
+    /^(?:please\s+)?(?:create|make|propose|buat|ajukan)\s+(?:a\s+)?payment\s+proposal\s+to\s+[a-z0-9]+(?:[-_.][a-z0-9]+)*\s+for\s+(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\s*(?:near|Ⓝ)(?:[.!?\s]|$)/i
   ];
   return patterns.some(pattern => pattern.test(text));
 }
@@ -1571,9 +1571,11 @@ if (agentForm) {
     const result = $('agentResult');
     result.classList.remove('hidden');
     const paymentProposalPrompt = isExplicitPaymentProposalPrompt(prompt);
-    result.textContent = developerModeEnabled && !paymentProposalPrompt
-      ? 'Sending task to Railway Developer Agent…'
-      : 'Sending request to Sentinel payment approval…';
+    result.textContent = paymentProposalPrompt
+      ? 'Sending request to Sentinel payment approval…'
+      : developerModeEnabled
+        ? 'Sending task to Railway Developer Agent…'
+        : 'Sending task to Railway User Agent…';
     try {
       if (GUEST_MODE) {
         guestConversation.push({ role: 'user', content: prompt });
