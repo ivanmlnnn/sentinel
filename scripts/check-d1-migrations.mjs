@@ -34,7 +34,9 @@ function validateMigrationSet(directory, expectedTables, expectedIndexes = []) {
 validateMigrationSet("migrations-d1", [
   "investigations", "threat_reports", "privy_webhook_events", "agent_audit",
   "agent_execution", "signer_nonces", "agent_pending_approvals",
-  "signer_approval_claims", "investigation_owners"
+  "signer_approval_claims", "investigation_owners", "developer_session_challenges", "developer_sessions"
+], [
+  "idx_dev_challenges_account_created", "idx_dev_sessions_actor"
 ]);
 
 validateMigrationSet("migrations-signer", [

@@ -2,11 +2,11 @@
 
 ## Implementation status — 12 November 2026
 
-This document describes the source currently present on `feature/sentinel-trading-core-lab`. Do not merge separate prototypes or source-only contracts into claims about the active production flow.
+This document describes the implementation on `fix/developer-mode-railway-terminal`. Do not merge separate prototypes or source-only contracts into claims about the active production flow.
 
 **Current native payment path:** the agent proposes; Sentinel evaluates; the connected NEAR wallet signs and sends the exact native Testnet `Transfer`; the isolated Signer Worker independently verifies that transaction and its receipt against NEAR RPC. The Signer Worker does not hold or use the user's wallet private key to sign that transfer.
 
-**Current Developer Mode:** preview only. It drafts trading skills. It does not create a delegated access key, persistent wallet session, background job, or automatic trade executor.
+**Current Developer Mode:** a wallet-verified, eight-hour NEP-413 application session backed by D1, with a read-only Railway planning runtime. It does not create a delegated FunctionCall access key, fetch live DEX quotes, create executable swap orders, sign, or broadcast transactions. `execution_enabled` remains `false`; full browser-to-wallet-to-Railway E2E acceptance is still pending.
 
 ## What happens in the current native payment flow
 
@@ -50,13 +50,13 @@ Consequently, do not claim that current native payments are executed by a contra
 
 ## Developer Mode delegated sessions — not yet implemented
 
-The current browser imports `@hot-labs/near-connect@0.12.0`. It does not use FastNear's `addFunctionCallKey()`. The Developer Mode toggle only changes local UI state and creates trading-skill drafts.
+The current Developer Mode session API is implemented in `functions/api/developer-session.js`: it issues a one-use NEP-413 challenge, verifies the wallet signature against NEAR Testnet RPC, and creates an eight-hour D1-backed application session. The Railway runtime revalidates the session and returns read-only planning output. This is not a delegated on-chain key or an autonomous trader.
 
 FastNear `@fastnear/near-connect@0.14.1` documents a limited FunctionCall key flow: the user approves an on-chain `AddKey` once, and the resulting key can sign zero-deposit function calls to one contract and an explicit method list without another popup. Wallets must advertise `features.addFunctionCallKey: true`. Non-zero-deposit transactions still require wallet approval. The key cannot perform arbitrary native transfers or call arbitrary contracts. Its allowance limits gas spending, not the value that a contract transfers.
 
 That capability alone is not enough to enable Sentinel Developer Mode. The existing payment contract rejects a normal user's delegated key because `pay()` requires `predecessor_account_id == signer_id`. A dedicated, audited per-user escrow/session contract is required to enforce user balance, expiry, per-transaction and daily caps, replay protection, and revocation. See [Developer Mode Session Design](DEVELOPER_MODE_SESSION_DESIGN.md).
 
-Until that contract, backend verification, compatible-wallet flow, revoke path, integration tests, and Testnet evidence exist, Developer Mode must remain **Preview only**.
+The current application-session flow may be used for authenticated read-only planning, but delegated transaction execution must remain **disabled** until a purpose-built contract, delegated-key lifecycle, wallet compatibility, revocation, integration tests, and Testnet evidence exist.
 
 ## Accurate feature boundaries
 

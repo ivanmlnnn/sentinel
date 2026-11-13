@@ -1,4 +1,6 @@
-# Sentinel — Website, Explorer & Restricted Function-Call Signer
+# Sentinel — Historical Website, Explorer & Restricted Function-Call Design
+
+> **ARCHIVED — NOT THE ACTIVE PAYMENT IMPLEMENTATION.** This document describes an earlier contract-scoped FunctionCall payout design. The current branch's active payment path is a user-wallet-signed native Testnet Transfer followed by isolated Signer Worker verification. The active `execute()` path does not invoke `assertRestrictedFunctionCallKey()` or call `payment-contract/src/lib.rs`. Do not use this document as a current deployment or judge claim; see [NEAR Ecosystem Integration](NEAR_ECOSYSTEM_INTEGRATION.md) and [Secure Agent Pipeline](SECURE_AGENT_PIPELINE.md).
 
 This document is the implementation and judge guide for the Sentinel website and the NEAR AI Security & Defense track. The runtime signer uses a contract-scoped FunctionCall payment flow. Successful private Signer Worker and Main Worker deployment records are linked below.
 

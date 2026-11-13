@@ -1,15 +1,17 @@
 # NEAR Sentinel — Judge Evidence Pack
 
+> **Current-source correction — 13 November 2026:** the active native payment path is a user-wallet-signed Testnet Transfer followed by isolated Signer Worker verification of the exact transaction and receipt. The active `execute()` path does not call the source-level `assertRestrictedFunctionCallKey()` helper and does not call `payment-contract/src/lib.rs`. Therefore do not claim current contract-enforced payout or active restricted FunctionCall-key execution. Earlier contract/FunctionCall statements and deployment rows below are historical evidence for their named revisions, not proof of the current branch runtime. Current AI inference uses Cloudflare Workers AI (`@cf/zai-org/glm-4.7-flash`), not Gemini or Anthropic. The current Developer Mode session is NEP-413 application-session only; autonomous trading/execution remains disabled.
+
 > **Start here for AI judges and human reviewers.** This page is the concise, evidence-linked guide to what Sentinel does, how to run it, which security controls are implemented, and what the published deployment records prove.
 
 ## Current production deployment — 12 November 2026
 
-The current production Workers were deployed directly with Wrangler from the local repository, not by a GitHub Actions deployment queue.
+The last recorded direct Wrangler deployment snapshot is dated 12 November 2026. The deployment IDs below are historical evidence, not a fresh verification of the current PR head. The current branch now sets Signer `workers_dev=false` and `NEAR_AGENT_KILL_SWITCH=true`; these branch settings have not been applied to production by this documentation update.
 
 | Component | Production URL | Deployed version |
 |---|---|---|
 | Main Worker | https://sentinel.ivmaladin.workers.dev | `80a8c904-d1b4-4686-be5a-557e3c0da3a9` |
-| Isolated Signer Worker | https://sentinel-signer.ivmaladin.workers.dev | `fe208953-3eff-42a1-9356-9181042eb5f3` |
+| Isolated Signer Worker | Internal `SIGNER_SERVICE` binding (intended); historical deployment snapshot exposed a `workers.dev` URL | `fe208953-3eff-42a1-9356-9181042eb5f3` (historical) |
 
 **Verification recorded for this deployment:** `npm test` — 146 passed, 0 failed, 0 skipped; `npm run smoke:test` — all HTTP smoke checks passed (dashboard HTTP 200 and expected protected-route rejections). These checks do not prove a live wallet approval or a successful NEAR payment.
 
@@ -32,7 +34,7 @@ GitHub remains the source-control and backup repository. GitHub Actions deployme
 
 **NEAR Sentinel is a pre-sign security checkpoint for AI agents that want to pay on NEAR:** the agent proposes an intent, Sentinel independently evaluates the destination and available on-chain evidence, a human approves the exact receiver and amount, and an isolated signer enforces the final authorization and spending boundary.
 
-**Primary track: AI Security & Defense.** Sentinel directly addresses the track's focus on agent security, policy engines, spending limits, sandboxed wallets, and FunctionCall-key restrictions.
+**Primary track: AI Security & Defense.** Sentinel directly addresses the track's focus on agent security, policy engines, spending limits, sandboxed wallets, and wallet authorization and independent transaction verification; the FunctionCall contract path remains source-only and is not active in the current payment flow.
 
 - **Live dashboard:** https://sentinel.ivmaladin.workers.dev
 - **Public repository:** https://github.com/ivanmlnnn/sentinel
@@ -89,7 +91,7 @@ The policy returns one of four explicit outcomes:
 | `BLOCK` | A verified threat-registry match or hard policy denial exists | Deny before signing |
 | `INCOMPLETE` | Required evidence could not be fully retrieved or verified | Fail closed; do not interpret missing data as safe |
 
-The differentiator is not an AI-generated risk score. It is the separation of **untrusted AI proposal → deterministic evidence/policy → human approval → isolated signer → contract-enforced payout**.
+The differentiator is not an AI-generated risk score. It is the separation of **untrusted AI proposal → deterministic evidence/policy → explicit wallet approval → isolated verification → exact final transaction/receipt check**.
 
 ## 3. Evidence index
 
@@ -122,7 +124,7 @@ These are real deployment workflow records, not Wrangler dry-runs. The Signer de
 | CodeQL | [Run #426](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243329) | Static analysis workflow completed successfully. Workflow success is not a guarantee of zero findings; inspect the Security tab for alerts. |
 | Security CI | [Run #45](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243623) | Security regression workflow completed successfully. |
 
-The logged test assertions include rejection of FullAccess and over-broad FunctionCall keys, exact pay-only FunctionCall scope, forged/invalid NEP-413 approval rejection, nonce/replay rejection, stale/tampered HMAC rejection, kill-switch denial, fail-closed behavior when evidence is incomplete, and exact payout-receipt verification requirements. These are automated test results; they are not an independent penetration-test certification.
+The test suite includes source-level tests for access-key policy helpers and contract-related invariants, but those tests do not establish that the active `execute()` path invokes the FunctionCall-key helper or that the payment contract is the live payout executor. HMAC, nonce/replay, approval, kill-switch, incomplete-evidence, and final wallet-transfer verification tests must be interpreted only for the exact tested revision. These are automated tests, not an independent penetration-test certification.
 
 ## 3.4 End-to-end verification result
 
@@ -154,9 +156,9 @@ Sentinel's configured tracked/allowed recipient account is **`rawvest6817.testne
 
 - [Open `rawvest6817.testnet` in NEAR Testnet Explorer](https://testnet.nearblocks.io/address/rawvest6817.testnet)
 - The account page exposes indexed public account activity, including transaction history and receipts, so reviewers can inspect the destination account independently of Sentinel's dashboard.
-- In Sentinel's payment architecture, the top-level transaction calls the payment contract; the contract's successful native Transfer receipt identifies the final recipient and exact amount. Review the receipt, not only the top-level transaction receiver.
+- **Current branch:** the top-level transaction is the user's native NEAR Transfer; the isolated Signer Worker checks the transaction and successful Transfer receipt against the exact recipient and amount. The older contract-call flow described elsewhere in this archive is not the active path.
 
-The account page is recipient/account-level evidence. For a specific Sentinel-originated payout, correlate the exact transaction hash, signer, payment-contract call, recipient, amount, successful receipt, and payout receipt ID returned by the Signer Worker. This keeps the Explorer evidence directly accessible without conflating general account activity with a particular payment.
+The account page is recipient/account-level evidence. For a specific payment, correlate the exact transaction hash, wallet sender, recipient, amount, final status, and successful Transfer receipt returned by the Signer Worker. Do not require or claim a payment-contract call in the current branch flow.
 
 ## 4. How to reproduce the repository checks
 
@@ -180,7 +182,7 @@ PASS
 
 The attack demo is deliberately described as an **offline regression simulation**. It demonstrates the application-level guard's expected fail-closed behavior; it does not impersonate a live LLM attack, submit a NEAR transaction, or prove a live payout.
 
-For the isolated Signer Worker bundle check:
+For the isolated Signer Worker bundle check (historical workflow evidence; current branch config differs):
 
 ```bash
 npx wrangler@4.159.0 deploy --config signer-worker/wrangler.jsonc --dry-run
@@ -197,9 +199,9 @@ A dry-run validates the bundle only. It is not a deployment.
 | User → approval | Actor-bound approval for the exact receiver and amount, with a five-minute expiry | Approval cannot be reused for a different payment intent |
 | Approval → signer | NEP-413 wallet-message verification and one-time approval claim | The wallet owner explicitly approves the bound intent |
 | Main Worker → signer | Private Cloudflare service binding plus HMAC timestamp/nonce validation | The signing key is not imported into the public application Worker |
-| Signer → NEAR | On-chain access-key permission check; require the configured payment contract and only the `pay` method | Reject FullAccess or over-broad FunctionCall runtime keys |
+| Signer → NEAR RPC | Verify exact submitted wallet transaction, sender, receiver, amount, success status, and native Transfer receipt | Reject mismatched, failed, or unverifiable transfers |
 | Signer state | Replay ledger, idempotency reservation, spending caps, receiver allowlist and kill switch | Reduce replay, duplicate, destination-substitution and runaway-spend risk |
-| Contract → recipient | Contract-enforced per-payment/daily limits and one-time approval IDs; native payout receipt checked against exact recipient and amount | The restricted FunctionCall key calls the contract; it does not directly issue an unrestricted native transfer |
+| Payment contract | Source-only contract with its own caps and one-time approval IDs; not called by the active native payment execution path | Do not claim contract-enforced payout without deployment and receipt evidence |
 
 Relevant implementation:
 - `functions/api/agent.js` and `functions/api/agent-approve.js`
@@ -210,22 +212,22 @@ Relevant implementation:
 
 ## 6. Deployment status: distinguish what each record proves
 
-The repository contains real NEAR Testnet RPC and NearBlocks Testnet API integrations. The deployment records above establish successful Cloudflare Worker deployments and smoke checks. The maintainer has also reported that the payment contract was previously deployed and that existing runtime configuration was reused.
+The repository contains real NEAR Testnet RPC and NearBlocks Testnet API integrations. The deployment records above establish successful Cloudflare Worker deployments and smoke checks for their named revisions. They do not establish that the current active native payment path uses the payment contract; the current branch source verifies wallet-signed native Transfers.
 
 For a strict independent review, keep these statements separate:
 
 - **Verified by linked GitHub Actions logs:** Signer Worker deployment, Main Worker deployment, secret upload events, service-binding configuration observed in the deployment logs, and production HTTP smoke checks.
 - **Implemented and covered by automated tests:** NEP-413 validation, exact-intent approval, signer permission enforcement logic, replay protection, kill switch, spending policy, and receipt-verification logic.
-- **Maintainer-reported existing setup:** previously deployed payment contract and reused runtime signer configuration.
+- **Historical maintainer report:** a payment contract was previously deployed and runtime signer configuration was reused. This is not independent proof of a live contract payout and the contract is not called by the active branch payment path.
 - **Recipient Explorer:** [`rawvest6817.testnet`](https://testnet.nearblocks.io/address/rawvest6817.testnet) is linked above for direct inspection of the tracked recipient account and its public activity. The payment verifier checks the final native Transfer receipt against the approved recipient and exact amount.
 
 Do not mistake a successful Worker deployment for proof of a successful blockchain payout. If a real Sentinel transaction hash is added later, include the exact hash, signer, contract, recipient, amount, final status, payout receipt ID, and an independent Testnet Explorer/API link. Never invent or substitute a hash from an unrelated wallet.
 
 ## 7. AI provider integration
 
-The Agent, Guest Agent, and AI Review routes use Google Gemini through a shared server-side adapter. The adapter translates Sentinel's allowlisted tool declarations and multi-turn tool results to Gemini function-calling format. The model remains an untrusted proposer and evidence explainer; deterministic policy and the isolated signer remain the authorization boundary.
+Historical provider note: older revisions used Gemini/Anthropic adapters. The current branch uses Cloudflare Workers AI via `env.AI`, with `@cf/zai-org/glm-4.7-flash` as the repository default. See [Sentinel AI Runtime](SENTINEL_AI_RUNTIME.md).
 
-Runtime configuration: set `GEMINI_API_KEY` as a secret on the Cloudflare Main Worker. The default model is `gemini-3.8-flash`. See [Gemini AI Provider Setup](DEPLOYMENT_STATUS_AND_AI_PROVIDER.md#gemini-ai-provider) for deployment and verification steps.
+No Gemini API key is required by the current binding-based runtime. A live model response still needs to be demonstrated separately; configuration and adapter tests alone are not proof of live inference.
 
 The provider migration is covered by `tests/gemini-provider.test.mjs` and the repository's CI workflows. A passing adapter test or build is not, by itself, proof that the production secret is configured or that a live model response has succeeded. Use the linked release workflow and live route smoke test as the evidence for production availability.
 

@@ -1,6 +1,6 @@
 # NEAR SENTINEL — Technical details
 
-> Archived expanded project documentation. The root README is the judge-facing quickstart.
+ > **ARCHIVED SNAPSHOT — NOT A CURRENT DEPLOYMENT RUNBOOK.** This document preserves earlier project implementation details. Provider names, environment variables, routes, and deployment instructions below may be superseded. Use [Sentinel Core Architecture](SENTINEL_CORE_ARCHITECTURE.md), [Sentinel AI Runtime](SENTINEL_AI_RUNTIME.md), [Developer Mode Readiness](DEVELOPER_MODE_READINESS.md), and [Judge Evidence Pack](JUDGE_EVIDENCE_PACK.md) for current boundaries and evidence.
 
 ---
 

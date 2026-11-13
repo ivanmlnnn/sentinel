@@ -17,7 +17,7 @@ Do not claim that Sentinel implements NEAR Intents, a complete autonomous busine
 | Area | Evidence | What a judge can verify |
 |---|---|---|
 | Merged implementation | [PR #3](https://github.com/ivanmlnnn/sentinel/pull/3) | Isolated signer, NEP-413 approval and replay protections are merged. |
-| Signer deployment | [Actions run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536) | Private Worker `sentinel-signer` deployed; version `45194350-5fb8-4aec-8418-45b742147f35`; runtime secret upload events are visible in job logs. |
+| Historical Signer deployment | [Actions run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536) | Worker `sentinel-signer` deployed; version `45194350-5fb8-4aec-8418-45b742147f35`; this record predates the current branch's `workers_dev=false` config. |
 | Main deployment | [Actions run 42871954699](https://github.com/ivanmlnnn/sentinel/actions/runs/42871954699) | Merged-main deployment and production smoke test succeeded. |
 | Later Main deployment | [Actions run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638) | Later Main Worker deployment succeeded; version `455d1be0-150c-4de0-84f7-c9040c99c615`; HTTP smoke checks passed. |
 | Sentinel checks | [Actions run 42873243801](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243801) | Automated checks completed successfully; inspect job logs for test assertions. |
@@ -81,18 +81,18 @@ This is an offline regression simulation. It demonstrates the application-level 
 - **Exact-intent approval:** approval binds the authenticated actor, receiver, amount and expiry.
 - **NEP-413 verification:** the signer validates the wallet-signed approval message.
 - **Replay resistance:** one-time approval claims, nonce tracking, HMAC timestamp/nonce checks and idempotency state prevent reuse of stale or duplicated requests.
-- **Signer isolation:** Main Worker calls the private Signer Worker through the Cloudflare service binding; the signing key is not imported into Main Worker source.
-- **Restricted key policy:** signer code checks on-chain access-key permission for the configured payment contract and only the `pay` method; FullAccess and broader permissions are rejected.
+- **Verifier isolation:** Main Worker calls the isolated Signer Worker through the `SIGNER_SERVICE` service binding. The active Signer path verifies the user's wallet-submitted native Transfer; it does not originate or sign that transfer. The current branch config disables the Signer's public `workers.dev` endpoint, but that branch change has not been deployed to production by this documentation update.
+- **Final transaction verification:** the active Signer Worker checks the wallet-submitted native Transfer against NEAR RPC for exact sender, receiver, amount, success status, and receipt. The source-level FunctionCall-key helper is not called by the active `execute()` path.
 - **Spending controls:** receiver allowlist, per-payment/daily caps, contract approval IDs and kill switch constrain execution.
 - **Receipt verification:** the signer checks the exact contract call and successful native Transfer receipt for the approved recipient and amount.
 
-Automated test assertions include pay-only FunctionCall scope, rejection of FullAccess/other contracts/extra methods, forged or invalid approval rejection, replay/nonce rejection, stale or tampered HMAC rejection, kill-switch denial, fail-closed evidence handling, and exact payout-receipt verification requirements. See the [Judge Evidence Pack](JUDGE_EVIDENCE_PACK.md) for the linked CI runs.
+Automated tests cover policy helpers, approval and replay controls, HMAC validation, kill-switch denial, incomplete-evidence handling, and exact wallet-transfer verification. Tests of the restricted FunctionCall helper do not prove it is used by the active execution path. See the [Judge Evidence Pack](JUDGE_EVIDENCE_PACK.md) for revision-scoped CI evidence.
 
 ## Deployment, contract and transaction status — read carefully
 
 - GitHub Actions provides successful deployment evidence for the private Signer Worker and Main Worker, including deployment versions and successful production HTTP smoke checks.
 - The Signer deployment log records runtime secret-upload events and the service binding. Secret values are masked; logs do not reveal private keys.
-- The maintainer reports that the payment contract was previously deployed and existing runtime signer configuration was reused.
+- The repository contains payment-contract source and historical deployment records; the active payment path in this branch does not invoke that contract. Do not claim a current contract payout without a matching live transaction and receipt.
 - The linked deployment logs do not, by themselves, independently prove the public key's live on-chain permission scope or a successful Sentinel-originated payout.
 
 
@@ -100,9 +100,7 @@ This is not a product failure statement. It is a strict distinction between succ
 
 ## AI provider availability
 
-Agent, Guest Agent and AI Review routes currently use Anthropic's Messages API and tool-call schema. The observed credit-balance error is an upstream provider billing issue and is classified in the application as `AI_PROVIDER_BILLING_ERROR`. That classification improves diagnostics; it does not add provider credits.
-
-Do not substitute a Qwen key into an Anthropic configuration. A provider migration needs a tested adapter for authentication, model IDs, tool schemas, tool-call parsing, follow-up messages and errors across the agent routes. Demonstrate the live Agent Lab only after a real model response is observed. The read-only scanner and repository security checks are separate and can be reviewed independently.
+The current Agent and Guest Agent runtime uses the Cloudflare Workers AI binding (`env.AI`) as documented in [Sentinel AI Runtime](SENTINEL_AI_RUNTIME.md). Do not use old Anthropic/Gemini setup instructions from historical documents as current deployment guidance. A configured model binding or passing adapter tests do not prove live inference; demonstrate the Agent Lab only after an actual model response is observed. The read-only scanner and repository security checks are separate and can be reviewed independently.
 
 ## Judge questions and concise answers
 

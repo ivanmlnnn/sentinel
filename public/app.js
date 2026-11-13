@@ -234,8 +234,10 @@ async function initWallet() {
     connector.on('wallet:signIn', event => {
       const account = event.accounts && event.accounts[0];
       syncWalletUI(account?.accountId, event.wallet?.manifest?.name || 'NEAR wallet');
+      if (account?.accountId) void restoreDeveloperSession(account.accountId);
     });
     connector.on('wallet:signOut', () => {
+      if (developerModeEnabled) void request('/agent/developer-session', { method: 'POST', body: JSON.stringify({ operation: 'revoke' }) }).catch(() => {});
       syncWalletUI(null, null);
       if (developerModeEnabled || developerModePending) {
         setDeveloperMode(false, 'OFF · WALLET DISCONNECTED');
@@ -248,6 +250,7 @@ async function initWallet() {
       const current = await connector.getConnectedWallet();
       const account = current.accounts && current.accounts[0];
       syncWalletUI(account?.accountId, current.wallet?.manifest?.name || 'NEAR wallet');
+      if (account?.accountId) void restoreDeveloperSession(account.accountId);
     } catch {
       syncWalletUI(null, null);
     }
@@ -285,6 +288,16 @@ async function initWallet() {
     button.disabled = true;
     try {
       if (connectedAccount) {
+        if (developerModeEnabled) {
+          const revoked = await request('/agent/developer-session', {
+            method: 'POST',
+            body: JSON.stringify({ operation: 'revoke' })
+          });
+          if (revoked?.status !== 'REVOKED') {
+            throw new Error('Sentinel did not confirm session revocation. Wallet remains connected.');
+          }
+          setDeveloperMode(false, 'OFF · SESSION REVOKED');
+        }
         await connector.disconnect();
         syncWalletUI(null, null);
         toast('NEAR wallet disconnected.');
@@ -732,6 +745,24 @@ function setDeveloperMode(enabled, statusText) {
   if (status) status.textContent = statusText || (developerModeEnabled ? 'ON · WALLET CONNECTED · PREVIEW ONLY' : 'OFF · SAFE CHAT');
 }
 
+async function restoreDeveloperSession(accountId) {
+  if (!accountId || !accountId.endsWith('.testnet') || developerModePending) return;
+  try {
+    const data = await request('/agent/developer-session', {
+      method: 'POST',
+      body: JSON.stringify({ operation: 'status' })
+    });
+    if (data?.session?.status === 'ACTIVE' && data.session.account_id === accountId &&
+        data.session.network === 'testnet' && data.execution_enabled === false) {
+      setDeveloperMode(true, 'ON · WALLET APPROVED · 8H APP SESSION');
+    } else {
+      setDeveloperMode(false, 'OFF · SAFE CHAT');
+    }
+  } catch {
+    setDeveloperMode(false, 'OFF · SAFE CHAT');
+  }
+}
+
 async function requestDeveloperModeWalletApproval() {
   if (developerModePending) return;
   developerModePending = true;
@@ -739,11 +770,9 @@ async function requestDeveloperModeWalletApproval() {
     developerModeToggle.checked = false;
     developerModeToggle.disabled = true;
   }
-  setDeveloperMode(false, 'WAITING FOR WALLET APPROVAL');
+  setDeveloperMode(false, 'WAITING FOR NEAR WALLET SIGNATURE');
   try {
-    if (!connectorReady || !connector) {
-      throw new Error('NEAR wallet connector is not ready. Refresh and try again.');
-    }
+    if (!connectorReady || !connector) throw new Error('NEAR wallet connector is not ready. Refresh and try again.');
     if (!connectedAccount) {
       if (!Array.isArray(connector.availableWallets) || connector.availableWallets.length === 0) {
         throw new Error('No compatible NEAR Testnet wallet is available in this browser.');
@@ -751,17 +780,73 @@ async function requestDeveloperModeWalletApproval() {
       await connector.connect();
     }
     const current = await connector.getConnectedWallet();
-    const account = current?.accounts?.[0];
-    const accountId = account?.accountId;
-    if (!accountId || !accountId.endsWith('.testnet')) {
-      throw new Error('Wallet approval was not completed with a NEAR Testnet account.');
+    const accountId = current?.accounts?.[0]?.accountId;
+    const walletId = current?.wallet?.manifest?.id;
+    if (!accountId || !accountId.endsWith('.testnet')) throw new Error('A NEAR Testnet account is required.');
+    if (!walletId || current.wallet?.manifest?.features?.signInAndSignMessage !== true) {
+      throw new Error('Selected wallet does not advertise NEP-413 sign-in support. Choose Meteor Wallet or another compatible Testnet wallet.');
     }
     syncWalletUI(accountId, current.wallet?.manifest?.name || 'NEAR wallet');
-    setDeveloperMode(true, 'ON · WALLET CONNECTED · PREVIEW ONLY');
-    toast('NEAR Testnet wallet connected. Developer preview is active; delegated execution is not enabled.');
+
+    const challenge = await request('/agent/developer-session', {
+      method: 'POST',
+      body: JSON.stringify({ operation: 'challenge', account_id: accountId })
+    });
+    if (challenge.signing_standard !== 'NEP-413' || !challenge.payload?.message ||
+        !challenge.payload?.recipient || !challenge.payload?.nonce || !challenge.challenge_id) {
+      throw new Error('Sentinel returned an invalid NEP-413 wallet challenge.');
+    }
+    const nonceBinary = atob(challenge.payload.nonce);
+    const nonce = Uint8Array.from(nonceBinary, ch => ch.charCodeAt(0));
+    if (nonce.length !== 32) throw new Error('Wallet challenge nonce is invalid.');
+
+    setDeveloperMode(false, 'WAITING FOR NEP-413 SIGNATURE');
+    const signedMessagePromise = new Promise(resolve => {
+      connector.once('wallet:signInAndSignMessage', event => {
+        resolve(event?.accounts?.[0]?.signedMessage || null);
+      });
+    });
+    await connector.connect({
+      walletId,
+      signMessageParams: {
+        message: challenge.payload.message,
+        recipient: challenge.payload.recipient,
+        nonce
+      }
+    });
+    const signed = await signedMessagePromise;
+    const signedAccount = signed?.accountId || accountId;
+    const publicKey = String(signed?.publicKey || '');
+    let signature = signed?.signature;
+    if (signature instanceof Uint8Array) {
+      let binary = '';
+      for (const byte of signature) binary += String.fromCharCode(byte);
+      signature = btoa(binary);
+    } else if (typeof signature !== 'string') {
+      throw new Error('Wallet did not return a supported NEP-413 signature encoding.');
+    }
+    if (!signed || signedAccount !== accountId || !publicKey.startsWith('ed25519:') || !signature.length) {
+      throw new Error('Wallet did not return a matching NEP-413 signature. Developer Mode remains OFF.');
+    }
+    const activated = await request('/agent/developer-session', {
+      method: 'POST',
+      body: JSON.stringify({
+        operation: 'activate',
+        challenge_id: challenge.challenge_id,
+        account_id: accountId,
+        public_key: publicKey,
+        signature
+      })
+    });
+    if (activated?.session?.status !== 'ACTIVE' || activated.session.account_id !== accountId ||
+        activated.session.network !== 'testnet' || activated.execution_enabled !== false) {
+      throw new Error('Sentinel did not confirm an active, restricted Developer application session.');
+    }
+    setDeveloperMode(true, 'ON · WALLET APPROVED · 8H APP SESSION');
+    toast('NEAR Testnet wallet signature verified. Developer application session is active; transaction execution remains disabled.');
   } catch (error) {
     setDeveloperMode(false, 'OFF · WALLET APPROVAL REQUIRED');
-    toast(error?.message || 'Wallet approval was rejected. Developer Mode remains OFF.');
+    toast(error?.message || 'Wallet approval failed. Developer Mode remains OFF.');
   } finally {
     developerModePending = false;
     if (developerModeToggle) developerModeToggle.disabled = false;
@@ -773,8 +858,23 @@ developerModeToggle?.addEventListener('change', () => {
     void requestDeveloperModeWalletApproval();
     return;
   }
-  setDeveloperMode(false, 'OFF · SAFE CHAT');
-  toast('Developer Mode disabled.');
+  developerModeToggle.disabled = true;
+  void (async () => {
+    try {
+      const revoked = await request('/agent/developer-session', {
+        method: 'POST',
+        body: JSON.stringify({ operation: 'revoke' })
+      });
+      if (revoked?.status !== 'REVOKED') throw new Error('Sentinel did not confirm session revocation.');
+      setDeveloperMode(false, 'OFF · SESSION REVOKED');
+      toast('Developer application session revoked.');
+    } catch (error) {
+      setDeveloperMode(true, 'ON · REVOCATION NOT CONFIRMED');
+      toast(error?.message || 'Session revocation failed. Developer Mode remains active.');
+    } finally {
+      developerModeToggle.disabled = false;
+    }
+  })();
 });
 async function renderTradeSkillDraft(prompt) {
   const result = $('agentResult');
@@ -1229,6 +1329,14 @@ function renderAgentResult(data) {
           : status === 'UNKNOWN'
             ? 'The transaction outcome is not yet verified. Do not retry this payment.'
             : 'Sentinel completed the request.';
+  const developerCard = data.agent === 'developer'
+    ? '<section class="developer-trade-draft"><div class="developer-trade-draft-heading"><strong>' +
+      escapeHtml(String(data.action || 'DEVELOPER TASK').replaceAll('_', ' ')) +
+      '</strong><span>PLAN ONLY</span></div><p>' +
+      escapeHtml(data.status === 'NEEDS_INPUT' ? 'The request needs exact asset symbols and amount before a swap strategy can be prepared.' : 'Developer Agent prepared a deterministic Testnet plan. No quote, signature, order, or transaction was created.') +
+      '</p><pre>' + escapeHtml(JSON.stringify(data.plan || {}, null, 2)) +
+      '</pre><p class="developer-trade-draft-note">Application session verified · read-only planning · autonomous execution disabled</p></section>'
+    : '';
   const hasPaymentContext = Boolean(proposal.receiver_account || proposal.amount_near != null || approvalId || txHash);
   const showStatusCard = status !== 'NO_PAYMENT_PROPOSED' && (hasPaymentContext || data.sentinel || data.investigation || status === 'DENIED');
   const walletCanApprove = Boolean(connectedAccount && connectedAccount.endsWith('.testnet'));
@@ -1257,7 +1365,7 @@ function renderAgentResult(data) {
       '</section>' : '';
   result.innerHTML = '<div class="guest-chat-transcript telegram-chat-transcript" aria-label="Sentinel AI conversation">' +
     (authenticatedPrompt ? '<article class="guest-chat-message guest-chat-user"><span>YOU</span><p>' + escapeHtml(authenticatedPrompt) + '</p></article>' : '') +
-    '<article class="guest-chat-message guest-chat-assistant telegram-agent-bubble"><span>SENTINEL AI</span><p class="telegram-agent-response">' + escapeHtml(responseText) + '</p>' + agentCard + '</article></div>';
+    '<article class="guest-chat-message guest-chat-assistant telegram-agent-bubble"><span>SENTINEL AI</span><p class="telegram-agent-response">' + escapeHtml(responseText) + '</p>' + developerCard + agentCard + '</article></div>';
   result.classList.remove('agent-result-enter');
   void result.offsetWidth;
   result.classList.add('agent-result-enter');
@@ -1438,6 +1546,20 @@ paymentDraftButton?.addEventListener('click', () => {
   toast('Payment draft ready. Review the prompt, then send it to Sentinel.');
 });
 
+function isExplicitPaymentProposalPrompt(prompt) {
+  const text = String(prompt || '').trim();
+  const patterns = [
+    /^(?:please\s+)?(?:(?:i\s+(?:want|would like)\s+to\s+)?(?:send|transfer))\s+((?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?)\s*(?:near|Ⓝ)\s+to\s+[a-z0-9]+(?:[-_.][a-z0-9]+)*$/i,
+    /^(?:please\s+)?(?:(?:i\s+(?:want|would like)\s+to\s+)?(?:send|transfer))\s+(?:to\s+)?[a-z0-9]+(?:[-_.][a-z0-9]+)*\s+(?:an?\s+amount\s+of\s+)?(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\s*(?:near|Ⓝ)$/i,
+    /^(?:saya\s+)?(?:mau|ingin|hendak)\s+(?:mengirim|kirim|transfer)\s+(?:near\s+)?(?:ke\s+)?[a-z0-9]+(?:[-_.][a-z0-9]+)*\s+(?:sebesar\s+)?(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\s*(?:near|Ⓝ)$/i,
+    /^(?:kirim|transfer)\s+(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\s*(?:near|Ⓝ)\s+ke\s+[a-z0-9]+(?:[-_.][a-z0-9]+)*$/i,
+    /^(?:saya\s+)?(?:mau|ingin|hendak)\s+(?:mengirim|kirim|transfer)\s+(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\s*(?:near|Ⓝ)\s+ke\s+[a-z0-9]+(?:[-_.][a-z0-9]+)*$/i,
+    /^(?:kirim|transfer)\s+ke\s+[a-z0-9]+(?:[-_.][a-z0-9]+)*\s+(?:sebesar\s+)?(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\s*(?:near|Ⓝ)$/i,
+    /^(?:please\s+)?(?:create|make|propose|buat|ajukan)\s+(?:a\s+)?payment\s+proposal\s+to\s+[a-z0-9]+(?:[-_.][a-z0-9]+)*\s+for\s+(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\s*(?:near|Ⓝ)(?:[.!?\s]|$)/i
+  ];
+  return patterns.some(pattern => pattern.test(text));
+}
+
 if (agentForm) {
   agentForm.addEventListener('submit', async event => {
     event.preventDefault();
@@ -1449,16 +1571,14 @@ if (agentForm) {
     button.innerHTML = '<span class="agent-button-pulse" aria-hidden="true"></span> Agent running <b>…</b>';
     const result = $('agentResult');
     result.classList.remove('hidden');
-    result.textContent = developerModeEnabled
-      ? 'Developer Mode preview is active. Trading requests remain draft-only…'
-      : 'Calling the AI provider and evaluating the proposed action…';
+    const paymentProposalPrompt = isExplicitPaymentProposalPrompt(prompt);
+    result.textContent = paymentProposalPrompt
+      ? 'Sending request to Sentinel payment approval…'
+      : developerModeEnabled
+        ? 'Sending task to Railway Developer Agent…'
+        : 'Sending task to Railway User Agent…';
     try {
-      if (developerModeEnabled && /\b(buy|sell|swap|trade|beli|jual|tukar|dca)\b/i.test(prompt) && /\b(BTC|ETH|NEAR|USDC|USDT|SOL|WNEAR)\b/i.test(prompt)) {
-        await renderTradeSkillDraft(prompt);
-        toast('Skill draft generated. Trading execution is not connected.');
-        $('agentPrompt').value = '';
-        return;
-      } else if (GUEST_MODE) {
+      if (GUEST_MODE) {
         guestConversation.push({ role: 'user', content: prompt });
         guestConversation = guestConversation.slice(-14);
         saveGuestConversation();
@@ -1478,11 +1598,17 @@ if (agentForm) {
       } else {
         authenticatedPrompt = prompt;
         renderAuthenticatedPending(prompt);
-        const data = await request('/terminal/run', {
-          method: 'POST',
-          headers: { 'Idempotency-Key': crypto.randomUUID() },
-          body: JSON.stringify({ mode: 'user', prompt })
-        });
+        const data = paymentProposalPrompt
+          ? await request('/agent/run', {
+            method: 'POST',
+            headers: { 'Idempotency-Key': crypto.randomUUID() },
+            body: JSON.stringify({ prompt })
+          })
+          : await request('/terminal/run', {
+            method: 'POST',
+            headers: { 'Idempotency-Key': crypto.randomUUID() },
+            body: JSON.stringify({ mode: developerModeEnabled ? 'developer' : 'user', prompt, wallet_account: developerModeEnabled ? connectedAccount : null })
+          });
         renderAgentResult(data);
         $('agentPrompt').value = '';
         if (data.status === 'AWAITING_HUMAN_APPROVAL') toast('Review the exact receiver and amount before approving.');

@@ -37,7 +37,8 @@ Cloudflare must never wait for the supervisor or an AI provider before enforcing
 
 - Configure a high-entropy secret in Hatchable Setup as `SENTINEL_CONTROL_HMAC` (currently missing).
 - Configure the same value as the Cloudflare Worker secret `HATCHABLE_CONTROL_HMAC` using Wrangler secret management (not yet configured).
-- `HATCHABLE_BASE_URL` is pinned in `wrangler.jsonc` to the known Hatchable project. Do not accept an arbitrary destination from a browser request.\n- The Hatchable project is currently private/personal. Set visibility to Public in console Settings only if the dashboard is intended for public access; otherwise create a separate public API-only bridge project. A private project sign-in wall blocks the Worker.
+- `HATCHABLE_BASE_URL` is pinned in `wrangler.jsonc` to the known Hatchable project. Do not accept an arbitrary destination from a browser request.
+- The Hatchable project is currently private/personal. Set visibility to Public in console Settings only if the dashboard is intended for public access; otherwise create a separate public API-only bridge project. A private project sign-in wall blocks the Worker.
 - Never expose either secret in frontend JavaScript, committed files, build logs, or chat.
 - Keep the Hatchable API protected by HMAC. Do not rely on obscurity or a public URL as authentication.
 - If Hatchable's project visibility must be Public for server-to-server access, review that static dashboard content is intended to be publicly readable; API authorization remains independently required.
