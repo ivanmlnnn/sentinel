@@ -689,33 +689,62 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       return;
     }
     connectButton.disabled = true;
-    connectButton.textContent = "Connecting…";
     try {
-      // Dashboard wallet state is the source of truth. Read it synchronously
-      // before deciding whether a wallet prompt is needed.
+      // Read shared dashboard state before doing anything asynchronous.
       const dashboardNearAccount = getConnectedAccount();
       if (nearAccount(dashboardNearAccount)) activeNearAccount = dashboardNearAccount;
       const routeChains = [...new Set([origin.blockchain, dest.blockchain].map(value => String(value).toLowerCase()))];
-      // Ask for NEAR first so Meteor can open even when the browser has no EVM extension.
-      routeChains.sort((a, b) => (a === "near" ? -1 : 0) - (b === "near" ? -1 : 0));
-      for (let index = 0; index < routeChains.length; index++) {
-        const chain = routeChains[index];
-        const wasConnected = Boolean(walletAddressFor(chain));
-        if (!wasConnected) {
-          await connectWalletForChain(chain);
-          const partialAddresses = [walletAddressFor(origin.blockchain), walletAddressFor(dest.blockchain)].filter(Boolean);
-          if (partialAddresses.length) {
-            walletStateText.textContent = partialAddresses.map(shortWalletAddress).join(" · ");
-            walletState.classList.add("is-connected");
-          }
-          const nextChain = routeChains.slice(index + 1).find(next => !walletAddressFor(next));
-          if (nextChain) {
-            connectButton.textContent = "Connect " + nextChain.toUpperCase() + " wallet";
-            status.textContent = chain.toUpperCase() + " wallet connected. Tap again to connect the " + nextChain.toUpperCase() + " wallet.";
-            return;
-          }
+
+      // IMPORTANT: invoke NEAR Connect directly in this trusted click handler.
+      // Do not route the first Meteor connect through connectWalletForChain()
+      // or another async wrapper: mobile browsers may drop popup user activation.
+      if (routeChains.includes("near") && !walletAddressFor("near")) {
+        connectButton.textContent = "Opening Meteor / NEAR wallet…";
+        status.textContent = "Opening the NEAR Connect wallet picker. Choose Meteor and approve the connection there.";
+        let nearConnectPromise;
+        if (typeof onConnectNearWallet === "function") {
+          nearConnectPromise = onConnectNearWallet();
+        } else {
+          const connector = getConnector();
+          if (!connector) throw new Error("NEAR wallet connector is still loading. Reload and try again.");
+          nearConnectPromise = connector.connect();
+        }
+        const accountId = await nearConnectPromise;
+        const sharedAccount = getConnectedAccount();
+        activeNearAccount = nearAccount(accountId) ? accountId :
+          (nearAccount(sharedAccount) ? sharedAccount : null);
+        if (!activeNearAccount) {
+          const connector = getConnector();
+          const current = await connector?.getConnectedWallet?.();
+          const discovered = current?.accounts?.[0]?.accountId;
+          if (nearAccount(discovered)) activeNearAccount = discovered;
+        }
+        if (!activeNearAccount) throw new Error("NEAR wallet picker closed without a connected account. Select Meteor and approve the connection.");
+        const partialAddresses = [walletAddressFor(origin.blockchain), walletAddressFor(dest.blockchain)].filter(Boolean);
+        walletStateText.textContent = partialAddresses.map(shortWalletAddress).join(" · ");
+        walletState.classList.add("is-connected");
+
+        const nextChain = routeChains.find(chain => chain !== "near" && !walletAddressFor(chain));
+        if (nextChain) {
+          connectButton.textContent = "Connect " + nextChain.toUpperCase() + " wallet";
+          status.textContent = "Meteor connected. This route also needs a " + nextChain.toUpperCase() + " wallet; tap again to connect it.";
+          return;
         }
       }
+
+      // Connect any remaining non-NEAR wallet only after the Meteor picker has
+      // completed, on a separate explicit tap.
+      const missingChain = routeChains.find(chain => !walletAddressFor(chain));
+      if (missingChain) {
+        await connectWalletForChain(missingChain);
+        const nextMissing = routeChains.find(chain => !walletAddressFor(chain));
+        if (nextMissing) {
+          connectButton.textContent = "Connect " + nextMissing.toUpperCase() + " wallet";
+          status.textContent = "Wallet connected. Tap again to connect the " + nextMissing.toUpperCase() + " wallet.";
+          return;
+        }
+      }
+
       const addresses = [walletAddressFor(origin.blockchain), walletAddressFor(dest.blockchain)].filter(Boolean);
       walletStateText.textContent = addresses.map(shortWalletAddress).join(" · ");
       walletState.classList.add("is-connected");
@@ -725,8 +754,11 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       quoteButton.click();
     } catch (error) {
       connectButton.textContent = "Connect required wallets";
-      status.textContent = error.message || "Wallet connection failed.";
-    } finally { connectButton.disabled = false; }
+      status.textContent = error?.message || "Wallet connection failed.";
+      console.error("[Sentinel swap] Wallet connect failed:", error);
+    } finally {
+      connectButton.disabled = false;
+    }
   });
   // Read-only session discovery: reflect wallets already authorized in the browser without prompting.
   (async () => {
