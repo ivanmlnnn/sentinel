@@ -234,8 +234,10 @@ async function initWallet() {
     connector.on('wallet:signIn', event => {
       const account = event.accounts && event.accounts[0];
       syncWalletUI(account?.accountId, event.wallet?.manifest?.name || 'NEAR wallet');
+      if (account?.accountId) void restoreDeveloperSession(account.accountId);
     });
     connector.on('wallet:signOut', () => {
+      if (developerModeEnabled) void request('/agent/developer-session', { method: 'POST', body: JSON.stringify({ operation: 'revoke' }) }).catch(() => {});
       syncWalletUI(null, null);
       if (developerModeEnabled || developerModePending) {
         setDeveloperMode(false, 'OFF · WALLET DISCONNECTED');
@@ -248,6 +250,7 @@ async function initWallet() {
       const current = await connector.getConnectedWallet();
       const account = current.accounts && current.accounts[0];
       syncWalletUI(account?.accountId, current.wallet?.manifest?.name || 'NEAR wallet');
+      if (account?.accountId) void restoreDeveloperSession(account.accountId);
     } catch {
       syncWalletUI(null, null);
     }
@@ -730,6 +733,24 @@ function setDeveloperMode(enabled, statusText) {
   if (developerModeBanner) developerModeBanner.classList.toggle('hidden', !developerModeEnabled);
   const status = document.querySelector('.developer-mode-status');
   if (status) status.textContent = statusText || (developerModeEnabled ? 'ON · WALLET CONNECTED · PREVIEW ONLY' : 'OFF · SAFE CHAT');
+}
+
+async function restoreDeveloperSession(accountId) {
+  if (!accountId || !accountId.endsWith('.testnet') || developerModePending) return;
+  try {
+    const data = await request('/agent/developer-session', {
+      method: 'POST',
+      body: JSON.stringify({ operation: 'status' })
+    });
+    if (data?.session?.status === 'ACTIVE' && data.session.account_id === accountId &&
+        data.session.network === 'testnet' && data.execution_enabled === false) {
+      setDeveloperMode(true, 'ON · WALLET APPROVED · 8H APP SESSION');
+    } else {
+      setDeveloperMode(false, 'OFF · SAFE CHAT');
+    }
+  } catch {
+    setDeveloperMode(false, 'OFF · SAFE CHAT');
+  }
 }
 
 async function requestDeveloperModeWalletApproval() {
