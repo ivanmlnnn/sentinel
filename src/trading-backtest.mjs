@@ -72,7 +72,8 @@ export function runHistoricalBacktest(candles, {
     totalSlippage += position.units * (midPrice - exitPrice);
     trades.push({
       side: "LONG",
-      signal_at: new Date(signalTimestamp).toISOString(),
+      entry_signal_at: new Date(position.entrySignalTimestamp).toISOString(),
+      exit_signal_at: new Date(signalTimestamp).toISOString(),
       entry_at: new Date(position.entryTimestamp).toISOString(),
       exit_at: new Date(timestamp).toISOString(),
       entry_price: position.entryPrice,
@@ -112,7 +113,7 @@ export function runHistoricalBacktest(candles, {
         cash -= cost;
         totalFees += entryFee;
         totalSlippage += units * (entryPrice - fillCandle.open);
-        position = { units, cost, entryFee, entryPrice, entryTimestamp: fillCandle.timestamp };
+        position = { units, cost, entryFee, entryPrice, entryTimestamp: fillCandle.timestamp, entrySignalTimestamp: signalTimestamp };
       }
     }
 
