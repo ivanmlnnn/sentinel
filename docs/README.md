@@ -9,7 +9,6 @@ This directory is organized around the Sentinel product's current architecture, 
 - [NEAR Ecosystem Integration](NEAR_ECOSYSTEM_INTEGRATION.md) — current native Transfer verification, Tidepool swap boundary, application session, and source-only payment contract status.
 - [Secure Agent Pipeline](SECURE_AGENT_PIPELINE.md) — detailed human-approval and isolated-signer sequence.
 - [Signed Verdict Attestation](SIGNED_VERDICT.md) — Ed25519 verdict payload and verification.
-- [NEAR Ecosystem Integration](NEAR_ECOSYSTEM_INTEGRATION.md) — wallet, native transfer, and Tidepool integration boundaries.
 - [Developer Mode Session Design](DEVELOPER_MODE_SESSION_DESIGN.md) — NEP-413 application-session design and the separate requirements for future delegated execution.
 
 ## Operations and release readiness
