@@ -308,7 +308,7 @@ async function initWallet() {
     const { NearConnector } = module;
     connector = new NearConnector({
       network: 'testnet',
-      features: { testnet: true },
+      features: { testnet: true, signAndSendTransaction: true , signMessage: true },
       autoConnect: false
     });
     await connector.whenManifestLoaded;
