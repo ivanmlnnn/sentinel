@@ -1306,6 +1306,14 @@ function renderAgentResult(data) {
           : status === 'UNKNOWN'
             ? 'The transaction outcome is not yet verified. Do not retry this payment.'
             : 'Sentinel completed the request.';
+  const developerCard = data.agent === 'developer'
+    ? '<section class="developer-trade-draft"><div class="developer-trade-draft-heading"><strong>' +
+      escapeHtml(String(data.action || 'DEVELOPER TASK').replaceAll('_', ' ')) +
+      '</strong><span>PLAN ONLY</span></div><p>' +
+      escapeHtml(data.status === 'NEEDS_INPUT' ? 'The request needs exact asset symbols and amount before a swap strategy can be prepared.' : 'Developer Agent prepared a deterministic Testnet plan. No quote, signature, order, or transaction was created.') +
+      '</p><pre>' + escapeHtml(JSON.stringify(data.plan || {}, null, 2)) +
+      '</pre><p class="developer-trade-draft-note">Application session verified · read-only planning · autonomous execution disabled</p></section>'
+    : '';
   const hasPaymentContext = Boolean(proposal.receiver_account || proposal.amount_near != null || approvalId || txHash);
   const showStatusCard = status !== 'NO_PAYMENT_PROPOSED' && (hasPaymentContext || data.sentinel || data.investigation || status === 'DENIED');
   const walletCanApprove = Boolean(connectedAccount && connectedAccount.endsWith('.testnet'));
@@ -1334,7 +1342,7 @@ function renderAgentResult(data) {
       '</section>' : '';
   result.innerHTML = '<div class="guest-chat-transcript telegram-chat-transcript" aria-label="Sentinel AI conversation">' +
     (authenticatedPrompt ? '<article class="guest-chat-message guest-chat-user"><span>YOU</span><p>' + escapeHtml(authenticatedPrompt) + '</p></article>' : '') +
-    '<article class="guest-chat-message guest-chat-assistant telegram-agent-bubble"><span>SENTINEL AI</span><p class="telegram-agent-response">' + escapeHtml(responseText) + '</p>' + agentCard + '</article></div>';
+    '<article class="guest-chat-message guest-chat-assistant telegram-agent-bubble"><span>SENTINEL AI</span><p class="telegram-agent-response">' + escapeHtml(responseText) + '</p>' + developerCard + agentCard + '</article></div>';
   result.classList.remove('agent-result-enter');
   void result.offsetWidth;
   result.classList.add('agent-result-enter');
