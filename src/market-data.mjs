@@ -24,8 +24,26 @@ export async function getKrakenOhlcv({ pair = "XBTUSD", interval = 5, limit = 60
   const declaredLength = response.headers?.get?.("content-length");
   if (declaredLength && Number(declaredLength) > MAX_RESPONSE_BYTES) return { ok: false, reason: "MARKET_DATA_RESPONSE_TOO_LARGE" };
   let rawBody;
-  try { rawBody = await response.text(); } catch { return { ok: false, reason: "MARKET_DATA_INVALID_BODY" }; }
-  if (new TextEncoder().encode(rawBody).byteLength > MAX_RESPONSE_BYTES) return { ok: false, reason: "MARKET_DATA_RESPONSE_TOO_LARGE" };
+  try {
+    const reader = response.body?.getReader();
+    if (!reader) return { ok: false, reason: "MARKET_DATA_INVALID_BODY" };
+    const chunks = [];
+    let total = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_RESPONSE_BYTES) {
+        await reader.cancel();
+        return { ok: false, reason: "MARKET_DATA_RESPONSE_TOO_LARGE" };
+      }
+      chunks.push(value);
+    }
+    const bytes = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+    rawBody = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch { return { ok: false, reason: "MARKET_DATA_INVALID_BODY" }; }
   let payload;
   try { payload = JSON.parse(rawBody); } catch { return { ok: false, reason: "MARKET_DATA_INVALID_JSON" }; }
   if (!payload || typeof payload !== "object" || !Array.isArray(payload.error) || !payload.result || typeof payload.result !== "object") return { ok: false, reason: "MARKET_DATA_INVALID_PROVIDER_SCHEMA" };
