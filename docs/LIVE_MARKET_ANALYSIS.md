@@ -40,4 +40,4 @@ Exchange market data does not prove liquidity on a decentralized exchange, cross
 
 ## Known gaps
 
-This is a first live market-data adapter and a dual-LLM research/review prototype. It is not a multi-venue consensus feed, historical backtester, paper-position ledger, profitability claim, or live autonomous trading. The feature is on the feature branch and is not deployed to the production Cloudflare Worker.
+This is a first live market-data adapter and a dual-LLM research/review prototype. It is not a multi-venue consensus feed, walk-forward validated strategy, persistent paper-position ledger, profitability proof, or live autonomous trading. The feature is on the feature branch and is not deployed to the production Cloudflare Worker.
