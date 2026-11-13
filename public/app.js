@@ -849,9 +849,23 @@ developerModeToggle?.addEventListener('change', () => {
     void requestDeveloperModeWalletApproval();
     return;
   }
-  void request('/agent/developer-session', { method: 'POST', body: JSON.stringify({ operation: 'revoke' }) }).catch(error => toast(error?.message || 'Could not revoke the Developer session.'));
-  setDeveloperMode(false, 'OFF · SAFE CHAT');
-  toast('Developer application session revoke requested.');
+  developerModeToggle.disabled = true;
+  void (async () => {
+    try {
+      const revoked = await request('/agent/developer-session', {
+        method: 'POST',
+        body: JSON.stringify({ operation: 'revoke' })
+      });
+      if (revoked?.status !== 'REVOKED') throw new Error('Sentinel did not confirm session revocation.');
+      setDeveloperMode(false, 'OFF · SESSION REVOKED');
+      toast('Developer application session revoked.');
+    } catch (error) {
+      setDeveloperMode(true, 'ON · REVOCATION NOT CONFIRMED');
+      toast(error?.message || 'Session revocation failed. Developer Mode remains active.');
+    } finally {
+      developerModeToggle.disabled = false;
+    }
+  })();
 });
 async function renderTradeSkillDraft(prompt) {
   const result = $('agentResult');
