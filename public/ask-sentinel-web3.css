@@ -229,3 +229,10 @@
  .sentinel-swap-message .swap-token-trigger{min-width:0!important;width:100%!important}
  .sentinel-swap-message .swap-token-panel{width:calc(100vw - 24px)!important;max-width:calc(100vw - 24px)!important}
 }
+
+
+.swap-disconnect-button{min-height:42px!important;padding:0 15px!important;border:1px solid rgba(240,120,131,.42)!important;border-radius:11px!important;background:rgba(74,25,32,.32)!important;color:#ffabb2!important;font:700 10px var(--mono)!important;cursor:pointer!important;transition:background .2s,border-color .2s,transform .2s!important}
+.swap-disconnect-button:hover:not(:disabled){background:rgba(105,35,44,.48)!important;border-color:rgba(240,120,131,.72)!important;transform:translateY(-1px)!important}
+.swap-disconnect-button:disabled{opacity:.55!important;cursor:wait!important}
+.swap-disconnect-button[hidden]{display:none!important}
+@media(max-width:560px){.swap-wallet-bar{align-items:stretch!important;gap:8px!important}.swap-wallet-state{width:100%;min-width:0}.swap-connect-button,.swap-disconnect-button{flex:1 1 135px;min-width:0;padding-inline:10px!important}}
