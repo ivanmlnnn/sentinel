@@ -47,6 +47,10 @@ curl -sS -X POST "$SENTINEL_BASE_URL/api/trading/agent" \
 
 The response includes deterministic market analysis, Agent 1's thesis, Agent 2's independent review, provider provenance, and hard-coded execution flags set to false.
 
+### Cost-aware historical backtest
+
+POST /api/trading/backtest accepts the same pair/interval plus optional fee_bps, slippage_bps, initial_capital, and position_fraction. It fetches up to 500 completed candles and runs a deterministic long-only spot simulation. Signals use the preceding 60 completed candles and fill on the next candle open. Defaults are 10 bps fee per side, 5 bps slippage per side, $10,000 initial capital, and 25% cash allocation per entry. It reports net return, buy-and-hold baseline, max drawdown, trade count, win rate, profit factor, fees, slippage, and a bounded trade/equity log. This is historical simulation only, not a paper-position ledger or profitability proof.
+
 ## UI walkthrough
 
 1. Sign in to the authenticated Sentinel workspace.
@@ -54,7 +58,8 @@ The response includes deterministic market analysis, Agent 1's thesis, Agent 2's
 3. Keep the example pair XBTUSD or enter another supported pair in the prompt.
 4. Send the prompt.
 5. Inspect the market snapshot, Agent 1 thesis, Agent 2 challenge/verdict, evidence IDs, risk flags, and data provenance.
-6. Show that HOLD, unsupported evidence, overbought/oversold risk flags, and Agent 2 VETO cannot become a paper-trading candidate.
+6. Click **Run 500-candle backtest** to inspect net return after configured fees/slippage, buy-and-hold baseline, max drawdown, win rate, profit factor, and the sample window.
+7. Show that HOLD, unsupported evidence, overbought/oversold risk flags, and Agent 2 VETO cannot become a paper-trading candidate.
 
 ## Reproducible tests
 
