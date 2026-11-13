@@ -18,7 +18,7 @@ test("normalizes Kraken OHLC and excludes the forming final candle", async () =>
   assert.equal(called.pathname, "/0/public/OHLC");
   assert.equal(result.value.candles.length, 60);
   assert.equal(result.value.current_forming_candle_excluded, true);
-  assert.equal(result.value.candles.at(-1).timestamp, (Math.floor(NOW / 1000) - 300) * 1000);
+  assert.equal(result.value.candles.at(-1).timestamp, (Math.floor(NOW / 1000) - 600) * 1000);
 });
 test("rejects unapproved pairs, unsupported intervals and invalid limits before fetch", async () => {
   let calls = 0; const fetchImpl = async () => { calls++; return new Response("{}"); };
