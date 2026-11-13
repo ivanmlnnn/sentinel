@@ -1,7 +1,8 @@
-import { json, readTextLimited } from "./_shared.js";
+import { json, readTextLimited, verifyPrivyAccessToken } from "./_shared.js";
 import { submitTidepoolSignedIntent } from "../../src/trading-core.mjs";
 
-export async function onRequestPost({ request }) {
+export async function onRequestPost({ request, env }) {
+  if (!await verifyPrivyAccessToken(request, env)) return json({ error: "UNAUTHORIZED" }, 401);
   const bodyResult = await readTextLimited(request, 12000);
   if (!bodyResult.ok) return json({ error: bodyResult.reason === "BODY_TOO_LARGE" ? "REQUEST_TOO_LARGE" : "INVALID_BODY" }, bodyResult.reason === "BODY_TOO_LARGE" ? 413 : 400);
   let body;
@@ -9,7 +10,7 @@ export async function onRequestPost({ request }) {
   try {
     const result = await submitTidepoolSignedIntent(body);
     if (!result.ok) return json({ error: result.reason }, 400);
-    return json(result.value);
+    return json(result.value, 202);
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "TIDEPOOL_UNAVAILABLE" }, 502);
   }
