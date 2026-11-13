@@ -38,13 +38,13 @@ See [Sentinel Core Architecture](docs/SENTINEL_CORE_ARCHITECTURE.md) for the com
 
 ### User Mode
 
-The existing User Agent supports normal chat, read-only account investigation, security triage, and explicit native NEAR payment proposals. A payment proposal is not a transfer. The user must inspect and approve the exact intent in the connected wallet; the backend then verifies the resulting transaction independently.
+The existing User Agent supports normal chat, read-only account investigation, security triage, and a native NEAR payment-proposal flow in source. **Payment proposals are currently fail-closed by the branch Wrangler kill switch** pending controlled end-to-end acceptance. When deliberately enabled for a reviewed Testnet test, the user must inspect and approve the exact intent in the connected wallet; the isolated verifier then checks the resulting transaction independently.
 
 ### Developer Mode
 
 Developer Mode currently provides a wallet-verified, eight-hour **application session** and a read-only Railway planning runtime. It can interpret strategy-oriented prompts and return planning output. It does **not** create a NEAR FunctionCall key, fetch a live DEX quote, create an executable swap order, sign, or broadcast a transaction. `execution_enabled` remains `false`.
 
-Explicit native NEAR payment prompts continue through the existing User Agent payment-proposal route, even while Developer Mode is active. The wallet's **Approve payment** step is retained. This separation is intentional: natural-language planning should not be confused with transaction authorization.
+Explicit native NEAR payment prompts are routed through the User Agent payment-proposal route, not the Developer Agent. The route remains disabled by the branch kill switch until the payment flow is tested end-to-end. This separation is intentional: natural-language planning should not be confused with transaction authorization.
 
 - [Developer Mode Readiness](docs/DEVELOPER_MODE_READINESS.md)
 - [Developer Mode Session Design](docs/DEVELOPER_MODE_SESSION_DESIGN.md)
