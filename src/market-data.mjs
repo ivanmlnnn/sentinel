@@ -23,8 +23,11 @@ export async function getKrakenOhlcv({ pair = "XBTUSD", interval = 5, limit = 60
   if (!response?.ok) return { ok: false, reason: "MARKET_DATA_PROVIDER_HTTP_ERROR" };
   const declaredLength = response.headers?.get?.("content-length");
   if (declaredLength && Number(declaredLength) > MAX_RESPONSE_BYTES) return { ok: false, reason: "MARKET_DATA_RESPONSE_TOO_LARGE" };
+  let rawBody;
+  try { rawBody = await response.text(); } catch { return { ok: false, reason: "MARKET_DATA_INVALID_BODY" }; }
+  if (new TextEncoder().encode(rawBody).byteLength > MAX_RESPONSE_BYTES) return { ok: false, reason: "MARKET_DATA_RESPONSE_TOO_LARGE" };
   let payload;
-  try { payload = await response.json(); } catch { return { ok: false, reason: "MARKET_DATA_INVALID_JSON" }; }
+  try { payload = JSON.parse(rawBody); } catch { return { ok: false, reason: "MARKET_DATA_INVALID_JSON" }; }
   if (!payload || typeof payload !== "object" || !Array.isArray(payload.error) || !payload.result || typeof payload.result !== "object") return { ok: false, reason: "MARKET_DATA_INVALID_PROVIDER_SCHEMA" };
   if (payload.error.length) return { ok: false, reason: "MARKET_DATA_PROVIDER_REJECTED_REQUEST" };
   const keys = Object.keys(payload.result).filter(key => key !== "last");
