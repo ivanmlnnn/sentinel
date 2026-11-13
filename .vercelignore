@@ -1,0 +1,3 @@
+# Cloudflare Pages Functions are deployed by Wrangler, not Vercel.
+# Exclude this duplicate route tree so Vercel only builds the /api serverless handlers.
+functions/**

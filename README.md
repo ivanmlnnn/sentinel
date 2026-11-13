@@ -81,6 +81,8 @@ The independent local stress lab remains a separate evidence set: its nine check
 
 **Developer Mode status:** preview only. The toggle creates trading-skill drafts; it does not add a delegated access key or activate autonomous wallet execution. See the [Developer Mode Session Design](docs/DEVELOPER_MODE_SESSION_DESIGN.md).
 
+**Agent terminal boundary:** authenticated User Agent requests enter `POST /api/terminal/run`, pass through the Railway terminal runtime, and then reach the existing authenticated Sentinel Agent API. Railway is a separate runtime boundary, not yet a second independent agent brain. Developer Agent autonomous execution is intentionally disabled: the Worker rejects `mode=developer` with `409 DEVELOPER_DELEGATION_NOT_CONFIGURED`, and the UI only creates non-executable trading drafts. Do not describe the two-terminal autonomous architecture as complete until the dedicated Developer Agent, restricted NEAR FunctionCall key, audited escrow/session contract, on-chain verification, and wallet-signed revocation are implemented and tested.
+
 
 - NEAR account-state checks through FastNear JSON-RPC.
 - Live read-only NEAR Testnet account state and indexed native transaction, receipt, and fungible-token transfer evidence through NearBlocks Testnet API; provider coverage and pagination are surfaced rather than assumed complete.
@@ -143,3 +145,34 @@ This repository has pre-existing history and earlier project assets. The submiss
 ---
 
 Built by **Ivan Maulana Alaudin · IVTECH**.
+
+## Agent Control Plane and Security Supervisor — 12 November 2026
+
+Sentinel's agent architecture separates orchestration from enforcement:
+
+- **Runtime Agent / Hatchable control plane:** session metadata, task queue, task status, non-executable action proposals, and agent orchestration. It is an external service and is not part of the Cloudflare Worker deployment bundle.
+- **Security Supervisor / Hatchable:** accepts authenticated, allow-listed security telemetry and correlates events into incidents. Its initial thresholds are heuristics and require tuning against production traffic.
+- **Cloudflare Main Worker:** remains the authoritative request boundary for authentication, bounded input, rate limits, policy decisions, and kill switches. It must not wait for the Supervisor to approve a request.
+- **Isolated Signer Worker:** remains separate and independently verifies exact wallet-signed transaction intent. No agent receives wallet private keys or a general signing capability.
+
+### Verified versus pending
+
+The Hatchable project has a deployed control-plane API and a separately deployed `/api/security-supervisor` endpoint, plus database tables and operational documentation. An unauthenticated request to the supervisor endpoint was rejected with HTTP 401. The deployment dry run reported zero errors and zero warnings.
+
+**Production telemetry delivery is not yet wired from the Cloudflare Worker to Hatchable.** Therefore the Supervisor must not be described as live attack monitoring, an always-on process, or an autonomous production firewall. The endpoint is event-driven; continuous availability depends on the hosting platform, configured AI provider where AI analysis is used, scheduler configuration, and external telemetry delivery. No terminal needs to remain open, but 24/7 uptime has not been independently demonstrated.
+
+Before enabling telemetry forwarding, configure the same high-entropy secret as Hatchable `SENTINEL_CONTROL_HMAC` and Cloudflare Worker secret `HATCHABLE_CONTROL_HMAC`, configure a fixed HTTPS supervisor URL, and test signature, timestamp, nonce replay, deduplication, outage behavior, and alert delivery. Never put the secret in browser code, repository files, or chat.
+
+**Fail-safe rule:** Cloudflare locally enforces every security-critical decision. If Hatchable, its database, the AI provider, or the network is unavailable, sensitive actions remain denied or follow the existing conservative policy. Supervisor telemetry is advisory and cannot authorize, sign, broadcast, or deploy a transaction or production code.
+
+Operational detail: [Security Supervisor Runbook](docs/SECURITY_SUPERVISOR_RUNBOOK.md).
+
+## Readiness and operations
+
+- [Developer Mode and Wallet Authorization Readiness](docs/DEVELOPER_MODE_READINESS.md) — verified preview-only behavior, delegated-session design gates, and Testnet acceptance tests.
+- [Security Supervisor Runbook](docs/SECURITY_SUPERVISOR_RUNBOOK.md) — Hatchable integration status, HMAC rollout, telemetry privacy, incident response, and release gates.
+
+
+## Hatchable manual runtime
+
+The Hatchable Control Plane, Security Supervisor, and Task Runner are mirrored under [`hatchable/api/`](hatchable/api/), with the telemetry migration under [`hatchable/migrations/`](hatchable/migrations/). It uses deterministic commands and creates review-only proposals; it does not require an AI API and cannot sign or broadcast transactions. See [Hatchable Manual Agent Runtime](docs/HATCHABLE_MANUAL_AGENT_RUNTIME.md) for the deployed v22 status and verification limits.

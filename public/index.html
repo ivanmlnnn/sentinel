@@ -16,7 +16,7 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
 <header class="topbar">
  <a class="brand" href="#overview"><span class="brand-icon brand-logo"><img src="/IMG_20260629_220728_136.jpg?v=1" alt="Wayang Tech and Kitchen Needs"></span><span class="brand-name">NEAR <b>SENTINEL</b></span></a>
  <nav class="main-nav" aria-label="Main navigation">
-  <a class="nav-item active" href="#overview">Overview</a><a class="nav-item" href="#investigate">Wallet tracker</a><a class="nav-item" id="agentNav" href="#agentLab">AI agent</a><a class="nav-item" href="#threats">Threat registry</a><a class="nav-item" href="#activity">Audit log</a><a class="nav-item" href="#protocol">Protocol</a>
+  <a class="nav-item active" href="#overview">Overview</a><a class="nav-item" href="#investigate">Wallet tracker</a><a class="nav-item" id="agentNav" href="#agentLab">AI agent</a><a class="nav-item" href="#threats">Threat registry</a><a class="nav-item" href="#activity">Audit log</a><a class="nav-item" href="#agentFoundry">Agent Foundry</a><a class="nav-item" href="#protocol">Protocol</a>
  </nav>
  <div class="top-actions"><span class="network-pill"><i></i> NEAR TESTNET</span><button id="walletBtn" class="wallet-btn" type="button">Connect NEAR Wallet <span>↗</span></button><a class="wallet-help-link" href="#wallet-guide">Wallet help</a></div>
 </header>
@@ -77,7 +77,7 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
 <section class="agent-lab-grid reveal" id="agentLab">
  <div class="panel agent-lab-panel">
   <div class="agent-chat-header"><div class="agent-chat-avatar" aria-hidden="true"></div><div class="agent-chat-identity"><strong>Sentinel</strong><span>NEAR wallet security assistant</span></div><label class="developer-mode-switch" for="developerModeToggle"><span class="developer-mode-copy"><b>DEVELOPER MODE</b><small class="developer-mode-status">OFF · SAFE CHAT</small></span><input id="developerModeToggle" type="checkbox" aria-label="Enable Developer Mode"><span class="developer-mode-track" aria-hidden="true"></span></label><span class="agent-chat-ready"><i></i> Online</span></div>
-  <div class="developer-mode-banner hidden" id="developerModeBanner"><b>WALLET CONNECTED · BUILDER PREVIEW ONLY</b><span>Your NEAR Testnet wallet is connected. This is not a delegated session: no restricted key is created, and no background transaction, order, or swap can execute automatically.</span></div>
+  <div class="developer-mode-banner hidden" id="developerModeBanner"><b>WALLET APPROVED · APPLICATION SESSION ONLY</b><span>NEP-413 wallet ownership was verified. Session expires within 8 hours and can be revoked. This does not create a FunctionCall key or authorize background signing, transfers, orders, or swaps.</span></div>
   <div class="agent-welcome" id="agentWelcome"><div class="agent-welcome-avatar" aria-hidden="true"></div><div class="agent-welcome-copy"><strong>Hi! What can I help you with?</strong><p>Choose one of the options below, or type your question like you would in a normal chat. I’ll explain the result and what to do next.</p></div></div>
   <div class="agent-quick-start"><span class="agent-quick-label">START WITH A TASK</span><div class="sentinel-skill-grid">
    <button type="button" class="sentinel-skill-card is-selected" data-skill="investigate" data-prompt="Check this NEAR wallet and tell me if it looks safe: "><span class="skill-card-icon">⌕</span><span class="skill-card-copy"><b>Check a wallet</b><small>Look for unusual activity</small></span></button>

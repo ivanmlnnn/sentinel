@@ -1444,15 +1444,21 @@ if (agentForm) {
     const button = $('agentRunBtn');
     const prompt = $('agentPrompt').value.trim();
     if (!prompt) return;
-    if (developerModeEnabled && /\b(buy|sell|swap|trade|beli|jual|tukar|dca)\b/i.test(prompt) && /\b(BTC|ETH|NEAR|USDC|USDT|SOL|WNEAR)\b/i.test(prompt)) { await renderTradeSkillDraft(prompt); toast('Skill draft generated. Trading execution is not connected.'); return; }
     button.disabled = true;
     button.classList.add('agent-running');
     button.innerHTML = '<span class="agent-button-pulse" aria-hidden="true"></span> Agent running <b>…</b>';
     const result = $('agentResult');
     result.classList.remove('hidden');
-    result.textContent = 'Calling the AI provider and evaluating the proposed action…';
+    result.textContent = developerModeEnabled
+      ? 'Developer Mode preview is active. Trading requests remain draft-only…'
+      : 'Calling the AI provider and evaluating the proposed action…';
     try {
-      if (GUEST_MODE) {
+      if (developerModeEnabled && /\b(buy|sell|swap|trade|beli|jual|tukar|dca)\b/i.test(prompt) && /\b(BTC|ETH|NEAR|USDC|USDT|SOL|WNEAR)\b/i.test(prompt)) {
+        await renderTradeSkillDraft(prompt);
+        toast('Skill draft generated. Trading execution is not connected.');
+        $('agentPrompt').value = '';
+        return;
+      } else if (GUEST_MODE) {
         guestConversation.push({ role: 'user', content: prompt });
         guestConversation = guestConversation.slice(-14);
         saveGuestConversation();
@@ -1472,10 +1478,10 @@ if (agentForm) {
       } else {
         authenticatedPrompt = prompt;
         renderAuthenticatedPending(prompt);
-        const data = await request('/agent/run', {
+        const data = await request('/terminal/run', {
           method: 'POST',
           headers: { 'Idempotency-Key': crypto.randomUUID() },
-          body: JSON.stringify({ prompt })
+          body: JSON.stringify({ mode: 'user', prompt })
         });
         renderAgentResult(data);
         $('agentPrompt').value = '';

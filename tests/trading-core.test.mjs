@@ -46,6 +46,7 @@ function quoteResponse(overrides = {}) {
 
 function liveQuoteResponse(overrides = {}) {
   const quoteRequest = { ...buildTidepoolDryQuotePayload(input), dry: false };
+  const { quote: quoteOverrides = {}, ...rest } = overrides;
   return {
     correlationId: "live-quote-correlation",
     quoteRequest,
@@ -54,10 +55,10 @@ function liveQuoteResponse(overrides = {}) {
       amountOut: "250000000000000000000000",
       minAmountOut: "247500000000000000000000",
       depositAddress: "a".repeat(64),
-      ...overrides.quote
+      ...quoteOverrides
     },
     signature: "ed25519:0123456789abcdefghijklmnop",
-    ...overrides
+    ...rest
   };
 }
 

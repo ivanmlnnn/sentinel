@@ -125,7 +125,7 @@ function AuthGate() {
 
       if (!dashboardStarted) {
         dashboardStarted = true;
-        import('./app.js?v=20261112-trading-intents4&policy-reason=1&wallet-card=3').catch((error) => {
+        import('./app.js?v=20261113-developer-session1&policy-reason=1&wallet-card=3').then(() => import('./agent-foundry.js?v=20261112-foundry1').catch(error => console.error('Sentinel Agent Foundry failed to load:', error))).catch((error) => {
           console.error('Sentinel dashboard failed to initialize:', error);
           dashboardStarted = false;
           setAuthError('Dashboard failed to load. Please reload and try again.');
