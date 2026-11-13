@@ -100,9 +100,7 @@ This is not a product failure statement. It is a strict distinction between succ
 
 ## AI provider availability
 
-Agent, Guest Agent and AI Review routes currently use Anthropic's Messages API and tool-call schema. The observed credit-balance error is an upstream provider billing issue and is classified in the application as `AI_PROVIDER_BILLING_ERROR`. That classification improves diagnostics; it does not add provider credits.
-
-Do not substitute a Qwen key into an Anthropic configuration. A provider migration needs a tested adapter for authentication, model IDs, tool schemas, tool-call parsing, follow-up messages and errors across the agent routes. Demonstrate the live Agent Lab only after a real model response is observed. The read-only scanner and repository security checks are separate and can be reviewed independently.
+The current Agent and Guest Agent runtime uses the Cloudflare Workers AI binding (`env.AI`) as documented in [Sentinel AI Runtime](SENTINEL_AI_RUNTIME.md). Do not use old Anthropic/Gemini setup instructions from historical documents as current deployment guidance. A configured model binding or passing adapter tests do not prove live inference; demonstrate the Agent Lab only after an actual model response is observed. The read-only scanner and repository security checks are separate and can be reviewed independently.
 
 ## Judge questions and concise answers
 
