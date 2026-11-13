@@ -80,6 +80,37 @@ test("real swap rejects unapproved assets and missing idempotency before action"
     error => error.code === "IDEMPOTENCY_KEY_REQUIRED");
 });
 
+test("status polling uses one bounded wait_ms query", async () => {
+  let called;
+  const client = createTidepoolAgentClient({
+    apiKey: "naa_test_key",
+    fetchImpl: async url => { called = new URL(url); return response({ correlation_id: "op_123", status: "PENDING_APPROVAL" }); }
+  });
+  const result = await client.getStatus("op_123", 15_000);
+  assert.equal(result.status, "PENDING_APPROVAL");
+  assert.equal(called.searchParams.get("correlation_id"), "op_123");
+  assert.equal(called.searchParams.getAll("wait_ms").length, 1);
+  assert.equal(called.searchParams.get("wait_ms"), "15000");
+});
+
+test("frozen policy blocks a swap before the action request", async () => {
+  let actionCalls = 0;
+  const client = createTidepoolAgentClient({
+    apiKey: "naa_test_key",
+    grantToken: "ngt_test_grant",
+    fetchImpl: async url => {
+      if (new URL(url).pathname.endsWith("/policy")) return response({ policy: { ...policy, frozen: true } });
+      actionCalls++;
+      return response({});
+    }
+  });
+  await assert.rejects(
+    client.requestOwnerApprovedSwap("agent_12345678", swap, "sentinel-test-0001"),
+    error => error.code === "AGENT_FROZEN_BY_POLICY"
+  );
+  assert.equal(actionCalls, 0);
+});
+
 test("maps Tidepool JSON:API errors without retrying or leaking credentials", async () => {
   let calls = 0;
   const client = createTidepoolAgentClient({
