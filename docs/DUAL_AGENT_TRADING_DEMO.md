@@ -5,7 +5,7 @@
 This feature branch adds an authenticated, read-only research workflow. It uses a real public market-data provider, computes deterministic indicators, asks two separately prompted AI runs to perform different jobs, and applies deterministic checks to the outputs.
 
 - Agent 1: market research thesis (BUY / SELL / HOLD), cited evidence IDs, invalidation condition, and horizon.
-- Agent 2: independent adversarial review (PASS / VETO), risk level, challenge, and reasons.
+- Agent 2: independent adversarial review (PASS / VETO), risk level, challenge, and reasons. The two roles are separate sequential LLM calls through the configured Cloudflare AI binding; they are not claimed to be independently trained foundation models.
 - Sentinel deterministic gate: rejects invented evidence, directional contradictions, risk flags, and non-low risk reviews.
 - Output is paper-trading eligibility only. No transaction is authorized.
 
