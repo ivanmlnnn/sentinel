@@ -808,9 +808,15 @@ async function requestDeveloperModeWalletApproval() {
     const signed = await signedMessagePromise;
     const signedAccount = signed?.accountId || accountId;
     const publicKey = String(signed?.publicKey || '');
-    const signature = signed?.signature;
-    if (!signed || signedAccount !== accountId || !publicKey.startsWith('ed25519:') ||
-        typeof signature !== 'string' || !signature.length) {
+    let signature = signed?.signature;
+    if (signature instanceof Uint8Array) {
+      let binary = '';
+      for (const byte of signature) binary += String.fromCharCode(byte);
+      signature = btoa(binary);
+    } else if (typeof signature !== 'string') {
+      throw new Error('Wallet did not return a supported NEP-413 signature encoding.');
+    }
+    if (!signed || signedAccount !== accountId || !publicKey.startsWith('ed25519:') || !signature.length) {
       throw new Error('Wallet did not return a matching NEP-413 signature. Developer Mode remains OFF.');
     }
     const activated = await request('/agent/developer-session', {
