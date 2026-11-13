@@ -82,17 +82,17 @@ This is an offline regression simulation. It demonstrates the application-level 
 - **NEP-413 verification:** the signer validates the wallet-signed approval message.
 - **Replay resistance:** one-time approval claims, nonce tracking, HMAC timestamp/nonce checks and idempotency state prevent reuse of stale or duplicated requests.
 - **Signer isolation:** Main Worker calls the private Signer Worker through the Cloudflare service binding; the signing key is not imported into Main Worker source.
-- **Restricted key policy:** signer code checks on-chain access-key permission for the configured payment contract and only the `pay` method; FullAccess and broader permissions are rejected.
+- **Final transaction verification:** the active Signer Worker checks the wallet-submitted native Transfer against NEAR RPC for exact sender, receiver, amount, success status, and receipt. The source-level FunctionCall-key helper is not called by the active `execute()` path.
 - **Spending controls:** receiver allowlist, per-payment/daily caps, contract approval IDs and kill switch constrain execution.
 - **Receipt verification:** the signer checks the exact contract call and successful native Transfer receipt for the approved recipient and amount.
 
-Automated test assertions include pay-only FunctionCall scope, rejection of FullAccess/other contracts/extra methods, forged or invalid approval rejection, replay/nonce rejection, stale or tampered HMAC rejection, kill-switch denial, fail-closed evidence handling, and exact payout-receipt verification requirements. See the [Judge Evidence Pack](JUDGE_EVIDENCE_PACK.md) for the linked CI runs.
+Automated tests cover policy helpers, approval and replay controls, HMAC validation, kill-switch denial, incomplete-evidence handling, and exact wallet-transfer verification. Tests of the restricted FunctionCall helper do not prove it is used by the active execution path. See the [Judge Evidence Pack](JUDGE_EVIDENCE_PACK.md) for revision-scoped CI evidence.
 
 ## Deployment, contract and transaction status — read carefully
 
 - GitHub Actions provides successful deployment evidence for the private Signer Worker and Main Worker, including deployment versions and successful production HTTP smoke checks.
 - The Signer deployment log records runtime secret-upload events and the service binding. Secret values are masked; logs do not reveal private keys.
-- The maintainer reports that the payment contract was previously deployed and existing runtime signer configuration was reused.
+- The repository contains payment-contract source and historical deployment records; the active payment path in this branch does not invoke that contract. Do not claim a current contract payout without a matching live transaction and receipt.
 - The linked deployment logs do not, by themselves, independently prove the public key's live on-chain permission scope or a successful Sentinel-originated payout.
 
 
