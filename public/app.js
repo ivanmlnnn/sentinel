@@ -1366,7 +1366,47 @@ function renderTradingAgentResult(data) {
       '<section class="trading-agent-evidence"><b>DETERMINISTIC EVIDENCE</b><ul>' + (evidenceMarkup || '<li>No evidence returned</li>') + '</ul></section>' +
       '<div class="trading-agent-provenance"><small>Source: ' + escapeHtml(data.data_provenance?.provider || '—') + '</small><small>Latest closed candle: ' + escapeHtml(data.data_provenance?.latest_closed_candle_at || '—') + '</small></div>' +
       '<p class="trading-agent-safety">RESEARCH / PAPER-TRADING ONLY. No order, wallet signature, deposit, swap, or live execution was authorized.</p>' +
+      '<div class="trading-backtest-actions"><button type="button" class="secondary-btn" id="runTradingBacktest">Run 500-candle backtest</button><div id="tradingBacktestResult" class="trading-backtest-result" aria-live="polite"></div></div>' +
     '</section>';
+  const backtestButton = result.querySelector('#runTradingBacktest');
+  const backtestOutput = result.querySelector('#tradingBacktestResult');
+  backtestButton?.addEventListener('click', async () => {
+    backtestButton.disabled = true;
+    backtestButton.textContent = 'Running cost-aware backtest…';
+    backtestOutput.textContent = 'Fetching up to 500 completed candles. Signals are evaluated on prior candles and filled on the next candle open.';
+    try {
+      const backtest = await request('/trading/backtest', {
+        method: 'POST',
+        body: JSON.stringify({
+          pair: data.pair,
+          interval: data.interval_minutes,
+          fee_bps: 10,
+          slippage_bps: 5,
+          initial_capital: 10000,
+          position_fraction: 0.25
+        })
+      });
+      const metrics = backtest.metrics || {};
+      const format = value => value === null || value === undefined || !Number.isFinite(Number(value))
+        ? '—' : Number(value).toLocaleString('en-US', { maximumFractionDigits: 3 });
+      backtestOutput.innerHTML =
+        '<div class="trading-backtest-summary"><b>HISTORICAL SIMULATION · ' + escapeHtml(backtest.sample?.candles || 0) + ' CANDLES</b>' +
+        '<div class="trading-backtest-metrics">' +
+          '<div><small>NET RETURN</small><strong>' + escapeHtml(format(metrics.net_return_pct)) + '%</strong></div>' +
+          '<div><small>BUY & HOLD</small><strong>' + escapeHtml(format(metrics.buy_and_hold_return_pct)) + '%</strong></div>' +
+          '<div><small>MAX DRAWDOWN</small><strong>' + escapeHtml(format(metrics.max_drawdown_pct)) + '%</strong></div>' +
+          '<div><small>TRADES / WIN RATE</small><strong>' + escapeHtml(format(metrics.trade_count)) + ' / ' + escapeHtml(format(metrics.win_rate_pct)) + '%</strong></div>' +
+          '<div><small>PROFIT FACTOR</small><strong>' + escapeHtml(format(metrics.profit_factor)) + '</strong></div>' +
+          '<div><small>FEES / SLIPPAGE</small><strong>' + escapeHtml(format(metrics.total_fees_quote)) + ' / ' + escapeHtml(format(metrics.estimated_slippage_quote)) + '</strong></div>' +
+        '</div><small>Sample: ' + escapeHtml(backtest.sample?.start_at || '—') + ' → ' + escapeHtml(backtest.sample?.end_at || '—') + '</small>' +
+        '<p>Long-only spot simulation. Kraken candle prices are not Tidepool/Meteor execution quotes. Historical returns do not predict future performance.</p></div>';
+    } catch (error) {
+      backtestOutput.textContent = error.message || 'Backtest failed. No trade was executed.';
+    } finally {
+      backtestButton.disabled = false;
+      backtestButton.textContent = 'Run 500-candle backtest';
+    }
+  });
   result.classList.remove('hidden');
   result.scrollTop = result.scrollHeight;
 }
