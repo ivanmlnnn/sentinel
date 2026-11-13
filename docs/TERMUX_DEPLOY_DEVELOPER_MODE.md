@@ -1,6 +1,6 @@
 # Manual Testnet Deployment — Developer Mode (Termux)
 
-This runbook deploys the Sentinel Cloudflare Worker and its D1 migration from Termux. It does **not** deploy Railway. Railway's Developer Agent source is a separate staged function patch and must be reviewed/applied in the Railway project.
+This runbook records the Testnet Developer Mode deployment and its acceptance checks. The Cloudflare Worker and D1 migration deployment command has been reported successful, and the Railway Developer Agent deployment is confirmed SUCCESS. Wrangler does **not** deploy Railway.
 
 ## 1. Get the exact feature branch
 
@@ -26,7 +26,7 @@ This installs dependencies, checks JavaScript syntax, validates every D1 migrati
 
 ## 3. Apply D1 migration and deploy Worker
 
-Only after reviewing a successful preflight:
+This step has already been reported completed for the current release. Do not rerun it merely to repeat the deployment. For a future intentional redeploy, first review a successful preflight:
 
 ```bash
 bash scripts/deploy-developer-mode.sh --apply
@@ -34,13 +34,19 @@ bash scripts/deploy-developer-mode.sh --apply
 
 The script requires typing `DEPLOY-SENTINEL-TESTNET` before it applies remote D1 migrations and deploys the Worker. The migration is applied before the Worker code so the session tables exist before the new route receives traffic.
 
-## 4. Deploy the Railway function separately
+## 4. Verify the deployed Railway runtime
 
-The Railway function source is currently a **staged Railway environment patch**, not part of the Git checkout and not deployed by Wrangler. Open the Railway project for `sentinel-terminal-runtime`, review the pending patch for the production environment, and apply/deploy that patch. Confirm the service returns healthy before proceeding.
+The Railway production deployment is recorded as **SUCCESS**. Confirm public reachability from Termux:
+
+```bash
+curl -i https://sentinel-terminal-runtime-production.up.railway.app/health
+```
+
+Expected health response includes `status: online`, Developer Mode enabled, and `developer_mode: strategy-planning-only`. A deployment marked SUCCESS is not a substitute for this public HTTP check. Do not replace the managed Railway Function with a generic `railway up` deployment.
 
 Do not replace the Railway function with a generic `railway up` deployment unless the service has explicitly been converted to a repository-backed service; this function is managed as a Railway Function source.
 
-## 5. Test the live flow
+## 5. Test the live flow (still required)
 
 1. Open the Production website and sign in to the same Privy account.
 2. Connect a NEAR Testnet wallet that advertises NEP-413 `signInAndSignMessage`.
