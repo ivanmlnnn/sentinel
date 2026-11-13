@@ -892,7 +892,20 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         throw new Error("Enter the refund address on the selected origin chain.");
       }
       status.textContent = "Checking the provider's signed quote and swap safety…";
-      const liveQuote = await request("/trading/live-quote", { method: "POST", body: JSON.stringify(swap) });
+      const liveQuote = await request("/trading/live-quote", {
+        method: "POST",
+        // Keep provider quote input strictly to the API schema. "swap" also
+        // carries UI token objects (origin/destination), which the backend
+        // correctly rejects as unsupported quote fields.
+        body: JSON.stringify({
+          originAsset: swap.originAsset,
+          destinationAsset: swap.destinationAsset,
+          amount: swap.amount,
+          recipient: swap.recipient,
+          refundTo: swap.refundTo,
+          slippageTolerance: swap.slippageTolerance
+        })
+      });
       if (liveQuote.mode !== "LIVE_QUOTE_AWAITING_USER_SIGNATURE" || liveQuote.execution_enabled !== false ||
           liveQuote.provider_signature_verified !== true || liveQuote.risk_evaluation?.decision !== "ALLOW" ||
           !String(liveQuote.risk_evaluation?.policy_hash || "").startsWith("sha256:") ||
