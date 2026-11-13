@@ -261,20 +261,51 @@ function initWalletCardMotion() {
 }
 async function initWallet() {
   const button = $('walletBtn');
-  button.disabled = true;
-  button.textContent = 'Loading NEAR wallet options…';
+  button.disabled = false;
+  button.textContent = 'Connect NEAR Wallet';
+  // Bind immediately so the control is never inert while the connector module loads.
+  button.addEventListener('click', async () => {
+    if (!connectorReady || !connector) {
+      toast('NEAR wallet options are still loading. Wait a moment, then tap Connect again.');
+      return;
+    }
+    button.disabled = true;
+    try {
+      if (connectedAccount) {
+        await connector.disconnect();
+        syncWalletUI(null, null);
+        toast('NEAR wallet disconnected.');
+      } else {
+        // Always invoke the connector picker. An empty preflight wallet list must not
+        // silently block the user's click; the connector can present install/connection options.
+        await connector.connect();
+        const current = await connector.getConnectedWallet();
+        const account = current.accounts && current.accounts[0];
+        if (!account?.accountId) throw new Error('The wallet did not return an account. Choose a NEAR Testnet wallet and retry.');
+        syncWalletUI(account.accountId, current.wallet?.manifest?.name || 'NEAR wallet');
+        toast('NEAR wallet connected.');
+      }
+    } catch (error) {
+      console.error('NEAR wallet connection error:', error);
+      toast(error?.message || 'Wallet connection was cancelled or unavailable. Try another NEAR Testnet wallet.');
+    } finally {
+      button.disabled = false;
+    }
+  });
   try {
-    // NEAR Connect is the current recommended connector in the NEAR Wallet Selector transition.
-    const { NearConnector } = await import('https://esm.sh/@hot-labs/near-connect@0.12.0');
+    // Bound remote module loading so the wallet button cannot remain disabled forever.
+    const module = await Promise.race([
+      import('https://esm.sh/@hot-labs/near-connect@0.12.0'),
+      new Promise((_, reject) => window.setTimeout(() => reject(new Error('NEAR wallet module timed out. Check the connection and retry.')), 12000))
+    ]);
+    const { NearConnector } = module;
     connector = new NearConnector({ network:'testnet', features:{ testnet:true, signAndSendTransaction:true, signMessage:true }, autoConnect:false });
     await connector.whenManifestLoaded;
-
     connector.on('wallet:signIn', event => {
       const account = event.accounts && event.accounts[0];
       syncWalletUI(account?.accountId, event.wallet?.manifest?.name || 'NEAR wallet');
     });
     connector.on('wallet:signOut', () => syncWalletUI(null, null));
-
     try {
       const current = await connector.getConnectedWallet();
       const account = current.accounts && current.accounts[0];
@@ -287,52 +318,27 @@ async function initWallet() {
       if (!connectedAccount) {
         $('walletConnectionState').textContent = count
           ? 'Not connected — ' + count + ' compatible Testnet wallet(s) found.'
-          : 'No compatible Testnet wallet is currently available. You can still check any public account.';
+          : 'No compatible Testnet wallet detected yet. Tap Connect to open wallet options.';
       }
     });
     connectorReady = true;
     button.disabled = false;
+    button.textContent = connectedAccount ? 'Wallet connected' : 'Connect NEAR Wallet';
     const walletCount = connector.availableWallets.length;
-    $('walletConnectionState').textContent = walletCount
-      ? 'Not connected — ' + walletCount + ' compatible Testnet wallet(s) found. Connect to autofill your account.'
-      : 'No compatible Testnet wallet is currently available. You can still check any public account.';
+    $('walletConnectionState').textContent = connectedAccount
+      ? 'Connected wallet: ' + connectedAccount
+      : walletCount
+        ? 'Not connected — ' + walletCount + ' compatible Testnet wallet(s) found. Tap Connect to open the wallet picker.'
+        : 'No wallet detected yet. Tap Connect to open the NEAR wallet selector or install a compatible Testnet wallet.';
     console.info('NEAR Connect ready. Network: testnet. Testnet-compatible wallets:', walletCount);
   } catch (error) {
     console.error('NEAR Connect initialization failed:', error);
+    connectorReady = false;
     button.disabled = false;
-    button.textContent = 'Wallet connection unavailable';
-    $('walletConnectionState').textContent = 'Wallet options could not load. Refresh the page or continue with a public address check.';
-    toast('NEAR wallet service could not load. Please refresh and retry.');
+    button.textContent = 'Retry NEAR wallet';
+    $('walletConnectionState').textContent = 'Wallet connector could not load: ' + (error?.message || 'unknown error') + ' Public address checks remain available.';
+    toast('NEAR wallet connector failed to load. Tap Retry NEAR wallet after checking your connection.');
   }
-  button.addEventListener('click', async () => {
-    if (!connectorReady) {
-      toast('Wallet connector is not ready. Refresh the page and try again.');
-      return;
-    }
-    if (!connectedAccount && connector.availableWallets.length === 0) {
-      toast('No wallet supporting NEAR Testnet is available in this browser. Try another NEAR wallet.');
-      return;
-    }
-    button.disabled = true;
-    try {
-      if (connectedAccount) {
-        await connector.disconnect();
-        syncWalletUI(null, null);
-        toast('NEAR wallet disconnected.');
-      } else {
-        await connector.connect();
-        const current = await connector.getConnectedWallet();
-        const account = current.accounts && current.accounts[0];
-        syncWalletUI(account?.accountId, current.wallet?.manifest?.name || 'NEAR wallet');
-        toast('NEAR wallet connected.');
-      }
-    } catch (error) {
-      console.error('NEAR wallet connection error:', error);
-      toast('Connection cancelled or unavailable. Choose a wallet that supports NEAR Testnet.');
-    } finally {
-      button.disabled = false;
-    }
-  });
 }
 
 function renderResult(data) {
