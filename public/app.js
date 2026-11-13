@@ -1343,6 +1343,34 @@ function renderAgentResult(data) {
     });
   }
 }
+function renderTradingAgentResult(data) {
+  const result = $('agentResult');
+  const analysis = data.market_analysis || {};
+  const indicators = analysis.indicators || {};
+  const evidence = Array.isArray(analysis.evidence) ? analysis.evidence : [];
+  const agentOne = data.agent_one || {};
+  const agentTwo = data.agent_two || {};
+  const status = String(data.status || 'UNKNOWN');
+  const statusClass = status === 'PAPER_TRADE_CANDIDATE' ? 'candidate' : status === 'HOLD' ? 'hold' : 'veto';
+  const price = Number(analysis.market_snapshot?.latest_close);
+  const fmt = value => Number.isFinite(Number(value)) ? Number(value).toLocaleString('en-US', { maximumFractionDigits: 6 }) : '—';
+  const evidenceMarkup = evidence.map(item => '<li><b>' + escapeHtml(item.id) + '</b><span>effect ' + escapeHtml(item.effect) + '</span></li>').join('');
+  const reasonsMarkup = (Array.isArray(agentTwo.reasons) ? agentTwo.reasons : []).map(reason => '<li>' + escapeHtml(reason) + '</li>').join('');
+  result.innerHTML =
+    '<section class="trading-agent-result">' +
+      '<div class="trading-agent-result-head"><span class="trading-agent-kicker">SENTINEL · TWO-AGENT RESEARCH</span><span class="trading-agent-status ' + statusClass + '">' + escapeHtml(status.replaceAll('_', ' ')) + '</span></div>' +
+      '<div class="trading-agent-market"><div><small>' + escapeHtml(data.pair || analysis.symbol || 'MARKET') + ' · ' + escapeHtml(data.interval_minutes || '—') + ' MIN</small><strong>' + escapeHtml(analysis.signal || '—') + '</strong></div><div><small>LAST CLOSED CANDLE</small><b>' + escapeHtml(fmt(price)) + '</b></div></div>' +
+      '<div class="trading-agent-indicators"><div><small>RSI 14</small><b>' + escapeHtml(fmt(indicators.rsi_14)) + '</b></div><div><small>ATR %</small><b>' + escapeHtml(fmt(indicators.atr_percent)) + '%</b></div><div><small>VOLUME Z</small><b>' + escapeHtml(fmt(indicators.volume_z_score)) + '</b></div></div>' +
+      '<section class="trading-agent-card"><div class="trading-agent-card-title"><b>01 · MARKET RESEARCH</b><span>' + escapeHtml(agentOne.signal || '—') + '</span></div><p>' + escapeHtml(agentOne.thesis || 'No thesis returned.') + '</p><small>Invalidation: ' + escapeHtml(agentOne.invalidation || '—') + '</small><small>Evidence IDs: ' + escapeHtml((agentOne.evidence_ids || []).join(', ') || 'None') + '</small></section>' +
+      '<section class="trading-agent-card risk-review"><div class="trading-agent-card-title"><b>02 · INDEPENDENT RISK REVIEW</b><span>' + escapeHtml(agentTwo.verdict || '—') + ' · ' + escapeHtml(agentTwo.risk_level || '—') + '</span></div><p>' + escapeHtml(agentTwo.challenge || 'No independent review returned.') + '</p>' + (reasonsMarkup ? '<ul>' + reasonsMarkup + '</ul>' : '') + ((agentTwo.deterministic_blocks || []).length ? '<small>Deterministic blocks: ' + escapeHtml(agentTwo.deterministic_blocks.join(', ')) + '</small>' : '<small>No deterministic veto condition detected.</small>') + '</section>' +
+      '<section class="trading-agent-evidence"><b>DETERMINISTIC EVIDENCE</b><ul>' + (evidenceMarkup || '<li>No evidence returned</li>') + '</ul></section>' +
+      '<div class="trading-agent-provenance"><small>Source: ' + escapeHtml(data.data_provenance?.provider || '—') + '</small><small>Latest closed candle: ' + escapeHtml(data.data_provenance?.latest_closed_candle_at || '—') + '</small></div>' +
+      '<p class="trading-agent-safety">RESEARCH / PAPER-TRADING ONLY. No order, wallet signature, deposit, swap, or live execution was authorized.</p>' +
+    '</section>';
+  result.classList.remove('hidden');
+  result.scrollTop = result.scrollHeight;
+}
+
 const skillCards = Array.from(document.querySelectorAll('.sentinel-skill-card'));
 function selectSentinelSkill(card) {
   if (!card) return;
@@ -1398,6 +1426,23 @@ if (agentForm) {
     result.classList.remove('hidden');
     result.textContent = 'Calling the AI provider and evaluating the proposed action…';
     try {
+      const pairMatch = prompt.match(/\b(XBTUSD|BTCUSD|ETHUSD|SOLUSD|ADAUSD|DOTUSD|LINKUSD|XRPUSD|AVAXUSD)\b/i);
+      const requestsTradingResearch = /\b(two-agent trading research|market analysis|analyze|analyse)\b/i.test(prompt);
+      if (pairMatch && requestsTradingResearch) {
+        if (GUEST_MODE) throw new Error('Dual-agent trading research requires an authenticated Sentinel session.');
+        const pairAlias = pairMatch[1].toUpperCase();
+        const pair = pairAlias === 'BTCUSD' ? 'XBTUSD' : pairAlias;
+        const intervalMatch = prompt.match(/\b(1|5|15|30|60|240|1440)\s*(m|min|minute|minutes|h|hr|hour|hours|d|day|days)\b/i);
+        const unit = intervalMatch?.[2]?.toLowerCase();
+        const multiplier = ['h', 'hr', 'hour', 'hours'].includes(unit) ? 60 : ['d', 'day', 'days'].includes(unit) ? 1440 : 1;
+        const interval = intervalMatch ? Number(intervalMatch[1]) * multiplier : 5;
+        result.textContent = 'Fetching verified market data. Agent 1 is building a thesis; Agent 2 will independently challenge it…';
+        const data = await request('/trading/agent', { method: 'POST', body: JSON.stringify({ pair, interval }) });
+        renderTradingAgentResult(data);
+        $('agentPrompt').value = '';
+        toast(data.status === 'PAPER_TRADE_CANDIDATE' ? 'Both agents completed. Paper-trading candidate only.' : 'Both agents completed. No live trade was executed.');
+        return;
+      }
       if (GUEST_MODE) {
         guestConversation.push({ role: 'user', content: prompt });
         guestConversation = guestConversation.slice(-14);
