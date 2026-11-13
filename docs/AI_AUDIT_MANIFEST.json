@@ -11,7 +11,8 @@
     "status": "OPEN_DRAFT_NOT_MERGEABLE",
     "production_branch": "main",
     "implementation_snapshot_commit": "ed86e0fd76f47e8ecebe33a926e0e39542ae6bbe",
-    "documentation_and_workflow_updates": "Documentation and CI-trigger updates were committed after the implementation snapshot; inspect the current PR head for the latest documentation."
+    "documentation_and_workflow_updates": "Documentation and CI-trigger updates were committed after the implementation snapshot; inspect the current PR head for the latest documentation.",
+    "last_reviewed_branch_head_before_manifest_refresh": "630d7184134584911f39c3a9e5ff93b419a4c278"
   },
   "verdict_policy": {
     "production_claims_must_be_limited_to_main": true,
@@ -115,10 +116,10 @@
       "required_action": "Rerun all commands on the exact PR head and attach fresh raw logs/evidence JSON."
     },
     "github_ci_for_audit_target": {
-      "commit": "202c21e92506f006f304e55277c49e2d599651a4",
+      "commit": "630d7184134584911f39c3a9e5ff93b419a4c278",
       "github_actions_runs_found": 0,
       "combined_status": "Vercel status failure due account build-rate limit; no GitHub Actions run found for this branch head",
-      "interpretation": "The Vercel preview failure is an account/build quota status, not a test failure. It also does not prove code correctness. No lab CI result is currently available for this PR head."
+      "interpretation": "Vercel preview status is not a code test result. No fresh lab CI result is available for this audit snapshot."
     },
     "production_main_baseline_ci": {
       "commit": "67f9896fc81068d9ad17eb119f33895eaf82c6b2",
