@@ -32,19 +32,21 @@ function makeClient(env, withGrant = false) {
 function getAgentId(env) {
   return typeof env.TIDEPOOL_AGENT_ID === "string" ? env.TIDEPOOL_AGENT_ID : "";
 }
-async function readBody(request) {
+async function readRequestBody(request) {
   const result = await readTextLimited(request, 4096);
   if (!result.ok) return { ok: false, response: json({ error: result.reason === "BODY_TOO_LARGE" ? "REQUEST_TOO_LARGE" : "INVALID_BODY" }, result.reason === "BODY_TOO_LARGE" ? 413 : 400) };
   try { return { ok: true, value: JSON.parse(result.text) }; }
   catch { return { ok: false, response: json({ error: "INVALID_JSON" }, 400) }; }
 }
 
-export async function onRequestGet({ request, env }) {
-  const identity = await verifyPrivyAccessToken(request, env);
+export function createTradingExecutionHandlers({ verifyToken = verifyPrivyAccessToken, readBodyFn = readRequestBody, clientFactory = makeClient } = {}) {
+async function onRequestGet({ request, env }) {
+  const identity = await verifyToken(request, env);
   if (!identity) return json({ error: "UNAUTHORIZED" }, 401);
   const url = new URL(request.url);
   const action = url.searchParams.get("action") || "readiness";
-  const api = makeClient(env, false);
+  let api;
+  try { api = clientFactory(env, false); } catch (error) { return providerError(error); }
   if (!api) {
     return json({
       provider: "Tidepool Agent API v1",
@@ -122,16 +124,17 @@ export async function onRequestGet({ request, env }) {
   } catch (error) { return providerError(error); }
 }
 
-export async function onRequestPost({ request, env }) {
-  const identity = await verifyPrivyAccessToken(request, env);
+async function onRequestPost({ request, env }) {
+  const identity = await verifyToken(request, env);
   if (!identity) return json({ error: "UNAUTHORIZED" }, 401);
-  const parsed = await readBody(request);
+  const parsed = await readBodyFn(request);
   if (!parsed.ok) return parsed.response;
   const body = parsed.value;
   if (!body || typeof body !== "object" || Array.isArray(body) || typeof body.action !== "string") return json({ error: "EXECUTION_ACTION_REQUIRED" }, 400);
   const agentId = getAgentId(env);
   if (!agentId) return json({ error: "TIDEPOOL_AGENT_ID_REQUIRED" }, 503);
-  const api = makeClient(env, body.action === "request_swap");
+  let api;
+  try { api = clientFactory(env, body.action === "request_swap"); } catch (error) { return providerError(error); }
   if (!api) return json({ error: "TIDEPOOL_AGENT_API_KEY_REQUIRED" }, 503);
 
   try {
@@ -189,3 +192,9 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "EXECUTION_ACTION_UNSUPPORTED" }, 400);
   } catch (error) { return providerError(error); }
 }
+return { onRequestGet, onRequestPost };
+}
+
+const tradingExecutionHandlers = createTradingExecutionHandlers();
+export const onRequestGet = tradingExecutionHandlers.onRequestGet;
+export const onRequestPost = tradingExecutionHandlers.onRequestPost;
