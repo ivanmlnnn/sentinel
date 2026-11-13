@@ -14,8 +14,7 @@ This directory is organized around the Sentinel product's current architecture, 
 
 - [Developer Mode Readiness](DEVELOPER_MODE_READINESS.md) — current deployment status, what is implemented, and remaining end-to-end checks.
 - [Termux Developer Mode Runbook](TERMUX_DEPLOY_DEVELOPER_MODE.md) — guarded D1/Worker deployment and Testnet acceptance.
-- [Security Supervisor Runbook](SECURITY_SUPERVISOR_RUNBOOK.md) — Hatchable supervisor deployment, telemetry status, and operational controls.
-- [Deployment Status and AI Provider](DEPLOYMENT_STATUS_AND_AI_PROVIDER.md) — runtime/provider configuration and deployment notes.
+- [Security Supervisor Runbook](SECURITY_SUPERVISOR_RUNBOOK.md) — security telemetry, incident handling, and operational controls.
 
 ## Verification and judging evidence
 
