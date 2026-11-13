@@ -75,7 +75,7 @@ export function normalizeTidepoolTokens(payload) {
     .sort((a, b) => a.blockchain.localeCompare(b.blockchain) || a.symbol.localeCompare(b.symbol));
 }
 
-export function validateTradingQuoteInput(input, tokens) {
+export function validateTradingQuoteInput(input, tokens, now = Date.now()) {
   if (!input || typeof input !== "object" || Array.isArray(input)) return { ok: false, reason: "JSON_OBJECT_REQUIRED" };
   const allowed = new Set(["originAsset", "destinationAsset", "amount", "recipient", "refundTo", "slippageTolerance"]);
   if (Object.keys(input).some(key => !allowed.has(key))) return { ok: false, reason: "UNSUPPORTED_QUOTE_FIELD" };
@@ -112,7 +112,7 @@ export function validateTradingQuoteInput(input, tokens) {
   const refundType = depositType === "INTENTS" ? "INTENTS" : "ORIGIN_CHAIN";
   const recipientType = "DESTINATION_CHAIN";
   const depositMode = ["stellar", "xrp"].includes(origin.blockchain) ? "MEMO" : "SIMPLE";
-  const deadline = new Date(Date.now() + deadlineMinutesForChain(origin.blockchain) * 60 * 1000).toISOString();
+  const deadline = new Date(now + deadlineMinutesForChain(origin.blockchain) * 60 * 1000).toISOString();
 
   return {
     ok: true,
@@ -217,7 +217,7 @@ export async function getTidepoolTestnetTokens(fetchImpl = fetch) {
 
 export async function getTidepoolDryQuote(input, fetchImpl = fetch, now = Date.now(), verifySignature = verifyQuoteSignature) {
   const tokens = await getTidepoolTestnetTokens(fetchImpl);
-  const validation = validateTradingQuoteInput(input, tokens);
+  const validation = validateTradingQuoteInput(input, tokens, now);
   if (!validation.ok) return validation;
   const requestBody = buildTidepoolDryQuotePayload(validation.value, now);
   const payload = await fetchJson(TIDEPOOL_BASE_URL + "/v0/quote", {
@@ -407,7 +407,7 @@ export async function getTidepoolLiveQuote(input, fetchImpl = fetch, now = Date.
 
 export async function verifyTidepoolLiveQuoteBinding(providerQuote, expected, fetchImpl = fetch, verifySignature = verifyQuoteSignature) {
   const tokens = await getTidepoolTestnetTokens(fetchImpl);
-  const validation = validateTradingQuoteInput(expected, tokens);
+  const validation = validateTradingQuoteInput(expected, tokens, Date.now());
   if (!validation.ok) return validation;
   const quoteValidation = validateTidepoolLiveQuote(providerQuote, validation.value);
   if (!quoteValidation.ok) return quoteValidation;
