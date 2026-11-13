@@ -76,6 +76,13 @@ The deployment log confirms both remote D1 migration commands completed with “
 
 The independent local stress lab remains a separate evidence set: its nine checks passed in a local SQLite/Python simulation, including nonce, approval, idempotency, spend-cap and simulated multi-instance races. These results are not represented as production D1 concurrency measurements.
 
+## Experimental branch — dual-agent trading research
+
+The feature branch `feature/sentinel-trading-core-lab` contains a separate, read-only trading-research prototype: live Kraken Spot OHLCV, deterministic EMA/RSI/ATR/volume evidence, Agent 1 market thesis, and Agent 2 independent adversarial risk review. A deterministic gate can veto unsupported or risky proposals. It produces paper-trading candidates only; it does not authorize a swap, sign a wallet transaction, or move funds. This feature has not been deployed to the production Cloudflare Worker and is not evidence of profitability.
+
+- [Dual-Agent Trading Research — Judge Demo](docs/DUAL_AGENT_TRADING_DEMO.md)
+- [Live Market Analysis and Agent Architecture](docs/LIVE_MARKET_ANALYSIS.md)
+
 ## What is implemented
 
 - NEAR account-state checks through FastNear JSON-RPC.
