@@ -8,7 +8,7 @@
 - Separate live-quote endpoint, invoked only after the user explicitly chooses the Testnet swap flow. It requests `dry: false` and returns a per-quote INTENTS deposit account. It does not itself move funds.
 - NEP-413 intent generation revalidates the original Tidepool-signed live quote on the server and binds signer, deposit account, input/output assets, amount, recipient/refund account and slippage to it.
 - Signed-intent submission independently revalidates the same provider quote and rejects any changed deposit address, signer, token, amount, recipient or slippage before contacting the provider.
-- Wallet signing through the connected NEAR Connect wallet's `signMessage` method. The UI requires the signer account to match the recipient/refund account.
+- Wallet signing through the connected NEAR Connect wallet's `signMessage` method. The current official NEAR Connect manifest includes Meteor Wallet and advertises `signMessage`, `signAndSendTransaction`, and `testnet` support for its Meteor executor. Selecting Meteor in the wallet picker therefore opens Meteor's own approval experience; the same connector also supports other compatible NEAR wallets. The UI requires the signer account to match the recipient/refund account.
 - Signed-intent submission restricted to a single NEP-413 transfer to the exact provider-generated deposit account and amount.
 - Verifier public-key registration preflight via NEAR Testnet RPC, with a one-time wallet-signed `add_public_key` transaction when needed.
 - Tidepool status polling after submission.
@@ -40,7 +40,7 @@
 
 ## Wallet and funding prerequisites
 
-- Connect a NEAR Testnet wallet with NEP-413 `signMessage` support. The current connector filters for `testnet`, `signAndSendTransaction`, and `signMessage`.
+- Connect a NEAR Testnet wallet with NEP-413 `signMessage` support. The current connector filters for `testnet`, `signAndSendTransaction`, and `signMessage`; Meteor Wallet currently advertises all three capabilities in the NEAR Connect manifest. Choose Meteor Wallet in the wallet picker when you want its wallet-native approval prompt.
 - The wallet must hold the selected test token in its NEAR Intents balance. Use the Tidepool faucet at https://app.usetidepool.tech/faucet and choose **NEAR Testnet → Intents balance**, not Wallet mode. The faucet is site-only, rate-limited, and requires an existing NEAR Testnet account at least three hours old.
 - Before the first NEP-413 intent, Sentinel checks whether the wallet public key is registered on the verifier. If not, it requests a separate wallet-approved `add_public_key` transaction (30 Tgas, 1 yoctoNEAR); the app waits for RPC confirmation before continuing.
 - The UI deliberately stops if the wallet cannot return a complete NEP-413 signature. It does not silently switch signing standards.
@@ -63,3 +63,4 @@ This is not yet a mainnet-ready trading system. BUY/SELL, limit orders, recurrin
 - Generate intent: https://www.usetidepool.tech/docs/api-reference/generate-intent
 - Submit intent: https://www.usetidepool.tech/docs/api-reference/submit-intent
 - NEAR Connect: https://www.npmjs.com/package/@hot-labs/near-connect
+- Meteor Wallet SDK and NEAR Connect executor: https://github.com/Meteor-Wallet/meteor_wallet_sdk
