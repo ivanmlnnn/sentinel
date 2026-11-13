@@ -535,6 +535,28 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
       status.textContent = error.message || "Wallet connection failed.";
     } finally { connectButton.disabled = false; }
   });
+  // Read-only session discovery: reflect wallets already authorized in the browser without prompting.
+  (async () => {
+    try {
+      if (!activeNearAccount && connector?.getConnectedWallet) {
+        const current = await connector.getConnectedWallet();
+        const account = current?.accounts?.[0]?.accountId;
+        if (nearAccount(account)) activeNearAccount = account;
+      }
+    } catch {}
+    try {
+      if (!activeEvmAccount) {
+        const accounts = await getInjectedEvmProvider()?.request?.({ method: "eth_accounts" });
+        if (evmAddress(accounts?.[0])) activeEvmAccount = accounts[0];
+      }
+    } catch {}
+    const detected = [activeNearAccount, activeEvmAccount].filter(Boolean);
+    if (detected.length) {
+      walletStateText.textContent = detected.map(shortWalletAddress).join(" · ");
+      walletState.classList.add("is-connected");
+      connectButton.textContent = "Verify wallet & get quote";
+    }
+  })();
   addField(fields, "Amount", amountInput);
   addField(fields, "You pay · origin asset / network", originPicker.root);
   const flipButton = el("button", "⇅", "swap-flip-button");
@@ -559,8 +581,8 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
   fields.append(status, approveButton, details); card.append(fields);
   let swap = null, dryQuote = null;
   const invalidate = () => { approveButton.disabled = true; dryQuote = null; swap = null; };
-  originSelect.addEventListener("change", () => { defaults(); originPicker.sync(); invalidate(); connectButton.textContent = "Connect route wallets"; });
-  destSelect.addEventListener("change", () => { defaults(); destinationPicker.sync(); invalidate(); connectButton.textContent = "Connect route wallets"; });
+  originSelect.addEventListener("change", () => { defaults(); originPicker.sync(); invalidate(); connectButton.textContent = "Connect wallet & get quote"; });
+  destSelect.addEventListener("change", () => { defaults(); destinationPicker.sync(); invalidate(); connectButton.textContent = "Connect wallet & get quote"; });
   for (const input of [amountInput, slippage]) input.addEventListener("change", invalidate);
   quoteButton.addEventListener("click", async () => {
     quoteButton.disabled = true; approveButton.disabled = true;
