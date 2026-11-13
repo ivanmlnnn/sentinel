@@ -359,7 +359,7 @@ The following claims are now supported by linked records:
 - Private Signer Worker deployment completed successfully; version and secret-upload events are visible in [run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536).
 - Main Worker deployment and production smoke tests completed successfully in [run 42871954699](https://github.com/ivanmlnnn/sentinel/actions/runs/42871954699), with a later successful Main deployment in [run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638).
 - Automated source/security workflows completed successfully: [Sentinel checks](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243801), [CodeQL](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243329), and [Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243623).
-- The payment contract was previously deployed and existing signer configuration was reused, as reported by the maintainer and recorded in the [deployment status guide](DEPLOYMENT_STATUS_AND_AI_PROVIDER.md).
+- The payment contract was previously deployed and existing signer configuration was reused, as reported by the maintainer and recorded in the [deployment status guide](SENTINEL_AI_RUNTIME.md).
 
 Keep the following distinctions explicit during judging:
 
