@@ -510,11 +510,12 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       return wallet.account;
     }
     if (key === "near") {
+      const sharedAccount = getConnectedAccount();
+      if (nearAccount(sharedAccount)) activeNearAccount = sharedAccount;
       const connector = getConnector();
       if (!connector) throw new Error("NEAR wallet connector is still loading. Wait a moment and tap Connect again.");
       if (!activeNearAccount) {
-        // Do not gate the user's click on an asynchronously populated wallet list.
-        // Let NEAR Connect open its selector so users can choose/install a compatible wallet.
+        // Keep connector.connect() as the first awaited wallet action in this click.
         await connector.connect();
         const current = await connector.getConnectedWallet();
         const account = current.accounts?.[0];
@@ -558,12 +559,19 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       const routeChains = [...new Set([origin.blockchain, dest.blockchain].map(value => String(value).toLowerCase()))];
       // Ask for NEAR first so Meteor can open even when the browser has no EVM extension.
       routeChains.sort((a, b) => (a === "near" ? -1 : 0) - (b === "near" ? -1 : 0));
-      for (const chain of routeChains) {
-        await connectWalletForChain(chain);
+      for (let index = 0; index < routeChains.length; index++) {
+        const chain = routeChains[index];
+        if (!walletAddressFor(chain)) await connectWalletForChain(chain);
         const partialAddresses = [walletAddressFor(origin.blockchain), walletAddressFor(dest.blockchain)].filter(Boolean);
         if (partialAddresses.length) {
           walletStateText.textContent = partialAddresses.map(shortWalletAddress).join(" · ");
           walletState.classList.add("is-connected");
+        }
+        const nextChain = routeChains.slice(index + 1).find(next => !walletAddressFor(next));
+        if (nextChain) {
+          connectButton.textContent = "Connect " + nextChain.toUpperCase() + " wallet";
+          status.textContent = chain.toUpperCase() + " wallet connected. Tap again to connect the " + nextChain.toUpperCase() + " wallet.";
+          return;
         }
       }
       const addresses = [walletAddressFor(origin.blockchain), walletAddressFor(dest.blockchain)].filter(Boolean);
