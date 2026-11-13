@@ -21,8 +21,9 @@ if [[ "$BRANCH" != "$EXPECTED_BRANCH" ]]; then
   exit 1
 fi
 
-if ! git diff --quiet || ! git diff --cached --quiet; then
-  echo "ERROR: working tree has uncommitted changes. Commit or stash them first."
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "ERROR: working tree is not clean (including untracked files). Commit or stash changes first."
+  git status --short
   exit 1
 fi
 
@@ -43,7 +44,11 @@ echo "Node: $(node --version)"
 
 echo
 echo "== Install dependencies =="
-npm install --ignore-scripts --no-audit --no-fund
+if [[ -f package-lock.json ]]; then
+  npm ci --ignore-scripts --no-audit --no-fund
+else
+  npm install --ignore-scripts --no-audit --no-fund
+fi
 
 echo
 echo "== Syntax checks =="
