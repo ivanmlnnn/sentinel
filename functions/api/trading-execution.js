@@ -9,6 +9,10 @@ function extractList(value) {
   if (Array.isArray(value?.data)) return value.data;
   if (Array.isArray(value?.tokens)) return value.tokens;
   if (Array.isArray(value?.approvals)) return value.approvals;
+  if (Array.isArray(value?.balances)) return value.balances;
+  if (Array.isArray(value?.data?.tokens)) return value.data.tokens;
+  if (Array.isArray(value?.data?.approvals)) return value.data.approvals;
+  if (Array.isArray(value?.data?.balances)) return value.data.balances;
   return [];
 }
 function providerError(error) {
@@ -47,19 +51,22 @@ async function onRequestGet({ request, env }) {
   const action = url.searchParams.get("action") || "readiness";
   let api;
   try { api = clientFactory(env, false); } catch (error) { return providerError(error); }
-  if (!api) {
+  const agentId = getAgentId(env);
+  const missing = [];
+  if (!env.TIDEPOOL_AGENT_API_KEY) missing.push("TIDEPOOL_AGENT_API_KEY");
+  if (!agentId) missing.push("TIDEPOOL_AGENT_ID");
+  if (!api || (action === "readiness" && !agentId)) {
     return json({
       provider: "Tidepool Agent API v1",
       environment: "TESTNET_ONLY",
       configured: false,
-      missing: ["TIDEPOOL_AGENT_API_KEY", "TIDEPOOL_AGENT_ID"],
+      missing,
       grant_configured: Boolean(env.TIDEPOOL_AGENT_GRANT_TOKEN),
       execution_ready: false,
       execution_enabled: false,
       real_value_supported: false
     });
   }
-  const agentId = getAgentId(env);
   if (action === "status") {
     const correlationId = url.searchParams.get("correlation_id");
     if (!correlationId) return json({ error: "CORRELATION_ID_REQUIRED" }, 400);
@@ -93,13 +100,15 @@ async function onRequestGet({ request, env }) {
     const destinations = policy?.destinations || {};
     const scopedAssets = Array.isArray(policy?.assets) && policy.assets.length > 0;
     const boundedLimits = limits && typeof limits === "object" && Object.keys(limits).length > 0;
-    const destinationAllowlist = destinations.mode === "only" && Array.isArray(destinations.list) && destinations.list.length > 0;
+    const destinationAllowlist = destinations.mode === "only" && Array.isArray(destinations.list) &&
+      destinations.list.some(item => item && item.action === "withdraw" && typeof item.chain === "string" && typeof item.address === "string");
+    const dailyBudget = Number(policy?.budget?.daily_usd);
     const ownerApproval = policy?.owner_approval === true;
     const active = agent?.status === "ACTIVE";
     const notFrozen = policy?.frozen === false;
     const grantConfigured = typeof env.TIDEPOOL_AGENT_GRANT_TOKEN === "string" && env.TIDEPOOL_AGENT_GRANT_TOKEN.startsWith("ngt_");
     const executionReady = active && notFrozen && ownerApproval && actions.includes("swap") &&
-      actions.includes("withdraw") && scopedAssets && boundedLimits && destinationAllowlist && grantConfigured;
+      actions.includes("withdraw") && scopedAssets && boundedLimits && Number.isFinite(dailyBudget) && dailyBudget > 0 && destinationAllowlist && grantConfigured;
     return json({
       provider: "Tidepool Agent API v1",
       environment: "TESTNET_ONLY",
@@ -111,11 +120,13 @@ async function onRequestGet({ request, env }) {
       assets_scoped: scopedAssets,
       per_transaction_limits_configured: Boolean(boundedLimits),
       withdrawal_destination_allowlist_configured: destinationAllowlist,
+      daily_usd_budget_configured: Number.isFinite(dailyBudget) && dailyBudget > 0,
+      supported_owner_types: Array.isArray(networkResponse?.supported_owner_types) ? networkResponse.supported_owner_types : [],
       grant_configured: grantConfigured,
       token_count: tokenList.length,
       supported_asset_chains: chains,
       balance_count: extractList(balancesResponse).length,
-      pending_approval_count: approvals.filter(item => item?.status === "PENDING_APPROVAL" || item?.state === "PENDING_APPROVAL").length,
+      pending_approval_count: approvals.filter(item => item?.status === "PENDING" || item?.state === "PENDING").length,
       execution_ready: executionReady,
       execution_enabled: false,
       real_value_supported: false,
