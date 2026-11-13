@@ -1,6 +1,6 @@
 # Developer Mode — Delegated Session Design
 
-**Status: Application-session flow implemented in feature branch; not deployed or end-to-end verified. Delegated transaction execution remains NOT IMPLEMENTED. (13 November 2026).**
+**Status (13 November 2026): Testnet application-session flow and read-only Railway planning runtime deployed. Full wallet-to-agent E2E acceptance is pending. Delegated transaction execution remains NOT IMPLEMENTED and DISABLED.**
 
 This document is the implementation boundary for a future one-approval Developer Mode. It intentionally distinguishes a wallet access key from a complete autonomous trading system.
 
@@ -8,12 +8,14 @@ This document is the implementation boundary for a future one-approval Developer
 
 The branch `fix/developer-mode-railway-terminal` adds a D1-backed one-use NEP-413 challenge and eight-hour application session. The challenge is bound to the Privy actor, NEAR Testnet account, Production origin, recipient, nonce, and expiry. The backend verifies the NEP-413 signature against the Testnet RPC before issuing an HttpOnly Secure SameSite=Strict cookie. Production forwards that cookie to Railway; Railway calls the Production session-status endpoint and checks the active session account before accepting Developer Agent work. Session status is restored on wallet reconnect and a revoke operation is issued on toggle-off or wallet disconnect.
 
-This feature-branch code is not yet live: the D1 migration and Worker have not been deployed, Railway's source is staged, and a real wallet signature round-trip has not been tested. The application session does not create an on-chain FunctionCall key or grant transaction execution.
+Deployment update: the guarded Termux script was reported as completed for the Cloudflare Worker and D1 migration, and the Railway Developer Agent runtime deployment was confirmed SUCCESS. A public Railway health request and a real NEP-413 wallet approval round-trip still need confirmation. The application session does not create an on-chain FunctionCall key or grant transaction execution.
 
-## What the current production repository actually does
+## What the deployed application currently does
 
-- The browser currently loads `@hot-labs/near-connect@0.12.0`. It does not call FastNear's `addFunctionCallKey()`.
-- The Developer Mode toggle is a local UI state. It creates structured trading drafts; it does not create an access key, a wallet session, a scheduled job, or an autonomous executor.
+- Developer Mode activation uses the NEP-413 application-session flow described above; the UI waits for server verification before showing the session as active.
+- The eight-hour session is an application cookie, not a NEAR access key. It cannot authorize wallet transactions or run a background trader.
+- Developer Agent requests are routed to Railway and produce deterministic, read-only plans. Swap planning does not fetch a live DEX quote, create an order, sign, or broadcast a transaction.
+- Explicit native payment prompts remain routed through the existing User Agent proposal path and still require the wallet's **Approve payment** action.
 - The current native payment approval path asks the connected wallet to sign and send the exact NEAR `Transfer`. The Signer Worker then verifies the submitted transaction and receipt against NEAR RPC. It does not sign that user's transfer.
 - `assertRestrictedFunctionCallKey()` exists in the Signer Worker source, but the active `execute()` path does not call it.
 - `payment-contract/src/lib.rs` is source code, not proof of a deployed contract. Its `pay()` method accepts calls only from its configured `signer_id`; a FunctionCall key belonging to an ordinary user's wallet would fail that caller check.
