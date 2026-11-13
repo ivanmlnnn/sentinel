@@ -1,0 +1,34 @@
+name: Sentinel Beyond-TEE Lab
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sentinel-beyond-tee-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  regression:
+    name: Regression and adversarial transfer verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Full regression suite
+        run: npm test
+      - name: Prompt injection regression
+        run: npm run demo:attack
+      - name: D1 migration integrity check (local)
+        run: npm run check:d1
