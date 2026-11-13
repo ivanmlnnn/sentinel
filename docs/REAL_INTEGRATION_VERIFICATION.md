@@ -1,4 +1,6 @@
-# Sentinel — Real Integration & Verification Guide
+# Sentinel — Historical Real Integration & Verification Record
+
+> **Historical snapshot (11 November 2026), not a current deployment runbook.** Provider and deployment details below describe the source revision named in each section. For current architecture and AI runtime, see [Sentinel Core Architecture](SENTINEL_CORE_ARCHITECTURE.md) and [Sentinel AI Runtime](SENTINEL_AI_RUNTIME.md).
 
 > **Purpose:** document which external systems Sentinel calls, the evidence produced by each integration, and how reviewers can independently inspect the implementation.
 >
