@@ -15,7 +15,8 @@ const sessionApi = read("../functions/api/developer-session.js");
 
 test("Developer Mode stays off until NEP-413 wallet signature is server-verified", () => {
   assert.match(app, /requestDeveloperModeWalletApproval/);
-  assert.match(app, /wallet\.signMessage\(/);
+  assert.match(app, /signMessageParams/);
+  assert.match(app, /signInAndSignMessage/);
   assert.match(app, /signing_standard === 'NEP-413'/);
   assert.match(app, /signInAndSignMessage/);
   assert.match(app, /restoreDeveloperSession\(account\.accountId\)/);
