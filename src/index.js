@@ -20,6 +20,7 @@ import { onRequestPost as tradingSubmitIntentPost } from "../functions/api/tradi
 import { onRequestGet as tradingStatusGet } from "../functions/api/trading-status.js";
 import { onRequestPost as tradingKeyStatusPost } from "../functions/api/trading-key-status.js";
 import { onRequestPost as tradingDepositSubmitPost } from "../functions/api/trading-deposit-submit.js";
+import { onRequestPost as tradingBalancePost } from "../functions/api/trading-balance.js";
 
 const MAX_API_BODY_BYTES = 65536;
 const routes = {
@@ -37,6 +38,7 @@ const routes = {
   "POST /api/internal/investigate": internalInvestigatePost,
   "POST /api/privy-webhook": privyWebhookPost,
   "GET /api/trading/tokens": tradingTokensGet,
+  "POST /api/trading/balance": tradingBalancePost,
   "GET /api/trading/analysis": tradingAnalysisGet,
   "POST /api/trading/agent": tradingAgentPost,
   "POST /api/trading/backtest": tradingBacktestPost,
