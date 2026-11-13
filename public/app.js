@@ -1469,7 +1469,7 @@ if (agentForm) {
     const button = $('agentRunBtn');
     const prompt = $('agentPrompt').value.trim();
     if (!prompt) return;
-    if (!developerModeEnabled && /\b(swap|tukar|exchange)\b/i.test(prompt)) { await renderChatSwap({ prompt, result: $('agentResult'), request, connector, connectedAccount, connectedWalletName, encodeBase58, guestMode: GUEST_MODE }); $('agentPrompt').value = ''; return; }
+    if (!developerModeEnabled && /\b(swap|tukar|exchange)\s+\d/i.test(prompt)) { authenticatedPrompt = prompt; if (!GUEST_MODE) renderAuthenticatedPending(prompt); await renderChatSwap({ prompt, result: $('agentResult'), request, connector, connectedAccount, connectedWalletName, encodeBase58, guestMode: GUEST_MODE }); $('agentPrompt').value = ''; return; }
     if (developerModeEnabled && /\b(buy|sell|swap|trade|beli|jual|tukar|dca)\b/i.test(prompt) && /\b(BTC|ETH|NEAR|USDC|USDT|SOL|WNEAR)\b/i.test(prompt)) { await renderTradeSkillDraft(prompt); toast('Skill draft generated. Trading execution is not connected.'); return; }
     button.disabled = true;
     button.classList.add('agent-running');
