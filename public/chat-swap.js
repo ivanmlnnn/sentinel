@@ -435,7 +435,7 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
   return { root, sync: syncTrigger, refresh: refreshBalances, close: () => { panel.hidden = true; trigger.setAttribute("aria-expanded", "false"); } };
 }
 
-export async function renderChatSwap({ prompt, result, request, connector: connectorSource, connectedAccount: accountSource, encodeBase58, guestMode, onWalletConnected }) {
+export async function renderChatSwap({ prompt, result, request, connector: connectorSource, connectedAccount: accountSource, encodeBase58, guestMode, onWalletConnected, onConnectNearWallet }) {
   const getConnector = () => typeof connectorSource === "function" ? connectorSource() : connectorSource;
   const getConnectedAccount = () => typeof accountSource === "function" ? accountSource() : accountSource;
   const parsed = parseChatSwapPrompt(prompt);
@@ -515,13 +515,23 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       const connector = getConnector();
       if (!connector) throw new Error("NEAR wallet connector is still loading. Wait a moment and tap Connect again.");
       if (!activeNearAccount) {
-        // Keep connector.connect() as the first awaited wallet action in this click.
-        await connector.connect();
-        const current = await connector.getConnectedWallet();
-        const account = current.accounts?.[0];
-        if (!nearAccount(account?.accountId)) throw new Error("NEAR wallet did not return a valid Testnet account.");
-        activeNearAccount = account.accountId;
-        onWalletConnected?.(account.accountId, current.wallet?.manifest?.name || "NEAR wallet");
+        // Reuse the dashboard's exact click handler so Meteor opens through
+        // the same NEAR Connect instance and the shared account session updates.
+        if (typeof onConnectNearWallet === "function") {
+          const accountId = await onConnectNearWallet();
+          const sharedAfterConnect = getConnectedAccount();
+          activeNearAccount = nearAccount(accountId) ? accountId :
+            (nearAccount(sharedAfterConnect) ? sharedAfterConnect : null);
+        } else {
+          // Fallback for standalone callers: retain the same NEAR Connect flow.
+          await connector.connect();
+          const current = await connector.getConnectedWallet();
+          const account = current.accounts?.[0];
+          if (!nearAccount(account?.accountId)) throw new Error("NEAR wallet did not return a valid Testnet account.");
+          activeNearAccount = account.accountId;
+          onWalletConnected?.(account.accountId, current.wallet?.manifest?.name || "NEAR wallet");
+        }
+        if (!activeNearAccount) throw new Error("Meteor connection was not completed. Choose Meteor and approve the connection in your wallet.");
       }
       return activeNearAccount;
     }
