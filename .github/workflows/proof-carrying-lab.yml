@@ -2,7 +2,7 @@ name: Sentinel Proof-Carrying Lab
 on:
   push:
     branches: ["lab/proof-carrying-agent-economy"]
-    paths: ["labs/proof-carrying/**", "signer-worker/src/index.mjs", "functions/api/**", "src/**", "migrations-d1/**", "migrations-signer/**", "tests/**", "payment-contract/**", ".github/workflows/proof-carrying-lab.yml"]
+    paths: ["labs/proof-carrying/**", "signer-worker/src/index.mjs", "functions/api/**", "src/**", "migrations-d1/**", "migrations-signer/**", "tests/**", "payment-contract/**", "docs/AI_AUDIT_INDEX.md", "docs/AI_AUDIT_MANIFEST.json", "README.md", ".github/workflows/proof-carrying-lab.yml"]
   pull_request:
     paths: ["labs/proof-carrying/**", "signer-worker/src/index.mjs", "functions/api/**", "src/**", "migrations-d1/**", "migrations-signer/**", "tests/**", "payment-contract/**", ".github/workflows/proof-carrying-lab.yml"]
   workflow_dispatch:
