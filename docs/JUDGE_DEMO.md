@@ -17,7 +17,7 @@ Do not claim that Sentinel implements NEAR Intents, a complete autonomous busine
 | Area | Evidence | What a judge can verify |
 |---|---|---|
 | Merged implementation | [PR #3](https://github.com/ivanmlnnn/sentinel/pull/3) | Isolated signer, NEP-413 approval and replay protections are merged. |
-| Signer deployment | [Actions run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536) | Private Worker `sentinel-signer` deployed; version `45194350-5fb8-4aec-8418-45b742147f35`; runtime secret upload events are visible in job logs. |
+| Historical Signer deployment | [Actions run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536) | Worker `sentinel-signer` deployed; version `45194350-5fb8-4aec-8418-45b742147f35`; this record predates the current branch's `workers_dev=false` config. |
 | Main deployment | [Actions run 42871954699](https://github.com/ivanmlnnn/sentinel/actions/runs/42871954699) | Merged-main deployment and production smoke test succeeded. |
 | Later Main deployment | [Actions run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638) | Later Main Worker deployment succeeded; version `455d1be0-150c-4de0-84f7-c9040c99c615`; HTTP smoke checks passed. |
 | Sentinel checks | [Actions run 42873243801](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243801) | Automated checks completed successfully; inspect job logs for test assertions. |
@@ -81,7 +81,7 @@ This is an offline regression simulation. It demonstrates the application-level 
 - **Exact-intent approval:** approval binds the authenticated actor, receiver, amount and expiry.
 - **NEP-413 verification:** the signer validates the wallet-signed approval message.
 - **Replay resistance:** one-time approval claims, nonce tracking, HMAC timestamp/nonce checks and idempotency state prevent reuse of stale or duplicated requests.
-- **Signer isolation:** Main Worker calls the private Signer Worker through the Cloudflare service binding; the signing key is not imported into Main Worker source.
+- **Verifier isolation:** Main Worker calls the isolated Signer Worker through the `SIGNER_SERVICE` service binding. The active Signer path verifies the user's wallet-submitted native Transfer; it does not originate or sign that transfer. The current branch config disables the Signer's public `workers.dev` endpoint, but that branch change has not been deployed to production by this documentation update.
 - **Final transaction verification:** the active Signer Worker checks the wallet-submitted native Transfer against NEAR RPC for exact sender, receiver, amount, success status, and receipt. The source-level FunctionCall-key helper is not called by the active `execute()` path.
 - **Spending controls:** receiver allowlist, per-payment/daily caps, contract approval IDs and kill switch constrain execution.
 - **Receipt verification:** the signer checks the exact contract call and successful native Transfer receipt for the approved recipient and amount.
