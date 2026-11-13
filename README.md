@@ -34,11 +34,26 @@ The defensible contribution is this composition, its explicit trust boundaries, 
 | Rust NEAR payment contract | Source and build/test path present | Per-payment/daily policy and one-time approval IDs; distinguish source/build evidence from deployed-contract and payout evidence |
 | Isolated Signer Worker | Implemented and deployed in recorded Worker releases | Separate Worker and signer-owned state; this is service/process isolation, **not a hardware TEE** |
 | Ed25519 signed verdict | Merged in PR #10 | Short-lived signed assessment binds sender, receiver, exact amount, nonce, decision, status, and assessment ID |
+| PCPI SHA-256 intent commitment | Experimental reference in [PR #36](https://github.com/ivanmlnnn/sentinel/pull/36) | Pure canonical commitment module; not imported or enforced by the production Signer Worker |
+| Proof-Carrying Payment v1 contract | Contract source implemented on the lab branch; [Draft PR #42](https://github.com/ivanmlnnn/sentinel/pull/42) | Ed25519 proof-envelope verification, expiry, replay and spend-cap checks are implemented/tested in the experiment contract; not deployed or wired to production signer |
 | NEAR Intents | **Not integrated** | No solver-based NEAR Intents execution is claimed |
 | TEE / hardware enclave | **Not implemented** | Cloudflare Worker isolation is not Intel SGX, AMD SEV, ARM CCA, or another attested TEE |
 | Chain Signatures / MPC | **Not integrated** | NEP-413 is not Chain Signatures |
 | Aurora / EVM execution | **Not integrated** | No Aurora bridge or EVM cross-contract execution is claimed |
 | Mainnet payments | **Not enabled / not claimed** | The documented payment flow is NEAR Testnet; do not use this README as evidence of mainnet readiness |
+
+### Proof-carrying execution — PCPI and contract-level proof lab
+
+Sentinel has two related but distinct proof-carrying experiments. They must not be described as one production feature:
+
+1. **PCPI v1 (PR #36):** `src/proof-carrying-intent.mjs` creates a domain-separated SHA-256 commitment over network/chain, actor, wallet, receiver, exact yocto amount, nonce, expiry, policy hash, and approval ID. It is a pure reference module with mutation and canonicalization tests. A hash commitment is not a human signature and does not establish who approved the payment. The current production `signer-worker/src/index.mjs` does not import this module or accept/enforce a PCPI commitment in its request schema.
+2. **Proof-Carrying Payment v1 (Draft PR #42):** the separate `lab/proof-carrying-agent-economy` branch changes the experiment Rust contract to require an Ed25519 proof envelope. The contract binds chain ID, contract ID, actual signer/predecessor, receiver, exact amount, memo-derived intent hash, approval ID, nonce, issue/expiry times, provenance root, evidence snapshot hash, policy version, decision, and signer-key version. Contract-side expiry, replay, key-version, and spend-cap checks have Rust tests. A JavaScript reference encoder and the Rust tests assert the same deterministic message digest.
+
+The lab branch records local-only validation: 73/73 proof-lab tests, 14/14 Rust contract tests, 2,840 Ed25519 single-bit mutation vectors rejected, cross-language digest agreement, and Miniflare/local-D1 race checks. Its branch README reports a later root-suite snapshot of 222/222; the linked evidence JSON records 219/219 at an earlier tested commit. These counts refer to separate revisions and are not additive. The D1 race results are local Miniflare tests, not remote Cloudflare production D1 measurements.
+
+**Production boundary:** the production Main Worker and Signer Worker do not construct or submit the new contract proof envelope. The lab's binary signer encoder is a test/reference helper, not the production signer or a production key-custody service. The proof-verifying contract is not deployed to NEAR Testnet; no proof-key installation or live proof payment is claimed. Its storage layout changed, so it requires a reviewed migration and a fresh controlled Testnet deployment before integration. See [Proof-Carrying Payment v1 specification](https://github.com/ivanmlnnn/sentinel/blob/lab/proof-carrying-agent-economy/labs/proof-carrying/docs/proof-carrying-payment-v1.md), [lab README](https://github.com/ivanmlnnn/sentinel/blob/lab/proof-carrying-agent-economy/labs/proof-carrying/README.md), [Draft PR #42](https://github.com/ivanmlnnn/sentinel/pull/42), [PCPI PR #36](https://github.com/ivanmlnnn/sentinel/pull/36), and [Beyond-TEE research PR #34](https://github.com/ivanmlnnn/sentinel/pull/34).
+
+**Beyond-TEE positioning:** the intended security model extends beyond execution isolation by checking intent, policy evidence, human authorization, replay state, constrained contract execution, finality, and audit evidence. A TEE/remote attestation can be one additional execution-identity signal; it is not the policy or proof of payment correctness. Sentinel does not currently claim a deployed hardware-TEE attestation verifier.
 
 ### Signing, kill switch, and payment evidence
 
