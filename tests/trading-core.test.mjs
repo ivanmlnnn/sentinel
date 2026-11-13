@@ -318,7 +318,7 @@ test("generates a NEP-413 intent only for a verified NEAR-origin quote", async (
     originAsset: nearInput.originAsset, destinationAsset: nearInput.destinationAsset,
     amount: nearInput.amount, recipient: "alice.testnet", refundTo: "alice.testnet"
   }, fetchImpl, () => true);
-  assert.equal(rejected.reason, "NEAR_INTENTS_SIGNING_REQUIRES_NEAR_ORIGIN");
+  assert.equal(rejected.reason, "ORIGIN_CHAIN_DEPOSIT_REQUIRES_NATIVE_WALLET");
 });
 
 test("submits only a signed NEP-413 transfer bound to the provider quote and separate destination", async () => {
