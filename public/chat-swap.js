@@ -532,12 +532,33 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
         select.value = token.asset_id;
         select.dispatchEvent(new Event("change", { bubbles: true }));
         syncTrigger();
-        panel.hidden = true;
-        trigger.setAttribute("aria-expanded", "false");
+        closePanel();
         onSelected(token);
       });
       list.append(item);
     }
+  };
+  const positionPanel = () => {
+    const rect = trigger.getBoundingClientRect();
+    const width = Math.min(390, Math.max(260, window.innerWidth - 24));
+    panel.style.position = "fixed";
+    panel.style.width = width + "px";
+    panel.style.maxWidth = "calc(100vw - 24px)";
+    panel.style.maxHeight = Math.min(Math.round(window.innerHeight * 0.68), 560) + "px";
+    const measuredHeight = Math.min(panel.scrollHeight || 360, Math.round(window.innerHeight * 0.68));
+    const below = window.innerHeight - rect.bottom - 12;
+    const top = below >= Math.min(measuredHeight, 260) || below >= rect.top
+      ? rect.bottom + 7
+      : Math.max(12, rect.top - measuredHeight - 7);
+    const left = Math.min(Math.max(12, rect.left), window.innerWidth - width - 12);
+    panel.style.top = Math.max(12, Math.min(top, window.innerHeight - 80)) + "px";
+    panel.style.left = left + "px";
+  };
+  const closePanel = () => {
+    panel.hidden = true;
+    trigger.setAttribute("aria-expanded", "false");
+    window.removeEventListener("resize", positionPanel);
+    window.removeEventListener("scroll", positionPanel, true);
   };
   const refreshBalances = async () => {
     if (loading) return;
@@ -567,14 +588,18 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
     renderTokens();
   };
   trigger.addEventListener("click", () => {
-    panel.hidden = !panel.hidden;
-    trigger.setAttribute("aria-expanded", String(!panel.hidden));
-    if (!panel.hidden) refreshBalances();
+    if (!panel.hidden) { closePanel(); return; }
+    panel.hidden = false;
+    trigger.setAttribute("aria-expanded", "true");
+    positionPanel();
+    window.addEventListener("resize", positionPanel);
+    window.addEventListener("scroll", positionPanel, true);
+    refreshBalances();
   });
   refresh.addEventListener("click", refreshBalances);
   syncTrigger(); renderChains(); renderTokens();
   root.append(trigger, select, panel);
-  return { root, sync: syncTrigger, refresh: refreshBalances, close: () => { panel.hidden = true; trigger.setAttribute("aria-expanded", "false"); } };
+  return { root, sync: syncTrigger, refresh: refreshBalances, close: closePanel };
 }
 
 export async function renderChatSwap({ prompt, result, request, connector: connectorSource, connectedAccount: accountSource, encodeBase58, guestMode, onWalletConnected, onConnectNearWallet }) {
