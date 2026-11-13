@@ -1546,6 +1546,19 @@ paymentDraftButton?.addEventListener('click', () => {
   toast('Payment draft ready. Review the prompt, then send it to Sentinel.');
 });
 
+function isExplicitPaymentProposalPrompt(prompt) {
+  const text = String(prompt || '').trim();
+  const patterns = [
+    /^(?:please\\s+)?(?:(?:i\\s+(?:want|would like)\\s+to\\s+)?(?:send|transfer))\\s+((?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?)\\s*(?:near|Ⓝ)\\s+to\\s+[a-z0-9]+(?:[-_.][a-z0-9]+)*$/i,
+    /^(?:please\\s+)?(?:(?:i\\s+(?:want|would like)\\s+to\\s+)?(?:send|transfer))\\s+(?:to\\s+)?[a-z0-9]+(?:[-_.][a-z0-9]+)*\\s+(?:an?\\s+amount\\s+of\\s+)?(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\\s*(?:near|Ⓝ)$/i,
+    /^(?:saya\\s+)?(?:mau|ingin|hendak)\\s+(?:mengirim|kirim|transfer)\\s+(?:near\\s+)?(?:ke\\s+)?[a-z0-9]+(?:[-_.][a-z0-9]+)*\\s+(?:sebesar\\s+)?(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\\s*(?:near|Ⓝ)$/i,
+    /^(?:saya\\s+)?(?:mau|ingin|hendak)\\s+(?:mengirim|kirim|transfer)\\s+(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\\s*(?:near|Ⓝ)\\s+ke\\s+[a-z0-9]+(?:[-_.][a-z0-9]+)*$/i,
+    /^(?:kirim|transfer)\\s+ke\\s+[a-z0-9]+(?:[-_.][a-z0-9]+)*\\s+(?:sebesar\\s+)?(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\\s*(?:near|Ⓝ)$/i,
+    /^(?:please\\s+)?(?:create|make|propose|buat|ajukan)\\s+(?:a\\s+)?payment\\s+proposal\\s+to\\s+[a-z0-9]+(?:[-_.][a-z0-9]+)*\\s+for\\s+(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\\s*(?:near|Ⓝ)(?:[.!?\\s]|$)/i
+  ];
+  return patterns.some(pattern => pattern.test(text));
+}
+
 if (agentForm) {
   agentForm.addEventListener('submit', async event => {
     event.preventDefault();
@@ -1557,9 +1570,10 @@ if (agentForm) {
     button.innerHTML = '<span class="agent-button-pulse" aria-hidden="true"></span> Agent running <b>…</b>';
     const result = $('agentResult');
     result.classList.remove('hidden');
-    result.textContent = developerModeEnabled
+    const paymentProposalPrompt = isExplicitPaymentProposalPrompt(prompt);
+    result.textContent = developerModeEnabled && !paymentProposalPrompt
       ? 'Sending task to Railway Developer Agent…'
-      : 'Sending task to Railway User Agent…';
+      : 'Sending request to Sentinel payment approval…';
     try {
       if (GUEST_MODE) {
         guestConversation.push({ role: 'user', content: prompt });
@@ -1581,11 +1595,17 @@ if (agentForm) {
       } else {
         authenticatedPrompt = prompt;
         renderAuthenticatedPending(prompt);
-        const data = await request('/terminal/run', {
-          method: 'POST',
-          headers: { 'Idempotency-Key': crypto.randomUUID() },
-          body: JSON.stringify({ mode: developerModeEnabled ? 'developer' : 'user', prompt, wallet_account: developerModeEnabled ? connectedAccount : null })
-        });
+        const data = paymentProposalPrompt
+          ? await request('/agent/run', {
+            method: 'POST',
+            headers: { 'Idempotency-Key': crypto.randomUUID() },
+            body: JSON.stringify({ prompt })
+          })
+          : await request('/terminal/run', {
+            method: 'POST',
+            headers: { 'Idempotency-Key': crypto.randomUUID() },
+            body: JSON.stringify({ mode: developerModeEnabled ? 'developer' : 'user', prompt, wallet_account: developerModeEnabled ? connectedAccount : null })
+          });
         renderAgentResult(data);
         $('agentPrompt').value = '';
         if (data.status === 'AWAITING_HUMAN_APPROVAL') toast('Review the exact receiver and amount before approving.');
