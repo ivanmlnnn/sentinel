@@ -28,6 +28,8 @@ test("Developer Mode stays off until NEP-413 wallet signature is server-verified
   assert.match(app, /ON · REVOCATION NOT CONFIRMED/);
   assert.match(app, /ON · WALLET APPROVED · 8H APP SESSION/);
   assert.match(app, /mode: developerModeEnabled \? 'developer' : 'user'/);
+  assert.doesNotMatch(app, /completeDeveloperWalletRedirect/);
+  assert.match(app, /if \(developerModeEnabled\) \{[\s\S]*?operation: 'revoke'[\s\S]*?await connector\.disconnect\(\)/);
   assert.match(app, /data\.agent === 'developer'/);
   assert.match(app, /PLAN ONLY/);
   assert.match(html, /WALLET APPROVED · APPLICATION SESSION ONLY/);
@@ -39,6 +41,9 @@ test("Production Worker exposes the D1-backed session API and forwards the HttpO
   assert.match(worker, /POST \/api\/agent\/developer-session/);
   assert.match(worker, /cookie: request\.headers\.get\("cookie"\)/);
   assert.match(sessionApi, /verifyMessage/);
+  assert.match(sessionApi, /if \(!sameOrigin\(request\)\)/);
+  assert.match(sessionApi, /strategy\.plan/);
+  assert.doesNotMatch(sessionApi, /payment\.propose|trade\.draft/);
   assert.match(sessionApi, /developer_session_challenges/);
   assert.match(sessionApi, /developer_sessions/);
   assert.match(sessionApi, /used_at IS NULL AND datetime\(expires_at\) > CURRENT_TIMESTAMP/);
