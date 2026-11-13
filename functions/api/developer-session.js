@@ -4,7 +4,7 @@ import { verifyMessage } from "near-api-js/nep413";
 
 const SESSION_SECONDS = 8 * 60 * 60;
 const CHALLENGE_SECONDS = 5 * 60;
-const PERMISSIONS = ["agent.chat", "investigate", "payment.propose", "trade.draft", "swap.quote", "portfolio.read"];
+const PERMISSIONS = ["agent.chat", "strategy.plan", "market.research", "swap.plan", "portfolio.read"];
 const ACCOUNT_RE = /^[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet$/;
 const RPC_URL = "https://rpc.testnet.near.org";
 const provider = new JsonRpcProvider({ url: RPC_URL });
@@ -75,9 +75,9 @@ export async function onRequestPost({ request, env }) {
   if (!env.DB) return json({ error: "DEVELOPER_SESSION_DATABASE_UNAVAILABLE" }, 503);
   const body = await readBody(request);
   if (!body || typeof body.operation !== "string") return json({ error: "INVALID_BODY" }, 400);
+  if (!sameOrigin(request)) return json({ error: "ORIGIN_MISMATCH" }, 403);
   const now = new Date();
   if (body.operation === "challenge") {
-    if (!sameOrigin(request)) return json({ error: "ORIGIN_MISMATCH" }, 403);
     const account = String(body.account_id || "").trim().toLowerCase();
     if (!ACCOUNT_RE.test(account)) return json({ error: "TESTNET_ACCOUNT_REQUIRED" }, 400);
     const recent = await env.DB.prepare(
@@ -115,7 +115,6 @@ export async function onRequestPost({ request, env }) {
     });
   }
   if (body.operation === "activate") {
-    if (!sameOrigin(request)) return json({ error: "ORIGIN_MISMATCH" }, 403);
     const challengeId = String(body.challenge_id || "");
     const account = String(body.account_id || "").trim().toLowerCase();
     const publicKey = String(body.public_key || "");
