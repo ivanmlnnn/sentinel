@@ -1,0 +1,50 @@
+/* Ask Sentinel — premium Web3 command deck */
+:root{--as-cyan:#53e6ff;--as-blue:#648cff;--as-violet:#a78bfa;--as-text:#edf7ff;--as-muted:#8ca5ba;--as-line:rgba(111,190,229,.17)}
+.agent-lab-grid{gap:18px!important;align-items:stretch!important}
+.agent-lab-panel,.sentinel-command-rail{position:relative!important;isolation:isolate;border:1px solid var(--as-line)!important;border-radius:22px!important;background:radial-gradient(ellipse at 12% 0%,rgba(53,150,255,.16),transparent 42%),radial-gradient(ellipse at 100% 100%,rgba(130,84,255,.10),transparent 38%),linear-gradient(145deg,#0b1928 0%,#07111d 65%,#080f1a 100%)!important;box-shadow:0 24px 70px rgba(0,0,0,.34),inset 0 1px rgba(255,255,255,.045)!important}
+.agent-lab-panel:before,.sentinel-command-rail:before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.23;background-image:linear-gradient(rgba(107,194,237,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(107,194,237,.08) 1px,transparent 1px);background-size:32px 32px;mask-image:linear-gradient(140deg,#000,transparent 78%)}
+.agent-chat-header{border-bottom:1px solid var(--as-line)!important;background:rgba(5,12,22,.62)!important;backdrop-filter:blur(18px)}
+.agent-chat-avatar,.agent-welcome-avatar{border:1px solid rgba(83,230,255,.4)!important;background:radial-gradient(circle at 35% 25%,#5ceaff,#3151a6 60%,#161f48)!important;box-shadow:0 0 28px rgba(83,230,255,.18)!important}
+.agent-chat-identity strong,.agent-welcome-copy strong{color:var(--as-text)!important;letter-spacing:-.02em}
+.agent-chat-identity span,.agent-welcome-copy p{color:var(--as-muted)!important}
+.agent-chat-ready{color:#79f3c3!important}
+.agent-welcome{border:1px solid rgba(83,230,255,.14)!important;border-radius:18px!important;background:linear-gradient(120deg,rgba(48,105,155,.16),rgba(98,71,164,.08))!important}
+.agent-quick-start{padding-top:5px!important}
+.agent-quick-label,.agent-compose-label,.sentinel-rail-eyebrow{color:#6fdcf4!important;font:700 9px "IBM Plex Mono",monospace!important;letter-spacing:.16em!important}
+.sentinel-skill-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
+.sentinel-skill-card{position:relative!important;min-height:70px!important;display:flex!important;align-items:center!important;gap:11px!important;padding:12px!important;border:1px solid rgba(116,184,225,.18)!important;border-radius:14px!important;background:linear-gradient(145deg,rgba(19,39,58,.92),rgba(10,22,36,.96))!important;color:#dceeff!important;transition:transform .18s,border-color .18s,box-shadow .18s!important}
+.sentinel-skill-card:hover,.sentinel-skill-card.is-selected{transform:translateY(-2px)!important;border-color:rgba(83,230,255,.58)!important;background:linear-gradient(145deg,rgba(22,57,79,.96),rgba(20,28,57,.96))!important;box-shadow:0 10px 30px rgba(27,156,220,.12),inset 0 0 0 1px rgba(83,230,255,.08)!important}
+.sentinel-skill-card .skill-card-icon{flex:0 0 34px!important;width:34px!important;height:34px!important;display:grid!important;place-items:center!important;border-radius:11px!important;background:linear-gradient(145deg,rgba(83,230,255,.17),rgba(113,111,255,.18))!important;color:var(--as-cyan)!important;font-size:17px!important}
+.sentinel-skill-card .skill-card-copy{display:flex!important;flex-direction:column!important;gap:4px!important;min-width:0}
+.sentinel-skill-card b{font:700 11px Inter,sans-serif!important;color:#eaf7ff!important}
+.sentinel-skill-card small{display:block!important;font:10px/1.4 Inter,sans-serif!important;color:#8daec4!important}
+.agent-compose-box{border:1px solid rgba(83,230,255,.28)!important;border-radius:17px!important;background:rgba(4,12,22,.88)!important;box-shadow:0 0 0 4px rgba(83,230,255,.035),inset 0 1px rgba(255,255,255,.04)!important}
+.agent-compose-box:focus-within{border-color:rgba(83,230,255,.68)!important;box-shadow:0 0 0 4px rgba(83,230,255,.08),0 0 34px rgba(83,230,255,.08)!important}
+.agent-compose-box textarea{color:#eaf7ff!important;caret-color:var(--as-cyan)!important}
+.agent-compose-box textarea::placeholder{color:#627e94!important}
+.agent-compose-bottom{border-top:1px solid rgba(111,190,229,.12)!important}
+.agent-compose-bottom>span{color:#718ba1!important}
+.agent-chat-form .primary-btn,.agent-compose-bottom .primary-btn{border:0!important;border-radius:11px!important;background:linear-gradient(110deg,#55e6f6,#8c9cff)!important;color:#061321!important;font-weight:800!important;box-shadow:0 7px 24px rgba(83,230,255,.2)!important}
+.agent-chat-form .primary-btn:hover{filter:brightness(1.08)!important;transform:translateY(-1px)}
+.agent-lab-warning{border:1px solid rgba(111,190,229,.16)!important;border-radius:13px!important;background:rgba(9,24,37,.72)!important}
+.agent-lab-warning b{color:#83e9ff!important}.agent-lab-warning span{color:#9ab3c7!important}
+.sentinel-command-rail{padding:22px!important;overflow:hidden}
+.sentinel-rail-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.sentinel-rail-live{display:flex;align-items:center;gap:7px;color:#75edc0;font:700 8px "IBM Plex Mono",monospace;letter-spacing:.08em}
+.sentinel-rail-live i,.sentinel-rail-status-dot{width:7px;height:7px;border-radius:50%;background:#61f1ba;box-shadow:0 0 12px rgba(97,241,186,.7)}
+.sentinel-command-rail h3{margin:18px 0 6px;color:#f1f8ff;font:750 23px Inter,sans-serif;letter-spacing:-.045em}
+.sentinel-rail-copy{margin:0 0 20px;color:#8ca5ba;font:12px/1.65 Inter,sans-serif}
+.sentinel-rail-actions{display:grid;gap:9px}
+.sentinel-rail-action{width:100%;min-height:70px;display:flex;align-items:center;gap:12px;padding:12px;border:1px solid rgba(111,190,229,.16);border-radius:14px;background:linear-gradient(120deg,rgba(18,39,59,.92),rgba(9,20,34,.95));color:#eaf6ff;text-align:left;cursor:pointer;transition:transform .18s,border-color .18s,background .18s,box-shadow .18s}
+.sentinel-rail-action:hover,.sentinel-rail-action:focus-visible{outline:none;transform:translateX(3px);border-color:rgba(83,230,255,.55);background:linear-gradient(120deg,rgba(22,57,78,.96),rgba(21,27,54,.96));box-shadow:0 8px 28px rgba(44,145,211,.12)}
+.sentinel-rail-action>span:nth-child(2){display:flex;flex:1;min-width:0;flex-direction:column;gap:5px}
+.sentinel-rail-action b{font:700 11px Inter,sans-serif;color:#e9f7ff}
+.sentinel-rail-action small{font:10px Inter,sans-serif;color:#87a4ba}
+.sentinel-rail-icon{width:35px;height:35px;display:grid;place-items:center;border:1px solid rgba(83,230,255,.18);border-radius:11px;background:rgba(83,230,255,.08);color:#66e8ff;font-size:17px}
+.sentinel-rail-arrow{color:#68dff8;font-size:15px}
+.sentinel-rail-status{display:flex;align-items:center;gap:10px;margin-top:19px;padding:13px;border:1px solid rgba(97,241,186,.16);border-radius:13px;background:rgba(22,80,67,.13)}
+.sentinel-rail-status>span:last-child{display:flex;flex-direction:column;gap:4px}
+.sentinel-rail-status b{color:#83edc5;font:700 9px "IBM Plex Mono",monospace}
+.sentinel-rail-status small{color:#86a99f;font:10px Inter,sans-serif}
+@media(max-width:850px){.sentinel-command-rail{padding:18px!important}.sentinel-rail-actions{grid-template-columns:repeat(2,minmax(0,1fr))}.sentinel-rail-action{min-height:78px}}
+@media(max-width:480px){.sentinel-skill-grid{grid-template-columns:1fr!important}.sentinel-rail-actions{grid-template-columns:1fr}.sentinel-rail-action{min-height:64px}}
