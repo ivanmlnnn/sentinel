@@ -6,6 +6,11 @@
 
 Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verified threat registry, then returns a deterministic verdict: `ALLOW`, `WARN`, `BLOCK`, or `INCOMPLETE`.
 
+
+## Independent AI and human audit
+
+For reviewers and coding agents, start with the [AI Audit Index](docs/AI_AUDIT_INDEX.md) and [machine-readable audit manifest](docs/AI_AUDIT_MANIFEST.json). They map each capability to source files, tests, exact commit provenance, evidence scope, reproduction commands, and explicit production/lab/unverified boundaries. The proof-carrying contract remains a lab experiment; it is not a deployed end-to-end payment path. See [Draft PR #42](https://github.com/ivanmlnnn/sentinel/pull/42).
+
 ## Judge start here — 5-minute evidence path
 
 ## Current production deployment — 12 November 2026
