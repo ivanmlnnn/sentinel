@@ -1506,6 +1506,11 @@ if (agentForm) {
     const button = $('agentRunBtn');
     const prompt = $('agentPrompt').value.trim();
     if (!prompt) return;
+    // A new user prompt supersedes any in-flight chat swap request.
+    if (activeChatSwapController) {
+      activeChatSwapController.abort();
+      activeChatSwapController = null;
+    }
     if (!developerModeEnabled && /\b(swap|tukar|exchange)\s+\d/i.test(prompt)) {
       authenticatedPrompt = prompt;
       if (activeChatSwapController) activeChatSwapController.abort();
