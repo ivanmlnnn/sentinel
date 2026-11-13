@@ -542,7 +542,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   const walletAccountAtRender = getConnectedAccount();
   const walletStateText = el("span", walletAccountAtRender ? shortWalletAddress(walletAccountAtRender) : "Wallet not connected");
   walletState.append(walletStateIcon, walletStateText);
-  const connectButton = el("button", "Connect wallet & get quote", "swap-connect-button");
+  const connectButton = el("button", "Connect required wallets", "swap-connect-button");
   connectButton.type = "button";
   walletBar.append(walletState, connectButton);
   fields.append(walletBar);
@@ -569,12 +569,12 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       const addresses = [walletAddressFor(origin.blockchain), walletAddressFor(dest.blockchain)].filter(Boolean);
       walletStateText.textContent = addresses.map(shortWalletAddress).join(" · ");
       walletState.classList.add("is-connected");
-      connectButton.textContent = "Wallets connected ✓";
+      connectButton.textContent = "Get verified quote";
       status.textContent = "Wallet connected. Verifying route and quote…";
       originPicker.refresh(); destinationPicker.refresh();
       quoteButton.click();
     } catch (error) {
-      connectButton.textContent = "Connect wallet & get quote";
+      connectButton.textContent = "Connect required wallets";
       status.textContent = error.message || "Wallet connection failed.";
     } finally { connectButton.disabled = false; }
   });
@@ -598,7 +598,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     if (detected.length) {
       walletStateText.textContent = detected.map(shortWalletAddress).join(" · ");
       walletState.classList.add("is-connected");
-      connectButton.textContent = "Verify wallet & get quote";
+      connectButton.textContent = "Get verified quote";
     }
   })();
   addField(fields, "Amount", amountInput);
@@ -618,7 +618,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   fields.append(flipButton);
   addField(fields, "You receive · destination asset / network", destinationPicker.root);
   addField(fields, "Maximum slippage", slippage);
-  const status = el("p", "Connect your wallet to verify the route and fetch a quote.");
+  const status = el("p", "Connect the wallets for both networks to check the route and price.", "sentinel-swap-status");
   const details = el("pre"); details.hidden = true;
   const quoteButton = el("button", "Get verified quote", "secondary-btn"); quoteButton.type = "button"; quoteButton.hidden = true;
   const approveButton = el("button", "Approve swap", "primary-btn"); approveButton.type = "button"; approveButton.disabled = true; approveButton.hidden = true;
@@ -630,7 +630,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   for (const input of [amountInput, slippage]) input.addEventListener("change", invalidate);
   quoteButton.addEventListener("click", async () => {
     quoteButton.disabled = true; approveButton.disabled = true;
-    status.textContent = "Agent 1: resolving exact token IDs and requesting Tidepool dry quote…";
+    status.textContent = "Checking the selected route and current Tidepool price…";
     try {
       const origin = tokens.find(token => String(token.asset_id ?? "") === originSelect.value);
       const destination = tokens.find(token => String(token.asset_id ?? "") === destSelect.value);
@@ -664,10 +664,10 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         throw new Error("Dry quote did not match the selected route.");
       }
       swap = { ...requestBody, origin, destination };
-      status.textContent = "Agent 1 route: " + origin.blockchain.toUpperCase() + " → " + destination.blockchain.toUpperCase() +
+      status.textContent = "Route ready: " + origin.blockchain.toUpperCase() + " → " + destination.blockchain.toUpperCase() +
         " · " + (dryQuote.quote.amount_in_formatted || dryQuote.quote.amount_in) + " " + origin.symbol +
         " → " + (dryQuote.quote.amount_out_formatted || dryQuote.quote.amount_out) + " " + destination.symbol +
-        ". Agent 2 risk gate runs on the fresh signed quote before approval.";
+        ". Security checks run again before wallet approval.";
       details.textContent = JSON.stringify({ route: { origin: formatToken(origin), destination: formatToken(destination) }, dry_quote: dryQuote }, null, 2);
       details.hidden = true;
       if (guestMode) status.textContent += " Guest mode is quote-only; sign in to approve.";
@@ -692,7 +692,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       } else if (!swap.refundTo) {
         throw new Error("Enter the refund address on the selected origin chain.");
       }
-      status.textContent = "Agent 2: requesting a fresh signed live quote and deterministic risk evaluation…";
+      status.textContent = "Checking the provider's signed quote and swap safety…";
       const liveQuote = await request("/trading/live-quote", { method: "POST", body: JSON.stringify(swap) });
       if (liveQuote.mode !== "LIVE_QUOTE_AWAITING_USER_SIGNATURE" || liveQuote.execution_enabled !== false ||
           liveQuote.provider_signature_verified !== true || liveQuote.risk_evaluation?.decision !== "ALLOW" ||
