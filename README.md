@@ -6,7 +6,7 @@ NEAR Sentinel combines a conversational agent with a deterministic wallet-risk i
 
 - **Live dashboard:** https://sentinel.ivmaladin.workers.dev
 - **Production Main Worker:** https://sentinel.ivmaladin.workers.dev
-- **Isolated Signer Worker:** https://sentinel-signer.ivmaladin.workers.dev
+- **Isolated Signer Worker:** private Cloudflare service binding (`SIGNER_SERVICE`); no public Worker URL is part of the intended architecture.
 - **Terminal runtime:** https://sentinel-terminal-runtime-production.up.railway.app
 
 ## Start here
