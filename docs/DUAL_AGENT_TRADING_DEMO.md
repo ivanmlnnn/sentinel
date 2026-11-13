@@ -13,7 +13,7 @@ This feature branch adds an authenticated, read-only research workflow. It uses 
 
 The adapter uses Kraken Spot public OHLC at https://api.kraken.com/0/public/OHLC. Supported initial pairs: XBTUSD, ETHUSD, SOLUSD, ADAUSD, DOTUSD, LINKUSD, XRPUSD, AVAXUSD. Supported intervals: 1, 5, 15, 30, 60, 240, 1440, 10080, and 21600 minutes.
 
-The adapter requests 60 candles, validates the response and timestamps, and excludes the final forming candle. A stale or malformed response stops the workflow.
+The adapter retains 60 completed candles from the provider response, validates the response and timestamps, and excludes the final forming candle. A stale or malformed response stops the workflow.
 
 ## API
 
