@@ -1,0 +1,156 @@
+{
+  "schema_version": "1.0.0",
+  "project": "NEAR Sentinel",
+  "repository": "https://github.com/ivanmlnnn/sentinel",
+  "purpose": "Pre-sign security checkpoint and proof-carrying payment research for NEAR agent payments",
+  "audit_target": {
+    "branch": "lab/proof-carrying-agent-economy",
+    "commit": "ed86e0fd76f47e8ecebe33a926e0e39542ae6bbe",
+    "pull_request": 42,
+    "pull_request_url": "https://github.com/ivanmlnnn/sentinel/pull/42",
+    "status": "OPEN_DRAFT_NOT_MERGEABLE",
+    "production_branch": "main"
+  },
+  "verdict_policy": {
+    "production_claims_must_be_limited_to_main": true,
+    "lab_claims_must_name_branch_and_commit": true,
+    "local_tests_are_not_live_chain_evidence": true,
+    "no_claim_of_ai_judge_consensus_or_win": true,
+    "no_claim_of_tee_remote_attestation": true
+  },
+  "architecture_layers": [
+    {
+      "id": "agent_proposal",
+      "status": "IMPLEMENTED_ON_MAIN",
+      "role": "AI/agent proposes a payment intent; proposal is untrusted input"
+    },
+    {
+      "id": "near_evidence_and_policy",
+      "status": "IMPLEMENTED_ON_MAIN",
+      "role": "Main application gathers NEAR evidence and evaluates deterministic policy; incomplete evidence must not be treated as safe"
+    },
+    {
+      "id": "human_wallet_approval",
+      "status": "IMPLEMENTED_ON_MAIN",
+      "role": "Wallet owner approves exact receiver and amount through existing wallet approval flow"
+    },
+    {
+      "id": "signed_verdict",
+      "status": "IMPLEMENTED_ON_MAIN",
+      "role": "Ed25519 signed assessment integrity at isolated signer boundary; signature authenticity does not replace signer-side policy checks"
+    },
+    {
+      "id": "signed_preflight_re_evaluation",
+      "status": "IMPLEMENTED_ON_LAB_BRANCH",
+      "role": "authorizeSignedPreflight() re-evaluates decision, status, risk score, receiver, amount, allowlist, network, kill switch and payment cap before reservation; not deployed from this branch"
+    },
+    {
+      "id": "pcpi_sha256_commitment",
+      "status": "REFERENCE_MODULE_IN_PR36_NOT_PRODUCTION_WIRED",
+      "role": "Canonical SHA-256 commitment binds network/chain, actor, wallet, receiver, exact amount, nonce, expiry, policy hash and approval ID"
+    },
+    {
+      "id": "proof_carrying_contract",
+      "status": "CONTRACT_SOURCE_AND_UNIT_TESTS_ON_LAB_BRANCH_NOT_DEPLOYED",
+      "role": "NEAR Rust contract requires Ed25519 proof envelope; binds chain, contract, caller, receiver, amount, approval, nonce, validity window, intent hash, provenance root, evidence snapshot, policy version and key version; enforces replay, expiry, per-payment and daily caps"
+    },
+    {
+      "id": "production_signer_to_proof_contract",
+      "status": "NOT_IMPLEMENTED",
+      "role": "Production Main Worker and Signer Worker do not construct and submit the new contract proof envelope"
+    },
+    {
+      "id": "near_testnet_proof_payment",
+      "status": "NOT_VERIFIED",
+      "role": "No fresh deployment, proof-key installation, live proof payment or final receipt verification is claimed"
+    },
+    {
+      "id": "tee_remote_attestation",
+      "status": "NOT_IMPLEMENTED",
+      "role": "No hardware TEE remote-attestation verifier is claimed"
+    }
+  ],
+  "proof_layers_must_not_be_conflated": [
+    "PCPI SHA-256 intent commitment in PR #36 is not the Ed25519 contract proof envelope in PR #42.",
+    "authorizeSignedPreflight() is signer-side policy re-evaluation on the lab branch; it is not PCPI commitment verification.",
+    "The JavaScript contract-envelope helper is a reference/test signer, not the production private-key custody service.",
+    "The Rust contract verifies the configured proof signer's signature and bound context; it does not independently fetch or authenticate external evidence.",
+    "The proof-carrying contract is not the current production payment path."
+  ],
+  "evidence": {
+    "historical_local_run": {
+      "file": "labs/proof-carrying/evidence/local-run-2026-11-12.json",
+      "recorded_at": "2026-11-12",
+      "tested_commit": "49731643960109cbbc20ae7de16ab08d32518254",
+      "contract_source_tested_commit": "96a59b7f98fe13dd493ede577a4d957d211e0600",
+      "environment": "Vercel Sandbox; Node 24.22.1; Rust/Cargo 1.99.1; Wrangler/Miniflare local D1",
+      "results": {
+        "root_tests": "219/219 PASS",
+        "proof_lab_tests": "73/73 PASS",
+        "rust_contract_unit_tests": "14/14 PASS",
+        "js_contract_envelope_tests": "3/3 PASS",
+        "ed25519_mutation_vectors": "2840/2840 rejected",
+        "cross_language_digest": "MATCH 79f97f55182728dfd98acd123695dc2aefed18c78ec348c3f56399e40e3a4f37",
+        "local_d1_nonce_race": "1 accepted / 499 rejected",
+        "local_d1_daily_cap_race": "100 accepted / 900 rejected",
+        "local_d1_idempotency_race": "1 accepted / 99 rejected",
+        "local_d1_approval_race": "1 accepted / 99 rejected",
+        "wasm_build": "PASS",
+        "migration_validation": "PASS"
+      },
+      "scope": "Historical local evidence for the exact tested commits above; not evidence that current PR head ed86e0f was rerun."
+    },
+    "later_branch_readme_record": {
+      "source": "labs/proof-carrying/README.md on audit target commit",
+      "recorded_claims": {
+        "root_tests": "222/222 PASS",
+        "isolated_signer_tests": "16/16 PASS",
+        "proof_lab_tests": "73/73 PASS",
+        "rust_contract_tests": "14/14 PASS",
+        "ed25519_mutation_vectors": "2840/2840 rejected"
+      },
+      "status": "DOCUMENTED_BRANCH_CLAIMS_NOT_BACKED_BY_THE_COMMITTED_JSON_SNAPSHOT_OR_GITHUB_ACTIONS_RUN_FOR_AUDIT_TARGET",
+      "required_action": "Rerun all commands on the exact PR head and attach fresh raw logs/evidence JSON."
+    },
+    "github_ci_for_audit_target": {
+      "commit": "ed86e0fd76f47e8ecebe33a926e0e39542ae6bbe",
+      "github_actions_runs_found": 0,
+      "combined_status": "Vercel success status only",
+      "interpretation": "Vercel preview deployment status is not proof that repository tests, Rust tests, or security workflows passed."
+    }
+  },
+  "local_reproduction_commands": [
+    "npm test",
+    "node --test tests/isolated-signer-worker.test.mjs",
+    "cd labs/proof-carrying && npm test",
+    "cd labs/proof-carrying && npm run verify",
+    "cd labs/proof-carrying && npm run test:d1",
+    "cargo test --manifest-path payment-contract/Cargo.toml -- --nocapture",
+    "cargo build --manifest-path payment-contract/Cargo.toml --target wasm32-unknown-unknown --release",
+    "npm run check:d1"
+  ],
+  "not_verified": [
+    "Current PR head has not been shown to have a fresh complete test run in GitHub Actions.",
+    "Remote Cloudflare production D1 concurrency or regional behavior.",
+    "Production Main Worker and Signer Worker integration with the new proof envelope.",
+    "Fresh NEAR Testnet deployment and proof signer public-key installation.",
+    "Live proof-carrying NEAR payment and final receipt verification.",
+    "Independent external evidence authentication by the contract.",
+    "Hardware TEE remote attestation.",
+    "External AI reviewers' conclusions or hackathon outcome."
+  ],
+  "review_instructions": [
+    "Read README.md first, then docs/AI_AUDIT_INDEX.md and this JSON manifest.",
+    "Inspect the exact audit_target commit; do not silently substitute main or a newer branch head.",
+    "Verify every implementation claim against the referenced source and tests.",
+    "Check the exact tested_commit in the evidence JSON before repeating test totals.",
+    "Treat all local Miniflare and local Rust results as local tests, not production or Testnet evidence.",
+    "Report production, lab, reference-only, planned and unverified capabilities separately.",
+    "Do not infer a win, security certification, or unanimous AI verdict from repository documentation."
+  ],
+  "related_pull_requests": {
+    "pcpi_reference": "https://github.com/ivanmlnnn/sentinel/pull/36",
+    "beyond_tee_research": "https://github.com/ivanmlnnn/sentinel/pull/34",
+    "proof_carrying_contract_lab": "https://github.com/ivanmlnnn/sentinel/pull/42"
+  }
+}
