@@ -353,7 +353,7 @@ export async function evaluateTidepoolSwapRisk(providerQuote, expected) {
 
 export async function getTidepoolLiveQuote(input, fetchImpl = fetch, now = Date.now(), verifySignature = verifyQuoteSignature) {
   const tokens = await getTidepoolTestnetTokens(fetchImpl);
-  const validation = validateTradingQuoteInput(input, tokens);
+  const validation = validateTradingQuoteInput(input, tokens, now);
   if (!validation.ok) return validation;
   const requestBody = { ...buildTidepoolDryQuotePayload(validation.value, now), dry: false };
   const payload = await fetchJson(TIDEPOOL_BASE_URL + "/v0/quote", {
