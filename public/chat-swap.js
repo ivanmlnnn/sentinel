@@ -560,6 +560,15 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
       const origin = tokens.find(token => token.asset_id === originSelect.value);
       const destination = tokens.find(token => token.asset_id === destSelect.value);
       if (!origin || !destination) throw new Error("Choose exact origin and destination assets from the live token registry.");
+      if (origin.blockchain === "near" || destination.blockchain === "near") {
+        const current = await connector?.getConnectedWallet?.();
+        activeNearAccount = current?.accounts?.[0]?.accountId && nearAccount(current.accounts[0].accountId)
+          ? current.accounts[0].accountId : null;
+      }
+      if (CHAIN_IDS[origin.blockchain] || CHAIN_IDS[destination.blockchain]) {
+        const accounts = await window.ethereum?.request?.({ method: "eth_accounts" });
+        activeEvmAccount = evmAddress(accounts?.[0]) ? accounts[0] : null;
+      }
       const recipient = walletAddressFor(destination.blockchain);
       const refundTo = walletAddressFor(origin.blockchain);
       if (!recipient || !refundTo) throw new Error("Connect the wallet(s) for both selected networks before requesting a quote. Recipient and refund addresses are taken automatically from the connected wallet.");
@@ -597,8 +606,8 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
       if (!swap || !dryQuote) throw new Error("Request a fresh quote before approval.");
       if (guestMode) throw new Error("Guest mode cannot approve or sign transactions.");
       if (swap.origin.blockchain === "near") {
-        if (!connector || !connectedAccount || !nearAccount(connectedAccount)) throw new Error("Connect Meteor or another NEAR Testnet wallet first.");
-        if (swap.refundTo.toLowerCase() !== connectedAccount.toLowerCase()) throw new Error("NEAR refund account must match connected wallet.");
+        if (!connector || !activeNearAccount || !nearAccount(activeNearAccount)) throw new Error("Connect Meteor or another NEAR Testnet wallet first.");
+        if (swap.refundTo.toLowerCase() !== activeNearAccount.toLowerCase()) throw new Error("NEAR refund account must match connected wallet.");
       } else if (CHAIN_IDS[swap.origin.blockchain]) {
         const wallet = await connectEvm(refundInput, swap.origin.blockchain);
         if (wallet.account.toLowerCase() !== swap.refundTo.toLowerCase()) throw new Error("Connected EVM wallet differs from reviewed refund address. Request a fresh quote.");
@@ -626,7 +635,7 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
           "Continue to show the exact manual deposit instructions? No wallet prompt will open in Sentinel.");
       if (!window.confirm(summary)) throw new Error("Cancelled before wallet approval. No transaction was submitted.");
       if (liveQuote.deposit_type === "INTENTS" && swap.origin.blockchain === "near") {
-        await executeNearIntents({ request, connector, connectedAccount, liveQuote, swap, statusNode: status, detailsNode: details, encodeBase58, onSubmitted: () => { submitted = true; } });
+        await executeNearIntents({ request, connector, connectedAccount: activeNearAccount, liveQuote, swap, statusNode: status, detailsNode: details, encodeBase58, onSubmitted: () => { submitted = true; } });
       } else if (liveQuote.deposit_type === "ORIGIN_CHAIN" && CHAIN_IDS[swap.origin.blockchain]) {
         await executeEvmDeposit({ request, token: swap.origin, liveQuote, swap, refundInput, statusNode: status, detailsNode: details, onSubmitted: () => { submitted = true; } });
       } else if (liveQuote.deposit_type === "ORIGIN_CHAIN") {
