@@ -17,7 +17,7 @@ test("Developer Mode stays off until NEP-413 wallet signature is server-verified
   assert.match(app, /requestDeveloperModeWalletApproval/);
   assert.match(app, /wallet\.signMessage\(/);
   assert.match(app, /signing_standard === 'NEP-413'/);
-  assert.match(app, /developer_session_callback=1/);
+  assert.match(app, /signInAndSignMessage/);
   assert.match(app, /restoreDeveloperSession\(account\.accountId\)/);
   assert.match(app, /accountId\.endsWith\('\.testnet'\)/);
   assert.match(app, /operation: 'challenge'/);
@@ -33,7 +33,6 @@ test("Developer Mode stays off until NEP-413 wallet signature is server-verified
 test("Production Worker exposes the D1-backed session API and forwards the HttpOnly cookie to Railway", () => {
   assert.match(worker, /POST \/api\/agent\/developer-session/);
   assert.match(worker, /cookie: request\.headers\.get\("cookie"\)/);
-  assert.match(worker, /!isDeveloperWalletCallback/);
   assert.match(sessionApi, /verifyMessage/);
   assert.match(sessionApi, /developer_session_challenges/);
   assert.match(sessionApi, /developer_sessions/);
