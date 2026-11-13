@@ -76,9 +76,14 @@ async function request(path, options = {}) {
     const fetchOptions = { ...options, headers };
     delete fetchOptions.signal;
     if (controller) fetchOptions.signal = controller.signal;
+    // Cloudflare Pages functions are file-routed as /api/trading-<action>.
+    // The swap UI uses logical /trading/<action> names; normalize them here.
+    const apiPath = path.startsWith('/trading/')
+      ? '/trading-' + path.slice('/trading/'.length)
+      : path;
     const response = await (abortPromise
-      ? Promise.race([fetch(API + path, fetchOptions), abortPromise])
-      : fetch(API + path, fetchOptions));
+      ? Promise.race([fetch(API + apiPath, fetchOptions), abortPromise])
+      : fetch(API + apiPath, fetchOptions));
     const contentType = response.headers.get('content-type') || 'unknown';
     const raw = await response.text();
     let data = null;
