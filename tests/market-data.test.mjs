@@ -40,4 +40,6 @@ test("rejects stale candles and provider transport failures", async () => {
   assert.equal(stale.reason, "MARKET_DATA_STALE");
   const failed = await getKrakenOhlcv({}, async () => { throw new Error("offline"); }, NOW);
   assert.equal(failed.reason, "MARKET_DATA_PROVIDER_UNAVAILABLE");
+  const oversized = await getKrakenOhlcv({}, async () => new Response("x".repeat(256_001)), NOW);
+  assert.equal(oversized.reason, "MARKET_DATA_RESPONSE_TOO_LARGE");
 });
