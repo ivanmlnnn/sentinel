@@ -124,6 +124,7 @@ async function executeNearIntents(args) {
   const signed = await wallet.signMessage({ message: intent.payload.message, recipient: intent.payload.recipient, nonce });
   if (signed?.accountId && signed.accountId.toLowerCase() !== connectedAccount.toLowerCase()) throw new Error("Wallet signed with a different account.");
   const signedPublicKey = signed?.publicKey?.toString?.() || signed?.public_key || "";
+  if (signedPublicKey !== publicKey) throw new Error("NEAR wallet signature key differs from the connected account key.");
   const rawSignature = signed?.signature;
   const signature = typeof rawSignature === "string"
     ? (rawSignature.startsWith("ed25519:") ? rawSignature : "ed25519:" + rawSignature)
@@ -165,6 +166,10 @@ async function executeEvmDeposit(args) {
   const tx = { from: account };
   if (token.contract_address) {
     if (!tokenAddressValid(token)) throw new Error("Token contract address is invalid.");
+    const contractCode = await provider.request({ method: "eth_getCode", params: [token.contract_address, "latest"] });
+    if (typeof contractCode !== "string" || contractCode === "0x" || contractCode === "0x0") {
+      throw new Error("Selected ERC-20 contract has no bytecode on the connected Testnet.");
+    }
     tx.to = token.contract_address; tx.value = "0x0";
     tx.data = encodeErc20Transfer(liveQuote.deposit_address, swap.amount);
   } else {
@@ -255,7 +260,7 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
       const destination = tokens.find(token => token.asset_id === destSelect.value);
       if (!origin || !destination) throw new Error("Choose exact origin and destination assets from the live token registry.");
       let refundTo = refundInput.value.trim();
-      if (CHAIN_IDS[origin.blockchain]) {
+      if (CHAIN_IDS[origin.blockchain] && !guestMode) {
         const wallet = await connectEvm(refundInput, origin.blockchain); refundTo = wallet.account;
       }
       const requestBody = {
