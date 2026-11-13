@@ -11,6 +11,7 @@ import { onRequestPost as internalInvestigatePost } from "../functions/api/inter
 import { onRequestPost as privyWebhookPost } from "../functions/api/privy-webhook.js";
 import { onRequestGet as tradingTokensGet } from "../functions/api/trading-tokens.js";
 import { onRequestGet as tradingAnalysisGet } from "../functions/api/trading-analysis.js";
+import { onRequestPost as tradingAgentPost } from "../functions/api/trading-agent.js";
 import { onRequestPost as tradingQuotePost } from "../functions/api/trading-quote.js";
 import { onRequestPost as tradingLiveQuotePost } from "../functions/api/trading-live-quote.js";
 import { onRequestPost as tradingGenerateIntentPost } from "../functions/api/trading-generate-intent.js";
@@ -35,6 +36,7 @@ const routes = {
   "POST /api/privy-webhook": privyWebhookPost,
   "GET /api/trading/tokens": tradingTokensGet,
   "GET /api/trading/analysis": tradingAnalysisGet,
+  "POST /api/trading/agent": tradingAgentPost,
   "POST /api/trading/quote": tradingQuotePost,
   "POST /api/trading/live-quote": tradingLiveQuotePost,
   "POST /api/trading/generate-intent": tradingGenerateIntentPost,
