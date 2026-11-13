@@ -434,6 +434,9 @@ export async function verifyTidepoolLiveQuoteBinding(providerQuote, expected, fe
 }
 
 export async function generateTidepoolSwapIntent(input, fetchImpl = fetch, verifySignature = verifyQuoteSignature) {
+  if (input?.providerQuote?.quoteRequest?.depositType === "ORIGIN_CHAIN") {
+    return { ok: false, reason: "ORIGIN_CHAIN_DEPOSIT_REQUIRES_NATIVE_WALLET" };
+  }
   if (!input || typeof input !== "object" || Array.isArray(input) ||
       Object.keys(input).some(key => !["providerQuote", "signerId", "originAsset", "destinationAsset", "amount", "recipient", "refundTo", "slippageTolerance"].includes(key))) {
     return { ok: false, reason: "INVALID_SWAP_INTENT_REQUEST" };
