@@ -455,8 +455,8 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
   else destSelect.value = "";
   originSelect.className = "swap-native-select";
   destSelect.className = "swap-native-select";
-  const originPicker = createSwapTokenPicker(originSelect, tokens, parsed.from, connectedAccount, () => { defaults(); invalidate(); });
-  const destinationPicker = createSwapTokenPicker(destSelect, tokens, parsed.to, connectedAccount, () => { defaults(); invalidate(); });
+  const originPicker = createSwapTokenPicker(originSelect, tokens, parsed.from, () => activeNearAccount, () => { defaults(); invalidate(); });
+  const destinationPicker = createSwapTokenPicker(destSelect, tokens, parsed.to, () => activeNearAccount, () => { defaults(); invalidate(); });
   const refundInput = null;
   let activeNearAccount = connectedAccount && nearAccount(connectedAccount) ? connectedAccount : null;
   let activeEvmAccount = null;
