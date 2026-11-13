@@ -73,7 +73,7 @@ The added focused test files cover market-data normalization and failure cases, 
 
 ## Honest scope and next work
 
-This is not yet an autonomous trading system and does not prove profitability. It does not yet maintain paper-trade positions or compute a historical performance report. It does not execute swaps or support cross-chain settlement through this new agent flow.
+This is not yet an autonomous trading system and does not prove profitability. It does not yet maintain a persistent paper-trade position ledger or provide out-of-sample validated performance evidence. It does not execute swaps or support cross-chain settlement through this new agent flow.
 
 The existing Tidepool execution code is a separate NEAR Testnet path. Before connecting it to these agents, Sentinel must independently compare a fresh route quote, net output after fees/gas/slippage, chain and wallet capabilities, exact approval binding, idempotency, and final provider settlement. Meteor wallet signing is not itself a liquidity route.
 
