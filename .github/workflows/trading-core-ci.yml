@@ -57,6 +57,7 @@ jobs:
           node --check api/trading/tokens.js
           node --check api/trading/quote.js
           node --check public/trade-skill-draft.js
+          node --check public/chat-swap.js
           node --check public/app.js
       - name: Full test suite
         run: npm test
