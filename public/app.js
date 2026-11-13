@@ -1552,6 +1552,7 @@ function isExplicitPaymentProposalPrompt(prompt) {
     /^(?:please\s+)?(?:(?:i\s+(?:want|would like)\s+to\s+)?(?:send|transfer))\s+((?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?)\s*(?:near|Ⓝ)\s+to\s+[a-z0-9]+(?:[-_.][a-z0-9]+)*$/i,
     /^(?:please\s+)?(?:(?:i\s+(?:want|would like)\s+to\s+)?(?:send|transfer))\s+(?:to\s+)?[a-z0-9]+(?:[-_.][a-z0-9]+)*\s+(?:an?\s+amount\s+of\s+)?(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\s*(?:near|Ⓝ)$/i,
     /^(?:saya\s+)?(?:mau|ingin|hendak)\s+(?:mengirim|kirim|transfer)\s+(?:near\s+)?(?:ke\s+)?[a-z0-9]+(?:[-_.][a-z0-9]+)*\s+(?:sebesar\s+)?(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\s*(?:near|Ⓝ)$/i,
+    /^(?:kirim|transfer)\s+(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\s*(?:near|Ⓝ)\s+ke\s+[a-z0-9]+(?:[-_.][a-z0-9]+)*$/i,
     /^(?:saya\s+)?(?:mau|ingin|hendak)\s+(?:mengirim|kirim|transfer)\s+(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\s*(?:near|Ⓝ)\s+ke\s+[a-z0-9]+(?:[-_.][a-z0-9]+)*$/i,
     /^(?:kirim|transfer)\s+ke\s+[a-z0-9]+(?:[-_.][a-z0-9]+)*\s+(?:sebesar\s+)?(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\s*(?:near|Ⓝ)$/i,
     /^(?:please\s+)?(?:create|make|propose|buat|ajukan)\s+(?:a\s+)?payment\s+proposal\s+to\s+[a-z0-9]+(?:[-_.][a-z0-9]+)*\s+for\s+(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,6})?\s*(?:near|Ⓝ)(?:[.!?\s]|$)/i
