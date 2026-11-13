@@ -12,9 +12,9 @@ Sentinel discovers live Testnet assets from Tidepool and binds each quote to exa
 | NEAR-origin Intents signing | Implemented in chat flow | NEP-413 signing via NEAR Connect; Meteor is available through the NEAR wallet picker |
 | EVM-origin deposit | Implemented in chat flow, not E2E verified | EIP-1193 wallet; Sepolia, Base Sepolia, Arbitrum Sepolia and BSC Testnet; native transfer or ERC-20 transfer to the exact quote deposit address |
 | Multi-chain destination recipient | Implemented at quote layer | Destination address is selected/validated for the destination chain; depends on the live Tidepool token registry |
-| Solana-origin wallet signing | Not implemented in Sentinel chat | Quote may be available; direct wallet transaction is intentionally blocked |
-| Sui-origin wallet signing | Not implemented in Sentinel chat | Quote may be available; direct wallet transaction is intentionally blocked |
-| Stellar/XRP/Bitcoin-origin wallet signing | Not implemented in Sentinel chat | Memo/tag and chain-specific wallet transaction construction are not yet integrated |
+| Solana-origin wallet signing | Not implemented in Sentinel chat | Quote, exact deposit instructions and transaction-hash tracking are available; wallet signing remains manual |
+| Sui-origin wallet signing | Not implemented in Sentinel chat | Quote, exact deposit instructions and transaction-hash tracking are available; wallet signing remains manual |
+| Stellar/XRP/Bitcoin-origin wallet signing | Not implemented in Sentinel chat | Quote, memo/tag instructions and transaction-hash tracking are available; wallet signing remains manual |
 | Tidepool deposit notification and status polling | Implemented for NEAR Intents and EVM deposit paths | NEAR uses `/v0/submit-intent`; EVM uses `/v0/deposit/submit`; both poll `/v0/status` |
 | End-to-end settlement | Not yet verified | Requires funded Testnet wallet runs and provider-confirmed `SUCCESS` for each origin adapter |
 
