@@ -294,8 +294,8 @@ function formatUnitsForDisplay(raw, decimals) {
 async function readSwapWalletBalance(token, nearWalletAccount) {
   const chain = String(token.blockchain || "").toLowerCase();
   if (CHAIN_IDS[chain]) {
-    const provider = window.ethereum;
-    if (!provider || typeof provider.request !== "function") return { value: null, note: "Connect an EVM wallet" };
+    const provider = getInjectedEvmProvider();
+    if (!provider || typeof provider.request !== "function") return { value: null, note: "Open an EVM wallet browser or install a compatible wallet" };
     const accounts = await provider.request({ method: "eth_accounts" });
     const account = accounts?.[0];
     if (!evmAddress(account)) return { value: null, note: "Connect an EVM wallet" };
@@ -597,7 +597,8 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
           ? current.accounts[0].accountId : null;
       }
       if (CHAIN_IDS[origin.blockchain] || CHAIN_IDS[destination.blockchain]) {
-        const accounts = await window.ethereum?.request?.({ method: "eth_accounts" });
+        const provider = getInjectedEvmProvider();
+        const accounts = await provider?.request?.({ method: "eth_accounts" });
         activeEvmAccount = evmAddress(accounts?.[0]) ? accounts[0] : null;
       }
       const recipient = walletAddressFor(destination.blockchain);
