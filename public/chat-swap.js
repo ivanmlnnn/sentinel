@@ -435,25 +435,31 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
   return { root, sync: syncTrigger, refresh: refreshBalances, close: () => { panel.hidden = true; trigger.setAttribute("aria-expanded", "false"); } };
 }
 
-export async function renderChatSwap({ prompt, result, request, connector, connectedAccount, encodeBase58, guestMode, onWalletConnected }) {
+export async function renderChatSwap({ prompt, result, request, connector: connectorSource, connectedAccount: accountSource, encodeBase58, guestMode, onWalletConnected }) {
+  const getConnector = () => typeof connectorSource === "function" ? connectorSource() : connectorSource;
+  const getConnectedAccount = () => typeof accountSource === "function" ? accountSource() : accountSource;
   const parsed = parseChatSwapPrompt(prompt);
-  const card = el("section", undefined, "developer-trade-draft");
-  const heading = el("div", undefined, "developer-trade-draft-heading");
-  heading.append(el("strong", "Swap request · Tidepool Testnet"), el("span", "TWO-AGENT GATE"));
+  const card = el("section", undefined, "developer-trade-draft sentinel-swap-message");
+  const heading = el("div", undefined, "developer-trade-draft-heading sentinel-swap-heading");
+  heading.append(el("strong", "Swap preview"), el("span", "TESTNET"));
   card.append(heading);
   if (!parsed) {
     card.append(el("p", "Use format: swap 0.1 ETH to NEAR. Decimal comma is accepted, e.g. swap 0,1 ETH to NEAR."));
     result.replaceChildren(card); result.classList.remove("hidden"); return;
   }
-  card.append(el("p", "Agent 1 resolves the live Tidepool asset route and quote. Agent 2 independently validates the signed quote, exact amount, chain, recipient, refund address, deadline and slippage before wallet approval."));
+  card.append(el("p", "Review the amount and networks, then connect the wallets needed for this route.", "sentinel-swap-intro"));
+  const securityDetails = el("details", undefined, "sentinel-swap-security");
+  securityDetails.append(el("summary", "How the security check works"));
+  securityDetails.append(el("p", "One service resolves the live Tidepool route. A second independent check validates the signed quote, amount, networks, recipient, refund address, deadline and slippage before any wallet approval."));
+  card.append(securityDetails);
   const tokensResponse = await request("/trading/tokens", { method: "GET" });
   const tokens = tokensResponse.tokens;
   if (!Array.isArray(tokens) || !tokens.length) throw new Error("Tidepool did not return a usable testnet token registry.");
   const amountInput = document.createElement("input"); amountInput.value = parsed.amount; amountInput.inputMode = "decimal";
   const originSelect = document.createElement("select"), destSelect = document.createElement("select");
   for (const token of tokens) {
-    const originOption = el("option", formatToken(token)); originOption.value = token.asset_id; originSelect.append(originOption);
-    const destinationOption = el("option", formatToken(token)); destinationOption.value = token.asset_id; destSelect.append(destinationOption);
+    const originOption = el("option", formatToken(token)); originOption.value = String(token.asset_id ?? ""); originSelect.append(originOption);
+    const destinationOption = el("option", formatToken(token)); destinationOption.value = String(token.asset_id ?? ""); destSelect.append(destinationOption);
   }
   // Symbols such as ETH and USDC exist on several testnets. Resolve a deterministic
   // supported default instead of leaving the native selects empty when matches are ambiguous.
@@ -480,14 +486,15 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
   };
   const initialOrigin = chooseInitialToken(parsed.from);
   const initialDestination = chooseInitialToken(parsed.to);
-  originSelect.value = initialOrigin?.asset_id || "";
-  destSelect.value = initialDestination?.asset_id || "";
+  originSelect.value = initialOrigin ? String(initialOrigin.asset_id ?? "") : "";
+  destSelect.value = initialDestination ? String(initialDestination.asset_id ?? "") : "";
   originSelect.className = "swap-native-select";
   destSelect.className = "swap-native-select";
   const originPicker = createSwapTokenPicker(originSelect, tokens, parsed.from, () => activeNearAccount, () => { defaults(); invalidate(); });
   const destinationPicker = createSwapTokenPicker(destSelect, tokens, parsed.to, () => activeNearAccount, () => { defaults(); invalidate(); });
   const refundInput = null;
-  let activeNearAccount = connectedAccount && nearAccount(connectedAccount) ? connectedAccount : null;
+  const initialAccount = getConnectedAccount();
+  let activeNearAccount = initialAccount && nearAccount(initialAccount) ? initialAccount : null;
   let activeEvmAccount = null;
   const walletAddressFor = chain => {
     const key = String(chain || "").toLowerCase();
@@ -503,7 +510,8 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
       return wallet.account;
     }
     if (key === "near") {
-      if (!connector) throw new Error("NEAR wallet connector is not ready. Refresh and retry.");
+      const connector = getConnector();
+      if (!connector) throw new Error("NEAR wallet connector is still loading. Wait a moment and tap Connect again.");
       if (!activeNearAccount) {
         // Do not gate the user's click on an asynchronously populated wallet list.
         // Let NEAR Connect open its selector so users can choose/install a compatible wallet.
@@ -523,15 +531,16 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
     const option = el("option", pair[1]); option.value = pair[0]; if (pair[0] === "100") option.selected = true; slippage.append(option);
   }
   const defaults = () => {
-    const origin = tokens.find(token => token.asset_id === originSelect.value);
-    const dest = tokens.find(token => token.asset_id === destSelect.value);
+    const origin = tokens.find(token => String(token.asset_id ?? "") === originSelect.value);
+    const dest = tokens.find(token => String(token.asset_id ?? "") === destSelect.value);
     return { origin, dest };
   };
   const fields = el("div", undefined, "developer-trade-quote swap-modern-card");
   const walletBar = el("div", undefined, "swap-wallet-bar");
   const walletState = el("div", undefined, "swap-wallet-state");
   const walletStateIcon = el("span", "◈", "swap-wallet-state-icon");
-  const walletStateText = el("span", connectedAccount ? shortWalletAddress(connectedAccount) : "Wallet not connected");
+  const walletAccountAtRender = getConnectedAccount();
+  const walletStateText = el("span", walletAccountAtRender ? shortWalletAddress(walletAccountAtRender) : "Wallet not connected");
   walletState.append(walletStateIcon, walletStateText);
   const connectButton = el("button", "Connect wallet & get quote", "swap-connect-button");
   connectButton.type = "button";
@@ -547,7 +556,16 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
     connectButton.textContent = "Connecting…";
     try {
       const routeChains = [...new Set([origin.blockchain, dest.blockchain].map(value => String(value).toLowerCase()))];
-      for (const chain of routeChains) await connectWalletForChain(chain);
+      // Ask for NEAR first so Meteor can open even when the browser has no EVM extension.
+      routeChains.sort((a, b) => (a === "near" ? -1 : 0) - (b === "near" ? -1 : 0));
+      for (const chain of routeChains) {
+        await connectWalletForChain(chain);
+        const partialAddresses = [walletAddressFor(origin.blockchain), walletAddressFor(dest.blockchain)].filter(Boolean);
+        if (partialAddresses.length) {
+          walletStateText.textContent = partialAddresses.map(shortWalletAddress).join(" · ");
+          walletState.classList.add("is-connected");
+        }
+      }
       const addresses = [walletAddressFor(origin.blockchain), walletAddressFor(dest.blockchain)].filter(Boolean);
       walletStateText.textContent = addresses.map(shortWalletAddress).join(" · ");
       walletState.classList.add("is-connected");
@@ -563,6 +581,7 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
   // Read-only session discovery: reflect wallets already authorized in the browser without prompting.
   (async () => {
     try {
+      const connector = getConnector();
       if (!activeNearAccount && connector?.getConnectedWallet) {
         const current = await connector.getConnectedWallet();
         const account = current?.accounts?.[0]?.accountId;
@@ -613,10 +632,11 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
     quoteButton.disabled = true; approveButton.disabled = true;
     status.textContent = "Agent 1: resolving exact token IDs and requesting Tidepool dry quote…";
     try {
-      const origin = tokens.find(token => token.asset_id === originSelect.value);
-      const destination = tokens.find(token => token.asset_id === destSelect.value);
+      const origin = tokens.find(token => String(token.asset_id ?? "") === originSelect.value);
+      const destination = tokens.find(token => String(token.asset_id ?? "") === destSelect.value);
       if (!origin || !destination) throw new Error("Choose exact origin and destination assets from the live token registry.");
       if (origin.blockchain === "near" || destination.blockchain === "near") {
+        const connector = getConnector();
         const current = await connector?.getConnectedWallet?.();
         activeNearAccount = current?.accounts?.[0]?.accountId && nearAccount(current.accounts[0].accountId)
           ? current.accounts[0].accountId : null;
@@ -663,6 +683,7 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
       if (!swap || !dryQuote) throw new Error("Request a fresh quote before approval.");
       if (guestMode) throw new Error("Guest mode cannot approve or sign transactions.");
       if (swap.origin.blockchain === "near") {
+        const connector = getConnector();
         if (!connector || !activeNearAccount || !nearAccount(activeNearAccount)) throw new Error("Connect Meteor or another NEAR Testnet wallet first.");
         if (swap.refundTo.toLowerCase() !== activeNearAccount.toLowerCase()) throw new Error("NEAR refund account must match connected wallet.");
       } else if (CHAIN_IDS[swap.origin.blockchain]) {
@@ -692,7 +713,7 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
           "Continue to show the exact manual deposit instructions? No wallet prompt will open in Sentinel.");
       if (!window.confirm(summary)) throw new Error("Cancelled before wallet approval. No transaction was submitted.");
       if (liveQuote.deposit_type === "INTENTS" && swap.origin.blockchain === "near") {
-        await executeNearIntents({ request, connector, connectedAccount: activeNearAccount, liveQuote, swap, statusNode: status, detailsNode: details, encodeBase58, onSubmitted: () => { submitted = true; } });
+        await executeNearIntents({ request, connector: getConnector(), connectedAccount: activeNearAccount, liveQuote, swap, statusNode: status, detailsNode: details, encodeBase58, onSubmitted: () => { submitted = true; } });
       } else if (liveQuote.deposit_type === "ORIGIN_CHAIN" && CHAIN_IDS[swap.origin.blockchain]) {
         await executeEvmDeposit({ request, token: swap.origin, liveQuote, swap, refundInput, statusNode: status, detailsNode: details, onSubmitted: () => { submitted = true; } });
       } else if (liveQuote.deposit_type === "ORIGIN_CHAIN") {
