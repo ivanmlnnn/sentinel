@@ -1,4 +1,6 @@
-# Secure AI Agent Pipeline
+# Secure Agent Pipeline — Architecture and Historical Release Notes
+
+> Current AI inference uses the Cloudflare Workers AI binding documented in [Sentinel AI Runtime](SENTINEL_AI_RUNTIME.md). Any Anthropic-specific configuration below belongs to an earlier implementation snapshot and is not current setup guidance.
 
 ## Security status
 
