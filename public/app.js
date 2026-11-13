@@ -259,47 +259,57 @@ function initWalletCardMotion() {
     }
   });
 }
+async function connectNearWalletFromGesture() {
+  const button = $('walletBtn');
+  if (!connectorReady || !connector) {
+    toast('NEAR wallet options are still loading. Wait a moment, then tap Connect again.');
+    return;
+  }
+  if (button) button.disabled = true;
+  try {
+    if (connectedAccount) {
+      await connector.disconnect();
+      syncWalletUI(null, null);
+      toast('NEAR wallet disconnected.');
+      return;
+    }
+    // Call connect() directly in the real click handler. Do not route through
+    // element.click(), because mobile browsers can drop popup/user activation.
+    await connector.connect();
+    const current = await connector.getConnectedWallet();
+    const account = current.accounts && current.accounts[0];
+    if (!account?.accountId) {
+      throw new Error('Wallet selection finished without an account. Choose Meteor or another compatible NEAR Testnet wallet and approve the connection.');
+    }
+    syncWalletUI(account.accountId, current.wallet?.manifest?.name || 'NEAR wallet');
+    toast('NEAR wallet connected: ' + (current.wallet?.manifest?.name || 'NEAR wallet'));
+  } catch (error) {
+    console.error('NEAR wallet connection error:', error);
+    const message = error?.message || 'Wallet connection was cancelled or unavailable.';
+    $('walletConnectionState').textContent = 'Connection not completed: ' + message;
+    toast(message);
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
 async function initWallet() {
   const button = $('walletBtn');
   button.disabled = false;
   button.textContent = 'Connect NEAR Wallet';
-  // Bind immediately so the control is never inert while the connector module loads.
-  button.addEventListener('click', async () => {
-    if (!connectorReady || !connector) {
-      toast('NEAR wallet options are still loading. Wait a moment, then tap Connect again.');
-      return;
-    }
-    button.disabled = true;
-    try {
-      if (connectedAccount) {
-        await connector.disconnect();
-        syncWalletUI(null, null);
-        toast('NEAR wallet disconnected.');
-      } else {
-        // Always invoke the connector picker. An empty preflight wallet list must not
-        // silently block the user's click; the connector can present install/connection options.
-        await connector.connect();
-        const current = await connector.getConnectedWallet();
-        const account = current.accounts && current.accounts[0];
-        if (!account?.accountId) throw new Error('The wallet did not return an account. Choose a NEAR Testnet wallet and retry.');
-        syncWalletUI(account.accountId, current.wallet?.manifest?.name || 'NEAR wallet');
-        toast('NEAR wallet connected.');
-      }
-    } catch (error) {
-      console.error('NEAR wallet connection error:', error);
-      toast(error?.message || 'Wallet connection was cancelled or unavailable. Try another NEAR Testnet wallet.');
-    } finally {
-      button.disabled = false;
-    }
-  });
+  // Keep the action bound immediately, but execute the connector synchronously
+  // from the user's click gesture once initialization has completed.
+  button.addEventListener('click', connectNearWalletFromGesture);
   try {
-    // Bound remote module loading so the wallet button cannot remain disabled forever.
     const module = await Promise.race([
       import('https://esm.sh/@hot-labs/near-connect@0.12.0'),
       new Promise((_, reject) => window.setTimeout(() => reject(new Error('NEAR wallet module timed out. Check the connection and retry.')), 12000))
     ]);
     const { NearConnector } = module;
-    connector = new NearConnector({ network:'testnet', features:{ testnet:true, signAndSendTransaction:true, signMessage:true }, autoConnect:false });
+    connector = new NearConnector({
+      network: 'testnet',
+      features: { testnet: true, signAndSendTransaction: true, signMessage: true },
+      autoConnect: false
+    });
     await connector.whenManifestLoaded;
     connector.on('wallet:signIn', event => {
       const account = event.accounts && event.accounts[0];
@@ -314,23 +324,25 @@ async function initWallet() {
       syncWalletUI(null, null);
     }
     connector.on('selector:walletsChanged', () => {
-      const count = connector.availableWallets.length;
+      const wallets = connector.availableWallets || [];
+      const names = wallets.map(item => item.manifest?.name || item.name).filter(Boolean);
       if (!connectedAccount) {
-        $('walletConnectionState').textContent = count
-          ? 'Not connected — ' + count + ' compatible Testnet wallet(s) found.'
-          : 'No compatible Testnet wallet detected yet. Tap Connect to open wallet options.';
+        $('walletConnectionState').textContent = names.length
+          ? 'Compatible Testnet wallets: ' + names.join(', ') + '. Tap Connect to choose one.'
+          : 'No compatible Testnet wallet detected. Check the network and wallet compatibility.';
       }
     });
     connectorReady = true;
     button.disabled = false;
     button.textContent = connectedAccount ? 'Wallet connected' : 'Connect NEAR Wallet';
-    const walletCount = connector.availableWallets.length;
+    const wallets = connector.availableWallets || [];
+    const names = wallets.map(item => item.manifest?.name || item.name).filter(Boolean);
     $('walletConnectionState').textContent = connectedAccount
       ? 'Connected wallet: ' + connectedAccount
-      : walletCount
-        ? 'Not connected — ' + walletCount + ' compatible Testnet wallet(s) found. Tap Connect to open the wallet picker.'
-        : 'No wallet detected yet. Tap Connect to open the NEAR wallet selector or install a compatible Testnet wallet.';
-    console.info('NEAR Connect ready. Network: testnet. Testnet-compatible wallets:', walletCount);
+      : names.length
+        ? 'Choose a wallet: ' + names.join(', ')
+        : 'No compatible Testnet wallet detected. Meteor may be used through its web wallet or supported browser extension.';
+    console.info('NEAR Connect ready. Network: testnet. Compatible wallets:', names);
   } catch (error) {
     console.error('NEAR Connect initialization failed:', error);
     connectorReady = false;
@@ -1468,8 +1480,8 @@ const skillCards = Array.from(document.querySelectorAll('.sentinel-skill-card'))
 document.querySelectorAll('[data-side-action]').forEach(action => action.addEventListener('click', () => {
   const target = action.dataset.sideAction;
   if (target === 'wallet') {
-    $('walletBtn')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    $('walletBtn')?.click();
+    // Preserve the original user gesture so wallet popups/redirects are not blocked.
+    connectNearWalletFromGesture();
     return;
   }
   if (target === 'scan') {
