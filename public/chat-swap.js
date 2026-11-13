@@ -543,7 +543,8 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   const walletAccountAtRender = getConnectedAccount();
   const walletStateText = el("span", walletAccountAtRender ? shortWalletAddress(walletAccountAtRender) : "Wallet not connected");
   walletState.append(walletStateIcon, walletStateText);
-  const connectButton = el("button", "Connect required wallets", "swap-connect-button");
+  walletState.classList.toggle("is-connected", Boolean(walletAccountAtRender));
+  const connectButton = el("button", walletAccountAtRender ? "Checking route wallets…" : "Connect required wallets", "swap-connect-button");
   connectButton.type = "button";
   walletBar.append(walletState, connectButton);
   fields.append(walletBar);
@@ -556,6 +557,10 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     connectButton.disabled = true;
     connectButton.textContent = "Connecting…";
     try {
+      // Dashboard wallet state is the source of truth. Read it synchronously
+      // before deciding whether a wallet prompt is needed.
+      const dashboardNearAccount = getConnectedAccount();
+      if (nearAccount(dashboardNearAccount)) activeNearAccount = dashboardNearAccount;
       const routeChains = [...new Set([origin.blockchain, dest.blockchain].map(value => String(value).toLowerCase()))];
       // Ask for NEAR first so Meteor can open even when the browser has no EVM extension.
       routeChains.sort((a, b) => (a === "near" ? -1 : 0) - (b === "near" ? -1 : 0));
@@ -606,11 +611,15 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       }
     } catch {}
     const detected = [activeNearAccount, activeEvmAccount].filter(Boolean);
+    const routeChains = [...new Set([defaults().origin?.blockchain, defaults().dest?.blockchain].filter(Boolean).map(value => String(value).toLowerCase()))];
+    const missingChains = routeChains.filter(chain => !walletAddressFor(chain));
     if (detected.length) {
       walletStateText.textContent = detected.map(shortWalletAddress).join(" · ");
       walletState.classList.add("is-connected");
-      connectButton.textContent = "Get verified quote";
     }
+    connectButton.textContent = missingChains.length
+      ? "Connect " + missingChains[0].toUpperCase() + " wallet"
+      : "Get verified quote";
   })();
   addField(fields, "Amount", amountInput);
   addField(fields, "You pay · origin asset / network", originPicker.root);
@@ -636,8 +645,14 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   fields.append(status, approveButton, details); card.append(fields);
   let swap = null, dryQuote = null;
   const invalidate = () => { approveButton.disabled = true; dryQuote = null; swap = null; };
-  originSelect.addEventListener("change", () => { defaults(); originPicker.sync(); invalidate(); connectButton.textContent = "Connect wallet & get quote"; });
-  destSelect.addEventListener("change", () => { defaults(); destinationPicker.sync(); invalidate(); connectButton.textContent = "Connect wallet & get quote"; });
+  const refreshConnectLabel = () => {
+    const { origin, dest } = defaults();
+    const chains = [...new Set([origin?.blockchain, dest?.blockchain].filter(Boolean).map(value => String(value).toLowerCase()))];
+    const missing = chains.find(chain => !walletAddressFor(chain));
+    connectButton.textContent = missing ? "Connect " + missing.toUpperCase() + " wallet" : "Get verified quote";
+  };
+  originSelect.addEventListener("change", () => { defaults(); originPicker.sync(); invalidate(); refreshConnectLabel(); });
+  destSelect.addEventListener("change", () => { defaults(); destinationPicker.sync(); invalidate(); refreshConnectLabel(); });
   for (const input of [amountInput, slippage]) input.addEventListener("change", invalidate);
   quoteButton.addEventListener("click", async () => {
     quoteButton.disabled = true; approveButton.disabled = true;
@@ -647,10 +662,17 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       const destination = tokens.find(token => String(token.asset_id ?? "") === destSelect.value);
       if (!origin || !destination) throw new Error("Choose exact origin and destination assets from the live token registry.");
       if (origin.blockchain === "near" || destination.blockchain === "near") {
+        const dashboardNearAccount = getConnectedAccount();
         const connector = getConnector();
-        const current = await connector?.getConnectedWallet?.();
-        activeNearAccount = current?.accounts?.[0]?.accountId && nearAccount(current.accounts[0].accountId)
-          ? current.accounts[0].accountId : null;
+        let connectorAccount = null;
+        try {
+          const current = await connector?.getConnectedWallet?.();
+          const candidate = current?.accounts?.[0]?.accountId;
+          if (nearAccount(candidate)) connectorAccount = candidate;
+        } catch {}
+        // Never erase a valid dashboard session because the connector's
+        // optional session lookup is temporarily unavailable.
+        activeNearAccount = connectorAccount || (nearAccount(dashboardNearAccount) ? dashboardNearAccount : activeNearAccount);
       }
       if (CHAIN_IDS[origin.blockchain] || CHAIN_IDS[destination.blockchain]) {
         const provider = getInjectedEvmProvider();
