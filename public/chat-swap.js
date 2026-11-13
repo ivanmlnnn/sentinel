@@ -178,6 +178,16 @@ async function executeNearWalletDeposit(args) {
       liveQuote.quote_request?.originAsset !== swap.originAsset) {
     throw new Error("Live quote amount or origin asset does not match the reviewed request.");
   }
+  const walletTokenBalance = await readSwapWalletBalance(swap.origin, connectedAccount);
+  if (!walletTokenBalance.raw || BigInt(walletTokenBalance.raw) < BigInt(swap.amount)) {
+    throw new Error("Meteor wallet balance is insufficient for the exact quoted amount. Refresh balances and choose a smaller amount.");
+  }
+  const nativeGasBalance = await readSwapWalletBalance(
+    { blockchain: "near", symbol: "NEAR", decimals: 24, contract_address: null }, connectedAccount
+  );
+  if (!nativeGasBalance.raw || BigInt(nativeGasBalance.raw) <= 0n) {
+    throw new Error("Meteor account has no native NEAR for Testnet transaction gas.");
+  }
   const wallet = await connector.wallet();
   if (!wallet || typeof wallet.signAndSendTransaction !== "function") {
     throw new Error("Connected Meteor wallet does not support NEAR Testnet transactions.");
@@ -398,7 +408,7 @@ async function readSwapWalletBalance(token, nearWalletAccount) {
       raw = await provider.request({ method: "eth_getBalance", params: [account, "latest"] });
     }
     if (typeof raw !== "string" || !/^0x[0-9a-f]+$/i.test(raw)) return { value: null, note: "Balance unavailable" };
-    return { value: formatUnitsForDisplay(BigInt(raw).toString(), token.decimals), note: "Wallet balance" };
+    return { raw: BigInt(raw).toString(), value: formatUnitsForDisplay(BigInt(raw).toString(), token.decimals), note: "Wallet balance" };
   }
   if (chain === "near") {
     if (!nearAccount(nearWalletAccount)) return { value: null, note: "Connect a NEAR Testnet wallet" };
@@ -416,9 +426,9 @@ async function readSwapWalletBalance(token, nearWalletAccount) {
       const bytes = payload.result?.result;
       if (!Array.isArray(bytes)) throw new Error("NEAR FT balance response is invalid");
       const raw = JSON.parse(new TextDecoder().decode(new Uint8Array(bytes)));
-      return { value: formatUnitsForDisplay(raw, token.decimals), note: "Wallet balance" };
+      return { raw: String(raw), value: formatUnitsForDisplay(raw, token.decimals), note: "Wallet balance" };
     }
-    return { value: formatUnitsForDisplay(payload.result?.amount || "0", token.decimals), note: "Wallet balance" };
+    return { raw: String(payload.result?.amount || "0"), value: formatUnitsForDisplay(payload.result?.amount || "0", token.decimals), note: "Wallet balance" };
   }
   return { value: null, note: "Wallet balance adapter not connected for " + chain.toUpperCase() };
 }
@@ -862,7 +872,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         liveQuote.quote.minimum_amount_out + "\nRecipient: " + swap.recipient + "\nRefund: " + swap.refundTo +
         "\nDeposit address: " + liveQuote.deposit_address + "\nDeadline: " + liveQuote.deadline +
         "\nRisk: " + liveQuote.risk_evaluation.decision + "\nPolicy: " + liveQuote.risk_evaluation.policy_hash +
-        "\n\n" + (swap.origin.blockchain === "near" ? "Continue to NEAR wallet signing?" :
+        "\n\n" + (swap.origin.blockchain === "near" ? "Continue to Meteor wallet transfer approval?" :
           CHAIN_IDS[swap.origin.blockchain] ? "Continue to EVM wallet transfer approval?" :
           "Continue to show the exact manual deposit instructions? No wallet prompt will open in Sentinel.");
       if (!window.confirm(summary)) throw new Error("Cancelled before wallet approval. No transaction was submitted.");
