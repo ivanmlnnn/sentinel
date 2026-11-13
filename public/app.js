@@ -76,11 +76,11 @@ async function request(path, options = {}) {
     const fetchOptions = { ...options, headers };
     delete fetchOptions.signal;
     if (controller) fetchOptions.signal = controller.signal;
-    // Cloudflare Pages functions are file-routed as /api/trading-<action>.
-    // The swap UI uses logical /trading/<action> names; normalize them here.
-    const apiPath = path.startsWith('/trading/')
-      ? '/trading-' + path.slice('/trading/'.length)
-      : path;
+    // Match the Main Worker route table in src/index.js exactly.
+    // Keep the swap UI's logical names, but normalize legacy aliases explicitly.
+    let apiPath = path;
+    if (path === '/trading-balance') apiPath = '/trading/balance';
+    else if (path === '/trading/deposit-submit') apiPath = '/trading/deposit/submit';
     const response = await (abortPromise
       ? Promise.race([fetch(API + apiPath, fetchOptions), abortPromise])
       : fetch(API + apiPath, fetchOptions));
@@ -313,7 +313,7 @@ async function initWallet() {
     const { NearConnector } = module;
     connector = new NearConnector({
       network: 'testnet',
-      features: { testnet: true, signAndSendTransaction: true , signMessage: true },
+      features:{ testnet:true, signAndSendTransaction:true, signMessage:true }
       autoConnect: false
     });
     await connector.whenManifestLoaded;
