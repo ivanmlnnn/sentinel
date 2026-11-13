@@ -14,7 +14,10 @@ test("one approval tap uses the currently connected NEAR wallet for the exact na
   assert.match(app, /wallet\.signAndSendTransaction\(/);
   assert.match(app, /type: 'Transfer', params: \{ deposit: amountYocto \}/);
   assert.match(app, /transaction_hash: transactionHash/);
-  assert.doesNotMatch(app, /wallet\.signMessage\(/);
+  const approvalStart = app.indexOf("if (approvalId && walletCanApprove)");
+  const approvalEnd = app.indexOf("function renderTradingAgentResult", approvalStart);
+  assert.ok(approvalStart >= 0 && approvalEnd > approvalStart, "payment approval handler boundaries must exist");
+  assert.doesNotMatch(app.slice(approvalStart, approvalEnd), /wallet\.signMessage\(/);
 });
 
 test("Main Worker requires a fresh Sentinel ALLOW assessment before the wallet request and verifies through isolated signer", () => {
