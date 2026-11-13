@@ -69,7 +69,7 @@ export async function onRequestPost({ request, env }) {
   const review = evaluateAgentTwoReview(parsedTwo.value, thesis.value, analysis);
   if (!review.ok) return json({ error: review.reason, agent: "RISK_REVIEW" }, 502);
 
-  const status = review.value.paper_trade_eligible ? "PAPER_TRADE_CANDIDATE" : analysis.signal === "HOLD" ? "HOLD" : "VETOED";
+  const status = review.value.paper_trade_eligible ? "PAPER_TRADE_CANDIDATE" : (analysis.signal === "HOLD" || thesis.value.signal === "HOLD") ? "HOLD" : "VETOED";
   return json({
     status,
     pair,
@@ -85,7 +85,6 @@ export async function onRequestPost({ request, env }) {
       current_forming_candle_excluded: market.value.current_forming_candle_excluded
     },
     execution_enabled: false,
-    execution_authorized: false,
-    user_id: identity.sub
+    execution_authorized: false
   });
 }
