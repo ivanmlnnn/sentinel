@@ -4,7 +4,9 @@ This directory is organized around the Sentinel product's current architecture, 
 
 ## Core architecture and security
 
-- [Sentinel Core Architecture](SENTINEL_CORE_ARCHITECTURE.md) — Main Worker, investigation engine, deterministic policy, AI boundary, User Agent, payment approval, isolated signer, Developer Mode, and storage boundaries.
+- [Sentinel Core Architecture](SENTINEL_CORE_ARCHITECTURE.md) — Main Worker, investigation engine, deterministic policy, AI boundary, User Agent, payment approval, isolated verifier, Developer Mode, and storage boundaries.
+- [Sentinel AI Runtime](SENTINEL_AI_RUNTIME.md) — current Cloudflare Workers AI binding, model selection, tool boundary, and verification requirements.
+- [NEAR Ecosystem Integration](NEAR_ECOSYSTEM_INTEGRATION.md) — current native Transfer verification, Tidepool swap boundary, application session, and source-only payment contract status.
 - [Secure Agent Pipeline](SECURE_AGENT_PIPELINE.md) — detailed human-approval and isolated-signer sequence.
 - [Signed Verdict Attestation](SIGNED_VERDICT.md) — Ed25519 verdict payload and verification.
 - [NEAR Ecosystem Integration](NEAR_ECOSYSTEM_INTEGRATION.md) — wallet, native transfer, and Tidepool integration boundaries.
