@@ -39,6 +39,12 @@ function nearAccount(value) {
   return typeof value === "string" && /^(?:[a-f0-9]{64}|[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet)$/i.test(value);
 }
 function evmAddress(value) { return typeof value === "string" && /^0x[a-f0-9]{40}$/i.test(value); }
+function validManualTxHash(chain, hash) {
+  if (["stellar", "xrp", "btc"].includes(chain)) return /^[a-f0-9]{64}$/i.test(hash);
+  if (chain === "sol") return /^[1-9A-HJ-NP-Za-km-z]{64,100}$/.test(hash);
+  if (chain === "sui") return /^[1-9A-HJ-NP-Za-km-z]{30,60}$/.test(hash);
+  return typeof hash === "string" && hash.length >= 8 && hash.length <= 200 && !/\s/.test(hash);
+}
 function encodeErc20Transfer(to, amount) {
   return "0xa9059cbb" + to.slice(2).toLowerCase().padStart(64, "0") + BigInt(amount).toString(16).padStart(64, "0");
 }
@@ -222,8 +228,8 @@ function renderManualDeposit(panel, liveQuote, token, swap, request, statusNode,
   submitHash.type = "button";
   submitHash.addEventListener("click", async () => {
     const txHash = hashInput.value.trim();
-    if (txHash.length < 8 || txHash.length > 200 || /\s/.test(txHash)) {
-      statusNode.textContent = "Enter a valid transaction hash from the selected origin chain.";
+    if (!validManualTxHash(token.blockchain, txHash)) {
+      statusNode.textContent = "Transaction hash format does not match the selected " + token.blockchain.toUpperCase() + " network.";
       return;
     }
     submitHash.disabled = true;
@@ -370,7 +376,9 @@ export async function renderChatSwap({ prompt, result, request, connector, conne
         liveQuote.quote.minimum_amount_out + "\nRecipient: " + swap.recipient + "\nRefund: " + swap.refundTo +
         "\nDeposit address: " + liveQuote.deposit_address + "\nDeadline: " + liveQuote.deadline +
         "\nRisk: " + liveQuote.risk_evaluation.decision + "\nPolicy: " + liveQuote.risk_evaluation.policy_hash +
-        "\n\nContinue to your wallet approval?";
+        "\n\n" + (swap.origin.blockchain === "near" ? "Continue to NEAR wallet signing?" :
+          CHAIN_IDS[swap.origin.blockchain] ? "Continue to EVM wallet transfer approval?" :
+          "Continue to show the exact manual deposit instructions? No wallet prompt will open in Sentinel.");
       if (!window.confirm(summary)) throw new Error("Cancelled before wallet approval. No transaction was submitted.");
       if (liveQuote.deposit_type === "INTENTS" && swap.origin.blockchain === "near") {
         await executeNearIntents({ request, connector, connectedAccount, liveQuote, swap, statusNode: status, detailsNode: details, encodeBase58, onSubmitted: () => { submitted = true; } });
