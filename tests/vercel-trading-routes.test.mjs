@@ -19,8 +19,22 @@ function responseRecorder() {
 }
 
 const assets = [
-  { assetId: "nep141:usdc.tidepool-sandbox.testnet", decimals: 6, blockchain: "near", symbol: "USDC" },
-  { assetId: "nep141:wnear.tidepool-sandbox.testnet", decimals: 24, blockchain: "near", symbol: "wNEAR" }
+  {
+    assetId: "nep141:usdc.tidepool-sandbox.testnet",
+    decimals: 6,
+    blockchain: "near",
+    symbol: "USDC",
+    price: 1,
+    priceUpdatedAt: "2026-11-14T00:00:00.000Z"
+  },
+  {
+    assetId: "nep141:wnear.tidepool-sandbox.testnet",
+    decimals: 24,
+    blockchain: "near",
+    symbol: "wNEAR",
+    price: 2,
+    priceUpdatedAt: "2026-11-14T00:00:00.000Z"
+  }
 ];
 
 test("Vercel token route returns only provider-backed testnet assets", async () => {
