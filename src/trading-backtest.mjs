@@ -179,7 +179,9 @@ export function runHistoricalBacktest(candles, {
         total_fees_quote: totalFees,
         estimated_slippage_quote: totalSlippage
       },
+      trade_log_truncated: trades.length > 100,
       trades: trades.slice(-100),
+      equity_curve_truncated: equityCurve.length > 200,
       equity_curve: equityCurve.slice(-200).map(point => ({
         timestamp: new Date(point.timestamp).toISOString(),
         equity: point.equity
