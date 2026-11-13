@@ -156,9 +156,9 @@ Sentinel's configured tracked/allowed recipient account is **`rawvest6817.testne
 
 - [Open `rawvest6817.testnet` in NEAR Testnet Explorer](https://testnet.nearblocks.io/address/rawvest6817.testnet)
 - The account page exposes indexed public account activity, including transaction history and receipts, so reviewers can inspect the destination account independently of Sentinel's dashboard.
-- In Sentinel's payment architecture, the top-level transaction calls the payment contract; the contract's successful native Transfer receipt identifies the final recipient and exact amount. Review the receipt, not only the top-level transaction receiver.
+- **Current branch:** the top-level transaction is the user's native NEAR Transfer; the isolated Signer Worker checks the transaction and successful Transfer receipt against the exact recipient and amount. The older contract-call flow described elsewhere in this archive is not the active path.
 
-The account page is recipient/account-level evidence. For a specific Sentinel-originated payout, correlate the exact transaction hash, signer, payment-contract call, recipient, amount, successful receipt, and payout receipt ID returned by the Signer Worker. This keeps the Explorer evidence directly accessible without conflating general account activity with a particular payment.
+The account page is recipient/account-level evidence. For a specific payment, correlate the exact transaction hash, wallet sender, recipient, amount, final status, and successful Transfer receipt returned by the Signer Worker. Do not require or claim a payment-contract call in the current branch flow.
 
 ## 4. How to reproduce the repository checks
 
@@ -218,7 +218,7 @@ For a strict independent review, keep these statements separate:
 
 - **Verified by linked GitHub Actions logs:** Signer Worker deployment, Main Worker deployment, secret upload events, service-binding configuration observed in the deployment logs, and production HTTP smoke checks.
 - **Implemented and covered by automated tests:** NEP-413 validation, exact-intent approval, signer permission enforcement logic, replay protection, kill switch, spending policy, and receipt-verification logic.
-- **Maintainer-reported existing setup:** previously deployed payment contract and reused runtime signer configuration.
+- **Historical maintainer report:** a payment contract was previously deployed and runtime signer configuration was reused. This is not independent proof of a live contract payout and the contract is not called by the active branch payment path.
 - **Recipient Explorer:** [`rawvest6817.testnet`](https://testnet.nearblocks.io/address/rawvest6817.testnet) is linked above for direct inspection of the tracked recipient account and its public activity. The payment verifier checks the final native Transfer receipt against the approved recipient and exact amount.
 
 Do not mistake a successful Worker deployment for proof of a successful blockchain payout. If a real Sentinel transaction hash is added later, include the exact hash, signer, contract, recipient, amount, final status, payout receipt ID, and an independent Testnet Explorer/API link. Never invent or substitute a hash from an unrelated wallet.
