@@ -133,3 +133,58 @@
 @media(max-width:900px){.agent-lab-grid{grid-template-columns:minmax(0,1fr)!important}.sentinel-command-rail{padding:19px!important}.sentinel-rail-actions{grid-template-columns:repeat(2,minmax(0,1fr))}.sentinel-rail-action{min-height:70px}}
 @media(max-width:560px){.agent-chat-header{padding:14px!important;gap:9px}.agent-chat-avatar{width:36px;height:36px;flex-basis:36px}.agent-chat-identity strong{font-size:13px!important}.agent-chat-identity span{font-size:10px!important}.agent-chat-ready{font-size:8px}.developer-mode-switch{gap:6px}.developer-mode-copy b{font-size:8px}.developer-mode-copy small{font-size:9px}.agent-welcome{margin:14px 14px 16px;padding:14px}.agent-quick-start{padding:0 14px 16px}.agent-chat-form{padding:0 14px 15px}.sentinel-skill-grid{gap:8px!important}.sentinel-skill-card{min-height:68px!important;padding:10px!important;gap:9px!important}.skill-card-icon{width:31px!important;height:31px!important;flex-basis:31px!important}.sentinel-skill-card b{font-size:10px!important}.sentinel-skill-card small{font-size:9px!important}.sentinel-command-rail{padding:16px!important}.sentinel-rail-actions{grid-template-columns:1fr}.sentinel-rail-action{min-height:62px}.sentinel-command-rail h3{margin-top:18px;font-size:21px}.agent-compose-box textarea{min-height:76px}.agent-compose-bottom>span{font-size:9px}.prompt-draft-fields{grid-template-columns:1fr}.prompt-draft-fields input:first-child{grid-column:auto}.prompt-draft-fields button{grid-column:auto}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+
+/* Swap result: conversational preview, not a debug/agent report */
+.sentinel-swap-message{
+  width:100%;max-width:760px;margin:16px 0 8px!important;padding:18px!important;
+  border:1px solid rgba(184,228,162,.16)!important;border-radius:17px!important;
+  background:linear-gradient(145deg,rgba(20,29,23,.98),rgba(12,18,14,.98))!important;
+  box-shadow:0 18px 46px rgba(0,0,0,.2)!important;color:var(--as-text)!important;
+  animation:as-message-in .42s var(--as-ease) both;
+}
+.sentinel-swap-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 0 13px!important;border-bottom:1px solid var(--as-line)!important}
+.sentinel-swap-heading strong{color:var(--as-text)!important;font:650 15px Inter,sans-serif!important;letter-spacing:-.025em}
+.sentinel-swap-heading span{padding:6px 9px;border:1px solid rgba(184,228,162,.2);border-radius:99px;background:rgba(184,228,162,.07);color:var(--as-accent)!important;font:600 8px "IBM Plex Mono",monospace!important;letter-spacing:.1em}
+.sentinel-swap-intro{margin:13px 0!important;color:var(--as-muted)!important;font:12px/1.6 Inter,sans-serif!important}
+.sentinel-swap-security{margin:0 0 14px;border-bottom:1px solid var(--as-line);padding-bottom:12px}
+.sentinel-swap-security summary{display:inline-flex;align-items:center;gap:8px;cursor:pointer;color:var(--as-accent)!important;font:600 10px Inter,sans-serif;list-style:none}
+.sentinel-swap-security summary::-webkit-details-marker{display:none}
+.sentinel-swap-security summary:after{content:"＋";font:12px "IBM Plex Mono",monospace;color:var(--as-muted);transition:transform .2s}
+.sentinel-swap-security[open] summary:after{content:"−"}
+.sentinel-swap-security p{max-width:650px;margin:10px 0 0!important;color:var(--as-muted)!important;font:10px/1.7 Inter,sans-serif!important}
+.sentinel-swap-message .developer-trade-quote.swap-modern-card{
+  margin:0!important;padding:16px!important;border-radius:14px!important;
+  border:1px solid var(--as-line)!important;background:rgba(7,12,9,.52)!important;
+  box-shadow:none!important;gap:12px!important;
+}
+.sentinel-swap-message .developer-trade-quote label{display:flex;flex-direction:column;gap:8px;margin:0!important;color:var(--as-muted)!important;font:600 9px "IBM Plex Mono",monospace!important;letter-spacing:.1em}
+.sentinel-swap-message .developer-trade-quote input:not([type=checkbox]){
+  width:100%;min-height:46px;padding:12px 13px!important;border:1px solid var(--as-line-strong)!important;
+  border-radius:11px!important;background:#0b120d!important;color:var(--as-text)!important;font:14px Inter,sans-serif!important;
+}
+.sentinel-swap-message .swap-token-picker{width:100%}
+.sentinel-swap-message .swap-token-trigger{
+  width:100%;min-height:48px!important;justify-content:flex-start;border-radius:11px!important;
+  padding:10px 12px!important;background:#0b120d!important;border-color:var(--as-line-strong)!important;
+}
+.sentinel-swap-message .swap-token-trigger>span:not(.swap-token-chevron){margin-left:auto;color:var(--as-muted)!important;font:9px "IBM Plex Mono",monospace!important}
+.sentinel-swap-message .swap-token-panel{width:min(390px,calc(100vw - 64px));background:#111a14!important;border-color:var(--as-line-strong)!important}
+.sentinel-swap-message .swap-chain-chip{background:rgba(255,255,255,.025)!important;border-color:var(--as-line)!important;color:var(--as-muted)!important}
+.sentinel-swap-message .swap-chain-chip.is-active{border-color:rgba(184,228,162,.45)!important;background:var(--as-accent-soft)!important;color:var(--as-accent)!important}
+.sentinel-swap-message .swap-token-option{border-color:transparent!important;background:transparent!important}
+.sentinel-swap-message .swap-token-option:hover,.sentinel-swap-message .swap-token-option.is-current{background:rgba(184,228,162,.07)!important;border-color:rgba(184,228,162,.2)!important}
+.sentinel-swap-message .swap-flip-button{align-self:center;border:1px solid var(--as-line-strong)!important;border-radius:10px!important;background:var(--as-panel-3)!important;color:var(--as-accent)!important}
+.sentinel-swap-message .swap-wallet-bar{padding:11px 12px;border:1px solid var(--as-line)!important;border-radius:12px!important;background:rgba(255,255,255,.018)!important}
+.sentinel-swap-message .swap-wallet-state{color:var(--as-muted)!important;font:10px "IBM Plex Mono",monospace!important}
+.sentinel-swap-message .swap-wallet-state.is-connected{color:var(--as-accent)!important}
+.sentinel-swap-message .swap-connect-button{min-height:42px!important}
+.sentinel-swap-status{margin:2px 0 0!important;padding:11px 12px;border-left:2px solid rgba(184,228,162,.42);border-radius:0 9px 9px 0;background:rgba(184,228,162,.045);color:var(--as-muted)!important;font:11px/1.65 Inter,sans-serif!important}
+.sentinel-swap-message .secondary-btn,.sentinel-swap-message .primary-btn{min-height:42px;border-radius:10px!important}
+@media(max-width:560px){
+ .sentinel-swap-message{padding:13px!important;border-radius:14px!important}
+ .sentinel-swap-message .developer-trade-quote.swap-modern-card{padding:12px!important}
+ .sentinel-swap-message .swap-wallet-bar{align-items:stretch!important}
+ .sentinel-swap-message .swap-connect-button{width:100%}
+ .sentinel-swap-message .swap-token-panel{width:calc(100vw - 56px);max-width:calc(100vw - 56px)}
+}
