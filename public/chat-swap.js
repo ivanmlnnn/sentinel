@@ -31,6 +31,26 @@ function decimalToUnits(value, decimals) {
   if (units <= 0n) throw new Error("Amount must be greater than zero.");
   return units.toString();
 }
+export function resolveInitialSwapToken(tokens, symbol) {
+  const key = String(symbol || "").toUpperCase();
+  let matches = tokens.filter(token => String(token.symbol).toUpperCase() === key);
+  // Tidepool's current NEAR Testnet registry exposes wNEAR, not native NEAR.
+  // Use the wrapped asset only as an explicit registry-backed fallback.
+  if (!matches.length && key === "NEAR") {
+    matches = tokens.filter(token => String(token.symbol).toUpperCase() === "WNEAR" &&
+      String(token.blockchain).toLowerCase() === "near");
+  }
+  if (!matches.length) return null;
+  const preferredChain = key === "NEAR" || key === "WNEAR" || key === "ETH" ? "near" :
+    key === "BNB" ? "bsc" : key === "SOL" ? "sol" :
+    key === "BTC" || key === "WBTC" ? "btc" :
+    key === "XLM" ? "stellar" : key === "XRP" ? "xrp" :
+    key === "SUI" ? "sui" : "near";
+  return matches.find(token => String(token.blockchain).toLowerCase() === preferredChain) ||
+    matches.find(token => String(token.blockchain).toLowerCase() === "near") ||
+    matches.find(token => CHAIN_IDS[String(token.blockchain).toLowerCase()]) ||
+    matches[0];
+}
 function formatToken(token) { return token.symbol + " · " + token.blockchain.toUpperCase() + " · TESTNET"; }
 function tokenAddressValid(token) {
   return typeof token.contract_address === "string" && /^0x[a-f0-9]{40}$/i.test(token.contract_address);
@@ -582,33 +602,16 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     const originOption = el("option", formatToken(token)); originOption.value = String(token.asset_id ?? ""); originSelect.append(originOption);
     const destinationOption = el("option", formatToken(token)); destinationOption.value = String(token.asset_id ?? ""); destSelect.append(destinationOption);
   }
-  // Symbols such as ETH and USDC exist on several testnets. Resolve a deterministic
-  // supported default instead of leaving the native selects empty when matches are ambiguous.
-  const preferredChain = symbol => {
-    const key = String(symbol || "").toUpperCase();
-    if (key === "NEAR" || key === "WNEAR") return "near";
-    if (key === "BNB") return "bsc";
-    if (key === "SOL") return "sol";
-    if (key === "BTC" || key === "WBTC") return "btc";
-    if (key === "XLM") return "stellar";
-    if (key === "XRP") return "xrp";
-    if (key === "SUI") return "sui";
-    if (key === "ETH") return "near";
-    return "near";
-  };
-  const chooseInitialToken = symbol => {
-    const matches = tokens.filter(token => String(token.symbol).toUpperCase() === String(symbol).toUpperCase());
-    if (!matches.length) return null;
-    const preferred = preferredChain(symbol);
-    return matches.find(token => String(token.blockchain).toLowerCase() === preferred) ||
-      matches.find(token => String(token.blockchain).toLowerCase() === "near") ||
-      matches.find(token => CHAIN_IDS[String(token.blockchain).toLowerCase()]) ||
-      matches[0];
-  };
-  const initialOrigin = chooseInitialToken(parsed.from);
-  const initialDestination = chooseInitialToken(parsed.to);
+  // Resolve ticker ambiguity by exact chain identity. NEAR prompts fall back
+  // to registry-backed wNEAR only when native NEAR is absent from Tidepool.
+  const initialOrigin = resolveInitialSwapToken(tokens, parsed.from);
+  const initialDestination = resolveInitialSwapToken(tokens, parsed.to);
   originSelect.value = initialOrigin ? String(initialOrigin.asset_id ?? "") : "";
   destSelect.value = initialDestination ? String(initialDestination.asset_id ?? "") : "";
+  if (String(parsed.to).toUpperCase() === "NEAR" && initialDestination &&
+      String(initialDestination.symbol).toUpperCase() === "WNEAR") {
+    card.append(el("p", "Tidepool does not list native NEAR as a swap asset. wNEAR · NEAR · TESTNET is selected instead; review the exact asset before continuing.", "sentinel-swap-intro"));
+  }
   originSelect.className = "swap-native-select";
   destSelect.className = "swap-native-select";
   const originPicker = createSwapTokenPicker(originSelect, tokens, parsed.from, () => activeNearAccount, () => { defaults(); invalidate(); });
