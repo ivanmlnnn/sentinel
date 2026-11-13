@@ -25,6 +25,8 @@ test("rejects unapproved pairs, unsupported intervals and invalid limits before 
   assert.equal((await getKrakenOhlcv({ pair: "BAD/PAIR" }, fetchImpl, NOW)).reason, "MARKET_PAIR_NOT_ALLOWLISTED");
   assert.equal((await getKrakenOhlcv({ interval: 2 }, fetchImpl, NOW)).reason, "MARKET_INTERVAL_UNSUPPORTED");
   assert.equal((await getKrakenOhlcv({ limit: 49 }, fetchImpl, NOW)).reason, "MARKET_CANDLE_LIMIT_INVALID");
+  assert.equal((await getKrakenOhlcv({ limit: 501 }, fetchImpl, NOW)).reason, "MARKET_CANDLE_LIMIT_INVALID");
+  assert.equal((await getKrakenOhlcv({ limit: 500 }, fetchImpl, NOW)).reason, "MARKET_DATA_INSUFFICIENT_HISTORY");
   assert.equal(calls, 0);
 });
 test("fails closed on provider errors, malformed candles and insufficient history", async () => {
