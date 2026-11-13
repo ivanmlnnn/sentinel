@@ -17,6 +17,7 @@ import { onRequestPost as tradingGenerateIntentPost } from "../functions/api/tra
 import { onRequestPost as tradingSubmitIntentPost } from "../functions/api/trading-submit-intent.js";
 import { onRequestGet as tradingStatusGet } from "../functions/api/trading-status.js";
 import { onRequestPost as tradingKeyStatusPost } from "../functions/api/trading-key-status.js";
+import { onRequestPost as developerSessionPost } from "../functions/api/developer-session.js";
 
 const MAX_API_BODY_BYTES = 65536;
 const routes = {
@@ -30,6 +31,7 @@ const routes = {
   "POST /api/ai-review": aiReviewPost,
   "POST /api/agent/run": agentRunPost,
   "POST /api/terminal/run": terminalRunPost,
+  "POST /api/agent/developer-session": developerSessionPost,
   "POST /api/guest/agent": guestAgentPost,
   "POST /api/agent/approve": agentApprovePost,
   "POST /api/internal/investigate": internalInvestigatePost,
@@ -133,7 +135,8 @@ async function terminalRunPost({ request }) {
   try {
     const upstream = await fetch(TERMINAL_RUNTIME_URL + "/v1/terminal/run", {
       method: "POST",
-      headers: { authorization, "content-type": "application/json", "idempotency-key": idempotencyKey },
+      headers: { authorization, "content-type": "application/json", "idempotency-key": idempotencyKey,
+        ...(request.headers.get("cookie") ? { cookie: request.headers.get("cookie") } : {}) },
       body: JSON.stringify({ mode, prompt, ...(mode === "developer" ? { wallet_account: body.wallet_account } : {}) }),
       signal: AbortSignal.timeout(30000)
     });
@@ -195,7 +198,7 @@ export default {
           const ip = request.headers.get("CF-Connecting-IP") || "unknown";
           if (!env.API_RATE_LIMITER) return respond(serviceUnavailable("RATE_LIMIT_NOT_CONFIGURED"));
           if (!await enforceRateLimit(env.API_RATE_LIMITER, ip)) return respond(rateLimitResponse());
-          if (request.method === "POST" && ["/api/agent/run", "/api/terminal/run", "/api/agent/approve", "/api/guest/agent"].includes(url.pathname)) {
+          if (request.method === "POST" && ["/api/agent/run", "/api/terminal/run", "/api/agent/developer-session", "/api/agent/approve", "/api/guest/agent"].includes(url.pathname)) {
             if (!env.AGENT_RATE_LIMITER) return respond(serviceUnavailable("AGENT_RATE_LIMIT_NOT_CONFIGURED"));
             if (!await enforceRateLimit(env.AGENT_RATE_LIMITER, ip)) return respond(rateLimitResponse());
           }
