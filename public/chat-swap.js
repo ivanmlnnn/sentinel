@@ -48,10 +48,13 @@ function validManualTxHash(chain, hash) {
 function encodeErc20Transfer(to, amount) {
   return "0xa9059cbb" + to.slice(2).toLowerCase().padStart(64, "0") + BigInt(amount).toString(16).padStart(64, "0");
 }
-async function connectEvm(refundInput, chain) {
+function getInjectedEvmProvider() {
   const providers = Array.isArray(window.ethereum?.providers) ? window.ethereum.providers : [window.ethereum];
-  const provider = providers.find(item => item && typeof item.request === "function" && !item.isBraveWallet) ||
-    providers.find(item => item && typeof item.request === "function");
+  return providers.find(item => item && typeof item.request === "function" && !item.isBraveWallet) ||
+    providers.find(item => item && typeof item.request === "function") || null;
+}
+async function connectEvm(refundInput, chain) {
+  const provider = getInjectedEvmProvider();
   if (!provider) throw new Error("No injected EVM wallet found. Install or unlock an EIP-1193 wallet, then retry.");
   const accounts = await provider.request({ method: "eth_requestAccounts" });
   const account = accounts?.[0];
