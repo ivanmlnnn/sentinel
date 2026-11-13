@@ -2,6 +2,12 @@
 
 Status date: 13 November 2026
 
+## Feature-branch implementation update (13 November 2026)
+
+The dedicated branch `fix/developer-mode-railway-terminal` now contains a D1-backed NEP-413 challenge/session API, Privy-actor binding, an HttpOnly Secure SameSite=Strict session cookie, wallet approval through the documented NEAR Connect `signInAndSignMessage` flow, session restore/revoke handling, Production Worker routing, and Railway-side session revalidation before Developer Agent tasks. Developer Mode is enabled in the UI only after the Worker verifies the signed challenge and returns an ACTIVE Testnet session. The browser cookie is forwarded by Production to Railway; Railway rechecks it against the Production session endpoint and compares the verified account with the requested wallet account.
+
+**This is branch code, not a live production verification.** The Cloudflare Worker and D1 migration have not been deployed, Railway changes are staged, and no real wallet approval has yet been completed against this branch. The session is application-level only; autonomous signing and swap broadcast remain disabled.
+
 ## Executive status
 
 **NOT READY for delegated/autonomous transaction execution.** The current Developer Mode toggle is a wallet-connect preview gate, not a delegated-session authorization flow.
@@ -10,12 +16,7 @@ A connected wallet is not an approved session, and a generated skill draft is no
 
 ## Verified current behavior
 
-The browser implementation in `public/app.js`:
-1. Connects a NEAR wallet and requires a `.testnet` account.
-2. Sets Developer Mode to `ON · WALLET CONNECTED · PREVIEW ONLY`.
-3. Explicitly tells the user delegated execution is not enabled.
-4. Builds a local trade-skill draft with `buildTradeSkillDraft()`; it is not persisted as an executable skill and has no autonomous scheduler.
-5. Sends normal authenticated chat to Cloudflare Worker `/api/agent/run`, a separate route from Hatchable's manual Task Runner.
+The live production browser remains unchanged until this branch is deployed. The feature branch now requests a one-use NEP-413 challenge, asks the selected compatible NEAR wallet to sign through `signInAndSignMessage`, and waits for server verification before showing `ON · WALLET APPROVED · 8H APP SESSION`. The authenticated Developer Mode task is routed to Production `/api/terminal/run`, then Railway. The current Railway Developer Agent is a deterministic strategy planner and remains execution-disabled.
 
 The toggle does **not** create a restricted FunctionCall key, persist a wallet-authorized session, define an on-chain contract/method allowlist, or establish an on-chain revocation path.
 
