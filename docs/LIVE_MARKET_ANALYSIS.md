@@ -21,6 +21,8 @@ POST /api/trading/agent
 
 Requires a valid Privy access token and the Cloudflare AI binding. The server fetches the market data itself; the model cannot provide or override OHLCV.
 
+The roles are two sequential LLM calls through the configured Cloudflare AI binding with distinct system prompts, not two independently trained foundation models.
+
 1. Agent 1 builds a bounded market thesis from the deterministic snapshot.
 2. Sentinel validates the signal, exact evidence IDs, invalidation text, and horizon.
 3. Agent 2 independently challenges the thesis and can VETO it.
