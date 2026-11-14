@@ -100,6 +100,11 @@ export function resolveTidepoolSwapAssets(origin, destination, tokens) {
   if (!origin || !destination || origin.asset_id === destination.asset_id) {
     throw new Error("Select two different assets from the live Tidepool Testnet registry.");
   }
+  if (!Array.isArray(tokens) ||
+      !tokens.some(token => token.asset_id === origin.asset_id && token.blockchain === origin.blockchain) ||
+      !tokens.some(token => token.asset_id === destination.asset_id && token.blockchain === destination.blockchain)) {
+    throw new Error("Both selected swap assets must exist in the current Tidepool Testnet registry.");
+  }
   const quoteOrigin = origin;
   const quoteDestination = destination;
   return { quoteOrigin, quoteDestination, wrapNativeNear: false, unwrapNativeNear: false };
