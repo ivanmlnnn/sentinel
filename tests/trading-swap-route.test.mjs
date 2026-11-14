@@ -149,7 +149,6 @@ test("NEAR live quote, dual-agent review and wallet transaction preparation fini
   assert.match(quoteHandler, /await prepareNearWalletApproval\(swap\)/);
   const approvalStart = quoteEnd;
   const approvalEnd = swapUi.indexOf("if (pendingNearApproval)", approvalStart);
-  const approvalHandler = swapUi.slice(approvalStart, swapUi.indexOf("approveButton.addEventListener", approvalStart + 1) < 0 ? undefined : approvalStart);
   assert.ok(approvalEnd > approvalStart);
   assert.match(swapUi.slice(approvalEnd, approvalEnd + 1600), /prepared\.wallet\.signAndSendTransaction\(/);
 });
