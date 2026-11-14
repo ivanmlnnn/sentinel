@@ -71,3 +71,15 @@ test("percentage shortcuts use exact integer token units and are present for all
   for (const percent of [25, 50, 75, 100]) assert.match(swapUi, new RegExp("percent \\+ \"%\""));
   assert.match(swapUi, /formatUnitsForInput\(amountUnits, Number\(origin\.decimals\)\)/);
 });
+
+test("explicit balance refresh requests EVM account access and reuses that address across registry chains", () => {
+  assert.match(swapUi, /refreshBalances = async \(onlyAssetId = null, requestEvmPermission = false\)/);
+  assert.match(swapUi, /eth_requestAccounts/);
+  assert.match(swapUi, /readSwapWalletBalance\(token, walletAccount, request, evmAccount\)/);
+  assert.match(swapUi, /refresh\.addEventListener\("click", \(\) => refreshBalances\(null, true\)\)/);
+});
+
+test("wallet balance reads never silently claim unsupported chains are connected", () => {
+  assert.match(swapUi, /No EVM provider exposed by this wallet\/browser/);
+  assert.match(swapUi, /Wallet balance adapter not connected for /);
+});
