@@ -101,13 +101,20 @@ test("normalizes testnet assets across NEAR, Base and Sui while excluding mainne
   assert.ok(tokens.every(token => token.price_usd > 0));
 });
 
+test("derives NEP-141 contract account from asset ID when provider omits contractAddress", () => {
+  const [token] = normalizeTidepoolTokens([
+    { assetId: "nep141:wnear.tidepool-sandbox.testnet", decimals: 24, blockchain: "near", symbol: "wNEAR", price: 1, priceUpdatedAt: UPDATED }
+  ]);
+  assert.equal(token.contract_address, "wnear.tidepool-sandbox.testnet");
+});
+
 test("keeps valid testnet assets discoverable when price metadata is temporarily unavailable", () => {
   const withoutPrice = normalizeTidepoolTokens([
     { assetId: "nep141:wnear.tidepool-sandbox.testnet", decimals: 24, blockchain: "near", symbol: "wNEAR" },
     { assetId: "nep141:eth.tidepool-sandbox.testnet", decimals: 18, blockchain: "near", symbol: "ETH", price: null, priceUpdatedAt: null }
   ]);
   assert.equal(withoutPrice.length, 2);
-  assert.equal(withoutPrice.find(token => token.symbol === "wNEAR").contract_address, null);
+  assert.equal(withoutPrice.find(token => token.symbol === "wNEAR").contract_address, "wnear.tidepool-sandbox.testnet");
   assert.equal(withoutPrice.find(token => token.symbol === "ETH").price_usd, null);
 });
 
