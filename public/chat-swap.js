@@ -1348,7 +1348,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       swapIntent: {
         originAsset: swap.originAsset, destinationAsset: swap.destinationAsset,
         amount: swap.amount, recipient: swap.recipient, refundTo: swap.refundTo,
-        slippageTolerance: swap.slippageTolerance, userPrompt: prompt
+        slippageTolerance: swap.slippageTolerance, userPrompt: selectedSwapPrompt
       }
     };
     if (preOrderTrigger.value === "TIME") {
@@ -1452,12 +1452,9 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       const origin = tokens.find(token => String(token.asset_id ?? "") === originSelect.value);
       const destination = tokens.find(token => String(token.asset_id ?? "") === destSelect.value);
       if (!origin || !destination) throw new Error("Choose exact origin and destination assets from the live token registry.");
-      if (!promptTokenMatchesSymbol(parsed.from, origin) ||
-          !promptTokenMatchesSymbol(parsed.to, destination)) {
-        throw new Error("Selected direction " + origin.symbol + " → " + destination.symbol +
-          " does not match your instruction " + parsed.from + " → " + parsed.to +
-          ". Nothing was changed and no quote was requested. Select the intended assets explicitly or submit a corrected instruction.");
-      }
+      // The selectors are the user's explicit route choice. The chat prompt
+      // supplies the initial defaults only; flipping or editing the pair is
+      // an intentional override and must survive quote verification.
       if (origin.blockchain === "near" || destination.blockchain === "near") {
         const dashboardNearAccount = getConnectedAccount();
         const connector = getConnector();
@@ -1655,11 +1652,12 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     let manualOnly = false;
     try {
       if (!swap || !dryQuote) throw new Error("Request a fresh quote before approval.");
-      if (!promptTokenMatchesSymbol(parsed.from, swap.displayOrigin) ||
-          !promptTokenMatchesSymbol(parsed.to, swap.displayDestination)) {
-        throw new Error("Swap direction no longer matches your instruction (" + parsed.from + " → " + parsed.to +
-          "). Request a fresh quote; no wallet approval was opened.");
-      }
+      // Revalidate the exact selected pair captured in the fresh quote.
+      // Do not compare it to the original chat prompt: the user may have
+      // explicitly flipped or changed either selector before verification.
+      const selectedSwapPrompt = "Swap " + amountInput.value.trim() + " " +
+        (swap.displayOrigin || swap.origin).symbol + " to " +
+        (swap.displayDestination || swap.destination).symbol;
       if (guestMode) throw new Error("Guest mode cannot approve or sign transactions.");
       if (swap.origin.blockchain === "near") {
         const connector = getConnector();
