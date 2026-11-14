@@ -374,7 +374,13 @@ function renderManualDeposit(panel, liveQuote, token, swap, request, statusNode,
 const CHAIN_LOGOS = {
   eth: "ethereum", ethereum: "ethereum", base: "base", arb: "arbitrum",
   arbitrum: "arbitrum", bsc: "binance", near: "nearprotocol",
-  sol: "solana", solana: "solana", sui: "sui"
+  sol: "solana", solana: "solana", sui: "sui",
+  stellar: "stellar", xrp: "ripple", btc: "bitcoin"
+};
+const TOKEN_LOGOS = {
+  ETH: "ethereum", WETH: "ethereum", USDC: "usdcoin", USDT: "tether",
+  WNEAR: "nearprotocol", NEAR: "nearprotocol", WBTC: "bitcoin", BTC: "bitcoin",
+  SOL: "solana", SUI: "sui", BNB: "binance", XRP: "ripple", XLM: "stellar"
 };
 function chainLogo(chain) {
   const key = String(chain || "").toLowerCase();
@@ -385,7 +391,7 @@ function chainLogo(chain) {
   img.alt = key.toUpperCase() + " logo";
   img.loading = "lazy";
   img.decoding = "async";
-  img.src = "https://cdn.simpleicons.org/" + slug;
+  img.src = "https://cdn.jsdelivr.net/npm/simple-icons@v15/icons/" + slug + ".svg";
   img.addEventListener("error", () => { wrap.replaceChildren(el("span", key.slice(0, 2).toUpperCase())); });
   wrap.append(img);
   return wrap;
@@ -394,6 +400,16 @@ function tokenLogo(token) {
   const symbol = String(token?.symbol || "ASSET").toUpperCase();
   const glyphs = { ETH: "♦", WETH: "♦", USDC: "$", USDT: "₮", WNEAR: "N", NEAR: "N", WBTC: "₿", BTC: "₿", XAUT: "Au", SOL: "◎", SUI: "S", BNB: "◆", XRP: "X", XLM: "✦" };
   const logo = el("span", glyphs[symbol] || symbol.slice(0, 2), "swap-token-logo token-logo-" + symbol.toLowerCase().replace(/[^a-z0-9-]/g, ""));
+  const slug = TOKEN_LOGOS[symbol];
+  if (slug) {
+    const img = document.createElement("img");
+    img.alt = symbol + " logo";
+    img.loading = "lazy";
+    img.decoding = "async";
+    img.src = "https://cdn.jsdelivr.net/npm/simple-icons@v15/icons/" + slug + ".svg";
+    img.addEventListener("error", () => { img.remove(); });
+    logo.replaceChildren(img);
+  }
   logo.setAttribute("aria-label", symbol + " token");
   return logo;
 }
@@ -409,6 +425,15 @@ function formatUnitsForDisplay(raw, decimals) {
   const base = 10n ** BigInt(places);
   const whole = value / base;
   const fraction = (value % base).toString().padStart(places, "0").slice(0, 6).replace(/0+$/, "");
+  return fraction ? whole.toString() + "." + fraction : whole.toString();
+}
+export function formatUnitsForInput(raw, decimals) {
+  const places = Number(decimals);
+  if (!Number.isInteger(places) || places < 0 || places > 30) throw new Error("Token decimals are invalid.");
+  const value = BigInt(raw);
+  const base = 10n ** BigInt(places);
+  const whole = value / base;
+  const fraction = places ? (value % base).toString().padStart(places, "0").replace(/0+$/, "") : "";
   return fraction ? whole.toString() + "." + fraction : whole.toString();
 }
 async function readSwapWalletBalance(token, nearWalletAccount, request) {
@@ -611,7 +636,10 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
   refresh.addEventListener("click", refreshBalances);
   syncTrigger(); renderChains(); renderTokens();
   root.append(trigger, select, panel);
-  return { root, sync: syncTrigger, refresh: refreshBalances, close: closePanel };
+  return {
+    root, sync: syncTrigger, refresh: refreshBalances, close: closePanel,
+    balanceFor: assetId => balances.get(assetId) || null
+  };
 }
 
 export async function renderChatSwap({ prompt, result, request, connector: connectorSource, connectedAccount: accountSource, encodeBase58, guestMode, onWalletConnected, onConnectNearWallet, onDisconnectNearWallet }) {
@@ -634,7 +662,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   const tokensResponse = await request("/trading/tokens", { method: "GET" });
   const tokens = tokensResponse.tokens;
   if (!Array.isArray(tokens) || !tokens.length) throw new Error("Tidepool did not return a usable testnet token registry.");
-  const amountInput = document.createElement("input"); amountInput.value = parsed.amount; amountInput.inputMode = "decimal";
+  const amountInput = document.createElement("input"); amountInput.value = parsed.amount; amountInput.inputMode = "decimal"; amountInput.autocomplete = "off";
   const originSelect = document.createElement("select"), destSelect = document.createElement("select");
   for (const token of tokens) {
     const originOption = el("option", formatToken(token)); originOption.value = String(token.asset_id ?? ""); originSelect.append(originOption);
@@ -862,7 +890,40 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       : "Verify quote";
     connectButton.classList.toggle("is-verify", missingChains.length === 0);
   })();
-  addField(fields, "Amount", amountInput);
+  const amountGroup = el("div", undefined, "swap-amount-group");
+  const amountShortcuts = el("div", undefined, "swap-amount-shortcuts");
+  for (const percent of [25, 50, 75, 100]) {
+    const shortcut = el("button", percent + "%", "swap-amount-shortcut");
+    shortcut.type = "button";
+    shortcut.addEventListener("click", async () => {
+      const { origin } = defaults();
+      if (!origin) { status.textContent = "Choose an origin token before selecting a balance percentage."; return; }
+      shortcut.disabled = true;
+      try {
+        await originPicker.refresh();
+        const balance = originPicker.balanceFor(origin.asset_id);
+        if (!balance || typeof balance.raw !== "string") {
+          throw new Error(balance?.note || "Wallet balance is not available for this token and network.");
+        }
+        let spendable = BigInt(balance.raw);
+        // Preserve a small native NEAR gas reserve when spending native NEAR.
+        if (String(origin.blockchain).toLowerCase() === "near" && !origin.contract_address) {
+          const gasReserve = 10n ** 22n; // 0.01 NEAR
+          spendable = spendable > gasReserve ? spendable - gasReserve : 0n;
+        }
+        const amountUnits = spendable * BigInt(percent) / 100n;
+        if (amountUnits <= 0n) throw new Error("Available balance is too small after reserving network gas.");
+        amountInput.value = formatUnitsForInput(amountUnits, Number(origin.decimals));
+        invalidate();
+        status.textContent = percent + "% of spendable " + origin.symbol + " balance selected.";
+      } catch (error) {
+        status.textContent = error?.message || "Could not read the connected wallet balance.";
+      } finally { shortcut.disabled = false; }
+    });
+    amountShortcuts.append(shortcut);
+  }
+  amountGroup.append(amountInput, amountShortcuts);
+  addField(fields, "Amount · available balance", amountGroup);
   addField(fields, "You pay · origin asset / network", originPicker.root);
   const flipButton = el("button", "⇅", "swap-flip-button");
   flipButton.type = "button";
@@ -967,7 +1028,11 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       try {
         // Invoke Meteor's redirecting wallet method synchronously in this tap,
         // before any await, so mobile browsers retain user activation.
-        const walletApproval = prepared.wallet.signAndSendTransaction(prepared.transaction);
+        const walletApproval = prepared.wallet.signAndSendTransaction({
+          ...prepared.transaction,
+          signerId: prepared.connectedAccount,
+          callbackUrl: window.location.href
+        });
         status.textContent = "Opening Meteor. Review and approve the exact NEAR Testnet transfer…";
         await finishNearWalletDeposit(walletApproval, prepared, {
           request, statusNode: status, detailsNode: details,
