@@ -48,5 +48,5 @@ test("swap Disconnect UI follows the active NEAR session and preserves any remai
 test("minimum-output risk rejection exposes observed and required values in swap status", () => {
   assert.match(chatSwap, /minimum output observed=/);
   assert.match(chatSwap, /required=/);
-  assert.match(chatSwap, /slippage=.*bps/);
+  assert.match(chatSwap, /slippage_tolerance_bps/);
 });
