@@ -116,6 +116,12 @@ test("native NEAR cannot be swapped to itself through a WNEAR round trip", () =>
   const wnear = { asset_id: "nep141:wnear.tidepool-sandbox.testnet", symbol: "wNEAR", decimals: 24, blockchain: "near", contract_address: "wnear.tidepool-sandbox.testnet" };
   assert.throws(() => resolveTidepoolSwapAssets(native, native, [wnear]));
 });
+test("swap asset resolver rejects token objects outside the current provider registry", () => {
+  const selected = { asset_id: "nep141:fake.tidepool-sandbox.testnet", symbol: "FAKE", decimals: 6, blockchain: "near", contract_address: "fake.tidepool-sandbox.testnet" };
+  const real = { asset_id: "nep141:usdc.tidepool-sandbox.testnet", symbol: "USDC", decimals: 6, blockchain: "near", contract_address: "usdc.tidepool-sandbox.testnet" };
+  assert.throws(() => resolveTidepoolSwapAssets(selected, real, [real]), /current Tidepool Testnet registry/);
+});
+
 
 test("native NEAR unwrap action builder fails closed until the WNEAR method is verified", () => {
   assert.throws(() => buildNearWalletUnwrapActions("123456789"), /NATIVE_NEAR_UNWRAP_UNSUPPORTED/);
