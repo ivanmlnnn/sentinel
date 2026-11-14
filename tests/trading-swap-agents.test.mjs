@@ -47,7 +47,8 @@ test("both independent agents must pass before swap review is eligible", async (
   assert.equal(result.value.execution_authorized, false);
   assert.equal(ai.calls.length, 2);
   assert.match(ai.calls[0].messages[0].content, /user_prompt/);
-  assert.match(ai.calls[1].messages[0].content, /agent_one_review/);
+  assert.match(ai.calls[1].messages[0].content, /deterministic_checks/);
+  assert.doesNotMatch(ai.calls[1].messages[0].content, /agent_one_review/);
 });
 test("Agent 2 veto blocks the swap even when Agent 1 passes", async () => {
   const ai = aiMock([agentOnePass, {
