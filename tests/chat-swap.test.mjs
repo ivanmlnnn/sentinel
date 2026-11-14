@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseChatSwapPrompt, resolveInitialSwapToken, formatUnitsForInput } from "../public/chat-swap.js";
+import { parseChatSwapPrompt, resolveInitialSwapToken, formatUnitsForInput, buildNearWalletDepositActions } from "../public/chat-swap.js";
 
 test("parses a decimal-point swap request", () => {
   assert.deepEqual(parseChatSwapPrompt("swap 0.1 ETH to NEAR"), {
@@ -49,4 +49,26 @@ test("formats percentage shortcut amounts without floating-point rounding", () =
   assert.equal(formatUnitsForInput(250000000000000000n, 18), "0.25");
   assert.equal(formatUnitsForInput(123456789n, 8), "1.23456789");
   assert.equal(formatUnitsForInput(1000000n, 6), "1");
+});
+
+
+test("native NEAR swap wraps the exact amount before depositing WNEAR into Intents", () => {
+  const actions = buildNearWalletDepositActions("100000000000000000000000", "a".repeat(64), true);
+  assert.equal(actions.length, 2);
+  assert.equal(actions[0].params.methodName, "near_deposit");
+  assert.equal(actions[0].params.deposit, "100000000000000000000000");
+  assert.equal(actions[1].params.methodName, "ft_transfer_call");
+  assert.equal(actions[1].params.args.receiver_id, "verifier.tidepool-sandbox.testnet");
+  assert.equal(actions[1].params.args.amount, "100000000000000000000000");
+  assert.equal(actions[1].params.args.msg, "a".repeat(64));
+});
+
+test("WNEAR swap does not wrap native NEAR a second time", () => {
+  const actions = buildNearWalletDepositActions("100000000000000000000000", "b".repeat(64), false);
+  assert.equal(actions.length, 1);
+  assert.equal(actions[0].params.methodName, "ft_transfer_call");
+});
+
+test("NEAR wallet deposit action builder rejects invalid deposit references", () => {
+  assert.throws(() => buildNearWalletDepositActions("1", "not-an-intents-address", true));
 });
