@@ -140,22 +140,22 @@ test("native NEAR unwrap approval button is revealed after recovered settlement 
 });
 
 
-test("NEAR live quote, dual-agent review and wallet transaction preparation finish before the Approve tap", () => {
-  const prepareStart = swapUi.indexOf("const prepareNearWalletApproval = async");
-  const prepareEnd = swapUi.indexOf("  originSelect.addEventListener", prepareStart);
-  const prepare = swapUi.slice(prepareStart, prepareEnd);
-  assert.match(prepare, /request\("\/trading\/live-quote"/);
-  assert.match(prepare, /dualReview\?\.agent_one\?\.verdict !== "PASS"/);
-  assert.match(prepare, /dualReview\?\.agent_two\?\.verdict !== "PASS"/);
-  assert.match(prepare, /pendingNearApproval = await executeNearWalletDeposit/);
+test("NEAR live quote and dual-agent review gate wallet signing before Meteor approval", () => {
+  const approvalStart = swapUi.indexOf('approveButton.addEventListener("click"');
+  const approvalEnd = swapUi.indexOf("  // Start a read-only balance scan", approvalStart);
+  assert.ok(approvalStart >= 0 && approvalEnd > approvalStart, "approval handler boundaries must exist");
+  const approvalHandler = swapUi.slice(approvalStart, approvalEnd);
+  assert.match(approvalHandler, /request\("\/trading\/live-quote"/);
+  assert.match(approvalHandler, /dualReview\?\.agent_one\?\.verdict !== "PASS"/);
+  assert.match(approvalHandler, /dualReview\?\.agent_two\?\.verdict !== "PASS"/);
+  assert.match(approvalHandler, /pendingNearApproval = await executeNearWalletDeposit/);
+  assert.match(approvalHandler, /prepared\.wallet\.signAndSendTransaction\(/);
   const quoteStart = swapUi.indexOf('quoteButton.addEventListener("click"');
   const quoteEnd = swapUi.indexOf('approveButton.addEventListener("click"', quoteStart);
+  assert.ok(quoteStart >= 0 && quoteEnd > quoteStart, "quote handler boundaries must exist");
   const quoteHandler = swapUi.slice(quoteStart, quoteEnd);
-  assert.match(quoteHandler, /await prepareNearWalletApproval\(swap\)/);
-  const approvalStart = quoteEnd;
-  const approvalEnd = swapUi.indexOf("if (pendingNearApproval)", approvalStart);
-  assert.ok(approvalEnd > approvalStart);
-  assert.match(swapUi.slice(approvalEnd, approvalEnd + 1600), /prepared\.wallet\.signAndSendTransaction\(/);
+  assert.match(quoteHandler, /approveButton\.disabled = false/);
+  assert.match(quoteHandler, /approveButton\.hidden = false/);
 });
 
 
