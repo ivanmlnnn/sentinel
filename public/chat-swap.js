@@ -606,13 +606,17 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
     refresh.disabled = true;
     refresh.textContent = "Refreshing…";
     balanceStamp.textContent = "Reading connected wallet";
-    const entries = tokenList.filter(token => String(token.blockchain || "").toLowerCase() === activeChain);
+    const entries = tokenList;
     const walletAccount = typeof nearWalletAccount === "function" ? nearWalletAccount() : nearWalletAccount;
-    await Promise.all(entries.map(async token => {
-      try { balances.set(token.asset_id, await readSwapWalletBalance(token, walletAccount, request)); }
-      catch (error) { balances.set(token.asset_id, { value: null, note: error?.message || "Balance unavailable" }); }
-    }));
-    if (activeChain === "near") {
+    // Refresh the full Tidepool registry, not only the currently visible chain.
+    // Bound concurrency to avoid flooding wallet/RPC providers on mobile.
+    for (let index = 0; index < entries.length; index += 5) {
+      await Promise.all(entries.slice(index, index + 5).map(async token => {
+        try { balances.set(token.asset_id, await readSwapWalletBalance(token, walletAccount, request)); }
+        catch (error) { balances.set(token.asset_id, { value: null, note: error?.message || "Balance unavailable" }); }
+      }));
+    }
+    if (nearAccount(walletAccount)) {
       try {
         balances.set("__near_native__", await readSwapWalletBalance(
           { blockchain: "near", symbol: "NEAR", decimals: 24, contract_address: null }, walletAccount, request
@@ -620,6 +624,8 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
       } catch (error) {
         balances.set("__near_native__", { value: null, note: error?.message || "Native NEAR balance unavailable" });
       }
+    } else {
+      balances.set("__near_native__", { value: null, note: "Connect a NEAR Testnet wallet" });
     }
     balanceStamp.textContent = "Updated " + new Date().toLocaleTimeString();
     loading = false;
