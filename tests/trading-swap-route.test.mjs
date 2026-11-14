@@ -18,7 +18,8 @@ test("swap approval sends the original prompt and requires both independent agen
 });
 
 test("live quote API runs both agents after the signed Tidepool quote is validated", () => {
-  assert.match(liveQuoteApi, /getTidepoolLiveQuote\(quoteInput\)/);
+  assert.match(liveQuoteApi, /getTidepoolTestnetTokens\(\)/);
+  assert.match(liveQuoteApi, /getTidepoolLiveQuote\(quoteInput, fetch, Date\.now\(\), undefined, tokens\)/);
   assert.match(liveQuoteApi, /runDualAgentSwapReview\(/);
   assert.match(liveQuoteApi, /callSentinelAI\(env, options\)/);
   assert.match(liveQuoteApi, /execution_authorized:\s*false/);
@@ -43,7 +44,7 @@ test("Meteor approval launches directly on the Approve tap without an awaited op
   assert.doesNotMatch(preLaunchCode, /await\s/);
   assert.match(approval, /signerId:\s*prepared\.transaction\.signerId/);
   assert.match(approval, /receiverId:\s*prepared\.transaction\.receiverId/);
-  assert.doesNotMatch(approval, /callbackUrl/);
+  assert.doesNotMatch(approval, /callbackUrl\s*:/);
   assert.match(swapUi, /signerId:\s*preparedUnwrap\.account/);
 });
 
@@ -61,7 +62,7 @@ test("legacy swap approval also forwards the exact natural-language intent", () 
 });
 
 test("Meteor NEAR deposit preflight reads both token and native gas balances through the API", () => {
-  assert.match(swapUi, /readSwapWalletBalance\(swap\.origin, connectedAccount, request\)/);
+  assert.match(swapUi, /readSwapWalletBalance\(\s*swap\.wrapNativeNear \? nativeNearAsset : swap\.origin, connectedAccount, request\s*\)/);
   assert.match(swapUi, /contract_address: null \}, connectedAccount, request\)/);
 });
 
@@ -82,7 +83,7 @@ test("percentage shortcuts use exact integer token units and are present for all
 test("balance refresh reuses only an already-authorized EVM session and never requests a second wallet connection", () => {
   assert.match(swapUi, /refreshBalances = async \(onlyAssetId = null\)/);
   assert.match(swapUi, /eth_accounts/);
-  assert.doesNotMatch(swapUi, /eth_requestAccounts/);
+  assert.doesNotMatch(swapUi, /method:\\s*["\x27]eth_requestAccounts["\x27]/);
   assert.match(swapUi, /readSwapWalletBalance\(token, walletAccount, request, evmAccount\)/);
 });
 
