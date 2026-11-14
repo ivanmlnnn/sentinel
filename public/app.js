@@ -301,11 +301,11 @@ async function connectNearWalletFromGesture() {
 async function connectNearWalletForSwapFromGesture() {
   if (!connectorReady || !connector) throw new Error('NEAR wallet options are still loading. Wait a moment, then tap Connect again.');
   // Swap uses a connect-only action; it must never trigger the dashboard toggle.
-  if (connectedAccount && /^(?:[a-f0-9]{64}|[a-z0-9]+(?:[-_.][a-z0-9]+)*\\.testnet)$/i.test(connectedAccount)) return connectedAccount;
+  if (connectedAccount && /^(?:[a-f0-9]{64}|[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet)$/i.test(connectedAccount)) return connectedAccount;
   await connector.connect();
   const current = await connector.getConnectedWallet();
   const account = current?.accounts?.[0];
-  if (!account?.accountId || !/^(?:[a-f0-9]{64}|[a-z0-9]+(?:[-_.][a-z0-9]+)*\\.testnet)$/i.test(account.accountId)) {
+  if (!account?.accountId || !/^(?:[a-f0-9]{64}|[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet)$/i.test(account.accountId)) {
     throw new Error('Wallet selection finished without a valid NEAR Testnet account. Choose Meteor and approve the connection.');
   }
   syncWalletUI(account.accountId, current.wallet?.manifest?.name || 'NEAR wallet');
