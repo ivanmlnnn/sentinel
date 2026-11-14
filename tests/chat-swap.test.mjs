@@ -99,6 +99,18 @@ test("native NEAR input is quoted as WNEAR and marked for wrapping", () => {
   assert.equal(route.unwrapNativeNear, false);
 });
 
+test("native NEAR and WNEAR use distinct wallet paths for the same Tidepool quote asset", () => {
+  const native = { asset_id: "native:near", symbol: "NEAR", decimals: 24, blockchain: "near", native: true };
+  const wnear = { asset_id: "nep141:wnear.tidepool-sandbox.testnet", symbol: "wNEAR", decimals: 24, blockchain: "near", contract_address: "wnear.tidepool-sandbox.testnet" };
+  const usdc = { asset_id: "nep141:usdc.tidepool-sandbox.testnet", symbol: "USDC", decimals: 6, blockchain: "near", contract_address: "usdc.tidepool-sandbox.testnet" };
+  const nativeRoute = resolveTidepoolSwapAssets(native, usdc, [wnear, usdc]);
+  const wrappedRoute = resolveTidepoolSwapAssets(wnear, usdc, [wnear, usdc]);
+  assert.equal(nativeRoute.quoteOrigin.asset_id, wnear.asset_id);
+  assert.equal(nativeRoute.wrapNativeNear, true);
+  assert.equal(wrappedRoute.quoteOrigin.asset_id, wnear.asset_id);
+  assert.equal(wrappedRoute.wrapNativeNear, false);
+});
+
 test("native NEAR output is quoted as WNEAR and marked for post-settlement unwrap", () => {
   const native = { asset_id: "native:near", symbol: "NEAR", decimals: 24, blockchain: "near", native: true };
   const wnear = { asset_id: "nep141:wnear.tidepool-sandbox.testnet", symbol: "wNEAR", decimals: 24, blockchain: "near", contract_address: "wnear.tidepool-sandbox.testnet" };
