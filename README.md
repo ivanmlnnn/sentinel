@@ -39,7 +39,6 @@ GitHub remains the source-control and backup repository. GitHub Actions deployme
 - **[Judge Evidence Pack](docs/JUDGE_EVIDENCE_PACK.md)** — project explanation, evidence index, reproducible commands and judge walkthrough.
 - **[End-to-End Verification Report](docs/END_TO_END_VERIFICATION.md)** — exact test counts, production HTTP smoke results, deployment scope and provenance attestation.
 - **[Independent Local Stress Lab](docs/INDEPENDENT_LOCAL_STRESS_LAB.md)** — nine local simulation checks, raw concurrency/load outcomes, and a strict boundary between simulated results and live D1/NEAR verification.
-- **[Gemini AI Provider Setup](docs/DEPLOYMENT_STATUS_AND_AI_PROVIDER.md#gemini-ai-provider)** — Gemini API integration, runtime secret setup, tool-calling compatibility, and verification steps.
 - **[NEAR Ecosystem Integration & Wallet-to-Agent Flow](docs/NEAR_ECOSYSTEM_INTEGRATION.md)** — the actual NEAR-native flow, identity separation, NEP-413 approval, restricted FunctionCall signer, and payment contract.
 - **[Signed Verdict Attestation](docs/SIGNED_VERDICT.md)** — Ed25519-signed assessment integrity at the isolated signer boundary; merged in [PR #10](https://github.com/ivanmlnnn/sentinel/pull/10).
 - **[Tracked recipient in NEAR Testnet Explorer](https://testnet.nearblocks.io/address/rawvest6817.testnet)** — inspect the public account activity for `rawvest6817.testnet` independently.
@@ -50,10 +49,6 @@ GitHub remains the source-control and backup repository. GitHub Actions deployme
 - **Historical GitHub Actions security proof (11 Nov 2026):** [Sentinel checks 42913399066](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399066), [CodeQL 42913399079](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399079), and [Security CI 42913399216](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399216).
 
 **Historical main release — 11 November 2026:** commit `281759475b4f8d72735cc3c43ae1f4b609df38b6` passed **127/127 automated tests**, the prompt-injection regression (`DENIED - SENTINEL_BLOCK`; `Signer invoked: NO`), validation of 8 Main D1 migrations (10 tables, 24 indexes) and 1 Signer D1 migration (3 tables, 7 indexes), both Worker bundle checks, and the NEAR payment-contract WASM build. [Main + isolated Signer deployment run](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218870) completed successfully: Signer Worker version `98dc36e1-f9ef-4f6e-b4a5-f28de4a59661`, Main Worker version `df27ffb5-cafc-4ab0-bedc-b1ff8bf4cfa7`, and **8/8 production HTTP smoke checks passed**. [Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218721), [Sentinel checks](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218667), and [CodeQL](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218658) all completed successfully. The separate [local stress lab report](docs/INDEPENDENT_LOCAL_STRESS_LAB.md) records simulation-only results and explicitly does not represent D1 concurrency, production latency, or live NEAR transaction evidence. These workflow records prove the listed build, deployment, and HTTP checks; they do not substitute for a separately verifiable live payment transaction.
-
-**Gemini migration validation in [PR #13](https://github.com/ivanmlnnn/sentinel/pull/13):** 135/135 automated tests passed, including five Gemini adapter tests; Main and Signer D1 migrations validated; NEAR payment-contract WASM release build passed; [Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42906396166) and [CodeQL JavaScript analysis](https://github.com/ivanmlnnn/sentinel/actions/runs/42906396384) passed; both Cloudflare Worker preview builds passed. See the [Gemini migration verification record](docs/END_TO_END_VERIFICATION.md#9-gemini-provider-migration--11-november-2026). Production activation requires the `GEMINI_API_KEY` secret on the Main Worker.
-
-**Merged-main release (commit `7e88eee64954dbf61ce6e28dc4c31530c3ce14b2`):** production deployment succeeded, 135/135 automated tests passed, NEAR payment-contract WASM release build passed, CodeQL and Security CI passed, and production HTTP smoke checks passed 8/8. See [Deploy run #42907136456](https://github.com/ivanmlnnn/sentinel/actions/runs/42907136456) and the [end-to-end verification record](docs/END_TO_END_VERIFICATION.md#10-merged-main-gemini-production-release--11-november-2026). Live Gemini conversations still require `GEMINI_API_KEY` to be configured on the production Main Worker.
 
 
 
@@ -91,8 +86,8 @@ The feature branch `feature/sentinel-trading-core-lab` contains a separate, read
 - First-seen indexed activity proxy, explicitly not account creation age.
 - Contract code-hash comparison against earlier Sentinel scans.
 - Deployment-local D1 threat registry; only verified reports can trigger `BLOCK`.
-- Privy-authenticated investigation, Gemini-powered AI review, and authenticated/guest agent routes.
-- Google Gemini tool-calling agent whose output is treated as an untrusted proposal.
+- Privy-authenticated investigation, AI-assisted review, and authenticated/guest agent routes.
+- Tool-calling AI agent whose output is treated as an untrusted proposal.
 - Actor-bound, exact-intent, five-minute human approval plus signer-side one-time approval claim.
 - Separate signer Worker, private service binding, signer-owned D1 ledger, HMAC-SHA256 timestamp/nonce protection, replay ledger, Ed25519-signed preflight verdict verification, NEP-413 wallet signature verification, receiver allowlist, spend caps, kill switch, and conservative `UNKNOWN` handling.
 - Merged Ed25519-signed, short-lived preflight verdicts from PR #10. The payload binds sender, receiver, exact microNEAR amount, nonce, expiry, decision, risk score, assessment status, and assessment ID; the isolated signer verifies the signature and exact intent before policy evaluation and payment execution.
