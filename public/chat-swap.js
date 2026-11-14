@@ -1,5 +1,5 @@
-const CHAIN_IDS = { eth: "0xaa36a7", base: "0x14a34", arb: "0x66eee", bsc: "0x61" };
-const NATIVE_EVM_SYMBOLS = { eth: new Set(["ETH"]), base: new Set(["ETH"]), arb: new Set(["ETH"]), bsc: new Set(["BNB"]) };
+const CHAIN_IDS = { eth: "0xaa36a7", base: "0x14a34", arb: "0x66eee", bsc: "0x61", aurora: "0x4e454153" };
+const NATIVE_EVM_SYMBOLS = { eth: new Set(["ETH"]), base: new Set(["ETH"]), arb: new Set(["ETH"]), bsc: new Set(["BNB"]), aurora: new Set(["ETH"]) };
 const TERMINAL = new Set(["SUCCESS", "REFUNDED", "FAILED"]);
 const PENDING_NEAR_APPROVAL_KEY = "sentinel:pending-near-approval:v1";
 
