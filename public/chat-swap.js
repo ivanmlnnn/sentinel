@@ -757,7 +757,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     card.append(el("p", "Use format: swap 0.1 ETH to NEAR. Decimal comma is accepted, e.g. swap 0,1 ETH to NEAR."));
     result.replaceChildren(card); result.classList.remove("hidden"); return;
   }
-  card.append(el("p", "Review the amount and networks, then connect the wallets needed for this route.", "sentinel-swap-intro"));
+  card.append(el("p", "Sentinel reuses your connected Meteor NEAR Testnet session. No second wallet connection is requested; choose assets available on that session for signing.", "sentinel-swap-intro"));
   const securityDetails = el("details", undefined, "sentinel-swap-security");
   securityDetails.append(el("summary", "How the security check works"));
   securityDetails.append(el("p", "Agent 1 independently checks your prompt against the selected Testnet assets, exact amount, route and quote. Agent 2 independently challenges the signed quote, recipient, refund address, expiry, slippage and risk policy. Both must PASS before the wallet approval screen can open."));
@@ -1045,7 +1045,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   fields.append(flipButton);
   addField(fields, "You receive · destination asset / network", destinationPicker.root);
   addField(fields, "Maximum slippage", slippage);
-  const status = el("p", "Connect the wallets for both networks to check the route and price.", "sentinel-swap-status");
+  const status = el("p", "Using the connected Meteor session when available. Choose a compatible Testnet route to check its live price.", "sentinel-swap-status");
   // Meteor may return to this page after a full-page wallet handoff. Keep only
   // non-secret deposit metadata in sessionStorage so settlement tracking can resume.
   try {
