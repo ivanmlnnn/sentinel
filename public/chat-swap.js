@@ -502,7 +502,7 @@ async function readSwapWalletBalance(token, nearWalletAccount, request, evmAccou
   }
   return { value: null, note: "Wallet balance adapter not connected for " + chain.toUpperCase() };
 }
-function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccount, onSelected, request, evmWalletAccount = null, sharedBalances = null, onBalancesChanged = null) {
+function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccount, onSelected, request, evmWalletAccount = null, sharedBalances = null, onBalancesChanged = null, sharedRefreshState = null) {
   const root = el("div", undefined, "swap-token-picker");
   const trigger = el("button", undefined, "swap-token-trigger");
   trigger.type = "button";
@@ -540,7 +540,7 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
       renderTokens();
     });
   }
-  let loading = false;
+  const refreshState = sharedRefreshState || { loading: false };
   const selectedToken = () => tokenList.find(token => token.asset_id === select.value);
   const syncTrigger = () => {
     const token = selectedToken();
@@ -644,8 +644,8 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
   };
   backdrop.addEventListener("click", closePanel);
   const refreshBalances = async (onlyAssetId = null, requestEvmPermission = false) => {
-    if (loading) return;
-    loading = true;
+    if (refreshState.loading) return;
+    refreshState.loading = true;
     refresh.disabled = true;
     refresh.textContent = "Refreshing…";
     balanceStamp.textContent = "Reading connected wallet";
@@ -701,7 +701,7 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
       }));
     }
     balanceStamp.textContent = "Updated " + new Date().toLocaleTimeString();
-    loading = false;
+    refreshState.loading = false;
     refresh.disabled = false;
     refresh.textContent = "Refresh balances ↻";
     renderTokens();
@@ -781,10 +781,11 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   // Both token pickers share one balance cache and one scan. A failed NEAR
   // RPC lookup must not prevent EVM balances (or vice versa) from rendering.
   const sharedSwapBalances = new Map();
+  const sharedBalanceRefreshState = { loading: false };
   let syncSwapBalanceViews = () => {};
   const onSwapBalancesChanged = () => syncSwapBalanceViews();
-  const originPicker = createSwapTokenPicker(originSelect, tokens, parsed.from, () => activeNearAccount, () => { defaults(); invalidate(); }, request, () => activeEvmAccount, sharedSwapBalances, onSwapBalancesChanged);
-  const destinationPicker = createSwapTokenPicker(destSelect, tokens, parsed.to, () => activeNearAccount, () => { defaults(); invalidate(); }, request, () => activeEvmAccount, sharedSwapBalances, onSwapBalancesChanged);
+  const originPicker = createSwapTokenPicker(originSelect, tokens, parsed.from, () => activeNearAccount, () => { defaults(); invalidate(); }, request, () => activeEvmAccount, sharedSwapBalances, onSwapBalancesChanged, sharedBalanceRefreshState);
+  const destinationPicker = createSwapTokenPicker(destSelect, tokens, parsed.to, () => activeNearAccount, () => { defaults(); invalidate(); }, request, () => activeEvmAccount, sharedSwapBalances, onSwapBalancesChanged, sharedBalanceRefreshState);
   syncSwapBalanceViews = () => { originPicker.renderBalances(); destinationPicker.renderBalances(); };
   const refundInput = null;
   const initialAccount = getConnectedAccount();
