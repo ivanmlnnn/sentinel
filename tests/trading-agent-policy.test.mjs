@@ -6,7 +6,6 @@ const policyInput = {
   network: "testnet", walletAddress: "alice.testnet",
   allowedAssetPairs: [
     { originAsset: "native:near", destinationAsset: "nep141:wnear.tidepool-sandbox.testnet" },
-    { originAsset: "nep141:wnear.tidepool-sandbox.testnet", destinationAsset: "native:near" }
   ],
   maxOrderAmount: "1000000000000000000000000", maxDailyAmount: "2000000000000000000000000",
   maxSlippageBps: 100, expiresAt: new Date(NOW + 86400000).toISOString(), maxOrders: 3, enabled: true
