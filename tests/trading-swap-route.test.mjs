@@ -83,7 +83,7 @@ test("percentage shortcuts use exact integer token units and are present for all
 test("balance refresh reuses only an already-authorized EVM session and never requests a second wallet connection", () => {
   assert.match(swapUi, /refreshBalances = async \(onlyAssetId = null\)/);
   assert.match(swapUi, /eth_accounts/);
-  assert.doesNotMatch(swapUi, /method:\\s*["\x27]eth_requestAccounts["\x27]/);
+  assert.doesNotMatch(swapUi, /method:\s*["\x27]eth_requestAccounts["\x27]/);
   assert.match(swapUi, /readSwapWalletBalance\(token, walletAccount, request, evmAccount\)/);
 });
 
