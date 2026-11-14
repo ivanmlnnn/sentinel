@@ -1345,8 +1345,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         }
       }, null, 2);
       details.hidden = false;
-      const summary = "SWAP APPROVAL REVIEW\n\n" + (swap.displayOrigin || swap.origin).symbol + (swap.wrapNativeNear ? " (native NEAR → wrap to WNEAR)" : " (" + swap.origin.blockchain + ")") + " → "
-        swap.destination.symbol + " (" + swap.destination.blockchain + ")\nInput: " +
+      const summary = "SWAP APPROVAL REVIEW\n\n" + (swap.displayOrigin || swap.origin).symbol + (swap.wrapNativeNear ? " (native NEAR → wrap to WNEAR)" : " (" + swap.origin.blockchain + ")") + " → " + swap.destination.symbol + " (" + swap.destination.blockchain + ")\nInput: " +
         (liveQuote.quote.amount_in_formatted || liveQuote.quote.amount_in) + "\nExpected output: " +
         (liveQuote.quote.amount_out_formatted || liveQuote.quote.amount_out) + "\nMinimum output: " +
         liveQuote.quote.minimum_amount_out + "\nRecipient: " + swap.recipient + "\nRefund: " + swap.refundTo +
