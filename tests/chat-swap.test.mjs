@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseChatSwapPrompt, resolveInitialSwapToken, formatUnitsForInput, buildNearWalletDepositActions } from "../public/chat-swap.js";
+import { parseChatSwapPrompt, resolveInitialSwapToken, formatUnitsForInput, buildNearWalletDepositActions, resolveTidepoolSwapAssets, buildNearWalletUnwrapActions } from "../public/chat-swap.js";
 
 test("parses a decimal-point swap request", () => {
   assert.deepEqual(parseChatSwapPrompt("swap 0.1 ETH to NEAR"), {
@@ -71,4 +71,47 @@ test("WNEAR swap does not wrap native NEAR a second time", () => {
 
 test("NEAR wallet deposit action builder rejects invalid deposit references", () => {
   assert.throws(() => buildNearWalletDepositActions("1", "not-an-intents-address", true));
+});
+
+
+test("native NEAR input is quoted as WNEAR and marked for wrapping", () => {
+  const native = { asset_id: "native:near", symbol: "NEAR", decimals: 24, blockchain: "near", native: true };
+  const wnear = { asset_id: "nep141:wnear.tidepool-sandbox.testnet", symbol: "wNEAR", decimals: 24, blockchain: "near", contract_address: "wnear.tidepool-sandbox.testnet" };
+  const usdc = { asset_id: "nep141:usdc.tidepool-sandbox.testnet", symbol: "USDC", decimals: 6, blockchain: "near", contract_address: "usdc.tidepool-sandbox.testnet" };
+  const route = resolveTidepoolSwapAssets(native, usdc, [wnear, usdc]);
+  assert.equal(route.quoteOrigin.asset_id, wnear.asset_id);
+  assert.equal(route.quoteDestination.asset_id, usdc.asset_id);
+  assert.equal(route.wrapNativeNear, true);
+  assert.equal(route.unwrapNativeNear, false);
+});
+
+test("native NEAR output is quoted as WNEAR and marked for post-settlement unwrap", () => {
+  const native = { asset_id: "native:near", symbol: "NEAR", decimals: 24, blockchain: "near", native: true };
+  const wnear = { asset_id: "nep141:wnear.tidepool-sandbox.testnet", symbol: "wNEAR", decimals: 24, blockchain: "near", contract_address: "wnear.tidepool-sandbox.testnet" };
+  const usdc = { asset_id: "nep141:usdc.base.tp-omft.testnet", symbol: "USDC", decimals: 6, blockchain: "base", contract_address: "0x0000000000000000000000000000000000000001" };
+  const route = resolveTidepoolSwapAssets(usdc, native, [wnear, usdc]);
+  assert.equal(route.quoteOrigin.asset_id, usdc.asset_id);
+  assert.equal(route.quoteDestination.asset_id, wnear.asset_id);
+  assert.equal(route.wrapNativeNear, false);
+  assert.equal(route.unwrapNativeNear, true);
+});
+
+test("native NEAR cannot be swapped to itself through a WNEAR round trip", () => {
+  const native = { asset_id: "native:near", symbol: "NEAR", decimals: 24, blockchain: "near", native: true };
+  const wnear = { asset_id: "nep141:wnear.tidepool-sandbox.testnet", symbol: "wNEAR", decimals: 24, blockchain: "near", contract_address: "wnear.tidepool-sandbox.testnet" };
+  assert.throws(() => resolveTidepoolSwapAssets(native, native, [wnear]));
+});
+
+test("native NEAR unwrap sends the exact received WNEAR amount to near_withdraw", () => {
+  const actions = buildNearWalletUnwrapActions("123456789");
+  assert.deepEqual(actions, [{
+    type: "FunctionCall",
+    params: {
+      methodName: "near_withdraw",
+      args: { amount: "123456789" },
+      gas: "30000000000000",
+      deposit: "1"
+    }
+  }]);
+  assert.throws(() => buildNearWalletUnwrapActions("0"));
 });
