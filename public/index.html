@@ -86,7 +86,7 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
    <button type="button" class="sentinel-skill-card" data-skill="payment" data-prompt="Help me prepare a NEAR Testnet payment. Recipient: "><span class="skill-card-icon">↗</span><span class="skill-card-copy"><b>Prepare a payment</b><small>Review before any transfer</small></span></button>
    <button type="button" class="sentinel-skill-card trading-research-card" data-skill="trading" data-prompt="Run Sentinel two-agent trading research for XBTUSD."><span class="skill-card-icon">⌁</span><span class="skill-card-copy"><b>Dual-agent market lab</b><small>Live market data · independent risk veto</small></span></button>
   </div></div>
-  <form id="agentForm" class="agent-chat-form" onsubmit="event.preventDefault()">
+  <form id="agentForm" class="agent-chat-form">
    <div id="agentResult" class="agent-result hidden" aria-live="polite"></div>
    <label class="agent-compose-label" for="agentPrompt">YOUR MESSAGE</label>
    <div class="agent-compose-box"><textarea id="agentPrompt" maxlength="4000" required placeholder="Example: Is alice.testnet safe to receive my tokens?" rows="3"></textarea><div class="agent-compose-bottom"><span>Press Send when you’re ready</span><button class="primary-btn" id="agentRunBtn" type="submit">Send <b>↗</b></button></div></div>
@@ -129,6 +129,9 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
 <div id="toast" class="toast"></div>
 <script src="/motion.js?v=20261111-divider-scroll1" defer></script>
 <script type="module">
+// Cancel native chat navigation before auth/app modules finish loading.
+// Do not stop propagation: app.js still receives this event and sends the prompt.
+document.getElementById('agentForm')?.addEventListener('submit', event => event.preventDefault(), { capture: true });
 const authRoot = document.getElementById('auth-root');
 import('/auth.js?v=20261114-chatflow-recovery1').catch(error => {
   console.error('Sentinel authentication module failed to load:', error);
