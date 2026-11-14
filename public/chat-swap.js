@@ -1616,12 +1616,12 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         }
       }, null, 2);
       details.hidden = false;
-      const summary = "SWAP APPROVAL REVIEW\n\n" + (swap.displayOrigin || swap.origin).symbol + " (" + swap.origin.blockchain + ")" + " → " + (swap.displayDestination || swap.destination).symbol + " (" + swap.destination.blockchain + ")" + "\nInput: "
-        (liveQuote.quote.amount_in_formatted || liveQuote.quote.amount_in) + "\nExpected output: " +
-        (liveQuote.quote.amount_out_formatted || liveQuote.quote.amount_out) + "\nMinimum output: " +
-        liveQuote.quote.minimum_amount_out + "\nRecipient: " + swap.recipient + "\nRefund: " + swap.refundTo +
-        (swap.unwrapNativeNear ? "\n\nNATIVE NEAR OUTPUT: Tidepool first settles WNEAR to " + swap.recipient +
-          ". After confirmed settlement, Sentinel will show a separate “Unwrap NEAR in Meteor” action using the exact received WNEAR amount. A second wallet approval is required; it is not included in this swap approval." : "") +
+      const summary = "SWAP APPROVAL REVIEW\n\n" + (swap.displayOrigin || swap.origin).symbol + " (" + swap.origin.blockchain + ")" +
+        " → " + (swap.displayDestination || swap.destination).symbol + " (" + swap.destination.blockchain + ")" +
+        "\nInput: " + (liveQuote.quote.amount_in_formatted || liveQuote.quote.amount_in) +
+        "\nExpected output: " + (liveQuote.quote.amount_out_formatted || liveQuote.quote.amount_out) +
+        "\nMinimum output: " + liveQuote.quote.minimum_amount_out +
+        "\nRecipient: " + swap.recipient + "\nRefund: " + swap.refundTo +
         "\nDeposit address: " + liveQuote.deposit_address + "\nDeadline: " + liveQuote.deadline +
         "\nRisk: " + liveQuote.risk_evaluation.decision + "\nPolicy: " + liveQuote.risk_evaluation.policy_hash +
         "\n\n" + (swap.origin.blockchain === "near" ? "Continue to Meteor wallet transfer approval?" :
