@@ -1,5 +1,4 @@
 import { parseAgentJson } from "./trading-agents.mjs";
-import { buildNearWalletUnwrapActions } from "./trading-core.mjs";
 
 const SWAP_PROMPT = /\b(?:swap|tukar|exchange)\s+(\d+(?:[.,]\d+)?)\s+([a-z0-9]+)\s+(?:to|ke|jadi)\s+([a-z0-9]+)\b/i;
 
