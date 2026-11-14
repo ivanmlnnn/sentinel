@@ -1221,6 +1221,10 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         contract: wnearToken.contract_address,
         amount
       };
+      // On a mobile wallet return the page is rebuilt and the action button
+      // starts hidden. Reveal it only after the settlement and unwrap checks
+      // have passed and the exact WNEAR amount is ready for approval.
+      approveButton.hidden = false;
       approveButton.disabled = false;
       approveButton.textContent = "Unwrap NEAR in Meteor";
       status.textContent = isNativeOutput
