@@ -80,7 +80,7 @@ test("balance refresh reuses only an already-authorized EVM session and never re
 });
 
 test("wallet balance reads never silently claim unsupported chains are connected", () => {
-  assert.match(swapUi, /No EVM provider exposed to this Sentinel page|does not expose its EVM balance/);
+  assert.match(swapUi, /needs an exposed EVM address\/provider|does not expose an EVM provider/);
   assert.match(swapUi, /Wallet balance adapter not connected for /);
 });
 
@@ -106,4 +106,15 @@ test("Meteor redirect stores only non-secret recovery metadata and checks Tidepo
   assert.match(swapUi, /sessionStorage\.getItem\(PENDING_NEAR_APPROVAL_KEY/);
   assert.match(swapUi, /Recovered Meteor session/);
   assert.match(swapUi, /sessionStorage\.removeItem\(PENDING_NEAR_APPROVAL_KEY\)/);
+});
+
+test("native NEAR unwrap uses the WNEAR contract for both successful output and refunded input", () => {
+  assert.match(swapUi, /const wnearToken = isNativeOutput \? completedSwap\.destination : completedSwap\.origin/);
+  assert.match(swapUi, /contract: wnearToken\.contract_address/);
+});
+
+test("Meteor redirect recovery restores native NEAR unwrap intent without losing the selected asset identity", () => {
+  assert.match(swapUi, /destinationContract: prepared\.swap\.destination\.contract_address/);
+  assert.match(swapUi, /unwrapNativeNear: prepared\.swap\.unwrapNativeNear === true/);
+  assert.match(swapUi, /await prepareNativeNearUnwrap\(/);
 });
