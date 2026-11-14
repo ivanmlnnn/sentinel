@@ -94,43 +94,26 @@ export function resolvePromptSwapAssets(tokens, parsed) {
 
 export function resolveTidepoolSwapAssets(origin, destination, tokens) {
   const isNativeNear = token => token?.native === true && token.asset_id === "native:near";
-  const nativeNear = tokens.find(token => token.asset_id === "nep141:wnear.tidepool-sandbox.testnet");
-  const wrapNativeNear = isNativeNear(origin);
-  const unwrapNativeNear = isNativeNear(destination);
-  const quoteOrigin = wrapNativeNear ? nativeNear : origin;
-  const quoteDestination = unwrapNativeNear ? nativeNear : destination;
-  if (!quoteOrigin || !quoteDestination) {
-    throw new Error("Tidepool WNEAR is not present in the live Testnet registry; native NEAR cannot be wrapped or unwrapped on this route.");
+  if (isNativeNear(origin) || isNativeNear(destination)) {
+    throw new Error("Native NEAR coin swaps are not supported by the current Tidepool Testnet wallet-deposit route. Select WNEAR explicitly; no wallet approval was opened.");
   }
-  if (quoteOrigin.asset_id === quoteDestination.asset_id) {
-    throw new Error("The selected route resolves to the same WNEAR asset on both sides. Choose a different token.");
+  if (!origin || !destination || origin.asset_id === destination.asset_id) {
+    throw new Error("Select two different assets from the live Tidepool Testnet registry.");
   }
-  if ((wrapNativeNear || unwrapNativeNear) &&
-      (quoteOrigin.blockchain !== "near" && quoteDestination.blockchain !== "near" ||
-       nativeNear?.blockchain !== "near" ||
-       nativeNear?.contract_address !== "wnear.tidepool-sandbox.testnet")) {
-    throw new Error("Native NEAR conversion requires the verified Tidepool WNEAR Testnet contract.");
-  }
-  return { quoteOrigin, quoteDestination, wrapNativeNear, unwrapNativeNear };
+  const quoteOrigin = origin;
+  const quoteDestination = destination;
+  return { quoteOrigin, quoteDestination, wrapNativeNear: false, unwrapNativeNear: false };
 }
 
 export function buildNearWalletUnwrapActions(amount) {
   if (typeof amount !== "string" || !/^[1-9][0-9]*$/.test(amount)) {
     throw new Error("Invalid WNEAR amount for native NEAR withdrawal.");
   }
-  return [{
-    type: "FunctionCall",
-    params: {
-      methodName: "near_withdraw",
-      args: { amount },
-      gas: "30000000000000",
-      deposit: "1"
-    }
-  }];
+  throw new Error("NATIVE_NEAR_UNWRAP_UNSUPPORTED: the Tidepool WNEAR contract has not been verified to expose near_withdraw.");
 }
 function formatToken(token) {
   return token.native && token.asset_id === "native:near"
-    ? "NEAR · NATIVE · TESTNET"
+    ? "NEAR · NATIVE · NOT SUPPORTED BY TIDEPOOL"
     : token.symbol + " · " + token.blockchain.toUpperCase() + " · TESTNET";
 }
 function tokenAddressValid(token) {
@@ -280,34 +263,27 @@ export function buildNearWalletDepositActions(amount, depositAddress, wrapNative
       typeof depositAddress !== "string" || !/^[a-f0-9]{64}$/i.test(depositAddress)) {
     throw new Error("Invalid NEAR wallet deposit action parameters.");
   }
-  return [
-    ...(wrapNativeNear ? [{
-      type: "FunctionCall",
-      params: {
-        methodName: "near_deposit",
-        args: {},
-        gas: "30000000000000",
-        deposit: amount
-      }
-    }] : []),
-    {
-      type: "FunctionCall",
-      params: {
-        methodName: "ft_transfer_call",
-        args: {
-          receiver_id: "verifier.tidepool-sandbox.testnet",
-          amount,
-          msg: depositAddress
-        },
-        gas: "100000000000000",
-        deposit: "1"
-      }
+  if (wrapNativeNear) {
+    throw new Error("NATIVE_NEAR_WRAP_UNSUPPORTED: refusing to call near_deposit on the Tidepool WNEAR token contract.");
+  }
+  return [{
+    type: "FunctionCall",
+    params: {
+      methodName: "ft_transfer_call",
+      args: {
+        receiver_id: "verifier.tidepool-sandbox.testnet",
+        amount,
+        msg: depositAddress
+      },
+      gas: "100000000000000",
+      deposit: "1"
     }
-  ];
+  }];
 }
 async function executeNearWalletDeposit(args) {
   const { connector, connectedAccount, liveQuote, swap, statusNode, detailsNode, request, onSubmitted } = args;
   if (!connector || !nearAccount(connectedAccount)) throw new Error("Connect Meteor or another NEAR Testnet wallet first.");
+  if (swap.wrapNativeNear) throw new Error("NATIVE_NEAR_WRAP_UNSUPPORTED: select the WNEAR token explicitly; no transaction was sent.");
   if (swap.refundTo.toLowerCase() !== connectedAccount.toLowerCase()) {
     throw new Error("Refund address must equal the connected Meteor account.");
   }
@@ -325,18 +301,11 @@ async function executeNearWalletDeposit(args) {
     throw new Error("Live quote amount or origin asset does not match the reviewed request.");
   }
   const nativeNearAsset = { blockchain: "near", symbol: "NEAR", decimals: 24, contract_address: null };
-  const walletTokenBalance = await readSwapWalletBalance(
-    swap.wrapNativeNear ? nativeNearAsset : swap.origin, connectedAccount, request
-  );
-  const requiredBalance = BigInt(swap.amount) + (swap.wrapNativeNear ? 10n ** 22n : 0n);
-  if (!walletTokenBalance.raw || BigInt(walletTokenBalance.raw) < requiredBalance) {
-    throw new Error(swap.wrapNativeNear
-      ? "Native NEAR balance must cover the wrap amount plus at least 0.01 NEAR for transaction gas."
-      : "Meteor wallet balance is insufficient for the exact quoted amount. Refresh balances and choose a smaller amount.");
+  const walletTokenBalance = await readSwapWalletBalance(swap.origin, connectedAccount, request);
+  if (!walletTokenBalance.raw || BigInt(walletTokenBalance.raw) < BigInt(swap.amount)) {
+    throw new Error("Meteor wallet balance is insufficient for the exact quoted amount. Refresh balances and choose a smaller amount.");
   }
-  const nativeGasBalance = swap.wrapNativeNear
-    ? walletTokenBalance
-    : await readSwapWalletBalance(nativeNearAsset, connectedAccount, request);
+  const nativeGasBalance = await readSwapWalletBalance(nativeNearAsset, connectedAccount, request);
   if (!nativeGasBalance.raw || BigInt(nativeGasBalance.raw) <= 0n) {
     throw new Error("Meteor account has no native NEAR for Testnet transaction gas.");
   }
@@ -354,7 +323,7 @@ async function executeNearWalletDeposit(args) {
     transaction: {
       signerId: connectedAccount,
       receiverId: swap.origin.contract_address,
-      actions: buildNearWalletDepositActions(swap.amount, liveQuote.deposit_address, swap.wrapNativeNear)
+      actions: buildNearWalletDepositActions(swap.amount, liveQuote.deposit_address)
     },
     connectedAccount, liveQuote, swap,
     walletManifest: snapshot?.wallet?.manifest || null
@@ -887,8 +856,14 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   const amountInput = document.createElement("input"); amountInput.value = parsed.amount; amountInput.inputMode = "decimal"; amountInput.autocomplete = "off";
   const originSelect = document.createElement("select"), destSelect = document.createElement("select");
   for (const token of tokens) {
-    const originOption = el("option", formatToken(token)); originOption.value = String(token.asset_id ?? ""); originSelect.append(originOption);
-    const destinationOption = el("option", formatToken(token)); destinationOption.value = String(token.asset_id ?? ""); destSelect.append(destinationOption);
+    const originOption = el("option", formatToken(token)); originOption.value = String(token.asset_id ?? "");
+    const destinationOption = el("option", formatToken(token)); destinationOption.value = String(token.asset_id ?? "");
+    if (token.native === true && token.asset_id === "native:near") {
+      originOption.disabled = true;
+      destinationOption.disabled = true;
+    }
+    originSelect.append(originOption);
+    destSelect.append(destinationOption);
   }
   // NEAR and WNEAR are separate assets. A NEAR prompt resolves to native
   // NEAR; WNEAR must be selected explicitly.
@@ -1214,6 +1189,10 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     const settlementStatus = String(settled?.status || "").toUpperCase();
     const isNativeOutput = settlementStatus === "SUCCESS" && completedSwap?.unwrapNativeNear;
     const isNativeInputRefund = settlementStatus === "REFUNDED" && completedSwap?.wrapNativeNear;
+    if (isNativeOutput || isNativeInputRefund) {
+      status.textContent = "Native NEAR unwrap is disabled: Tidepool WNEAR near_withdraw support is not verified. Leave the WNEAR in the wallet; no unwrap transaction was prepared.";
+      return;
+    }
     const amount = isNativeOutput
       ? settled?.swap_details?.amountOut
       : isNativeInputRefund ? settled?.swap_details?.refundedAmount : null;
