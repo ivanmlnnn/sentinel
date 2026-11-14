@@ -62,7 +62,7 @@ test("legacy swap approval also forwards the exact natural-language intent", () 
 });
 
 test("Meteor NEAR deposit preflight reads both token and native gas balances through the API", () => {
-  assert.match(swapUi, /readSwapWalletBalance\(\s*swap\.wrapNativeNear \? nativeNearAsset : swap\.origin, connectedAccount, request\s*\)/);
+  assert.match(swapUi, /readSwapWalletBalance\(swap\.origin, connectedAccount, request\)/);
   assert.match(swapUi, /const nativeNearAsset = \{ blockchain: "near", symbol: "NEAR", decimals: 24, contract_address: null \}/);
   assert.match(swapUi, /readSwapWalletBalance\(nativeNearAsset, connectedAccount, request\)/);
 });
@@ -122,9 +122,13 @@ test("Meteor redirect stores only non-secret recovery metadata and checks Tidepo
   assert.match(swapUi, /sessionStorage\.removeItem\(PENDING_NEAR_APPROVAL_KEY\)/);
 });
 
-test("native NEAR unwrap uses the WNEAR contract for both successful output and refunded input", () => {
-  assert.match(swapUi, /const wnearToken = isNativeOutput \? completedSwap\?\.destination : completedSwap\?\.origin/);
-  assert.match(swapUi, /contract: wnearToken\.contract_address/);
+test("native NEAR unwrap is blocked before a wallet action can be prepared", () => {
+  const prepareStart = swapUi.indexOf("const prepareNativeNearUnwrap = async");
+  const prepareEnd = swapUi.indexOf("\n  };", prepareStart);
+  const prepare = swapUi.slice(prepareStart, prepareEnd);
+  assert.match(prepare, /Native NEAR unwrap is disabled/);
+  assert.ok(prepare.indexOf("Native NEAR unwrap is disabled") < prepare.indexOf("pendingNearUnwrap ="));
+  assert.doesNotMatch(swapUi, /methodName: "near_withdraw"/);
 });
 
 test("Meteor redirect recovery restores native NEAR unwrap intent without losing the selected asset identity", () => {
@@ -133,12 +137,14 @@ test("Meteor redirect recovery restores native NEAR unwrap intent without losing
   assert.match(swapUi, /await prepareNativeNearUnwrap\(/);
 });
 
-test("native NEAR unwrap approval button is revealed after recovered settlement is validated", () => {
+test("native NEAR unwrap recovery never reveals a second unsupported approval", () => {
   const prepareStart = swapUi.indexOf("const prepareNativeNearUnwrap = async");
   const prepareEnd = swapUi.indexOf("\n  };", prepareStart);
   const prepare = swapUi.slice(prepareStart, prepareEnd);
-  assert.match(prepare, /approveButton\.hidden = false/);
-  assert.match(prepare, /approveButton\.disabled = false/);
+  const guard = prepare.indexOf("Native NEAR unwrap is disabled");
+  const reveal = prepare.indexOf("approveButton.hidden = false");
+  assert.ok(guard >= 0 && reveal > guard);
+  assert.ok(prepare.indexOf("return;", guard) < reveal);
 });
 
 
@@ -161,8 +167,8 @@ test("NEAR live quote and dual-agent review gate wallet signing before Meteor ap
 });
 
 
-test("native NEAR prompt is explicitly represented by NEAR-chain WNEAR for Tidepool", () => {
-  assert.equal(promptSymbolMatches("NEAR", { symbol: "WNEAR", blockchain: "near" }), true);
+test("native NEAR and WNEAR symbols are strictly distinct in the dual-agent review", () => {
+  assert.equal(promptSymbolMatches("NEAR", { symbol: "WNEAR", blockchain: "near" }), false);
   assert.equal(promptSymbolMatches("NEAR", { symbol: "WNEAR", blockchain: "eth" }), false);
   assert.equal(promptSymbolMatches("WNEAR", { symbol: "WNEAR", blockchain: "near" }), true);
 });
@@ -177,16 +183,8 @@ test("dual-agent VETO UI exposes both verdicts, reasons and deterministic failed
 });
 
 
-test("native NEAR unwrap action builder is exported and binds an exact positive WNEAR amount", () => {
-  assert.deepEqual(buildNearWalletUnwrapActions("1000000000000000000000000"), [{
-    type: "FunctionCall",
-    params: {
-      methodName: "near_withdraw",
-      args: { amount: "1000000000000000000000000" },
-      gas: "30000000000000",
-      deposit: "1"
-    }
-  }]);
+test("native NEAR unwrap action builder refuses to invent an unverified contract method", () => {
+  assert.throws(() => buildNearWalletUnwrapActions("1000000000000000000000000"), /NATIVE_NEAR_UNWRAP_UNSUPPORTED/);
   assert.throws(() => buildNearWalletUnwrapActions("0"), /INVALID_WNEAR_UNWRAP_AMOUNT/);
   assert.throws(() => buildNearWalletUnwrapActions("1.5"), /INVALID_WNEAR_UNWRAP_AMOUNT/);
 });
@@ -212,4 +210,11 @@ test("Verify quote preserves the explicit UI direction, including a user-flipped
   assert.ok(approval.includes('userPrompt: selectedSwapPrompt'));
   assert.ok(approval.includes('(swap.displayOrigin || swap.origin).symbol'));
   assert.ok(approval.includes('(swap.displayDestination || swap.destination).symbol'));
+});
+
+test("native NEAR dropdown entry is visibly disabled while explicit WNEAR remains selectable", () => {
+  assert.match(swapUi, /NEAR · NATIVE · NOT SUPPORTED BY TIDEPOOL/);
+  assert.match(swapUi, /originOption\.disabled = true/);
+  assert.match(swapUi, /destinationOption\.disabled = true/);
+  assert.match(swapUi, /Native NEAR coin swaps are not supported/);
 });
