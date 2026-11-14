@@ -221,15 +221,6 @@ For a strict independent review, keep these statements separate:
 
 Do not mistake a successful Worker deployment for proof of a successful blockchain payout. If a real Sentinel transaction hash is added later, include the exact hash, signer, contract, recipient, amount, final status, payout receipt ID, and an independent Testnet Explorer/API link. Never invent or substitute a hash from an unrelated wallet.
 
-## 7. AI provider integration
-
-The Agent, Guest Agent, and AI Review routes use Google Gemini through a shared server-side adapter. The adapter translates Sentinel's allowlisted tool declarations and multi-turn tool results to Gemini function-calling format. The model remains an untrusted proposer and evidence explainer; deterministic policy and the isolated signer remain the authorization boundary.
-
-Runtime configuration: set `GEMINI_API_KEY` as a secret on the Cloudflare Main Worker. The default model is `gemini-3.8-flash`. See [Gemini AI Provider Setup](DEPLOYMENT_STATUS_AND_AI_PROVIDER.md#gemini-ai-provider) for deployment and verification steps.
-
-The provider migration is covered by `tests/gemini-provider.test.mjs` and the repository's CI workflows. A passing adapter test or build is not, by itself, proof that the production secret is configured or that a live model response has succeeded. Use the linked release workflow and live route smoke test as the evidence for production availability.
-
-
 ## AI prompt-injection hardening — implementation and evidence boundary
 
 The Agent route applies a layered boundary between natural-language input, model proposals, trusted investigation evidence, deterministic payment policy, and signing:
@@ -245,4 +236,4 @@ The Agent route applies a layered boundary between natural-language input, model
 
 Run `npm run demo:attack`. The committed demo injects an instruction claiming operator approval and urging a 10 NEAR payment, while the deterministic Sentinel inspection returns a complete critical BLOCK. The demo passes only if the guard returns `DENIED - SENTINEL_BLOCK` and the signer callback is never invoked (`Signer invoked: NO`).
 
-This is a focused offline regression of the application guard, not a live Gemini red-team exercise, not a general prompt-anomaly classifier benchmark, and not a blockchain payment. Sentinel currently has no documented labeled prompt-anomaly benchmark with precision/recall or broad live-provider adversarial coverage. Describe this capability accurately as layered prompt-injection hardening with a deterministic offline regression, not complete prompt-injection immunity.
+This is a focused offline regression of the application guard, not a live-provider red-team exercise, not a general prompt-anomaly classifier benchmark, and not a blockchain payment. Sentinel currently has no documented labeled prompt-anomaly benchmark with precision/recall or broad live-provider adversarial coverage. Describe this capability accurately as layered prompt-injection hardening with a deterministic offline regression, not complete prompt-injection immunity.
