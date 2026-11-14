@@ -1298,74 +1298,6 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     connectButton.textContent = missing ? (CHAIN_IDS[missing] ? "Use NEAR asset route" : "Connect Meteor") : "Verify quote";
     connectButton.classList.toggle("is-verify", !missing);
   };
-  const prepareNearWalletApproval = async (swapDraft, revision) => {
-    status.textContent = "Running Sentinel's live quote, risk checks and both independent agents before enabling wallet approval…";
-    const liveQuote = await request("/trading/live-quote", {
-      method: "POST",
-      body: JSON.stringify({
-        originAsset: swapDraft.originAsset,
-        destinationAsset: swapDraft.destinationAsset,
-        amount: swapDraft.amount,
-        recipient: swapDraft.recipient,
-        refundTo: swapDraft.refundTo,
-        slippageTolerance: swapDraft.slippageTolerance,
-        userPrompt: prompt
-      })
-    });
-    if (revision !== swapRevision || swap !== swapDraft) throw new Error("Swap selection changed during security review. Request a fresh quote.");
-    const dualReview = liveQuote.dual_agent_review;
-    if (liveQuote.mode !== "LIVE_QUOTE_AWAITING_USER_SIGNATURE" || liveQuote.execution_enabled !== false ||
-        liveQuote.provider_signature_verified !== true || liveQuote.risk_evaluation?.decision !== "ALLOW" ||
-        !String(liveQuote.risk_evaluation?.policy_hash || "").startsWith("sha256:") ||
-        !liveQuote.signed_quote || typeof liveQuote.signed_quote !== "object" ||
-        !liveQuote.deposit_address || !Number.isFinite(Date.parse(liveQuote.deadline)) || Date.parse(liveQuote.deadline) <= Date.now() ||
-        dualReview?.status !== "PASS" || dualReview?.execution_authorized !== false ||
-        dualReview?.agent_one?.verdict !== "PASS" || dualReview?.agent_two?.verdict !== "PASS" ||
-        dualReview?.agent_two?.risk_level !== "LOW" || (dualReview?.failed_checks || []).length) {
-      throw new Error("Dual-agent gate rejected this swap. Both agents and every deterministic quote check must PASS before wallet approval.");
-    }
-    details.textContent = JSON.stringify({
-      dual_agent_review: dualReview,
-      verified_quote: {
-        origin_chain: liveQuote.origin_chain,
-        destination_chain: liveQuote.destination_chain,
-        quote: liveQuote.quote,
-        recipient: liveQuote.recipient,
-        refund_to: liveQuote.refund_to,
-        deposit_address: liveQuote.deposit_address,
-        deadline: liveQuote.deadline,
-        risk_evaluation: liveQuote.risk_evaluation
-      }
-    }, null, 2);
-    details.hidden = false;
-    const prepared = await executeNearWalletDeposit({
-      connector: getConnector(),
-      connectedAccount: activeNearAccount,
-      liveQuote,
-      swap: swapDraft,
-      statusNode: status,
-      detailsNode: details,
-      request,
-      onSubmitted: () => {}
-    });
-    if (revision !== swapRevision || swap !== swapDraft) throw new Error("Swap selection changed during wallet preparation. Request a fresh quote.");
-    pendingNearApproval = prepared;
-    const reviewDetails = JSON.parse(details.textContent || "{}");
-    reviewDetails.meteor_wallet_transaction = {
-      network: "NEAR TESTNET",
-      signer: activeNearAccount,
-      token_contract: swapDraft.origin.contract_address,
-      methods: swapDraft.wrapNativeNear ? ["near_deposit", "ft_transfer_call"] : ["ft_transfer_call"],
-      receiver: "verifier.tidepool-sandbox.testnet",
-      amount_base_units: swapDraft.amount,
-      deposit_reference: liveQuote.deposit_address
-    };
-    details.textContent = JSON.stringify(reviewDetails, null, 2);
-    approveButton.hidden = false;
-    approveButton.disabled = false;
-    approveButton.textContent = "Open Meteor & approve";
-    status.textContent = "Agent 1 PASS · Agent 2 PASS · wallet transaction prepared. Tap “Open Meteor & approve” once to open Meteor.";
-  };
   originSelect.addEventListener("change", () => { defaults(); originPicker.sync(); invalidate(); refreshConnectLabel(); });
   destSelect.addEventListener("change", () => { defaults(); destinationPicker.sync(); invalidate(); refreshConnectLabel(); });
   for (const input of [amountInput, slippage]) input.addEventListener("change", invalidate);
@@ -1436,11 +1368,12 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       details.hidden = true;
       if (guestMode) {
         status.textContent += " Guest mode is quote-only; sign in to approve.";
-      } else if (origin.blockchain === "near") {
-        await prepareNearWalletApproval(swap, revision);
       } else {
+        // Route is quote-only for every origin chain. Live quote, deterministic
+        // risk checks and both agents run only after the user explicitly taps Approve.
         approveButton.disabled = false;
         approveButton.hidden = false;
+        approveButton.textContent = "Approve swap";
       }
     } catch (error) { status.textContent = error.message || "Quote request failed."; }
     finally { quoteButton.disabled = false; }
