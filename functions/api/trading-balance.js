@@ -1,15 +1,7 @@
 import { json, readTextLimited } from "./_shared.js";
 import { getTidepoolTestnetTokens } from "../../src/trading-core.mjs";
 
-const ACCOUNT_RE = /^(?:[a-f0-9]{64}|[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet)$/i;
-const CONTRACT_RE = /^[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet$/i;
-// Use independent Testnet RPC providers in order. A transient 429/5xx or
-// provider-side JSON-RPC failure must not blank every NEAR token balance.
-const NEAR_RPC_URLS = [
-  "https://rpc.testnet.fastnear.com",
-  "https://rpc.testnet.drpc.org",
-  "https://rpc.testnet.near.org"
-];
+const ACCOUNT_RE = /^(?:[a-f0-9]{64}|[a-z0-9]+(?:[-_.][a-z0-9]+)*\\.testnet)$/i;
 const EVM_RPCS = {
   eth: "https://ethereum-sepolia-rpc.publicnode.com",
   base: "https://sepolia.base.org",
@@ -19,6 +11,96 @@ const EVM_RPCS = {
 };
 const EVM_NATIVE = { eth: "ETH", base: "ETH", arb: "ETH", bsc: "BNB", aurora: "ETH" };
 const EVM_ADDRESS_RE = /^0x[a-f0-9]{40}$/i;
+
+function nearBlocksConfig(env = {}) {
+  const network = env.NEAR_NETWORK || (typeof process !== "undefined" ? process.env?.NEAR_NETWORK : "");
+  const apiKey = env.NEARBLOCKS_API_KEY || (typeof process !== "undefined" ? process.env?.NEARBLOCKS_API_KEY : "");
+  return {
+    base: network === "mainnet" ? "https://api.nearblocks.io" : "https://api-testnet.nearblocks.io",
+    apiKey
+  };
+}
+
+async function fetchNearBlocks(url, apiKey) {
+  if (!apiKey) throw new Error("NEARBLOCKS_API_KEY is not configured.");
+  const response = await fetch(url, {
+    method: "GET",
+    headers: { authorization: "Bearer " + apiKey, accept: "application/json" },
+    signal: AbortSignal.timeout(8000)
+  });
+  if (!response.ok) {
+    const error = new Error("NEARBLOCKS_HTTP_ERROR");
+    error.status = response.status;
+    throw error;
+  }
+  let payload;
+  try { payload = await response.json(); }
+  catch { throw new Error("NEARBLOCKS_INVALID_JSON"); }
+  if (!payload || !Array.isArray(payload.data)) throw new Error("NEARBLOCKS_INVALID_RESPONSE");
+  return payload.data;
+}
+
+function findRawAmount(row) {
+  const candidates = [
+    row?.amount, row?.balance, row?.amount_raw, row?.raw_amount,
+    row?.ft_amount, row?.quantity
+  ];
+  for (const value of candidates) {
+    if (typeof value === "string" && /^(?:0|[1-9][0-9]*)$/.test(value)) return value;
+    if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) return String(value);
+  }
+  return null;
+}
+
+function findFtContract(row) {
+  const candidates = [
+    row?.contract, row?.contract_id, row?.contract_account_id,
+    row?.token?.contract, row?.ft?.contract, row?.account
+  ];
+  for (const value of candidates) {
+    if (typeof value === "string" && value.length <= 128) return value.toLowerCase();
+    if (value && typeof value === "object") {
+      const nested = value.account_id || value.contract || value.id;
+      if (typeof nested === "string") return nested.toLowerCase();
+    }
+  }
+  return null;
+}
+
+async function readNearBlocksBalance(accountId, token, native, env) {
+  const { base, apiKey } = nearBlocksConfig(env);
+  const account = encodeURIComponent(accountId);
+  try {
+    if (native) {
+      const rows = await fetchNearBlocks(base + "/v3/accounts/" + account + "/balance", apiKey);
+      const row = rows[0] || {};
+      const raw = findRawAmount(row) || findRawAmount(row.account || {});
+      if (raw === null) return json({ error: "NEARBLOCKS_NATIVE_BALANCE_SCHEMA_UNRECOGNIZED" }, 502);
+      return json({ raw, decimals: 24, source: "NearBlocks v3" });
+    }
+
+    const contract = String(token?.contract_address || "").toLowerCase();
+    if (!contract || !/^[a-z0-9]+(?:[-_.][a-z0-9]+)*\\.testnet$/i.test(contract)) {
+      return json({ error: "INVALID_NEAR_FT_CONTRACT" }, 400);
+    }
+    const rows = await fetchNearBlocks(base + "/v3/accounts/" + account + "/assets/fts", apiKey);
+    const holding = rows.find(row => findFtContract(row) === contract);
+    // A successful, schema-valid holdings response with no matching contract
+    // means zero holdings. An API/schema failure is never represented as zero.
+    if (!holding) return json({ raw: "0", decimals: token.decimals, source: "NearBlocks v3" });
+    const raw = findRawAmount(holding);
+    if (raw === null) return json({ error: "NEARBLOCKS_FT_BALANCE_SCHEMA_UNRECOGNIZED", contract }, 502);
+    return json({ raw, decimals: token.decimals, source: "NearBlocks v3" });
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 502;
+    return json({
+      error: error?.message || "NEARBLOCKS_BALANCE_UNAVAILABLE",
+      source: "NearBlocks v3",
+      ...(status !== 502 ? { provider_status: status } : {})
+    }, 502);
+  }
+}
+
 async function readEvmBalance(accountId, token, native, blockchain) {
   const chain = String(blockchain || token?.blockchain || "").toLowerCase();
   const rpcUrl = EVM_RPCS[chain];
@@ -59,10 +141,10 @@ async function readEvmBalance(accountId, token, native, blockchain) {
   if (payload?.error || typeof payload?.result !== "string" || !/^0x[0-9a-f]+$/i.test(payload.result)) {
     return json({ error: "EVM_RPC_QUERY_FAILED", chain }, 502);
   }
-  return json({ raw: BigInt(payload.result).toString(), decimals });
+  return json({ raw: BigInt(payload.result).toString(), decimals, source: "EVM JSON-RPC" });
 }
 
-export async function onRequestPost({ request }) {
+export async function onRequestPost({ request, env = {} }) {
   const bodyResult = await readTextLimited(request, 2048);
   if (!bodyResult.ok) return json({ error: bodyResult.reason === "BODY_TOO_LARGE" ? "REQUEST_TOO_LARGE" : "INVALID_BODY" }, bodyResult.reason === "BODY_TOO_LARGE" ? 413 : 400);
   let body;
@@ -81,89 +163,14 @@ export async function onRequestPost({ request }) {
     if (candidate && EVM_RPCS[String(candidate.blockchain || "").toLowerCase()]) {
       return readEvmBalance(accountId, candidate, false, candidate.blockchain);
     }
+    if (candidate?.blockchain === "near") {
+      if (!ACCOUNT_RE.test(accountId)) return json({ error: "INVALID_NEAR_ACCOUNT" }, 400);
+      return readNearBlocksBalance(accountId, candidate, false, env);
+    }
   }
   if (!ACCOUNT_RE.test(accountId)) return json({ error: "INVALID_NEAR_ACCOUNT" }, 400);
-
-  let params;
-  let decimals;
   if (body.native === true && Object.keys(body).every(key => ["accountId", "native"].includes(key))) {
-    params = { request_type: "view_account", finality: "final", account_id: accountId };
-    decimals = 24;
-  } else if (typeof body.assetId === "string" && Object.keys(body).every(key => ["accountId", "assetId"].includes(key))) {
-    let tokens;
-    try { tokens = await getTidepoolTestnetTokens(); }
-    catch { return json({ error: "TIDEPOOL_TOKEN_REGISTRY_UNAVAILABLE" }, 502); }
-    const token = tokens.find(item => item.asset_id === body.assetId && item.blockchain === "near");
-    if (!token || typeof token.contract_address !== "string" || !CONTRACT_RE.test(token.contract_address)) {
-      return json({ error: "NEAR_TESTNET_ASSET_NOT_SUPPORTED" }, 400);
-    }
-    params = {
-      request_type: "call_function",
-      finality: "final",
-      account_id: token.contract_address,
-      method_name: "ft_balance_of",
-      args_base64: btoa(JSON.stringify({ account_id: accountId }))
-    };
-    decimals = token.decimals;
-  } else {
-    return json({ error: "INVALID_BALANCE_REQUEST" }, 400);
+    return readNearBlocksBalance(accountId, null, true, env);
   }
-
-  let payload = null;
-  let lastRpcFailure = null;
-  for (const rpcUrl of NEAR_RPC_URLS) {
-    let response;
-    try {
-      response = await fetch(rpcUrl, {
-        method: "POST",
-        headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify({ jsonrpc: "2.0", id: "sentinel-swap-balance", method: "query", params }),
-        signal: AbortSignal.timeout(8000)
-      });
-    } catch {
-      lastRpcFailure = { error: "NEAR_RPC_UNAVAILABLE" };
-      continue;
-    }
-    if (!response.ok) {
-      lastRpcFailure = { error: "NEAR_RPC_HTTP_ERROR", status: response.status };
-      // Retry transient throttling/provider failures on the second RPC.
-      if (response.status === 429 || response.status >= 500) continue;
-      return json(lastRpcFailure, 502);
-    }
-    try { payload = await response.json(); }
-    catch {
-      lastRpcFailure = { error: "NEAR_RPC_INVALID_JSON" };
-      continue;
-    }
-    if (payload?.error) {
-      // Some public NEAR RPCs can reject a view call while another endpoint
-      // still serves it. Treat JSON-RPC errors like transient provider
-      // failures and try the next configured endpoint before failing WNEAR
-      // and other NEP-141 balance reads.
-      lastRpcFailure = {
-        error: "NEAR_RPC_QUERY_FAILED",
-        detail: String(payload.error.message || "RPC query failed").slice(0, 240)
-      };
-      continue;
-    }
-    lastRpcFailure = null;
-    break;
-  }
-  if (lastRpcFailure || !payload) return json({
-    ...(lastRpcFailure || { error: "NEAR_RPC_UNAVAILABLE" }),
-    rpc_endpoints_attempted: NEAR_RPC_URLS.length
-  }, 502);
-
-  let raw;
-  if (body.native === true) raw = payload?.result?.amount;
-  else {
-    const bytes = payload?.result?.result;
-    if (!Array.isArray(bytes)) return json({ error: "NEAR_FT_BALANCE_RESPONSE_INVALID" }, 502);
-    try { raw = JSON.parse(new TextDecoder().decode(new Uint8Array(bytes))); }
-    catch { return json({ error: "NEAR_FT_BALANCE_RESPONSE_INVALID" }, 502); }
-  }
-  if (typeof raw !== "string" || !/^(?:0|[1-9][0-9]*)$/.test(raw)) {
-    return json({ error: "NEAR_BALANCE_VALUE_INVALID" }, 502);
-  }
-  return json({ raw, decimals });
+  return json({ error: "INVALID_BALANCE_REQUEST" }, 400);
 }
