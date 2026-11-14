@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseChatSwapPrompt, resolveInitialSwapToken } from "../public/chat-swap.js";
+import { parseChatSwapPrompt, resolveInitialSwapToken, formatUnitsForInput } from "../public/chat-swap.js";
 
 test("parses a decimal-point swap request", () => {
   assert.deepEqual(parseChatSwapPrompt("swap 0.1 ETH to NEAR"), {
@@ -43,4 +43,10 @@ test("does not replace an actual native NEAR registry asset with wNEAR", () => {
     { asset_id: "near:native", symbol: "NEAR", blockchain: "near" }
   ];
   assert.equal(resolveInitialSwapToken(tokens, "NEAR").asset_id, "near:native");
+});
+
+test("formats percentage shortcut amounts without floating-point rounding", () => {
+  assert.equal(formatUnitsForInput(250000000000000000n, 18), "0.25");
+  assert.equal(formatUnitsForInput(123456789n, 8), "1.23456789");
+  assert.equal(formatUnitsForInput(1000000n, 6), "1");
 });
