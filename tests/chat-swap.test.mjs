@@ -34,6 +34,8 @@ test("native NEAR and WNEAR symbols never alias during prompt validation", () =>
   const wnear = { asset_id: "nep141:wnear.tidepool-sandbox.testnet", symbol: "wNEAR", decimals: 24, blockchain: "near", contract_address: "wnear.tidepool-sandbox.testnet" };
   assert.equal(promptTokenMatchesSymbol("NEAR", native), true);
   assert.equal(promptTokenMatchesSymbol("NEAR", wnear), false);
+  assert.equal(resolveInitialSwapToken([{ asset_id: "wrapped:near", symbol: "NEAR", blockchain: "near" }], "NEAR"), null);
+  assert.equal(promptTokenMatchesSymbol("NEAR", { asset_id: "wrapped:near", symbol: "NEAR", blockchain: "near" }), false);
   assert.equal(promptTokenMatchesSymbol("WNEAR", native), false);
   assert.equal(promptTokenMatchesSymbol("WNEAR", wnear), true);
   const tokens = [native, wnear];
