@@ -365,8 +365,10 @@ async function finishNearWalletDeposit(walletApproval, prepared, args) {
     try { sessionStorage.removeItem(PENDING_NEAR_APPROVAL_KEY); } catch {}
   }
   detailsNode.textContent = JSON.stringify({ origin_tx_hash: txHash, settlement: settled }, null, 2);
-  if (String(settled?.status || "").toUpperCase() === "SUCCESS" &&
-      swap.unwrapNativeNear && typeof onNativeNearOutput === "function") {
+  const settlementStatus = String(settled?.status || "").toUpperCase();
+  if (((settlementStatus === "SUCCESS" && swap.unwrapNativeNear) ||
+       (settlementStatus === "REFUNDED" && swap.wrapNativeNear)) &&
+      typeof onNativeNearOutput === "function") {
     await onNativeNearOutput({ swap, settled });
   }
   if (String(settled?.status || "").toUpperCase() !== "SUCCESS") {
@@ -424,8 +426,10 @@ async function executeEvmDeposit(args) {
   }
   const settled = await pollStatus(request, liveQuote.deposit_address, liveQuote.deposit_memo, statusNode);
   detailsNode.textContent = JSON.stringify({ origin_tx_hash: txHash, settlement: settled }, null, 2);
-  if (String(settled?.status || "").toUpperCase() === "SUCCESS" &&
-      swap.unwrapNativeNear && typeof onNativeNearOutput === "function") {
+  const settlementStatus = String(settled?.status || "").toUpperCase();
+  if (((settlementStatus === "SUCCESS" && swap.unwrapNativeNear) ||
+       (settlementStatus === "REFUNDED" && swap.wrapNativeNear)) &&
+      typeof onNativeNearOutput === "function") {
     await onNativeNearOutput({ swap, settled });
   }
 }
@@ -468,8 +472,10 @@ function renderManualDeposit(panel, liveQuote, token, swap, request, statusNode,
       statusNode.textContent = "Deposit reference accepted. Waiting for Tidepool settlement…";
       const settled = await pollStatus(request, liveQuote.deposit_address, liveQuote.deposit_memo, statusNode);
       detailsNode.textContent = JSON.stringify({ deposit_submission: submitted, settlement: settled }, null, 2);
-      if (String(settled?.status || "").toUpperCase() === "SUCCESS" &&
-          swap.unwrapNativeNear && typeof onNativeNearOutput === "function") {
+      const settlementStatus = String(settled?.status || "").toUpperCase();
+      if (((settlementStatus === "SUCCESS" && swap.unwrapNativeNear) ||
+           (settlementStatus === "REFUNDED" && swap.wrapNativeNear)) &&
+          typeof onNativeNearOutput === "function") {
         await onNativeNearOutput({ swap, settled });
       }
     } catch (error) {
@@ -1161,14 +1167,21 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   let pendingNearApproval = null;
   let pendingNearUnwrap = null;
   const prepareNativeNearUnwrap = async ({ swap: completedSwap, settled }) => {
-    const amount = settled?.swap_details?.amountOut;
+    const settlementStatus = String(settled?.status || "").toUpperCase();
+    const isNativeOutput = settlementStatus === "SUCCESS" && completedSwap?.unwrapNativeNear;
+    const isNativeInputRefund = settlementStatus === "REFUNDED" && completedSwap?.wrapNativeNear;
+    const amount = isNativeOutput
+      ? settled?.swap_details?.amountOut
+      : isNativeInputRefund ? settled?.swap_details?.refundedAmount : null;
+    const wnearToken = isNativeOutput ? completedSwap?.destination : completedSwap?.origin;
     const account = activeNearAccount;
     const connector = getConnector();
-    if (!completedSwap?.unwrapNativeNear || !nearAccount(account) ||
-        account.toLowerCase() !== String(completedSwap.recipient || "").toLowerCase() ||
+    const expectedAccount = isNativeOutput ? completedSwap?.recipient : completedSwap?.refundTo;
+    if ((!isNativeOutput && !isNativeInputRefund) || !nearAccount(account) ||
+        account.toLowerCase() !== String(expectedAccount || "").toLowerCase() ||
         typeof amount !== "string" || !/^[1-9][0-9]*$/.test(amount) ||
-        completedSwap.destination?.contract_address !== "wnear.tidepool-sandbox.testnet") {
-      status.textContent = "Swap settled to WNEAR, but native NEAR unwrap could not be prepared safely. WNEAR remains in the connected recipient account.";
+        wnearToken?.contract_address !== "wnear.tidepool-sandbox.testnet") {
+      status.textContent = "WNEAR was delivered or refunded, but native NEAR unwrap could not be prepared safely. WNEAR remains in the connected recipient account.";
       return;
     }
     try {
@@ -1184,7 +1197,9 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       };
       approveButton.disabled = false;
       approveButton.textContent = "Unwrap NEAR in Meteor";
-      status.textContent = "Swap SUCCESS. WNEAR arrived in Meteor. Tap “Unwrap NEAR in Meteor” to convert the exact received amount to native NEAR.";
+      status.textContent = isNativeOutput
+        ? "Swap SUCCESS. WNEAR arrived in Meteor. Tap “Unwrap NEAR in Meteor” to convert the exact received amount to native NEAR."
+        : "Swap was refunded in WNEAR. Tap “Unwrap NEAR in Meteor” to return the exact refunded amount to native NEAR.";
     } catch (error) {
       status.textContent = "Swap SUCCESS. WNEAR arrived, but Meteor unwrap preparation failed: " + (error?.message || "wallet unavailable");
     }
