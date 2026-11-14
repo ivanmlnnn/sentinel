@@ -44,7 +44,7 @@ async function request(path, options = {}) {
   const tradingRequest = path.startsWith('/trading/');
   const controller = tradingRequest && typeof AbortController !== 'undefined' ? new AbortController() : null;
   const externalSignal = options.signal;
-  const timeoutMs = 10000;
+  const timeoutMs = path === '/trading/agent' || path === '/trading/live-quote' ? 60000 : tradingRequest ? 30000 : 10000;
   let timedOut = false;
   let timeoutId = null;
   let abortListener = null;
