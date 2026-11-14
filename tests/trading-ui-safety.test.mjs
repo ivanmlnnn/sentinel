@@ -3,11 +3,14 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const app = await readFile(new URL("../public/app.js", import.meta.url), "utf8");
+const chatSwap = await readFile(new URL("../public/chat-swap.js", import.meta.url), "utf8");
 
 test("NEAR wallet connector requires Testnet message-signing and transaction capabilities", () => {
-  assert.match(app, /new NearConnector\(\{ network:'testnet', features:\{ testnet:true, signAndSendTransaction:true, signMessage:true \}/);
-  assert.match(app, /wallet\.signMessage\(/);
-  assert.match(app, /wallet\.signAndSendTransaction\(/);
+  assert.match(app, /new NearConnector\(\{[\s\S]*?network:\s*'testnet'[\s\S]*?features:\s*\{\s*testnet:\s*true,\s*signAndSendTransaction:\s*true,\s*signMessage:\s*true/);
+  assert.match(chatSwap, /typeof wallet\.signMessage !== "function"/);
+  assert.match(chatSwap, /typeof wallet\.signAndSendTransaction !== "function"/);
+  assert.match(chatSwap, /wallet\.signMessage\(/);
+  assert.match(chatSwap, /wallet\.signAndSendTransaction\(/);
 });
 
 test("submitted Tidepool intent stays locked while settlement is pending", () => {
