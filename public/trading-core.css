@@ -223,3 +223,29 @@
 .developer-mode-banner{border:1px solid rgba(155,140,255,.28)!important;border-radius:14px!important;background:rgba(155,140,255,.09)!important;color:#d9d3ff!important}
 .agent-result,.developer-trade-draft{border-color:rgba(85,230,223,.22)!important;background:rgba(10,19,35,.92)!important}
 @media(prefers-reduced-motion:reduce){.sentinel-skill-card{transition:none!important}}
+
+
+/* Clear chain/token marks and precise balance percentage controls. */
+.swap-chain-logo{width:34px;height:34px;min-width:34px;border:1px solid rgba(255,255,255,.16);background:#f7f9ff;box-shadow:0 2px 10px rgba(0,0,0,.22)}
+.swap-chain-logo img{width:23px;height:23px;object-fit:contain}
+.swap-chain-chip .swap-chain-logo{width:24px;height:24px;min-width:24px}
+.swap-chain-chip .swap-chain-logo img{width:17px;height:17px}
+.swap-token-logo{display:grid;place-items:center;flex:0 0 auto;width:34px;height:34px;border:1px solid rgba(255,255,255,.14);border-radius:50%;background:#f7f9ff;color:#17243a;font:800 12px "Inter",sans-serif;overflow:hidden}
+.swap-token-logo img{display:block;width:23px;height:23px;object-fit:contain}
+.swap-token-copy{min-width:0}
+.swap-token-balance{font-variant-numeric:tabular-nums}
+.swap-amount-group{display:grid;gap:8px;min-width:0}
+.swap-amount-group>input{width:100%;min-width:0}
+.swap-amount-shortcuts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.swap-amount-shortcut{min-height:34px;padding:7px 8px!important;border:1px solid rgba(85,230,223,.26)!important;border-radius:9px!important;background:rgba(85,230,223,.07)!important;color:#cffffc!important;font:700 10px "IBM Plex Mono",monospace!important;cursor:pointer;transition:background .16s ease,border-color .16s ease,transform .16s ease}
+.swap-amount-shortcut:hover:not(:disabled){transform:translateY(-1px);border-color:rgba(85,230,223,.65)!important;background:rgba(85,230,223,.15)!important}
+.swap-amount-shortcut:disabled{opacity:.5;cursor:wait}
+.swap-token-balance-note{max-width:190px}
+@media(max-width:640px){
+ .swap-chain-logo{width:32px;height:32px;min-width:32px}
+ .swap-chain-logo img{width:22px;height:22px}
+ .swap-token-logo{width:32px;height:32px}
+ .swap-token-logo img{width:22px;height:22px}
+ .swap-amount-shortcut{min-height:38px;font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){.swap-amount-shortcut{transition:none!important}}
