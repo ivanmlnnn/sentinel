@@ -91,10 +91,22 @@ async function validateBoundedJsonBody(request) {
   }
 }
 
-async function enforceRateLimit(binding, key) {
+async function enforceRateLimit(binding, key, scope = "api") {
   if (!binding || typeof binding.limit !== "function") return false;
-  const result = await binding.limit({ key });
-  return result?.success === true;
+  try {
+    const result = await binding.limit({ key });
+    return result?.success === true;
+  } catch (error) {
+    // A rate-limit service outage is an availability failure, not a user
+    // rate-limit rejection. Keep the request fail-closed without masking it
+    // as the generic Worker INTERNAL_SERVER_ERROR.
+    console.error("Sentinel rate-limit check failed:", {
+      scope,
+      error_name: error?.name || "Error",
+      message: String(error?.message || "Rate limiter unavailable").slice(0, 180)
+    });
+    return null;
+  }
 }
 export async function verifyTurnstileToken(token, request, env = {}) {
   const secret = typeof env.TURNSTILE_SECRET === "string" ? env.TURNSTILE_SECRET.trim() : "";
@@ -165,14 +177,20 @@ export default {
           }
           const ip = request.headers.get("CF-Connecting-IP") || "unknown";
           if (!env.API_RATE_LIMITER) return respond(serviceUnavailable("RATE_LIMIT_NOT_CONFIGURED"));
-          if (!await enforceRateLimit(env.API_RATE_LIMITER, ip)) return respond(rateLimitResponse());
+          const apiLimit = await enforceRateLimit(env.API_RATE_LIMITER, ip, "global");
+          if (apiLimit === null) return respond(serviceUnavailable("RATE_LIMIT_CHECK_UNAVAILABLE"));
+          if (!apiLimit) return respond(rateLimitResponse());
           if (request.method === "POST" && ["/api/agent/run", "/api/agent/approve", "/api/guest/agent", "/api/trading/agent", "/api/trading/backtest", "/api/trading/live-quote", "/api/trading/generate-intent", "/api/trading/submit-intent", "/api/trading/key-status", "/api/trading/deposit/submit", "/api/trading/preorders"].includes(url.pathname)) {
             if (!env.AGENT_RATE_LIMITER) return respond(serviceUnavailable("AGENT_RATE_LIMIT_NOT_CONFIGURED"));
-            if (!await enforceRateLimit(env.AGENT_RATE_LIMITER, ip)) return respond(rateLimitResponse());
+            const agentLimit = await enforceRateLimit(env.AGENT_RATE_LIMITER, ip, "agent");
+            if (agentLimit === null) return respond(serviceUnavailable("AGENT_RATE_LIMIT_CHECK_UNAVAILABLE"));
+            if (!agentLimit) return respond(rateLimitResponse());
           }
           if (request.method === "POST" && ["/api/investigate", "/api/guest/investigate"].includes(url.pathname)) {
             if (!env.INVESTIGATION_RATE_LIMITER) return respond(serviceUnavailable("INVESTIGATION_RATE_LIMIT_NOT_CONFIGURED"));
-            if (!await enforceRateLimit(env.INVESTIGATION_RATE_LIMITER, ip)) return respond(rateLimitResponse());
+            const investigationLimit = await enforceRateLimit(env.INVESTIGATION_RATE_LIMITER, ip, "investigation");
+            if (investigationLimit === null) return respond(serviceUnavailable("INVESTIGATION_RATE_LIMIT_CHECK_UNAVAILABLE"));
+            if (!investigationLimit) return respond(rateLimitResponse());
           }
         }
         if (request.method === "POST" && ["/api/investigate", "/api/guest/investigate"].includes(url.pathname)) {
@@ -184,8 +202,22 @@ export default {
         }
         return respond(await handler({ request, env, ctx, params: {}, data: { turnstileVerified } }));
       } catch (error) {
-        console.error("NEAR Sentinel API error:", error);
-        return respond(apiError("INTERNAL_SERVER_ERROR", 500));
+        const requestId = crypto.randomUUID();
+        console.error("NEAR Sentinel API error:", {
+          request_id: requestId,
+          route: request.method + " " + url.pathname,
+          error_name: error?.name || "Error",
+          message: String(error?.message || "Unknown Worker exception").slice(0, 240),
+          stack: typeof error?.stack === "string" ? error.stack.slice(0, 1600) : null
+        });
+        return respond(new Response(JSON.stringify({
+          error: "INTERNAL_SERVER_ERROR",
+          request_id: requestId,
+          route: request.method + " " + url.pathname
+        }), {
+          status: 500,
+          headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
+        }));
       }
     }
     if (url.pathname.startsWith("/api/")) return respond(apiError("NOT_FOUND", 404));
