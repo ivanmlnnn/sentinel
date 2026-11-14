@@ -284,3 +284,59 @@
 /* Compact secondary wallet and quote controls on every viewport. */
 .sentinel-swap-message .swap-connect-button{min-height:34px!important;padding:0 12px!important;font-size:9px!important}
 .sentinel-swap-message .swap-disconnect-button{min-height:30px!important;padding:0 10px!important;font-size:8px!important}
+
+/* Mobile picker portal: escape card transforms/overflow and provide a real dismissible backdrop. */
+.swap-token-backdrop{
+  position:fixed;inset:0;z-index:999;
+  background:rgba(2,8,5,.62);
+  -webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);
+  animation:swap-backdrop-in .22s ease both;
+}
+.swap-token-panel.is-mobile-sheet{
+  position:fixed!important;inset:auto 0 0!important;
+  width:100vw!important;max-width:100vw!important;
+  max-height:min(82svh,680px)!important;
+  overflow-x:hidden!important;overflow-y:auto!important;
+  padding:18px 16px calc(18px + env(safe-area-inset-bottom))!important;
+  border:1px solid rgba(184,228,162,.24)!important;border-bottom:0!important;
+  border-radius:24px 24px 0 0!important;
+  background:rgba(12,20,16,.99)!important;
+  box-shadow:0 -24px 80px rgba(0,0,0,.58)!important;
+  transform-origin:bottom center!important;
+  animation:swap-mobile-sheet-in .34s cubic-bezier(.2,.8,.2,1) both!important;
+  -webkit-overflow-scrolling:touch!important;overscroll-behavior:contain!important;
+  z-index:1000!important;
+}
+.swap-token-panel.is-mobile-sheet .swap-token-panel-head{
+  position:sticky;top:-18px;z-index:2;padding:8px 0 12px;
+  background:rgba(12,20,16,.99);
+}
+.swap-token-panel.is-mobile-sheet .swap-chain-options{padding:12px 0;gap:8px}
+.swap-token-panel.is-mobile-sheet .swap-chain-chip{min-height:40px;padding:7px 12px!important}
+.swap-token-panel.is-mobile-sheet .swap-token-option{min-height:58px;padding:11px 9px!important}
+.swap-token-panel.is-mobile-sheet .swap-token-panel-foot{
+  position:sticky;bottom:-18px;padding:12px 0 2px;background:rgba(12,20,16,.99)
+}
+@keyframes swap-backdrop-in{from{opacity:0}to{opacity:1}}
+@keyframes swap-mobile-sheet-in{
+  from{opacity:0;transform:translate3d(0,28px,0) scale(.985)}
+  to{opacity:1;transform:translate3d(0,0,0) scale(1)}
+}
+/* Secondary actions stay compact; Verify quote is not styled like a primary wallet CTA. */
+.sentinel-swap-message .swap-connect-button.is-verify{
+  width:auto!important;min-width:0!important;min-height:32px!important;
+  flex:0 0 auto!important;padding:0 12px!important;border-radius:9px!important;
+  font-size:9px!important;box-shadow:none!important;
+}
+.sentinel-swap-message .swap-disconnect-button{
+  width:auto!important;min-width:0!important;min-height:29px!important;
+  flex:0 0 auto!important;padding:0 9px!important;border-radius:9px!important;
+  font-size:8px!important;box-shadow:none!important;
+}
+.sentinel-swap-message .swap-quote-button{
+  width:auto!important;min-height:32px!important;flex:0 0 auto!important;
+  padding:0 11px!important;border-radius:9px!important;font-size:9px!important;
+}
+@media(prefers-reduced-motion:reduce){
+  .swap-token-backdrop,.swap-token-panel.is-mobile-sheet{animation:none!important}
+}
