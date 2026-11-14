@@ -21,7 +21,11 @@ export async function onRequestPost({ request, env }) {
   const quoteInput = Object.fromEntries(QUOTE_FIELDS.filter(key => body[key] !== undefined).map(key => [key, body[key]]));
   try {
     const result = await getTidepoolLiveQuote(quoteInput);
-    if (!result.ok) return json({ error: result.reason }, 400);
+    if (!result.ok) return json({
+      error: result.reason,
+      risk_evaluation: result.reason === "SENTINEL_SWAP_RISK_BLOCKED" ? result.value : undefined,
+      execution_authorized: false
+    }, 400);
     const tokens = await getTidepoolTestnetTokens();
     const review = await runDualAgentSwapReview({
       prompt: userPrompt,
