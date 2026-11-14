@@ -340,3 +340,30 @@
 @media(prefers-reduced-motion:reduce){
   .swap-token-backdrop,.swap-token-panel.is-mobile-sheet{animation:none!important}
 }
+
+/* Swap readability: high-contrast chain/token marks and compact balance controls. */
+.swap-chain-logo,.swap-token-logo{flex:0 0 34px;width:34px;height:34px;min-width:34px;border:1px solid rgba(190,207,255,.3);background:#f7f9ff;box-shadow:0 3px 12px rgba(0,0,0,.28)}
+.swap-chain-logo img,.swap-token-logo img{width:25px;height:25px;object-fit:contain;filter:none}
+.swap-chain-chip .swap-chain-logo{flex-basis:25px;width:25px;height:25px;min-width:25px}
+.swap-chain-chip .swap-chain-logo img{width:18px;height:18px}
+.swap-chain-chip{min-height:38px}
+.swap-chain-chip>span:not(.swap-chain-logo){color:#edf3ff;font-size:10px;letter-spacing:.035em}
+.swap-token-option{min-height:62px}
+.swap-token-identity strong,.swap-token-balance{font-size:13px}
+.swap-token-identity small,.swap-token-balance-note{font-size:9px;line-height:1.45}
+.swap-amount-shortcuts{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.swap-amount-shortcut{min-height:38px;font-size:11px!important}
+.swap-disconnect-button,.swap-connect-button.is-verify{min-height:34px!important;padding:7px 10px!important;border-radius:9px!important;font-size:9px!important;line-height:1.2}
+.swap-disconnect-button{width:auto!important;max-width:116px;border:1px solid rgba(255,151,151,.3)!important;background:rgba(145,54,67,.12)!important;color:#ffc1c8!important}
+.swap-connect-button.is-verify{width:auto!important;max-width:142px;background:rgba(85,230,223,.12)!important;color:#bffff7!important}
+.swap-wallet-bar{flex-wrap:wrap}
+@media(max-width:480px){
+ .swap-chain-options{padding:9px 0 11px}
+ .swap-chain-chip{padding:6px 8px!important}
+ .swap-token-option{padding:9px 8px!important}
+ .swap-wallet-bar{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px}
+ .swap-wallet-state{grid-column:1/-1}
+ .swap-connect-button{width:auto!important;min-width:0;max-width:100%}
+ .swap-disconnect-button{justify-self:end}
+ .swap-amount-shortcut{min-height:40px}
+}
