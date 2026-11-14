@@ -37,3 +37,20 @@ test("legacy swap approval also forwards the exact natural-language intent", () 
   assert.match(app, /lastSwapPrompt = 'swap ' \+ rawAmount \+ ' ' \+ draft\.from_asset \+ ' to ' \+ draft\.to_asset/);
   assert.match(app, /JSON\.stringify\(\{ \.\.\.lastSwapRequest, userPrompt: lastSwapPrompt \}\)/);
 });
+
+test("Meteor NEAR deposit preflight reads both token and native gas balances through the API", () => {
+  assert.match(swapUi, /readSwapWalletBalance\(swap\.origin, connectedAccount, request\)/);
+  assert.match(swapUi, /contract_address: null \}, connectedAccount, request\)/);
+});
+
+test("Meteor approval is invoked from the explicit approval tap with signer and callback URL", () => {
+  assert.match(swapUi, /prepared\.wallet\.signAndSendTransaction\(\{/);
+  assert.match(swapUi, /signerId: prepared\.connectedAccount/);
+  assert.match(swapUi, /callbackUrl: window\.location\.href/);
+  assert.match(swapUi, /Open Meteor & approve/);
+});
+
+test("percentage shortcuts use exact integer token units and are present for all four values", () => {
+  for (const percent of [25, 50, 75, 100]) assert.match(swapUi, new RegExp("percent \\+ \"%\""));
+  assert.match(swapUi, /formatUnitsForInput\(amountUnits, Number\(origin\.decimals\)\)/);
+});
