@@ -1,6 +1,5 @@
 import { json, readTextLimited, verifyPrivyAccessToken } from "./_shared.js";
 import { validatePreOrder, shouldTriggerPreOrder } from "../../src/trading-preorders.mjs";
-import { getTidepoolTestnetTokens } from "../../src/trading-core.mjs";
 
 export async function onRequestGet({ request, env }) {
   const identity = await verifyPrivyAccessToken(request, env);
@@ -63,7 +62,7 @@ export async function onRequestDelete({ request, env }) {
   return json({ id: body.id, status: "CANCELLED" });
 }
 
-export async function runPreOrderScheduler(env, now = Date.now(), fetchImpl = fetch) {
+export async function runPreOrderScheduler(env, now = Date.now()) {
   if (!env.DB) throw new Error("PREORDER_DATABASE_NOT_CONFIGURED");
   const dueTimes = await env.DB.prepare(
     "SELECT * FROM trading_preorders WHERE status = 'HELD' AND trigger_type = 'TIME' AND scheduled_at <= ? ORDER BY scheduled_at ASC LIMIT 50"
@@ -71,22 +70,13 @@ export async function runPreOrderScheduler(env, now = Date.now(), fetchImpl = fe
   const prices = await env.DB.prepare(
     "SELECT * FROM trading_preorders WHERE status = 'HELD' AND trigger_type = 'PRICE' ORDER BY created_at ASC LIMIT 100"
   ).all();
-  let tokenById = new Map();
-  if ((prices.results || []).length) {
-    try {
-      const tokens = await getTidepoolTestnetTokens(fetchImpl);
-      tokenById = new Map(tokens.map(token => [token.asset_id, token]));
-    } catch (error) {
-      console.warn("Pre-Order price scan unavailable; time triggers will still be processed:", error?.message || "PRICE_SOURCE_UNAVAILABLE");
-    }
-  }
-  const candidates = [...(dueTimes.results || []), ...(prices.results || [])];
+  // Tidepool's token registry price metadata is not a cryptographically verified
+  // oracle feed. Do not trigger a price order from that field. Keep price orders
+  // held until a signed/verified oracle adapter is configured.
+  const candidates = [...(dueTimes.results || [])];
   let triggered = 0;
   for (const order of candidates) {
-    const token = tokenById.get(order.trigger_asset_id);
-    const decision = shouldTriggerPreOrder(order, {
-      now, price: token?.price_usd ?? null, priceUpdatedAt: token?.price_updated_at ?? null
-    });
+    const decision = shouldTriggerPreOrder(order, { now, priceVerified: false });
     if (!decision.trigger) continue;
     const update = await env.DB.prepare(
       "UPDATE trading_preorders SET status = 'TRIGGERED_AWAITING_REVIEW', trigger_observed_price_usd = ?, trigger_observed_at = ?, triggered_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'HELD'"
@@ -94,5 +84,5 @@ export async function runPreOrderScheduler(env, now = Date.now(), fetchImpl = fe
       new Date(now).toISOString(), order.id).run();
     if (update.meta?.changes) triggered++;
   }
-  return { scanned: candidates.length, triggered };
+  return { scanned: candidates.length + (prices.results || []).length, triggered, price_orders_held: (prices.results || []).length, price_trigger_status: "SIGNED_ORACLE_NOT_CONFIGURED" };
 }

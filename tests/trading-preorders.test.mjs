@@ -46,7 +46,14 @@ test("time trigger fires only when due and order remains held", () => {
 test("price trigger requires a fresh verified provider price and honors direction", () => {
   const order = { status: "HELD", trigger_type: "PRICE", target_price_usd: 3, trigger_direction: "ABOVE" };
   const fresh = new Date(NOW).toISOString();
-  assert.equal(shouldTriggerPreOrder(order, { now: NOW, price: 3.01, priceUpdatedAt: fresh }).reason, "PRICE_TRIGGER");
-  assert.equal(shouldTriggerPreOrder(order, { now: NOW, price: 2.99, priceUpdatedAt: fresh }).trigger, false);
-  assert.equal(shouldTriggerPreOrder(order, { now: NOW, price: 3.1, priceUpdatedAt: new Date(NOW - 180000).toISOString() }).reason, "PRICE_UNVERIFIED_OR_STALE");
+  assert.equal(shouldTriggerPreOrder(order, { now: NOW, price: 3.01, priceUpdatedAt: fresh, priceVerified: true }).reason, "PRICE_TRIGGER");
+  assert.equal(shouldTriggerPreOrder(order, { now: NOW, price: 2.99, priceUpdatedAt: fresh, priceVerified: true }).trigger, false);
+  assert.equal(shouldTriggerPreOrder(order, { now: NOW, price: 3.1, priceUpdatedAt: new Date(NOW - 180000).toISOString(), priceVerified: true }).reason, "PRICE_UNVERIFIED_OR_STALE");
+});
+
+test("price trigger fails closed unless the price source is cryptographically verified", () => {
+  const order = { status: "HELD", trigger_type: "PRICE", target_price_usd: 3, trigger_direction: "ABOVE" };
+  const fresh = new Date(NOW).toISOString();
+  assert.equal(shouldTriggerPreOrder(order, { now: NOW, price: 3.2, priceUpdatedAt: fresh }).reason, "PRICE_UNVERIFIED_OR_STALE");
+  assert.equal(shouldTriggerPreOrder(order, { now: NOW, price: 3.2, priceUpdatedAt: fresh, priceVerified: true }).reason, "PRICE_TRIGGER");
 });

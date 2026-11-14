@@ -46,7 +46,7 @@ export function validatePreOrder(input, now = Date.now()) {
   return { ok: true, value: normalized };
 }
 
-export function shouldTriggerPreOrder(order, { now = Date.now(), price = null, priceUpdatedAt = null } = {}) {
+export function shouldTriggerPreOrder(order, { now = Date.now(), price = null, priceUpdatedAt = null, priceVerified = false } = {}) {
   if (!order || order.status !== "HELD") return { trigger: false, reason: "ORDER_NOT_HELD" };
   if (order.trigger_type === "TIME") {
     const due = Date.parse(order.scheduled_at);
@@ -56,7 +56,7 @@ export function shouldTriggerPreOrder(order, { now = Date.now(), price = null, p
   }
   if (order.trigger_type !== "PRICE") return { trigger: false, reason: "UNKNOWN_TRIGGER" };
   const updated = Date.parse(priceUpdatedAt || "");
-  if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(updated) || updated > now + 30000 || now - updated > 120000) {
+  if (priceVerified !== true || !Number.isFinite(price) || price <= 0 || !Number.isFinite(updated) || updated > now + 30000 || now - updated > 120000) {
     return { trigger: false, reason: "PRICE_UNVERIFIED_OR_STALE" };
   }
   const target = Number(order.target_price_usd);

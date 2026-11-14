@@ -21,7 +21,7 @@ import { onRequestGet as tradingStatusGet } from "../functions/api/trading-statu
 import { onRequestPost as tradingKeyStatusPost } from "../functions/api/trading-key-status.js";
 import { onRequestPost as tradingDepositSubmitPost } from "../functions/api/trading-deposit-submit.js";
 import { onRequestPost as tradingBalancePost } from "../functions/api/trading-balance.js";
-import { onRequestGet as tradingPreOrdersGet, onRequestPost as tradingPreOrdersPost, onRequestDelete as tradingPreOrdersDelete, runPreOrderScheduler } from "../functions/api/trading-preorders.js";
+import { onRequestGet as tradingPreOrdersGet, onRequestPost as tradingPreOrdersPost, runPreOrderScheduler } from "../functions/api/trading-preorders.js";
 
 const MAX_API_BODY_BYTES = 65536;
 const routes = {
@@ -51,8 +51,7 @@ const routes = {
   "POST /api/trading/key-status": tradingKeyStatusPost,
   "POST /api/trading/deposit/submit": tradingDepositSubmitPost,
   "GET /api/trading/preorders": tradingPreOrdersGet,
-  "POST /api/trading/preorders": tradingPreOrdersPost,
-  "DELETE /api/trading/preorders": tradingPreOrdersDelete
+  "POST /api/trading/preorders": tradingPreOrdersPost
 };
 
 async function validateBoundedJsonBody(request) {
