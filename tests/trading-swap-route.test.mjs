@@ -125,3 +125,11 @@ test("Meteor redirect recovery restores native NEAR unwrap intent without losing
   assert.match(swapUi, /unwrapNativeNear: prepared\.swap\.unwrapNativeNear === true/);
   assert.match(swapUi, /await prepareNativeNearUnwrap\(/);
 });
+
+test("native NEAR unwrap approval button is revealed after recovered settlement is validated", () => {
+  const prepareStart = swapUi.indexOf("const prepareNativeNearUnwrap = async");
+  const prepareEnd = swapUi.indexOf("\n  };", prepareStart);
+  const prepare = swapUi.slice(prepareStart, prepareEnd);
+  assert.match(prepare, /approveButton\.hidden = false/);
+  assert.match(prepare, /approveButton\.disabled = false/);
+});
