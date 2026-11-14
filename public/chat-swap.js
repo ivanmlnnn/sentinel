@@ -617,7 +617,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   card.append(el("p", "Review the amount and networks, then connect the wallets needed for this route.", "sentinel-swap-intro"));
   const securityDetails = el("details", undefined, "sentinel-swap-security");
   securityDetails.append(el("summary", "How the security check works"));
-  securityDetails.append(el("p", "One service resolves the live Tidepool route. A second independent check validates the signed quote, amount, networks, recipient, refund address, deadline and slippage before any wallet approval."));
+  securityDetails.append(el("p", "Agent 1 independently checks your prompt against the selected Testnet assets, exact amount, route and quote. Agent 2 independently challenges the signed quote, recipient, refund address, expiry, slippage and risk policy. Both must PASS before the wallet approval screen can open."));
   card.append(securityDetails);
   const tokensResponse = await request("/trading/tokens", { method: "GET" });
   const tokens = tokensResponse.tokens;
@@ -965,16 +965,22 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
           amount: swap.amount,
           recipient: swap.recipient,
           refundTo: swap.refundTo,
-          slippageTolerance: swap.slippageTolerance
+          slippageTolerance: swap.slippageTolerance,
+          userPrompt: prompt
         })
       });
+      const dualReview = liveQuote.dual_agent_review;
       if (liveQuote.mode !== "LIVE_QUOTE_AWAITING_USER_SIGNATURE" || liveQuote.execution_enabled !== false ||
           liveQuote.provider_signature_verified !== true || liveQuote.risk_evaluation?.decision !== "ALLOW" ||
           !String(liveQuote.risk_evaluation?.policy_hash || "").startsWith("sha256:") ||
           !liveQuote.signed_quote || typeof liveQuote.signed_quote !== "object" ||
-          !liveQuote.deposit_address || !Number.isFinite(Date.parse(liveQuote.deadline)) || Date.parse(liveQuote.deadline) <= Date.now()) {
-        throw new Error("Agent 2 rejected an invalid, expired, unsigned or risky live quote.");
+          !liveQuote.deposit_address || !Number.isFinite(Date.parse(liveQuote.deadline)) || Date.parse(liveQuote.deadline) <= Date.now() ||
+          dualReview?.status !== "PASS" || dualReview?.execution_authorized !== false ||
+          dualReview?.agent_one?.verdict !== "PASS" || dualReview?.agent_two?.verdict !== "PASS" ||
+          dualReview?.agent_two?.risk_level !== "LOW" || (dualReview?.failed_checks || []).length) {
+        throw new Error("Dual-agent gate rejected this swap. Both agents and every deterministic quote check must PASS before wallet approval.");
       }
+      status.textContent = "Agent 1 PASS · Agent 2 PASS · signed quote and deterministic risk checks verified. Review the exact wallet transaction below.";
       const summary = "SWAP APPROVAL REVIEW\n\n" + swap.origin.symbol + " (" + swap.origin.blockchain + ") → " +
         swap.destination.symbol + " (" + swap.destination.blockchain + ")\nInput: " +
         (liveQuote.quote.amount_in_formatted || liveQuote.quote.amount_in) + "\nExpected output: " +
