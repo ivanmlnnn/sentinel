@@ -981,6 +981,20 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         throw new Error("Dual-agent gate rejected this swap. Both agents and every deterministic quote check must PASS before wallet approval.");
       }
       status.textContent = "Agent 1 PASS · Agent 2 PASS · signed quote and deterministic risk checks verified. Review the exact wallet transaction below.";
+      details.textContent = JSON.stringify({
+        dual_agent_review: dualReview,
+        verified_quote: {
+          origin_chain: liveQuote.origin_chain,
+          destination_chain: liveQuote.destination_chain,
+          quote: liveQuote.quote,
+          recipient: liveQuote.recipient,
+          refund_to: liveQuote.refund_to,
+          deposit_address: liveQuote.deposit_address,
+          deadline: liveQuote.deadline,
+          risk_evaluation: liveQuote.risk_evaluation
+        }
+      }, null, 2);
+      details.hidden = false;
       const summary = "SWAP APPROVAL REVIEW\n\n" + swap.origin.symbol + " (" + swap.origin.blockchain + ") → " +
         swap.destination.symbol + " (" + swap.destination.blockchain + ")\nInput: " +
         (liveQuote.quote.amount_in_formatted || liveQuote.quote.amount_in) + "\nExpected output: " +
