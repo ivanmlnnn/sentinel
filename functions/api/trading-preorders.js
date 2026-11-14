@@ -38,8 +38,12 @@ export async function onRequestPost({ request, env }) {
   try { body = JSON.parse(bodyResult.text); } catch { return json({ error: "INVALID_JSON" }, 400); }
   if (body?.action === "cancel") {
     if (Object.keys(body).some(key => !["action","id"].includes(key)) || typeof body.id !== "string") return json({ error: "INVALID_CANCEL_REQUEST" }, 400);
-    if (!await cancelOrder(env, identity.sub, body.id)) return json({ error: "ORDER_NOT_CANCELLABLE" }, 409);
-    return json({ id: body.id, status: "CANCELLED" });
+    try {
+      if (!await cancelOrder(env, identity.sub, body.id)) return json({ error: "ORDER_NOT_CANCELLABLE" }, 409);
+      return json({ id: body.id, status: "CANCELLED" });
+    } catch {
+      return json({ error: "PREORDER_DATABASE_CANCEL_FAILED", migration: "0010_trading_preorders.sql" }, 503);
+    }
   }
   const validated = validatePreOrder(body);
   if (!validated.ok) return json({ error: validated.reason }, 400);
