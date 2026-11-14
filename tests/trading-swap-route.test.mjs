@@ -194,3 +194,15 @@ test("Pre-Order controls mount in the dashboard workspace rather than inside the
   assert.match(swapUi, /getElementById\("preOrdersDashboardMount"\)/);
   assert.match(swapUi, /preOrdersDashboardMount\.replaceChildren\(preOrderPanel\)/);
 });
+
+test("Verify quote never silently reverses the selected origin and destination", () => {
+  const quoteStart = swapUi.indexOf('quoteButton.addEventListener("click"');
+  const quoteEnd = swapUi.indexOf('approveButton.addEventListener("click"', quoteStart);
+  const handler = swapUi.slice(quoteStart, quoteEnd);
+  assert.match(handler, /const origin = tokens\.find\(token => String\(token\.asset_id \?\? ""\) === originSelect\.value\)/);
+  assert.match(handler, /const destination = tokens\.find\(token => String\(token\.asset_id \?\? ""\) === destSelect\.value\)/);
+  assert.match(handler, /does not match your instruction/);
+  assert.doesNotMatch(handler, /originSelect\.value = intended\.origin\.asset_id/);
+  assert.doesNotMatch(handler, /destSelect\.value = intended\.destination\.asset_id/);
+  assert.match(handler, /originAsset: quoteOrigin\.asset_id, destinationAsset: quoteDestination\.asset_id/);
+});
