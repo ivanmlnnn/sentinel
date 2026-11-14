@@ -50,3 +50,14 @@ test("minimum-output risk rejection exposes observed and required values in swap
   assert.match(chatSwap, /required=/);
   assert.match(chatSwap, /slippage_tolerance_bps/);
 });
+
+test("swap prompt direction is restored before requesting a quote when token picker state is reversed", () => {
+  assert.match(chatSwap, /export function promptTokenMatchesSymbol/);
+  assert.match(chatSwap, /export function resolvePromptSwapAssets/);
+  assert.match(chatSwap, /The natural-language prompt is the source of truth for swap direction/);
+  assert.match(chatSwap, /originSelect\.value = intended\.origin\.asset_id/);
+  assert.match(chatSwap, /destSelect\.value = intended\.destination\.asset_id/);
+  assert.match(chatSwap, /if \(!promptTokenMatchesSymbol\(parsed\.from, swap\.displayOrigin\)/);
+  assert.match(chatSwap, /no wallet approval was opened/);
+});
+
