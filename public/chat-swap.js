@@ -1358,10 +1358,8 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         // Call Meteor synchronously in this explicit user tap so its wallet
         // redirect/deep-link flow retains browser user activation.
         const unwrapApproval = preparedUnwrap.wallet.signAndSendTransaction({
-          signerId: preparedUnwrap.account,
           receiverId: preparedUnwrap.contract,
-          actions: buildNearWalletUnwrapActions(preparedUnwrap.amount),
-          callbackUrl: window.location.href
+          actions: buildNearWalletUnwrapActions(preparedUnwrap.amount)
         });
         status.textContent = "Opening Meteor to unwrap the received WNEAR into native NEAR…";
         const result = await unwrapApproval;
@@ -1396,11 +1394,9 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       approveButton.disabled = true;
       quoteButton.disabled = true;
       try {
-        // Invoke Meteor's redirecting wallet method synchronously in this tap,
-        // before any await, so mobile browsers retain user activation.
-        // All account/quote checks were completed while preparing this pending
-        // approval. Do not await connector state here: that would lose the
-        // mobile browser's user-activation window before Meteor can open.
+        // Invoke Meteor's documented NEAR Connect method directly from this
+        // tap. Meteor's SDK opens its own approval UI / mobile bridge; it does
+        // not consume callbackUrl or signerId fields from this payload.
         try {
           sessionStorage.setItem(PENDING_NEAR_APPROVAL_KEY, JSON.stringify({
             depositAddress: prepared.liveQuote.deposit_address,
@@ -1425,10 +1421,8 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         // The selected NEAR Connect session supplies the signer; do not pass a
         // callback URL or a second signer identity into Meteor's executor.
         const walletApproval = prepared.wallet.signAndSendTransaction({
-          signerId: prepared.connectedAccount,
           receiverId: prepared.transaction.receiverId,
-          actions: prepared.transaction.actions,
-          callbackUrl: window.location.href
+          actions: prepared.transaction.actions
         });
         status.textContent = "Opening Meteor. Review and approve the exact NEAR Testnet transfer…";
         await finishNearWalletDeposit(walletApproval, prepared, {
