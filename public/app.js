@@ -1,4 +1,5 @@
 import { buildTradeSkillDraft } from './trade-skill-draft.js';
+import { renderChatSwap } from './chat-swap.js?v=20261114-near-wrap-unwrap-route1';
 const $ = id => document.getElementById(id);
 const API = '/api';
 const GUEST_MODE = Boolean(window.SENTINEL_GUEST);
@@ -11,6 +12,7 @@ if (GUEST_MODE) {
 let connector = null;
 let connectedAccount = null;
 let connectedWalletName = null;
+let activeChatSwapController = null;
 let connectorReady = false;
 
 function toast(message) {
@@ -20,44 +22,99 @@ function toast(message) {
 function short(value) {
   return value && value.length > 26 ? value.slice(0, 10) + '…' + value.slice(-8) : value;
 }
+const NEAR_BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+function encodeBase58(bytes) {
+  let zeros = 0;
+  while (zeros < bytes.length && bytes[zeros] === 0) zeros++;
+  let value = 0n;
+  for (const byte of bytes) value = (value << 8n) | BigInt(byte);
+  let encoded = '';
+  while (value > 0n) {
+    const remainder = Number(value % 58n);
+    encoded = NEAR_BASE58_ALPHABET[remainder] + encoded;
+    value /= 58n;
+  }
+  return '1'.repeat(zeros) + encoded;
+}
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 async function request(path, options = {}) {
   const headers = {'content-type':'application/json', ...(options.headers || {})};
-  if (typeof window.getSentinelAccessToken === 'function') {
-    try {
-      const token = await window.getSentinelAccessToken();
-      if (token) headers.authorization = 'Bearer ' + token;
-    } catch (error) {
-      console.warn('Could not refresh Privy access token for API request:', error);
+  const tradingRequest = path.startsWith('/trading/');
+  const controller = tradingRequest && typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const externalSignal = options.signal;
+  const timeoutMs = path === '/trading/agent' || path === '/trading/live-quote' ? 60000 : tradingRequest ? 30000 : 10000;
+  let timedOut = false;
+  let timeoutId = null;
+  let abortListener = null;
+  if (controller) {
+    timeoutId = window.setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
+    if (externalSignal) {
+      if (externalSignal.aborted) controller.abort();
+      else {
+        abortListener = () => controller.abort();
+        externalSignal.addEventListener('abort', abortListener, { once: true });
+      }
     }
   }
-  let response;
+  const abortPromise = controller ? new Promise((_, reject) => {
+    if (controller.signal.aborted) reject(new DOMException('Request aborted', 'AbortError'));
+    else controller.signal.addEventListener('abort', () => reject(new DOMException('Request aborted', 'AbortError')), { once: true });
+  }) : null;
   try {
-    response = await fetch(API + path, { ...options, headers });
+    if (typeof window.getSentinelAccessToken === 'function') {
+      try {
+        const tokenPromise = window.getSentinelAccessToken();
+        const token = await (abortPromise ? Promise.race([tokenPromise, abortPromise]) : tokenPromise);
+        if (token) headers.authorization = 'Bearer ' + token;
+      } catch (error) {
+        if (error?.name === 'AbortError') throw error;
+        console.warn('Could not refresh Privy access token for API request:', error);
+      }
+    }
+    const fetchOptions = { ...options, headers };
+    delete fetchOptions.signal;
+    if (controller) fetchOptions.signal = controller.signal;
+    // Match the Main Worker route table in src/index.js exactly.
+    // Keep the swap UI's logical names, but normalize legacy aliases explicitly.
+    let apiPath = path;
+    if (path === '/trading-balance') apiPath = '/trading/balance';
+    else if (path === '/trading/deposit-submit') apiPath = '/trading/deposit/submit';
+    const response = await (abortPromise
+      ? Promise.race([fetch(API + apiPath, fetchOptions), abortPromise])
+      : fetch(API + apiPath, fetchOptions));
+    const contentType = response.headers.get('content-type') || 'unknown';
+    const raw = await response.text();
+    let data = null;
+    try { data = raw ? JSON.parse(raw) : null; } catch {}
+    if (!response.ok) {
+      const reason = typeof data?.error === 'string' ? data.error :
+        typeof data?.reason === 'string' ? data.reason : 'API returned a non-JSON error response';
+      const detail = typeof data?.detail === 'string' ? ': ' + data.detail :
+        typeof data?.provider_message === 'string' ? ': ' + data.provider_message : '';
+      const error = new Error('Sentinel API HTTP ' + response.status + ' (' + contentType + '): ' + reason + detail);
+      error.data = data;
+      throw error;
+    }
+    if (!data || typeof data !== 'object') {
+      throw new Error('Sentinel API returned invalid JSON (HTTP ' + response.status + ', ' + contentType + '). Wallet was not opened.');
+    }
+    return data;
   } catch (cause) {
-    const error = new Error('Sentinel API connection failed before wallet approval. Check network and retry.');
+    if (cause?.name === 'AbortError') {
+      if (externalSignal?.aborted) throw new DOMException('This request was superseded by your latest prompt.', 'AbortError');
+      if (timedOut) throw new Error('Sentinel request timed out after 10 seconds. No wallet transaction was approved. Try again or check the API/Tidepool connection.');
+    }
+    const error = cause?.name === 'AbortError'
+      ? new Error('Sentinel request was cancelled before wallet approval.')
+      : cause instanceof Error ? cause : new Error('Sentinel API connection failed before wallet approval.');
     error.cause = cause;
     throw error;
+  } finally {
+    if (timeoutId !== null) window.clearTimeout(timeoutId);
+    if (externalSignal && abortListener) externalSignal.removeEventListener('abort', abortListener);
   }
-  const contentType = response.headers.get('content-type') || 'unknown';
-  const raw = await response.text();
-  let data = null;
-  try { data = raw ? JSON.parse(raw) : null; } catch {}
-  if (!response.ok) {
-    const reason = typeof data?.error === 'string' ? data.error :
-      typeof data?.reason === 'string' ? data.reason : 'API returned a non-JSON error response';
-    const detail = typeof data?.detail === 'string' ? ': ' + data.detail :
-      typeof data?.provider_message === 'string' ? ': ' + data.provider_message : '';
-    const error = new Error('Sentinel API HTTP ' + response.status + ' (' + contentType + '): ' + reason + detail);
-    error.data = data;
-    throw error;
-  }
-  if (!data || typeof data !== 'object') {
-    throw new Error('Sentinel API returned invalid JSON (HTTP ' + response.status + ', ' + contentType + '). Wallet was not opened.');
-  }
-  return data;
 }
 function syncWalletUI(accountId, walletName) {
   connectedAccount = accountId || null;
@@ -207,22 +264,77 @@ function initWalletCardMotion() {
     }
   });
 }
+async function connectNearWalletFromGesture() {
+  const button = $('walletBtn');
+  if (!connectorReady || !connector) {
+    toast('NEAR wallet options are still loading. Wait a moment, then tap Connect again.');
+    return;
+  }
+  if (button) button.disabled = true;
+  try {
+    if (connectedAccount) {
+      await connector.disconnect();
+      syncWalletUI(null, null);
+      toast('NEAR wallet disconnected.');
+      return;
+    }
+    // Call connect() directly in the real click handler. Do not route through
+    // element.click(), because mobile browsers can drop popup/user activation.
+    await connector.connect();
+    const current = await connector.getConnectedWallet();
+    const account = current.accounts && current.accounts[0];
+    if (!account?.accountId) {
+      throw new Error('Wallet selection finished without an account. Choose Meteor or another compatible NEAR Testnet wallet and approve the connection.');
+    }
+    syncWalletUI(account.accountId, current.wallet?.manifest?.name || 'NEAR wallet');
+    toast('NEAR wallet connected: ' + (current.wallet?.manifest?.name || 'NEAR wallet'));
+    return account.accountId;
+  } catch (error) {
+    console.error('NEAR wallet connection error:', error);
+    const message = error?.message || 'Wallet connection was cancelled or unavailable.';
+    $('walletConnectionState').textContent = 'Connection not completed: ' + message;
+    toast(message);
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+async function connectNearWalletForSwapFromGesture() {
+  if (!connectorReady || !connector) throw new Error('NEAR wallet options are still loading. Wait a moment, then tap Connect again.');
+  // Swap uses a connect-only action; it must never trigger the dashboard toggle.
+  if (connectedAccount && /^(?:[a-f0-9]{64}|[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet)$/i.test(connectedAccount)) return connectedAccount;
+  await connector.connect();
+  const current = await connector.getConnectedWallet();
+  const account = current?.accounts?.[0];
+  if (!account?.accountId || !/^(?:[a-f0-9]{64}|[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet)$/i.test(account.accountId)) {
+    throw new Error('Wallet selection finished without a valid NEAR Testnet account. Choose Meteor and approve the connection.');
+  }
+  syncWalletUI(account.accountId, current.wallet?.manifest?.name || 'NEAR wallet');
+  return account.accountId;
+}
 async function initWallet() {
   const button = $('walletBtn');
-  button.disabled = true;
-  button.textContent = 'Loading NEAR wallet options…';
+  button.disabled = false;
+  button.textContent = 'Connect NEAR Wallet';
+  // Keep the action bound immediately, but execute the connector synchronously
+  // from the user's click gesture once initialization has completed.
+  button.addEventListener('click', connectNearWalletFromGesture);
   try {
-    // NEAR Connect is the current recommended connector in the NEAR Wallet Selector transition.
-    const { NearConnector } = await import('https://esm.sh/@hot-labs/near-connect@0.12.0');
-    connector = new NearConnector({ network:'testnet', features:{ testnet:true, signAndSendTransaction:true }, autoConnect:false });
+    const module = await Promise.race([
+      import('https://esm.sh/@hot-labs/near-connect@0.12.0'),
+      new Promise((_, reject) => window.setTimeout(() => reject(new Error('NEAR wallet module timed out. Check the connection and retry.')), 12000))
+    ]);
+    const { NearConnector } = module;
+    connector = new NearConnector({
+      network: 'testnet',
+      features:{ testnet:true, signAndSendTransaction:true, signMessage:true },
+      autoConnect: false
+    });
     await connector.whenManifestLoaded;
-
     connector.on('wallet:signIn', event => {
       const account = event.accounts && event.accounts[0];
       syncWalletUI(account?.accountId, event.wallet?.manifest?.name || 'NEAR wallet');
     });
     connector.on('wallet:signOut', () => syncWalletUI(null, null));
-
     try {
       const current = await connector.getConnectedWallet();
       const account = current.accounts && current.accounts[0];
@@ -231,56 +343,33 @@ async function initWallet() {
       syncWalletUI(null, null);
     }
     connector.on('selector:walletsChanged', () => {
-      const count = connector.availableWallets.length;
+      const wallets = connector.availableWallets || [];
+      const names = wallets.map(item => item.manifest?.name || item.name).filter(Boolean);
       if (!connectedAccount) {
-        $('walletConnectionState').textContent = count
-          ? 'Not connected — ' + count + ' compatible Testnet wallet(s) found.'
-          : 'No compatible Testnet wallet is currently available. You can still check any public account.';
+        $('walletConnectionState').textContent = names.length
+          ? 'Compatible Testnet wallets: ' + names.join(', ') + '. Tap Connect to choose one.'
+          : 'No compatible Testnet wallet detected. Check the network and wallet compatibility.';
       }
     });
     connectorReady = true;
     button.disabled = false;
-    const walletCount = connector.availableWallets.length;
-    $('walletConnectionState').textContent = walletCount
-      ? 'Not connected — ' + walletCount + ' compatible Testnet wallet(s) found. Connect to autofill your account.'
-      : 'No compatible Testnet wallet is currently available. You can still check any public account.';
-    console.info('NEAR Connect ready. Network: testnet. Testnet-compatible wallets:', walletCount);
+    button.textContent = connectedAccount ? 'Wallet connected' : 'Connect NEAR Wallet';
+    const wallets = connector.availableWallets || [];
+    const names = wallets.map(item => item.manifest?.name || item.name).filter(Boolean);
+    $('walletConnectionState').textContent = connectedAccount
+      ? 'Connected wallet: ' + connectedAccount
+      : names.length
+        ? 'Choose a wallet: ' + names.join(', ')
+        : 'No compatible Testnet wallet detected. Meteor may be used through its web wallet or supported browser extension.';
+    console.info('NEAR Connect ready. Network: testnet. Compatible wallets:', names);
   } catch (error) {
     console.error('NEAR Connect initialization failed:', error);
+    connectorReady = false;
     button.disabled = false;
-    button.textContent = 'Wallet connection unavailable';
-    $('walletConnectionState').textContent = 'Wallet options could not load. Refresh the page or continue with a public address check.';
-    toast('NEAR wallet service could not load. Please refresh and retry.');
+    button.textContent = 'Retry NEAR wallet';
+    $('walletConnectionState').textContent = 'Wallet connector could not load: ' + (error?.message || 'unknown error') + ' Public address checks remain available.';
+    toast('NEAR wallet connector failed to load. Tap Retry NEAR wallet after checking your connection.');
   }
-  button.addEventListener('click', async () => {
-    if (!connectorReady) {
-      toast('Wallet connector is not ready. Refresh the page and try again.');
-      return;
-    }
-    if (!connectedAccount && connector.availableWallets.length === 0) {
-      toast('No wallet supporting NEAR Testnet is available in this browser. Try another NEAR wallet.');
-      return;
-    }
-    button.disabled = true;
-    try {
-      if (connectedAccount) {
-        await connector.disconnect();
-        syncWalletUI(null, null);
-        toast('NEAR wallet disconnected.');
-      } else {
-        await connector.connect();
-        const current = await connector.getConnectedWallet();
-        const account = current.accounts && current.accounts[0];
-        syncWalletUI(account?.accountId, current.wallet?.manifest?.name || 'NEAR wallet');
-        toast('NEAR wallet connected.');
-      }
-    } catch (error) {
-      console.error('NEAR wallet connection error:', error);
-      toast('Connection cancelled or unavailable. Choose a wallet that supports NEAR Testnet.');
-    } finally {
-      button.disabled = false;
-    }
-  });
 }
 
 function renderResult(data) {
@@ -596,8 +685,12 @@ async function initTrackWalletTurnstile(retry = false) {
       execution: 'render',
       'refresh-expired': 'auto',
       callback: token => {
-        window.__sentinelTurnstileToken = typeof token === 'string' ? token : null;
-        setTrackWalletTurnstileStatus('Cloudflare verification complete. You can track this wallet.', 'verified');
+        const validToken = typeof token === 'string' && token.trim().length >= 10 && token.length <= 2048;
+        window.__sentinelTurnstileToken = validToken ? token : null;
+        setTrackWalletTurnstileStatus(
+          validToken ? 'Cloudflare verification complete. You can track this wallet.' : 'Cloudflare returned an invalid verification token. Retry verification.',
+          validToken ? 'verified' : 'error'
+        );
       },
       'error-callback': errorCode => {
         window.__sentinelTurnstileToken = null;
@@ -735,7 +828,9 @@ async function renderTradeSkillDraft(prompt) {
   details.textContent = JSON.stringify(draft, null, 2);
   const note = document.createElement('p');
   note.className = 'developer-trade-draft-note';
-  note.textContent = 'Not approved. No wallet signature, quote, swap, buy, sell, or scheduled job was created. Trading execution is not connected yet.';
+  note.textContent = draft.action === 'SWAP'
+    ? 'No wallet signature, deposit, or swap is created. The quote preview below is read-only and cannot execute a trade.'
+    : 'Not approved. No wallet signature, trade, or scheduled job was created. BUY / SELL execution is not connected yet.';
   const hash = document.createElement('small');
   hash.textContent = 'DRAFT SHA-256 · ' + fingerprint;
   const copy = document.createElement('button');
@@ -746,7 +841,294 @@ async function renderTradeSkillDraft(prompt) {
     try { await navigator.clipboard.writeText(JSON.stringify(draft, null, 2)); toast('Skill draft copied.'); }
     catch { toast('Clipboard unavailable.'); }
   });
+  let quotePanel = null;
+  if (draft.action === 'SWAP' && complete) {
+    quotePanel = document.createElement('section');
+    quotePanel.className = 'developer-trade-quote';
+    const quoteTitle = document.createElement('strong');
+    quoteTitle.textContent = 'NEAR TESTNET · LIVE DRY QUOTE';
+    const quoteHelp = document.createElement('p');
+    quoteHelp.textContent = 'Sentinel requests a real provider quote in dry mode. No deposit address is created and no funds move.';
+    const faucetLink = document.createElement('a');
+    faucetLink.href = 'https://app.usetidepool.tech/faucet';
+    faucetLink.target = '_blank';
+    faucetLink.rel = 'noopener noreferrer';
+    faucetLink.textContent = 'Get Testnet tokens · choose NEAR Intents balance';
+    const recipientLabel = document.createElement('label');
+    recipientLabel.textContent = 'NEAR TESTNET RECIPIENT / REFUND ACCOUNT';
+    const recipientInput = document.createElement('input');
+    recipientInput.type = 'text';
+    recipientInput.maxLength = 64;
+    recipientInput.autocomplete = 'off';
+    recipientInput.placeholder = 'your-account.testnet';
+    recipientInput.value = typeof connectedAccount === 'string' && connectedAccount.endsWith('.testnet') ? connectedAccount : '';
+    recipientInput.required = true;
+    const quoteButton = document.createElement('button');
+    quoteButton.type = 'button';
+    quoteButton.className = 'secondary-btn';
+    quoteButton.textContent = 'Get Testnet dry quote';
+    const liveButton = document.createElement('button');
+    liveButton.type = 'button';
+    liveButton.className = 'secondary-btn';
+    liveButton.textContent = 'Review & sign Testnet swap';
+    liveButton.hidden = true;
+    liveButton.disabled = true;
+    const liveStatus = document.createElement('p');
+    liveStatus.className = 'developer-trade-draft-note';
+    liveStatus.setAttribute('aria-live', 'polite');
+    let lastSwapRequest = null;
+    let lastSwapPrompt = null;
+    const quoteStatus = document.createElement('p');
+    quoteStatus.className = 'developer-trade-draft-note';
+    quoteStatus.setAttribute('aria-live', 'polite');
+    const quoteDetails = document.createElement('pre');
+    quoteDetails.hidden = true;
+    const quoteForm = document.createElement('div');
+    quoteButton.type = 'button';
+    quoteButton.addEventListener('click', async () => {
+      quoteButton.disabled = true;
+      quoteStatus.textContent = 'Loading the live Testnet asset list and requesting a dry quote…';
+      quoteDetails.hidden = true;
+      try {
+        if (draft.amount_unit !== draft.from_asset || !draft.amount_text) {
+          throw new Error('The amount unit must exactly match the input asset. Example: swap 0.1 USDC to wNEAR.');
+        }
+        const tokenData = await request('/trading/tokens');
+        const origin = tokenData.tokens?.find(token => token.symbol.toUpperCase() === draft.from_asset.toUpperCase());
+        const destination = tokenData.tokens?.find(token => token.symbol.toUpperCase() === draft.to_asset.toUpperCase());
+        if (!origin || !destination) throw new Error('One of the requested assets is not available on the NEAR Testnet sandbox.');
+        const decimals = Number(origin.decimals);
+        const rawAmount = draft.amount_text;
+        if (!Number.isInteger(decimals) || decimals < 0 || decimals > 30 || !/^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/.test(rawAmount)) {
+          throw new Error('Invalid decimal amount for the selected asset.');
+        }
+        const [whole, fraction = ''] = rawAmount.split('.');
+        if (fraction.length > decimals) throw new Error('Amount has more decimal places than the input token supports.');
+        const baseAmount = (BigInt(whole) * (10n ** BigInt(decimals)) +
+          BigInt((fraction + '0'.repeat(decimals)).slice(0, decimals) || '0')).toString();
+        if (baseAmount === '0') throw new Error('Amount must be greater than zero.');
+        lastSwapPrompt = 'swap ' + rawAmount + ' ' + draft.from_asset + ' to ' + draft.to_asset;
+        lastSwapRequest = {
+          originAsset: origin.asset_id,
+          destinationAsset: destination.asset_id,
+          amount: baseAmount,
+          recipient: recipientInput.value.trim(),
+          slippageTolerance: 100
+        };
+        const quote = await request('/trading/quote', {
+          method: 'POST',
+          body: JSON.stringify(lastSwapRequest)
+        });
+        if (quote.mode !== 'QUOTE_ONLY' || quote.execution_enabled !== false) {
+          throw new Error('Sentinel rejected a response that was not explicitly quote-only.');
+        }
+        quoteStatus.textContent = (quote.quote.amount_in_formatted || quote.quote.amount_in) + ' ' + origin.symbol +
+          ' → ' + (quote.quote.amount_out_formatted || quote.quote.amount_out) + ' ' + destination.symbol +
+          ' · minimum received ' + quote.quote.minimum_amount_out +
+          ' · estimated ' + (quote.quote.estimated_seconds ?? '—') + ' sec';
+        quoteDetails.textContent = JSON.stringify(quote, null, 2);
+        quoteDetails.hidden = false;
+        liveButton.hidden = false;
+        liveButton.disabled = false;
+        liveStatus.textContent = 'Dry quote verified. No funds moved. Connect the same Testnet wallet to continue.';
+      } catch (error) {
+        quoteStatus.textContent = error.message || 'Quote request failed.';
+      } finally {
+        quoteButton.disabled = false;
+      }
+    });
+    liveButton.addEventListener('click', async () => {
+      liveButton.disabled = true;
+      liveStatus.textContent = 'Creating a short-lived live quote. No transfer happens until your wallet signs the exact intent.';
+      let intentSubmitted = false;
+      let terminalSettlement = false;
+      try {
+        if (!lastSwapRequest) throw new Error('Request a fresh dry quote first.');
+        if (!connectorReady || !connector || !connectedAccount || !connectedAccount.endsWith('.testnet')) {
+          throw new Error('Connect a NEAR Testnet wallet first.');
+        }
+        if (connectedAccount.toLowerCase() !== recipientInput.value.trim().toLowerCase() ||
+            connectedAccount.toLowerCase() !== lastSwapRequest.recipient.toLowerCase()) {
+          throw new Error('Recipient/refund account must match the connected signing wallet. Refresh the quote after connecting.');
+        }
+        const liveQuote = await request('/trading/live-quote', {
+          method: 'POST',
+          body: JSON.stringify({ ...lastSwapRequest, userPrompt: lastSwapPrompt })
+        });
+        if (liveQuote.mode !== 'LIVE_QUOTE_AWAITING_USER_SIGNATURE' ||
+            liveQuote.execution_enabled !== false ||
+            liveQuote.provider_signature_verified !== true ||
+            liveQuote.risk_evaluation?.decision !== 'ALLOW' ||
+            !String(liveQuote.risk_evaluation?.policy_hash || '').startsWith('sha256:') ||
+            !liveQuote.signed_quote || typeof liveQuote.signed_quote !== 'object' ||
+            !/^[a-f0-9]{64}$/i.test(liveQuote.deposit_address || '')) {
+          throw new Error('Sentinel rejected an invalid or unexpected live quote.');
+        }
+        const summary = 'NEAR TESTNET SWAP REVIEW\n\n' +
+          'Input: ' + (liveQuote.quote.amount_in_formatted || liveQuote.quote.amount_in) + ' ' + draft.from_asset + '\n' +
+          'Expected output: ' + (liveQuote.quote.amount_out_formatted || liveQuote.quote.amount_out) + ' ' + draft.to_asset + '\n' +
+          'Minimum output: ' + liveQuote.quote.minimum_amount_out + '\n' +
+          'Wallet: ' + connectedAccount + '\n' +
+          'Provider: Tidepool community Testnet\n' +
+          'Sentinel risk: ' + liveQuote.risk_evaluation.decision + '\n' +
+          'Policy proof: ' + liveQuote.risk_evaluation.policy_hash + '\n\n' +
+          'Continue to request the exact NEP-413 transfer intent? Your wallet will show the signing request next.';
+        if (!window.confirm(summary)) {
+          liveStatus.textContent = 'Cancelled before wallet signing. No transfer was submitted.';
+          return;
+        }
+        const wallet = await connector.wallet();
+        if (!wallet || typeof wallet.signMessage !== 'function' ||
+            typeof wallet.signAndSendTransaction !== 'function') {
+          throw new Error('This wallet must support both NEP-413 message signing and Testnet transactions. No fallback signing is available.');
+        }
+        const walletSnapshot = await connector.getConnectedWallet();
+        let walletAccount = walletSnapshot?.accounts?.find(account => account.accountId?.toLowerCase() === connectedAccount.toLowerCase());
+        if (!walletAccount && typeof wallet.getAccounts === 'function') {
+          const walletAccounts = await wallet.getAccounts();
+          walletAccount = walletAccounts?.find(account => account.accountId?.toLowerCase() === connectedAccount.toLowerCase());
+        }
+        const walletPublicKey = walletAccount?.publicKey?.toString?.() || walletAccount?.publicKey || '';
+        if (!walletPublicKey.startsWith('ed25519:')) {
+          throw new Error('Could not read the connected wallet public key. Reconnect the Testnet wallet and try again.');
+        }
+        let keyStatus = await request('/trading/key-status', {
+          method: 'POST',
+          body: JSON.stringify({ accountId: connectedAccount, publicKey: walletPublicKey })
+        });
+        if (!keyStatus.registered) {
+          const register = window.confirm(
+            'ONE-TIME VERIFIER KEY REGISTRATION\n\n' +
+            'This NEAR Testnet account key is not registered on the Tidepool verifier. ' +
+            'Sentinel must register the public key before NEP-413 signing. ' +
+            'Your wallet will ask you to approve add_public_key on verifier.tidepool-sandbox.testnet. ' +
+            'This requires a small amount of NEAR Testnet gas and 1 yoctoNEAR. Continue?'
+          );
+          if (!register) {
+            liveStatus.textContent = 'Cancelled before key registration. No swap was submitted.';
+            return;
+          }
+          liveStatus.textContent = 'Requesting one-time verifier public-key registration in your wallet…';
+          await wallet.signAndSendTransaction({
+            receiverId: 'verifier.tidepool-sandbox.testnet',
+            actions: [{
+              type: 'FunctionCall',
+              params: {
+                methodName: 'add_public_key',
+                args: { public_key: walletPublicKey },
+                gas: '30000000000000',
+                deposit: '1'
+              }
+            }]
+          });
+          let registered = false;
+          for (let attempt = 0; attempt < 10; attempt++) {
+            keyStatus = await request('/trading/key-status', {
+              method: 'POST',
+              body: JSON.stringify({ accountId: connectedAccount, publicKey: walletPublicKey })
+            });
+            if (keyStatus.registered === true) { registered = true; break; }
+            await new Promise(resolve => window.setTimeout(resolve, 1500));
+          }
+          if (!registered) throw new Error('Verifier key registration was not confirmed. No NEP-413 swap intent was signed or submitted.');
+        }
+        const intent = await request('/trading/generate-intent', {
+          method: 'POST',
+          body: JSON.stringify({
+            providerQuote: liveQuote.signed_quote,
+            signerId: connectedAccount,
+            originAsset: lastSwapRequest.originAsset,
+            destinationAsset: lastSwapRequest.destinationAsset,
+            amount: lastSwapRequest.amount,
+            slippageTolerance: lastSwapRequest.slippageTolerance
+          })
+        });
+        if (intent.standard !== 'nep413' || intent.signer_id !== connectedAccount ||
+            intent.deposit_address !== liveQuote.deposit_address ||
+            intent.asset_id !== lastSwapRequest.originAsset ||
+            intent.amount !== lastSwapRequest.amount ||
+            !intent.payload?.message || !intent.payload?.nonce || !intent.payload?.recipient) {
+          throw new Error('Generated intent does not match the reviewed quote. Signing stopped.');
+        }
+        const nonce = Uint8Array.from(atob(intent.payload.nonce), char => char.charCodeAt(0));
+        if (nonce.length !== 32) throw new Error('The provider returned an invalid NEP-413 nonce.');
+        liveStatus.textContent = 'Review the NEP-413 signing request in your wallet…';
+        const signed = await wallet.signMessage({
+          message: intent.payload.message,
+          recipient: intent.payload.recipient,
+          nonce
+        });
+        const publicKey = signed?.publicKey?.toString?.() || signed?.public_key || '';
+        const signatureBytes = signed?.signature;
+        const signature = typeof signatureBytes === 'string'
+          ? (signatureBytes.startsWith('ed25519:') ? signatureBytes : 'ed25519:' + signatureBytes)
+          : signatureBytes instanceof Uint8Array
+            ? 'ed25519:' + encodeBase58(signatureBytes)
+            : '';
+        if (signed?.accountId && signed.accountId.toLowerCase() !== connectedAccount.toLowerCase()) {
+          throw new Error('Wallet returned a signature for a different account. Submission stopped.');
+        }
+        if (!publicKey.startsWith('ed25519:') || !signature.startsWith('ed25519:')) {
+          throw new Error('Wallet did not return a complete NEP-413 public key and signature. No submission was made.');
+        }
+        liveStatus.textContent = 'Submitting the wallet-signed intent to the NEAR Testnet verifier…';
+        const submitted = await request('/trading/submit-intent', {
+          method: 'POST',
+          body: JSON.stringify({
+            signedData: {
+              standard: 'nep413',
+              payload: intent.payload,
+              public_key: publicKey,
+              signature
+            },
+            providerQuote: liveQuote.signed_quote,
+            expectedSignerId: connectedAccount,
+            expectedDepositAddress: liveQuote.deposit_address,
+            expectedAsset: lastSwapRequest.originAsset,
+            expectedDestinationAsset: lastSwapRequest.destinationAsset,
+            expectedAmount: lastSwapRequest.amount,
+            expectedSlippageTolerance: lastSwapRequest.slippageTolerance
+          })
+        });
+        intentSubmitted = true;
+        liveStatus.textContent = 'Intent submitted. Checking Tidepool settlement status…';
+        let latest = null;
+        for (let attempt = 0; attempt < 15; attempt++) {
+          latest = await request('/trading/status?depositAddress=' + encodeURIComponent(liveQuote.deposit_address), { method: 'GET' });
+          if (['SUCCESS', 'REFUNDED', 'FAILED', 'NOT_FOUND'].includes(String(latest.status).toUpperCase())) break;
+          await new Promise(resolve => window.setTimeout(resolve, 2000));
+        }
+        const finalStatus = String(latest?.status || submitted.status || 'SUBMITTED').toUpperCase();
+        terminalSettlement = ['SUCCESS', 'REFUNDED', 'FAILED'].includes(finalStatus);
+        liveStatus.textContent = 'Testnet swap status: ' + finalStatus +
+          (submitted.transaction_hash ? ' · verifier tx ' + submitted.transaction_hash : '') +
+          (latest?.explorer_url ? ' · ' + latest.explorer_url : '') +
+          (finalStatus === 'SUCCESS' ? ' · settlement confirmed by Tidepool status' :
+            ' · not marked successful yet; do not retry blindly');
+        quoteDetails.textContent = JSON.stringify({ live_quote: liveQuote, signed_intent: submitted, settlement: latest }, null, 2);
+        quoteDetails.hidden = false;
+      } catch (error) {
+        liveStatus.textContent = error.message || 'Swap flow stopped. Check wallet activity and provider status before retrying.';
+        // Preserve structured API diagnostics so a risk block is actionable,
+        // rather than hiding the provider's individual policy checks.
+        if (error?.data && typeof error.data === 'object') {
+          quoteDetails.textContent = JSON.stringify(error.data, null, 2);
+          quoteDetails.hidden = false;
+        }
+      } finally {
+        // Once a signed intent has been submitted, never let a second click
+        // create another deposit while the first provider settlement is pending.
+        liveButton.disabled = intentSubmitted && !terminalSettlement;
+        liveButton.textContent = intentSubmitted && !terminalSettlement
+          ? 'Swap submitted · status pending'
+          : 'Review & sign Testnet swap';
+      }
+    });
+    quoteForm.append(recipientLabel, recipientInput, quoteButton, quoteStatus, liveButton, liveStatus, quoteDetails);
+    quotePanel.append(quoteTitle, quoteHelp, faucetLink, quoteForm);
+  }
   card.append(heading, summary, details, note, hash, copy);
+  if (quotePanel) card.append(quotePanel);
   result.replaceChildren(card);
   result.classList.remove('hidden');
   result.scrollTop = result.scrollHeight;
@@ -1057,7 +1439,103 @@ function renderAgentResult(data) {
     });
   }
 }
+function renderTradingAgentResult(data) {
+  const result = $('agentResult');
+  const analysis = data.market_analysis || {};
+  const indicators = analysis.indicators || {};
+  const evidence = Array.isArray(analysis.evidence) ? analysis.evidence : [];
+  const agentOne = data.agent_one || {};
+  const agentTwo = data.agent_two || {};
+  const status = String(data.status || 'UNKNOWN');
+  const statusClass = status === 'PAPER_TRADE_CANDIDATE' ? 'candidate' : status === 'HOLD' ? 'hold' : 'veto';
+  const price = Number(analysis.market_snapshot?.latest_close);
+  const fmt = value => Number.isFinite(Number(value)) ? Number(value).toLocaleString('en-US', { maximumFractionDigits: 6 }) : '—';
+  const evidenceMarkup = evidence.map(item => '<li><b>' + escapeHtml(item.id) + '</b><span>effect ' + escapeHtml(item.effect) + '</span></li>').join('');
+  const reasonsMarkup = (Array.isArray(agentTwo.reasons) ? agentTwo.reasons : []).map(reason => '<li>' + escapeHtml(reason) + '</li>').join('');
+  result.innerHTML =
+    '<section class="trading-agent-result">' +
+      '<div class="trading-agent-result-head"><span class="trading-agent-kicker">SENTINEL · TWO-AGENT RESEARCH</span><span class="trading-agent-status ' + statusClass + '">' + escapeHtml(status.replaceAll('_', ' ')) + '</span></div>' +
+      '<div class="trading-agent-market"><div><small>' + escapeHtml(data.pair || analysis.symbol || 'MARKET') + ' · ' + escapeHtml(data.interval_minutes || '—') + ' MIN</small><strong>' + escapeHtml(analysis.signal || '—') + '</strong></div><div><small>LAST CLOSED CANDLE</small><b>' + escapeHtml(fmt(price)) + '</b></div></div>' +
+      '<div class="trading-agent-indicators"><div><small>RSI 14</small><b>' + escapeHtml(fmt(indicators.rsi_14)) + '</b></div><div><small>ATR %</small><b>' + escapeHtml(fmt(indicators.atr_percent)) + '%</b></div><div><small>VOLUME Z</small><b>' + escapeHtml(fmt(indicators.volume_z_score)) + '</b></div></div>' +
+      '<section class="trading-agent-card"><div class="trading-agent-card-title"><b>01 · MARKET RESEARCH</b><span>' + escapeHtml(agentOne.signal || '—') + '</span></div><p>' + escapeHtml(agentOne.thesis || 'No thesis returned.') + '</p><small>Invalidation: ' + escapeHtml(agentOne.invalidation || '—') + '</small><small>Evidence IDs: ' + escapeHtml((agentOne.evidence_ids || []).join(', ') || 'None') + '</small></section>' +
+      '<section class="trading-agent-card risk-review"><div class="trading-agent-card-title"><b>02 · INDEPENDENT RISK REVIEW</b><span>' + escapeHtml(agentTwo.verdict || '—') + ' · ' + escapeHtml(agentTwo.risk_level || '—') + '</span></div><p>' + escapeHtml(agentTwo.challenge || 'No independent review returned.') + '</p>' + (reasonsMarkup ? '<ul>' + reasonsMarkup + '</ul>' : '') + ((agentTwo.deterministic_blocks || []).length ? '<small>Deterministic blocks: ' + escapeHtml(agentTwo.deterministic_blocks.join(', ')) + '</small>' : '<small>No deterministic veto condition detected.</small>') + '</section>' +
+      '<section class="trading-agent-evidence"><b>DETERMINISTIC EVIDENCE</b><ul>' + (evidenceMarkup || '<li>No evidence returned</li>') + '</ul></section>' +
+      '<div class="trading-agent-provenance"><small>Source: ' + escapeHtml(data.data_provenance?.provider || '—') + '</small><small>Latest closed candle: ' + escapeHtml(data.data_provenance?.latest_closed_candle_at || '—') + '</small></div>' +
+      '<p class="trading-agent-safety">RESEARCH / PAPER-TRADING ONLY. No order, wallet signature, deposit, swap, or live execution was authorized.</p>' +
+      '<div class="trading-backtest-actions"><button type="button" class="secondary-btn" id="runTradingBacktest">Run 500-candle backtest</button><div id="tradingBacktestResult" class="trading-backtest-result" aria-live="polite"></div></div>' +
+    '</section>';
+  const backtestButton = result.querySelector('#runTradingBacktest');
+  const backtestOutput = result.querySelector('#tradingBacktestResult');
+  backtestButton?.addEventListener('click', async () => {
+    backtestButton.disabled = true;
+    backtestButton.textContent = 'Running cost-aware backtest…';
+    backtestOutput.textContent = 'Fetching up to 500 completed candles. Signals are evaluated on prior candles and filled on the next candle open.';
+    try {
+      const backtest = await request('/trading/backtest', {
+        method: 'POST',
+        body: JSON.stringify({
+          pair: data.pair,
+          interval: data.interval_minutes,
+          fee_bps: 10,
+          slippage_bps: 5,
+          initial_capital: 10000,
+          position_fraction: 0.25
+        })
+      });
+      const metrics = backtest.metrics || {};
+      const format = value => value === null || value === undefined || !Number.isFinite(Number(value))
+        ? '—' : Number(value).toLocaleString('en-US', { maximumFractionDigits: 3 });
+      backtestOutput.innerHTML =
+        '<div class="trading-backtest-summary"><b>HISTORICAL SIMULATION · ' + escapeHtml(backtest.sample?.candles || 0) + ' CANDLES</b>' +
+        '<div class="trading-backtest-metrics">' +
+          '<div><small>NET RETURN</small><strong>' + escapeHtml(format(metrics.net_return_pct)) + '%</strong></div>' +
+          '<div><small>BUY & HOLD</small><strong>' + escapeHtml(format(metrics.buy_and_hold_return_pct)) + '%</strong></div>' +
+          '<div><small>MAX DRAWDOWN</small><strong>' + escapeHtml(format(metrics.max_drawdown_pct)) + '%</strong></div>' +
+          '<div><small>TRADES / WIN RATE</small><strong>' + escapeHtml(format(metrics.trade_count)) + ' / ' + escapeHtml(format(metrics.win_rate_pct)) + '%</strong></div>' +
+          '<div><small>PROFIT FACTOR</small><strong>' + escapeHtml(format(metrics.profit_factor)) + '</strong></div>' +
+          '<div><small>FEES / SLIPPAGE</small><strong>' + escapeHtml(format(metrics.total_fees_quote)) + ' / ' + escapeHtml(format(metrics.estimated_slippage_quote)) + '</strong></div>' +
+        '</div><small>Sample: ' + escapeHtml(backtest.sample?.start_at || '—') + ' → ' + escapeHtml(backtest.sample?.end_at || '—') + '</small>' +
+        '<p>Long-only spot simulation. Kraken candle prices are not Tidepool/Meteor execution quotes. Historical returns do not predict future performance.</p></div>';
+    } catch (error) {
+      backtestOutput.textContent = error.message || 'Backtest failed. No trade was executed.';
+    } finally {
+      backtestButton.disabled = false;
+      backtestButton.textContent = 'Run 500-candle backtest';
+    }
+  });
+  result.classList.remove('hidden');
+  result.scrollTop = result.scrollHeight;
+}
+
 const skillCards = Array.from(document.querySelectorAll('.sentinel-skill-card'));
+document.querySelectorAll('[data-side-action]').forEach(action => action.addEventListener('click', () => {
+  const target = action.dataset.sideAction;
+  if (target === 'wallet') {
+    // Preserve the original user gesture so wallet popups/redirects are not blocked.
+    connectNearWalletFromGesture();
+    return;
+  }
+  if (target === 'scan') {
+    $('receiver')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    $('receiver')?.focus({ preventScroll: true });
+    toast('Enter a public NEAR account, then run Track wallet.');
+    return;
+  }
+  if (target === 'threats') {
+    $('threats')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('reportBtn')?.focus({ preventScroll: true });
+    return;
+  }
+  if (target === 'trading') {
+    if (GUEST_MODE) { toast('Dual-agent market research requires an authenticated session.'); return; }
+    const card = document.querySelector('[data-skill="trading"]');
+    if (card) selectSentinelSkill(card);
+    $('agentPrompt')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    $('agentPrompt')?.focus({ preventScroll: true });
+    toast('Research prompt ready. Review it and press Send to run both agents.');
+  }
+}));
+if (GUEST_MODE) document.querySelector('[data-skill="trading"]')?.classList.add('hidden');
 function selectSentinelSkill(card) {
   if (!card) return;
   skillCards.forEach(item => item.classList.toggle('is-selected', item === card));
@@ -1104,6 +1582,51 @@ if (agentForm) {
     const button = $('agentRunBtn');
     const prompt = $('agentPrompt').value.trim();
     if (!prompt) return;
+    // A new user prompt supersedes any in-flight chat swap request.
+    if (activeChatSwapController) {
+      activeChatSwapController.abort();
+      activeChatSwapController = null;
+    }
+    const compoundSwapPayment = !developerModeEnabled
+      ? prompt.match(/\b(?:kirim|send|transfer)\s+(\d+(?:[.,]\d{1,6})?)\s*(?:near|Ⓝ)\s+(?:ke|to)\s+([a-z0-9]+(?:[-_.][a-z0-9]+)*)\b/i)
+      : null;
+    const paymentProposalPrompt = compoundSwapPayment
+      ? 'send ' + compoundSwapPayment[1].replace(',', '.') + ' NEAR to ' + compoundSwapPayment[2]
+      : prompt;
+    if (!developerModeEnabled && !compoundSwapPayment && /\b(swap|tukar|exchange)\s+\d/i.test(prompt)) {
+      authenticatedPrompt = prompt;
+      if (activeChatSwapController) activeChatSwapController.abort();
+      const swapController = new AbortController();
+      activeChatSwapController = swapController;
+      button.disabled = false;
+      button.classList.add('agent-running');
+      button.innerHTML = 'Send new prompt <b>↗</b>';
+      if (!GUEST_MODE) renderAuthenticatedPending(prompt);
+      const swapRequest = (path, options = {}) => request(path, { ...options, signal: swapController.signal });
+      try {
+        await renderChatSwap({ prompt, result: $('agentResult'), request: swapRequest, connector: () => connector, connectedAccount: () => connectedAccount, connectedWalletName, encodeBase58, guestMode: GUEST_MODE, onWalletConnected: syncWalletUI, onConnectNearWallet: connectNearWalletForSwapFromGesture, onDisconnectNearWallet: async () => {
+          if (!connectorReady || !connector || !connectedAccount) throw new Error('No active NEAR wallet session is available to disconnect.');
+          await connector.disconnect();
+          syncWalletUI(null, null);
+          toast('NEAR wallet disconnected from Sentinel.');
+        } });
+        if (activeChatSwapController === swapController) $('agentPrompt').value = '';
+      } catch (error) {
+        if (swapController.signal.aborted || activeChatSwapController !== swapController) return;
+        const result = $('agentResult');
+        result.innerHTML = '<div class="guest-chat-transcript telegram-chat-transcript"><article class="guest-chat-message guest-chat-user"><span>YOU</span><p>' + escapeHtml(prompt) + '</p></article><article class="guest-chat-message guest-chat-assistant telegram-agent-bubble"><span>SENTINEL AI · SWAP ERROR</span><p class="guest-chat-error">' + escapeHtml(error?.message || 'Swap request failed before wallet approval.') + '</p><p>No wallet transaction was approved. Send a new prompt to retry.</p></article></div>';
+        result.classList.remove('hidden');
+        toast(error?.message || 'Swap request failed before wallet approval.');
+      } finally {
+        if (activeChatSwapController === swapController) {
+          activeChatSwapController = null;
+          button.disabled = false;
+          button.classList.remove('agent-running');
+          button.innerHTML = 'Send message <b>↗</b>';
+        }
+      }
+      return;
+    }
     if (developerModeEnabled && /\b(buy|sell|swap|trade|beli|jual|tukar|dca)\b/i.test(prompt) && /\b(BTC|ETH|NEAR|USDC|USDT|SOL|WNEAR)\b/i.test(prompt)) { await renderTradeSkillDraft(prompt); toast('Skill draft generated. Trading execution is not connected.'); return; }
     button.disabled = true;
     button.classList.add('agent-running');
@@ -1112,6 +1635,23 @@ if (agentForm) {
     result.classList.remove('hidden');
     result.textContent = 'Calling the AI provider and evaluating the proposed action…';
     try {
+      const pairMatch = prompt.match(/\b(XBTUSD|BTCUSD|ETHUSD|SOLUSD|ADAUSD|DOTUSD|LINKUSD|XRPUSD|AVAXUSD)\b/i);
+      const requestsTradingResearch = /\b(two-agent trading research|market analysis|analyze|analyse)\b/i.test(prompt);
+      if (pairMatch && requestsTradingResearch) {
+        if (GUEST_MODE) throw new Error('Dual-agent trading research requires an authenticated Sentinel session.');
+        const pairAlias = pairMatch[1].toUpperCase();
+        const pair = pairAlias === 'BTCUSD' ? 'XBTUSD' : pairAlias;
+        const intervalMatch = prompt.match(/\b(1|5|15|30|60|240|1440)\s*(m|min|minute|minutes|h|hr|hour|hours|d|day|days)\b/i);
+        const unit = intervalMatch?.[2]?.toLowerCase();
+        const multiplier = ['h', 'hr', 'hour', 'hours'].includes(unit) ? 60 : ['d', 'day', 'days'].includes(unit) ? 1440 : 1;
+        const interval = intervalMatch ? Number(intervalMatch[1]) * multiplier : 5;
+        result.textContent = 'Fetching verified market data. Agent 1 is building a thesis; Agent 2 will independently challenge it…';
+        const data = await request('/trading/agent', { method: 'POST', body: JSON.stringify({ pair, interval }) });
+        renderTradingAgentResult(data);
+        $('agentPrompt').value = '';
+        toast(data.status === 'PAPER_TRADE_CANDIDATE' ? 'Both agents completed. Paper-trading candidate only.' : 'Both agents completed. No live trade was executed.');
+        return;
+      }
       if (GUEST_MODE) {
         guestConversation.push({ role: 'user', content: prompt });
         guestConversation = guestConversation.slice(-14);
@@ -1135,9 +1675,31 @@ if (agentForm) {
         const data = await request('/agent/run', {
           method: 'POST',
           headers: { 'Idempotency-Key': crypto.randomUUID() },
-          body: JSON.stringify({ prompt })
+          body: JSON.stringify({ prompt: paymentProposalPrompt })
         });
         renderAgentResult(data);
+        if (compoundSwapPayment) {
+          const swapResult = document.createElement('div');
+          const swapPrompt = (prompt.match(/\b(?:swap|tukar|exchange)\s+\d+(?:[.,]\d{1,6})?\s+[a-z0-9]+\s+(?:to|ke)\s+[a-z0-9]+/i) || [])[0];
+          if (swapPrompt) {
+            const swapController = new AbortController();
+            const swapRequest = (path, options = {}) => request(path, { ...options, signal: swapController.signal });
+            try {
+              await renderChatSwap({ prompt: swapPrompt, result: swapResult, request: swapRequest, connector: () => connector, connectedAccount: () => connectedAccount, connectedWalletName, encodeBase58, guestMode: GUEST_MODE, onWalletConnected: syncWalletUI, onConnectNearWallet: connectNearWalletForSwapFromGesture, onDisconnectNearWallet: async () => {
+                if (!connectorReady || !connector || !connectedAccount) throw new Error('No active NEAR wallet session is available to disconnect.');
+                await connector.disconnect();
+                syncWalletUI(null, null);
+                toast('NEAR wallet disconnected from Sentinel.');
+              } });
+              result.append(...swapResult.childNodes);
+            } catch (swapError) {
+              const note = document.createElement('p');
+              note.className = 'guest-chat-error';
+              note.textContent = 'Swap preview unavailable: ' + (swapError?.message || 'route lookup failed') + '. The separate payment proposal remains unchanged.';
+              result.append(note);
+            }
+          }
+        }
         $('agentPrompt').value = '';
         if (data.status === 'AWAITING_HUMAN_APPROVAL') toast('Review the exact receiver and amount before approving.');
         else toast('Sentinel replied.');
@@ -1160,7 +1722,13 @@ if (agentForm) {
       button.innerHTML = 'Send message <b>↗</b>';
     }
   });
-} 
+}
+const agentSendButton = $('agentRunBtn');
+if (agentSendButton) {
+  agentSendButton.disabled = false;
+  agentSendButton.removeAttribute('aria-disabled');
+  agentSendButton.innerHTML = 'Send message <b>↗</b>';
+}
 if (GUEST_MODE) {
   const intro = document.querySelector('.agent-lab-intro');
   if (intro) intro.textContent = 'Guest AI access · up to 10 prompts per day. Ask questions and get security guidance. Wallet investigation is read-only; payment proposals, signing, and transfers are disabled.';

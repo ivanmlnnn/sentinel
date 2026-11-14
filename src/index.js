@@ -9,6 +9,18 @@ import { onRequestPost as guestAgentPost } from "../functions/api/guest-agent.js
 import { onRequestPost as agentApprovePost } from "../functions/api/agent-approve.js";
 import { onRequestPost as internalInvestigatePost } from "../functions/api/internal-investigate.js";
 import { onRequestPost as privyWebhookPost } from "../functions/api/privy-webhook.js";
+import { onRequestGet as tradingTokensGet } from "../functions/api/trading-tokens.js";
+import { onRequestGet as tradingAnalysisGet } from "../functions/api/trading-analysis.js";
+import { onRequestPost as tradingAgentPost } from "../functions/api/trading-agent.js";
+import { onRequestPost as tradingBacktestPost } from "../functions/api/trading-backtest.js";
+import { onRequestPost as tradingQuotePost } from "../functions/api/trading-quote.js";
+import { onRequestPost as tradingLiveQuotePost } from "../functions/api/trading-live-quote.js";
+import { onRequestPost as tradingGenerateIntentPost } from "../functions/api/trading-generate-intent.js";
+import { onRequestPost as tradingSubmitIntentPost } from "../functions/api/trading-submit-intent.js";
+import { onRequestGet as tradingStatusGet } from "../functions/api/trading-status.js";
+import { onRequestPost as tradingKeyStatusPost } from "../functions/api/trading-key-status.js";
+import { onRequestPost as tradingDepositSubmitPost } from "../functions/api/trading-deposit-submit.js";
+import { onRequestPost as tradingBalancePost } from "../functions/api/trading-balance.js";
 
 const MAX_API_BODY_BYTES = 65536;
 const routes = {
@@ -24,7 +36,19 @@ const routes = {
   "POST /api/guest/agent": guestAgentPost,
   "POST /api/agent/approve": agentApprovePost,
   "POST /api/internal/investigate": internalInvestigatePost,
-  "POST /api/privy-webhook": privyWebhookPost
+  "POST /api/privy-webhook": privyWebhookPost,
+  "GET /api/trading/tokens": tradingTokensGet,
+  "POST /api/trading/balance": tradingBalancePost,
+  "GET /api/trading/analysis": tradingAnalysisGet,
+  "POST /api/trading/agent": tradingAgentPost,
+  "POST /api/trading/backtest": tradingBacktestPost,
+  "POST /api/trading/quote": tradingQuotePost,
+  "POST /api/trading/live-quote": tradingLiveQuotePost,
+  "POST /api/trading/generate-intent": tradingGenerateIntentPost,
+  "POST /api/trading/submit-intent": tradingSubmitIntentPost,
+  "GET /api/trading/status": tradingStatusGet,
+  "POST /api/trading/key-status": tradingKeyStatusPost,
+  "POST /api/trading/deposit/submit": tradingDepositSubmitPost
 };
 
 async function validateBoundedJsonBody(request) {
@@ -69,11 +93,14 @@ async function enforceRateLimit(binding, key) {
   const result = await binding.limit({ key });
   return result?.success === true;
 }
-async function verifyTurnstileToken(token, request, env) {
-  if (typeof env.TURNSTILE_SECRET !== "string" || !env.TURNSTILE_SECRET.trim()) return { ok: false, reason: "TURNSTILE_NOT_CONFIGURED", status: 503 };
-  if (typeof token !== "string" || token.length < 1 || token.length > 2048) return { ok: false, reason: "TURNSTILE_TOKEN_REQUIRED", status: 400 };
+export async function verifyTurnstileToken(token, request, env = {}) {
+  const secret = typeof env.TURNSTILE_SECRET === "string" ? env.TURNSTILE_SECRET.trim() : "";
+  if (!secret) return { ok: false, reason: "TURNSTILE_NOT_CONFIGURED", status: 503 };
+  if (typeof token !== "string" || token.trim().length < 10 || token.length > 2048) {
+    return { ok: false, reason: "TURNSTILE_TOKEN_REQUIRED", status: 400 };
+  }
   try {
-    const form = new URLSearchParams({ secret: env.TURNSTILE_SECRET, response: token });
+    const form = new URLSearchParams({ secret, response: token });
     const ip = request.headers.get("CF-Connecting-IP");
     if (ip) form.set("remoteip", ip);
     const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
@@ -82,11 +109,14 @@ async function verifyTurnstileToken(token, request, env) {
     });
     if (!response.ok) throw new Error("Siteverify HTTP failure");
     const result = await response.json();
-    const hostname = new URL(request.url).hostname.toLowerCase();
-    if (result.success !== true || result.action !== "track_wallet" || String(result.hostname || "").toLowerCase() !== hostname) {
+    const configuredHosts = String(env.TURNSTILE_ALLOWED_HOSTNAMES || "")
+      .split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
+    const allowedHosts = configuredHosts.length ? configuredHosts : [new URL(request.url).hostname.toLowerCase()];
+    const verifiedHost = String(result?.hostname || "").trim().toLowerCase();
+    if (result?.success !== true || result.action !== "track_wallet" || !allowedHosts.includes(verifiedHost)) {
       return { ok: false, reason: "TURNSTILE_VERIFICATION_FAILED", status: 403 };
     }
-    return { ok: true };
+    return { ok: true, hostname: verifiedHost };
   } catch { return { ok: false, reason: "TURNSTILE_UNAVAILABLE", status: 503 }; }
 }
 function apiError(code, status) {
@@ -133,7 +163,7 @@ export default {
           const ip = request.headers.get("CF-Connecting-IP") || "unknown";
           if (!env.API_RATE_LIMITER) return respond(serviceUnavailable("RATE_LIMIT_NOT_CONFIGURED"));
           if (!await enforceRateLimit(env.API_RATE_LIMITER, ip)) return respond(rateLimitResponse());
-          if (request.method === "POST" && ["/api/agent/run", "/api/agent/approve", "/api/guest/agent"].includes(url.pathname)) {
+          if (request.method === "POST" && ["/api/agent/run", "/api/agent/approve", "/api/guest/agent", "/api/trading/agent", "/api/trading/backtest", "/api/trading/live-quote", "/api/trading/generate-intent", "/api/trading/submit-intent", "/api/trading/key-status", "/api/trading/deposit/submit"].includes(url.pathname)) {
             if (!env.AGENT_RATE_LIMITER) return respond(serviceUnavailable("AGENT_RATE_LIMIT_NOT_CONFIGURED"));
             if (!await enforceRateLimit(env.AGENT_RATE_LIMITER, ip)) return respond(rateLimitResponse());
           }

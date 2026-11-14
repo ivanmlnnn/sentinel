@@ -91,9 +91,15 @@ export async function callSentinelAI(env, {
     ? env.SENTINEL_AI_MODEL : DEFAULT_MODEL;
   const input = {
     messages: toModelMessages(system, messages),
-    max_tokens: Math.min(4096, Math.max(128, Number(maxOutputTokens) || 1200)),
-    temperature: 0.2
+    max_completion_tokens: Math.min(4096, Math.max(128, Number(maxOutputTokens) || 1200)),
+    temperature: 0.2,
+    // GLM-4.7-Flash can spend the completion budget on reasoning tokens.
+    // Sentinel's agent calls need a visible verdict, not a reasoning-only completion.
+    chat_template_kwargs: { enable_thinking: false }
   };
+  // JSON mode is only appropriate for review calls. Other Sentinel AI callers
+  // may provide function tools and must retain normal tool-call behavior.
+  if (!tools.length) input.response_format = { type: "json_object" };
   if (tools.length) {
     input.tools = tools.map(tool => ({
       type: "function",
@@ -115,9 +121,48 @@ export async function callSentinelAI(env, {
     let response;
     try { response = await Promise.race([inference, timed]); }
     finally { clearTimeout(timeout); }
-    const normalized = normalizeSentinelAIResponse(response || {});
+    let normalized = normalizeSentinelAIResponse(response || {});
+    // Some Workers AI inference responses can be empty even when the request
+    // resolves. Retry once in plain-text mode (still with reasoning disabled)
+    // so the caller can validate the exact JSON verdict itself. This retry
+    // never changes any deterministic checks or approval policy.
+    if (!normalized.content.length && !tools.length) {
+      const retryInput = {
+        ...input,
+        max_completion_tokens: Math.max(900, Math.min(1600, Number(maxOutputTokens) || 900)),
+        response_format: { type: "text" },
+        chat_template_kwargs: { enable_thinking: false, clear_thinking: true }
+      };
+      try {
+        const retryResponse = await env.AI.run(configuredModel, retryInput);
+        const retryNormalized = normalizeSentinelAIResponse(retryResponse || {});
+        if (retryNormalized.content.length) {
+          response = retryResponse;
+          normalized = retryNormalized;
+        }
+      } catch (retryError) {
+        console.error("sentinel_ai_empty_retry_failed", {
+          model: configuredModel,
+          provider_status: Number.isInteger(retryError?.status) ? retryError.status : null,
+          provider_code: typeof retryError?.code === "string" ? retryError.code.slice(0, 80) : null
+        });
+      }
+    }
     if (!normalized.content.length) {
-      return { ok: false, status: 502, error: "AI_RUNTIME_EMPTY_RESPONSE", message: "Sentinel AI Runtime returned no usable text or tool call." };
+      const choice = Array.isArray(response?.choices) ? response.choices[0] : null;
+      const message = choice?.message || choice?.delta || null;
+      const outputShape = {
+        top_level_keys: response && typeof response === "object" ? Object.keys(response).slice(0, 20) : [],
+        choice_count: Array.isArray(response?.choices) ? response.choices.length : 0,
+        finish_reason: typeof choice?.finish_reason === "string" ? choice.finish_reason.slice(0, 40) : null,
+        message_keys: message && typeof message === "object" ? Object.keys(message).slice(0, 20) : []
+      };
+      console.error("sentinel_ai_empty_completion", { model: configuredModel, ...outputShape });
+      return {
+        ok: false, status: 502, error: "AI_RUNTIME_EMPTY_RESPONSE",
+        output_shape: outputShape,
+        message: "Sentinel AI Runtime returned no visible completion. Thinking is disabled and JSON output is required."
+      };
     }
     return { ok: true, data: normalized };
   } catch (error) {

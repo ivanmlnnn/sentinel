@@ -16,7 +16,8 @@ test("wallet tracking stays disabled until Turnstile verification succeeds", () 
   assert.match(html, /id="scanBtn"[^>]*disabled/);
   assert.match(app, /if \(scanButton\) scanButton\.disabled = state !== 'verified'/);
   assert.match(app, /callback: token =>/);
-  assert.match(app, /window\.__sentinelTurnstileToken = typeof token === 'string' \? token : null/);
+  assert.match(app, /const validToken = typeof token === 'string' && token\.trim\(\)\.length >= 10/);
+  assert.match(app, /window\.__sentinelTurnstileToken = validToken \? token : null/);
   assert.match(app, /if \(\$\('turnstileTrackWalletStatus'\)\?\.dataset\.state !== 'verified'\)/);
 });
 

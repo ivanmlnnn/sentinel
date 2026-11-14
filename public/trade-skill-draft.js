@@ -29,6 +29,7 @@ export function buildTradeSkillDraft(prompt) {
     from_asset: fromAsset,
     to_asset: toAsset,
     amount: Number.isFinite(amount) && amount > 0 ? amount : null,
+    amount_text: amountMatch ? (amountMatch[1] || amountMatch[2] || null) : null,
     amount_unit: amountUnit,
     schedule,
     leverage_requested: /\b(use|enable|with|pakai|gunakan)\s+(?:any\s+)?(?:leverage|margin|futures)\b/i.test(text)

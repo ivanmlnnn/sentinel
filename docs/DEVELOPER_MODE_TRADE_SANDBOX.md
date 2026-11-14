@@ -2,15 +2,17 @@
 
 ## Status
 
-This branch adds a UI-only, draft-only Developer Mode preview. It does not add exchange connectivity, NEAR Intents execution, wallet signing, scheduling, or live trading. The UI labels generated trade skills as non-executable.
+This branch now includes a server-side Tidepool NEAR Testnet asset-list endpoint and a server-side dry-quote endpoint for swaps. Developer Mode can request a real provider dry quote for supported NEAR Testnet assets. The quote endpoint always sends `dry: true`; it does not create a deposit address, request a wallet signature, submit a deposit, or execute a swap. BUY/SELL execution, wallet signing, scheduling, and settlement are still not implemented.
 
 ## User flow
 
 1. User enables Developer Mode in Ask Sentinel.
 2. User enters a natural-language buy, sell, swap, or DCA request.
 3. Browser creates a constrained draft object with action, recognized asset, amount/unit, schedule, and whether leverage was mentioned.
-4. Browser displays the JSON and its SHA-256 fingerprint.
-5. No approval is recorded and no transaction is submitted. The backend trading adapter and server-side approval protocol must be implemented before execution can be enabled.
+4. Browser displays the structured draft and its SHA-256 fingerprint.
+5. For a complete SWAP draft, the user can request a server-side Tidepool dry quote using a NEAR Testnet recipient/refund account.
+6. Sentinel checks the provider quote against the exact requested asset pair, amount, recipient, slippage, and dry-only mode.
+7. No approval is recorded and no transaction is submitted. Wallet signing, quote signature verification, approval, deposit, execution, and receipt verification remain gated milestones.
 
 ## Why draft-only
 

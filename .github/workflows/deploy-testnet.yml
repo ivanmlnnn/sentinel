@@ -67,6 +67,9 @@ jobs:
           node --check scripts/generate-restricted-signer-key.mjs
           node --check src/signed-verdict.mjs
           node --check public/app.js
+          node --check public/chat-swap.js
+          node --check functions/api/trading-live-quote.js
+          node --check src/trading-swap-agents.mjs
           npm run check:d1
           npx wrangler@4.159.0 deploy --dry-run
           npx wrangler@4.159.0 deploy --config signer-worker/wrangler.jsonc --dry-run

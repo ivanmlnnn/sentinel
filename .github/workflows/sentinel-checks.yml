@@ -47,6 +47,9 @@ jobs:
           node --check functions/api/_shared.js
           node --check functions/api/agent.js
           node --check functions/api/agent-approve.js
+          node --check functions/api/trading-live-quote.js
+          node --check src/trading-swap-agents.mjs
+          node --check public/chat-swap.js
           node --check functions/api/guest-agent.js
           node --check functions/api/privy-webhook.js
           node --check src/index.js

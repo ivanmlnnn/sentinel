@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#123d3b"><meta name="description" content="NEAR Sentinel — on-chain security for NEAR Protocol.">
 <title>NEAR Sentinel — Account Risk Intelligence</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/styles.css?v=20261111-brand-match1"><link rel="stylesheet" href="/future-ui.css?v=20261111-promptstudio1"><link rel="stylesheet" href="/brand-chat-fix.css?v=20261112-developer-mode-cyan1">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/styles.css?v=20261111-brand-match1"><link rel="stylesheet" href="/future-ui.css?v=20261111-promptstudio1"><link rel="stylesheet" href="/brand-chat-fix.css?v=20261112-developer-mode-cyan1"><link rel="stylesheet" href="/trading-core.css?v=20261114-swap-balances2"><link rel="stylesheet" href="/ask-sentinel-web3.css?v=20261114-multichain-swap6">
 <script type="importmap">{"imports":{"react":"https://esm.sh/react@18.3.1","react/":"https://esm.sh/react@18.3.1/","react-dom":"https://esm.sh/react-dom@18.3.1","react-dom/client":"https://esm.sh/react-dom@18.3.1/client"}}</script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 </head>
@@ -28,7 +28,7 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
  <div class="hero-actions"><a class="cta" href="#investigate">Check an address <span>↘</span></a><span class="hero-note">SCANNER READ-ONLY · AGENT TESTNET-ONLY</span></div></div>
  <div class="chain-visual" aria-hidden="true"><div class="chain-grid"></div><div class="chain-node node-a">NEAR<span>RPC</span></div><div class="chain-node node-b">IV<span>SECURITY</span></div><div class="chain-node node-c">◆<span>RISK</span></div><div class="chain-line line-a"></div><div class="chain-line line-b"></div><div class="chain-line line-c"></div><div class="chain-label">SENTINEL API <b id="apiStatus">CHECKING</b></div></div>
 </section>
-<section class="wallet-guide reveal" id="wallet-guide"><div class="wallet-guide-head"><span class="section-index">QUICK START</span><b>Start in three steps</b></div><div class="wallet-guide-grid"><div><strong>01 · Connect a wallet</strong><p>Connect a wallet that supports NEAR Testnet. MetaMask EVM accounts are not NEAR accounts.</p></div><div><strong>02 · Select a wallet</strong><p>Connect to autofill your wallet, or enter any public NEAR Testnet account.</p></div><div><strong>03 · Track wallet activity</strong><p>Review indexed transactions, receipts, token transfers, and risk signals. Wallet scans are read-only; the AI agent uses a separate, restricted Testnet server wallet.</p></div></div><p class="wallet-guide-note">WALLET SCANS READ-ONLY · AGENT SIGNING TESTNET-ONLY</p></section>
+<section class="wallet-guide reveal" id="wallet-guide"><div class="wallet-guide-head"><span class="section-index">QUICK START</span><b>Start in three steps</b></div><div class="wallet-guide-grid"><div><strong>01 · Connect a wallet</strong><p>Connect a wallet that supports NEAR Testnet. Meteor Wallet is supported in the wallet picker and will show its own approval prompt. MetaMask EVM accounts are not NEAR accounts.</p></div><div><strong>02 · Select a wallet</strong><p>Connect to autofill your wallet, or enter any public NEAR Testnet account.</p></div><div><strong>03 · Track wallet activity</strong><p>Review indexed transactions, receipts, token transfers, and risk signals. Wallet scans are read-only; the AI agent uses a separate, restricted Testnet server wallet.</p></div></div><p class="wallet-guide-note">WALLET SCANS READ-ONLY · AGENT SIGNING TESTNET-ONLY</p></section>
 <section class="metrics reveal" aria-label="Security metrics">
  <div class="metric"><span>SCANS</span><b id="mTotal">—</b><small>ALL ASSESSMENTS</small></div>
  <div class="metric"><span class="green">ALLOW</span><b id="mAllowed">—</b><small>NO MATCH FOUND</small></div>
@@ -84,20 +84,26 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
    <button type="button" class="sentinel-skill-card" data-skill="threat" data-prompt="Check if this NEAR wallet has any verified security reports: "><span class="skill-card-icon">◈</span><span class="skill-card-copy"><b>Check threat reports</b><small>See reported risky wallets</small></span></button>
    <button type="button" class="sentinel-skill-card" data-skill="triage" data-prompt="Explain this security alert in simple language and tell me what I should do: "><span class="skill-card-icon">⌁</span><span class="skill-card-copy"><b>Explain an alert</b><small>Understand a warning</small></span></button>
    <button type="button" class="sentinel-skill-card" data-skill="payment" data-prompt="Help me prepare a NEAR Testnet payment. Recipient: "><span class="skill-card-icon">↗</span><span class="skill-card-copy"><b>Prepare a payment</b><small>Review before any transfer</small></span></button>
+   <button type="button" class="sentinel-skill-card trading-research-card" data-skill="trading" data-prompt="Run Sentinel two-agent trading research for XBTUSD."><span class="skill-card-icon">⌁</span><span class="skill-card-copy"><b>Dual-agent market lab</b><small>Live market data · independent risk veto</small></span></button>
   </div></div>
   <form id="agentForm" class="agent-chat-form">
    <div id="agentResult" class="agent-result hidden" aria-live="polite"></div>
    <label class="agent-compose-label" for="agentPrompt">YOUR MESSAGE</label>
-   <div class="agent-compose-box"><textarea id="agentPrompt" maxlength="4000" required placeholder="Example: Is alice.testnet safe to receive my tokens?" rows="3"></textarea><div class="agent-compose-bottom"><span>Press Send when you’re ready</span><button class="primary-btn" id="agentRunBtn" type="submit">Send <b>↗</b></button></div></div>
+   <div class="agent-compose-box"><textarea id="agentPrompt" maxlength="4000" required placeholder="Example: Is alice.testnet safe to receive my tokens?" rows="3"></textarea><div class="agent-compose-bottom"><span>Press Send when you’re ready</span><button class="primary-btn" id="agentRunBtn" type="submit" disabled aria-disabled="true">Loading Sentinel…</button></div></div>
    <details class="agent-payment-details"><summary>Prepare a payment instead</summary><div class="prompt-draft-fields"><input id="draftReceiver" maxlength="64" autocomplete="off" placeholder="Recipient · example.testnet" aria-label="Payment recipient"><input id="draftAmount" type="number" min="0.000001" max="0.1" step="0.000001" placeholder="Amount · NEAR" aria-label="Payment amount"><input id="draftReason" maxlength="180" placeholder="Reason · optional" aria-label="Payment reason"><button type="button" class="secondary-btn" id="usePaymentDraft">Add to message</button></div><small>Sentinel checks the details first. Nothing is sent unless you review and approve it in your NEAR Testnet wallet.</small></details>
    <div class="agent-lab-warning"><b>YOU’RE IN CONTROL</b><span>Checking a wallet never moves funds. Payments are Testnet-only and require you to review and approve the exact details in your wallet.</span></div>
   </form>
  </div>
- <aside class="panel agent-policy-panel agent-help-panel"><div class="panel-top"><span>NEED A HAND?</span><span class="section-meta">QUICK GUIDE</span></div>
-  <div class="agent-help-step"><b>1</b><div><strong>Pick what you need</strong><span>Tap one of the task cards, or just type your question.</span></div></div>
-  <div class="agent-help-step"><b>2</b><div><strong>Add the wallet address</strong><span>For example: <code>alice.testnet</code>. Then press Send.</span></div></div>
-  <div class="agent-help-step"><b>3</b><div><strong>Get a clear answer</strong><span>Sentinel explains what it found, what it could not verify, and the safest next step.</span></div></div>
-  <div class="agent-help-note"><strong>Safe by default</strong><span>Wallet checks are read-only. If some activity cannot be verified, Sentinel will say so instead of calling the wallet safe.</span></div>
+ <aside class="panel agent-policy-panel agent-help-panel sentinel-command-rail">
+  <div class="sentinel-rail-head"><span class="sentinel-rail-eyebrow">SENTINEL CONTROL DECK / 02</span><span class="sentinel-rail-live"><i></i> SYSTEM READY</span></div>
+  <h3>Command center</h3><p class="sentinel-rail-copy">Jump straight into a security workflow. Every action stays under your control.</p>
+  <div class="sentinel-rail-actions">
+   <button type="button" class="sentinel-rail-action" data-side-action="wallet"><span class="sentinel-rail-icon">◈</span><span><b>Connect wallet</b><small>Open NEAR wallet selector</small></span><span class="sentinel-rail-arrow">↗</span></button>
+   <button type="button" class="sentinel-rail-action" data-side-action="scan"><span class="sentinel-rail-icon">⌕</span><span><b>Wallet intelligence</b><small>Inspect a public account</small></span><span class="sentinel-rail-arrow">↗</span></button>
+   <button type="button" class="sentinel-rail-action" data-side-action="threats"><span class="sentinel-rail-icon">⛨</span><span><b>Threat registry</b><small>Review community signals</small></span><span class="sentinel-rail-arrow">↗</span></button>
+   <button type="button" class="sentinel-rail-action" data-side-action="trading"><span class="sentinel-rail-icon">⌁</span><span><b>Dual-agent market lab</b><small>Launch independent research</small></span><span class="sentinel-rail-arrow">↗</span></button>
+  </div>
+  <div class="sentinel-rail-status"><span class="sentinel-rail-status-dot"></span><span><b>SAFE MODE ACTIVE</b><small>Read-only by default · human approval required</small></span></div>
  </aside>
 </section>
 
@@ -123,8 +129,11 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
 <div id="toast" class="toast"></div>
 <script src="/motion.js?v=20261111-divider-scroll1" defer></script>
 <script type="module">
+// Cancel native chat navigation before auth/app modules finish loading.
+// Do not stop propagation: app.js still receives this event and sends the prompt.
+document.getElementById('agentForm')?.addEventListener('submit', event => event.preventDefault(), { capture: true });
 const authRoot = document.getElementById('auth-root');
-import('/auth.js?v=20261111-chat-avatar-source3').catch(error => {
+import('/auth.js?v=20261114-near-wrap-unwrap-route1').catch(error => {
   console.error('Sentinel authentication module failed to load:', error);
   const copy = authRoot?.querySelector('.sentinel-auth-copy');
   if (copy) copy.textContent = 'Sign-in could not be loaded. Check your connection and reload this page.';

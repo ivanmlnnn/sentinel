@@ -7,14 +7,17 @@ const approve = readFileSync(new URL("../functions/api/agent-approve.js", import
 const signer = readFileSync(new URL("../signer-worker/src/index.mjs", import.meta.url), "utf8");
 
 test("one approval tap uses the currently connected NEAR wallet for the exact native transfer", () => {
-  assert.match(app, /features:\{ testnet:true, signAndSendTransaction:true \}/);
+  assert.match(app, /features:\s*\{\s*testnet:\s*true,\s*signAndSendTransaction:\s*true\s*,\s*signMessage:\s*true\s*\}/);
   assert.match(app, /const prepared = await request\('\/agent\/approve'/);
   assert.match(app, /prepared\.sentinel\?\.decision !== 'ALLOW'/);
   assert.match(app, /const wallet = await connector\.wallet\(\)/);
   assert.match(app, /wallet\.signAndSendTransaction\(/);
   assert.match(app, /type: 'Transfer', params: \{ deposit: amountYocto \}/);
   assert.match(app, /transaction_hash: transactionHash/);
-  assert.doesNotMatch(app, /wallet\.signMessage\(/);
+  const approvalStart = app.indexOf("if (approvalId && walletCanApprove)");
+  const approvalEnd = app.indexOf("function renderTradingAgentResult", approvalStart);
+  assert.ok(approvalStart >= 0 && approvalEnd > approvalStart, "payment approval handler boundaries must exist");
+  assert.doesNotMatch(app.slice(approvalStart, approvalEnd), /wallet\.signMessage\(/);
 });
 
 test("Main Worker requires a fresh Sentinel ALLOW assessment before the wallet request and verifies through isolated signer", () => {

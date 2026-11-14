@@ -25,5 +25,15 @@ test("email login clears a previous Guest marker", () => {
 });
 
 test("dashboard imports the cache-busted app bundle", () => {
-  assert.match(auth, /app\.js\?v=20261111-future-console2/);
+  assert.ok(auth.includes("app.js?v=20261114-chatflow-recovery1"));
+});
+
+
+
+
+test("chat bootstrap cancels native navigation before app module loads", () => {
+  const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
+  assert.ok(html.includes("getElementById('agentForm')?.addEventListener('submit', event => event.preventDefault(), { capture: true })"));
+  const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.ok(app.includes("agentForm.addEventListener('submit', async event => {\n    event.preventDefault();"));
 });
