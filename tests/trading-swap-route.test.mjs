@@ -163,3 +163,12 @@ test("native NEAR prompt is explicitly represented by NEAR-chain WNEAR for Tidep
   assert.equal(promptSymbolMatches("NEAR", { symbol: "WNEAR", blockchain: "eth" }), false);
   assert.equal(promptSymbolMatches("WNEAR", { symbol: "WNEAR", blockchain: "near" }), true);
 });
+
+test("dual-agent VETO UI exposes both verdicts, reasons and deterministic failed checks", () => {
+  assert.match(swapUi, /error\?\.data\?\.dual_agent_review/);
+  assert.match(swapUi, /Agent 1=/);
+  assert.match(swapUi, /Agent 2=/);
+  assert.match(swapUi, /agent_two_challenge/);
+  assert.match(swapUi, /review\.deterministic_checks/);
+  assert.match(swapUi, /review\.failed_checks/);
+});
