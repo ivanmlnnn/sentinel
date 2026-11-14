@@ -206,12 +206,32 @@ export function validateTidepoolDryQuote(payload, expected) {
 }
 
 async function fetchJson(url, init, fetchImpl) {
+  const endpoint = new URL(url).pathname;
   let response;
   try {
-    response = await fetchImpl(url, { ...init, redirect: "error", signal: AbortSignal.timeout(8000) });
-  } catch { throw new Error("TIDEPOOL_UNAVAILABLE"); }
-  if (!response.ok) throw new Error("TIDEPOOL_HTTP_ERROR");
-  try { return await response.json(); } catch { throw new Error("TIDEPOOL_INVALID_JSON"); }
+    response = await fetchImpl(url, { ...init, redirect: "follow", signal: AbortSignal.timeout(8000) });
+  } catch (cause) {
+    const error = new Error(cause?.name === "TimeoutError" || cause?.name === "AbortError"
+      ? "TIDEPOOL_REQUEST_TIMEOUT" : "TIDEPOOL_NETWORK_ERROR");
+    error.code = error.message;
+    error.endpoint = endpoint;
+    error.cause_name = typeof cause?.name === "string" ? cause.name.slice(0, 60) : "Error";
+    throw error;
+  }
+  if (!response.ok) {
+    const error = new Error("TIDEPOOL_HTTP_ERROR");
+    error.code = "TIDEPOOL_HTTP_ERROR";
+    error.endpoint = endpoint;
+    error.provider_status = response.status;
+    throw error;
+  }
+  try { return await response.json(); }
+  catch {
+    const error = new Error("TIDEPOOL_INVALID_JSON");
+    error.code = "TIDEPOOL_INVALID_JSON";
+    error.endpoint = endpoint;
+    throw error;
+  }
 }
 
 export async function getTidepoolTestnetTokens(fetchImpl = fetch) {
@@ -369,8 +389,8 @@ export async function evaluateTidepoolSwapRisk(providerQuote, expected) {
   };
 }
 
-export async function getTidepoolLiveQuote(input, fetchImpl = fetch, now = Date.now(), verifySignature = verifyQuoteSignature) {
-  const tokens = await getTidepoolTestnetTokens(fetchImpl);
+export async function getTidepoolLiveQuote(input, fetchImpl = fetch, now = Date.now(), verifySignature = verifyQuoteSignature, suppliedTokens = null) {
+  const tokens = Array.isArray(suppliedTokens) ? suppliedTokens : await getTidepoolTestnetTokens(fetchImpl);
   const validation = validateTradingQuoteInput(input, tokens, now);
   if (!validation.ok) return validation;
   const requestBody = { ...buildTidepoolDryQuotePayload(validation.value, now), dry: false };
