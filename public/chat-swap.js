@@ -1261,6 +1261,112 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   };
   fields.append(status, approveButton, details); card.append(fields);
   let swap = null, dryQuote = null;
+  const preOrderPanel = el("section", undefined, "sentinel-preorders-panel");
+  preOrderPanel.append(el("strong", "Pre-Orders"));
+  preOrderPanel.append(el("p", "Create a held order from the reviewed swap route. Orders are not signed or auto-executed until a bounded wallet session and fresh Dual-Agent review are available.", "sentinel-preorders-note"));
+  const preOrderTrigger = document.createElement("select");
+  for (const [value,label] of [["TIME","At a date and time"],["PRICE","When token price reaches target"]]) {
+    const option = el("option", label); option.value = value; preOrderTrigger.append(option);
+  }
+  const preOrderTime = document.createElement("input");
+  preOrderTime.type = "datetime-local";
+  preOrderTime.min = new Date(Date.now() + 60000).toISOString().slice(0,16);
+  const preOrderPrice = document.createElement("input");
+  preOrderPrice.type = "number"; preOrderPrice.min = "0.00000001"; preOrderPrice.step = "any"; preOrderPrice.placeholder = "Target price (USD)";
+  const preOrderDirection = document.createElement("select");
+  for (const [value,label] of [["ABOVE","At or above"],["BELOW","At or below"]]) {
+    const option = el("option", label); option.value = value; preOrderDirection.append(option);
+  }
+  const preOrderAsset = document.createElement("select");
+  for (const token of tokens.filter(item => typeof item.asset_id === "string" && item.asset_id.startsWith("nep141:"))) {
+    const option = el("option", token.symbol + " · " + token.blockchain.toUpperCase());
+    option.value = token.asset_id; preOrderAsset.append(option);
+  }
+  const preOrderPriceFields = el("div", undefined, "sentinel-preorders-price-fields");
+  preOrderPriceFields.append(preOrderAsset, preOrderDirection, preOrderPrice);
+  const preOrderSave = el("button", "Save Pre-Order", "secondary-btn");
+  preOrderSave.type = "button";
+  const preOrderMessage = el("p", "Connect Meteor and request a fresh route quote before saving.", "sentinel-preorders-status");
+  const preOrderList = el("div", undefined, "sentinel-preorders-list");
+  const preOrderTimeFields = el("div", undefined, "sentinel-preorders-time-fields");
+  preOrderTimeFields.append(preOrderTime);
+  const syncPreOrderFields = () => {
+    preOrderTimeFields.hidden = preOrderTrigger.value !== "TIME";
+    preOrderPriceFields.hidden = preOrderTrigger.value !== "PRICE";
+    preOrderMessage.textContent = preOrderTrigger.value === "PRICE"
+      ? "Price orders remain held until Sentinel has a cryptographically verified oracle feed. Tidepool token-list prices are not accepted as execution triggers."
+      : "Time orders are stored durably and will move to review when due. They will not execute without verified session authorization.";
+  };
+  preOrderTrigger.addEventListener("change", syncPreOrderFields);
+  syncPreOrderFields();
+  preOrderPanel.append(preOrderTrigger, preOrderTimeFields, preOrderPriceFields, preOrderSave, preOrderMessage, preOrderList);
+  fields.append(preOrderPanel);
+  const refreshPreOrders = async () => {
+    if (guestMode) { preOrderList.textContent = "Sign in to view your Pre-Orders."; return; }
+    try {
+      const response = await request("/trading/preorders", { method: "GET" });
+      preOrderList.replaceChildren();
+      for (const order of response.orders || []) {
+        const item = el("div", undefined, "sentinel-preorder-item");
+        const triggerText = order.trigger_type === "TIME"
+          ? "Time · " + new Date(order.scheduled_at).toLocaleString()
+          : "Price · " + order.trigger_direction + " $" + order.target_price_usd;
+        const label = el("span", triggerText + " · " + order.status + " · " + order.execution_status);
+        item.append(label);
+        if (order.status === "HELD") {
+          const cancel = el("button", "Cancel", "secondary-btn");
+          cancel.type = "button";
+          cancel.addEventListener("click", async () => {
+            cancel.disabled = true;
+            try {
+              await request("/trading/preorders", { method: "POST", body: JSON.stringify({ action: "cancel", id: order.id }) });
+              await refreshPreOrders();
+            } catch (error) { preOrderMessage.textContent = error.message || "Could not cancel this order."; cancel.disabled = false; }
+          });
+          item.append(cancel);
+        }
+        preOrderList.append(item);
+      }
+      if (!(response.orders || []).length) preOrderList.textContent = "No Pre-Orders yet.";
+    } catch (error) { preOrderList.textContent = error.message || "Could not load Pre-Orders."; }
+  };
+  preOrderSave.addEventListener("click", async () => {
+    if (guestMode) { preOrderMessage.textContent = "Sign in before creating a Pre-Order."; return; }
+    if (!swap || !dryQuote) { preOrderMessage.textContent = "Request a fresh quote before saving a Pre-Order."; return; }
+    if (!nearAccount(activeNearAccount) || swap.origin.blockchain !== "near" ||
+        swap.wrapNativeNear || swap.unwrapNativeNear ||
+        String(swap.refundTo).toLowerCase() !== String(activeNearAccount).toLowerCase()) {
+      preOrderMessage.textContent = "Pre-Orders currently require a connected Meteor NEAR Testnet wallet, a NEAR-origin route, and a refund address matching that wallet. Native NEAR wrap/unwrap automation is not enabled.";
+      return;
+    }
+    const body = {
+      walletAddress: activeNearAccount,
+      walletChain: "near",
+      triggerType: preOrderTrigger.value,
+      swapIntent: {
+        originAsset: swap.originAsset, destinationAsset: swap.destinationAsset,
+        amount: swap.amount, recipient: swap.recipient, refundTo: swap.refundTo,
+        slippageTolerance: swap.slippageTolerance, userPrompt: prompt
+      }
+    };
+    if (preOrderTrigger.value === "TIME") {
+      const when = Date.parse(preOrderTime.value);
+      if (!Number.isFinite(when)) { preOrderMessage.textContent = "Choose a valid date and time."; return; }
+      body.scheduledAt = new Date(when).toISOString();
+    } else {
+      body.triggerAssetId = preOrderAsset.value;
+      body.triggerDirection = preOrderDirection.value;
+      body.targetPriceUsd = Number(preOrderPrice.value);
+    }
+    preOrderSave.disabled = true;
+    try {
+      const created = await request("/trading/preorders", { method: "POST", body: JSON.stringify(body) });
+      preOrderMessage.textContent = "Pre-Order " + created.id + " saved · HELD. No wallet transaction was signed and no automatic execution is authorized yet.";
+      await refreshPreOrders();
+    } catch (error) { preOrderMessage.textContent = error.message || "Pre-Order could not be saved."; }
+    finally { preOrderSave.disabled = false; }
+  });
+  void refreshPreOrders();
   let swapRevision = 0;
   const invalidate = () => {
     swapRevision++;
