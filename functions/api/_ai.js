@@ -121,7 +121,33 @@ export async function callSentinelAI(env, {
     let response;
     try { response = await Promise.race([inference, timed]); }
     finally { clearTimeout(timeout); }
-    const normalized = normalizeSentinelAIResponse(response || {});
+    let normalized = normalizeSentinelAIResponse(response || {});
+    // Some Workers AI inference responses can be empty even when the request
+    // resolves. Retry once in plain-text mode (still with reasoning disabled)
+    // so the caller can validate the exact JSON verdict itself. This retry
+    // never changes any deterministic checks or approval policy.
+    if (!normalized.content.length && !tools.length) {
+      const retryInput = {
+        ...input,
+        max_completion_tokens: Math.max(900, Math.min(1600, Number(maxOutputTokens) || 900)),
+        response_format: { type: "text" },
+        chat_template_kwargs: { enable_thinking: false, clear_thinking: true }
+      };
+      try {
+        const retryResponse = await env.AI.run(configuredModel, retryInput);
+        const retryNormalized = normalizeSentinelAIResponse(retryResponse || {});
+        if (retryNormalized.content.length) {
+          response = retryResponse;
+          normalized = retryNormalized;
+        }
+      } catch (retryError) {
+        console.error("sentinel_ai_empty_retry_failed", {
+          model: configuredModel,
+          provider_status: Number.isInteger(retryError?.status) ? retryError.status : null,
+          provider_code: typeof retryError?.code === "string" ? retryError.code.slice(0, 80) : null
+        });
+      }
+    }
     if (!normalized.content.length) {
       const choice = Array.isArray(response?.choices) ? response.choices[0] : null;
       const message = choice?.message || choice?.delta || null;
