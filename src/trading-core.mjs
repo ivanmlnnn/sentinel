@@ -323,7 +323,16 @@ export async function evaluateTidepoolSwapRisk(providerQuote, expected) {
     { id: "RECIPIENT_AND_REFUND_CHAIN_BOUND", status: request.recipient === expected.recipient && request.refundTo === expected.refundTo ? "PASS" : "FAIL" },
     { id: "DEPOSIT_MODE_AND_MEMO_BOUND", status: request.depositType === expected.depositType && request.depositMode === expected.depositMode ? "PASS" : "FAIL" },
     { id: "SLIPPAGE_CAP", status: request.slippageTolerance <= MAX_SLIPPAGE_BPS ? "PASS" : "FAIL" },
-    { id: "MINIMUM_OUTPUT_PROTECTED", status: BigInt(quote.minAmountOut) * 10_000n >= BigInt(quote.amountOut) * BigInt(10_000 - request.slippageTolerance) ? "PASS" : "FAIL" },
+    {
+      id: "MINIMUM_OUTPUT_PROTECTED",
+      status: BigInt(quote.minAmountOut) * 10_000n >= BigInt(quote.amountOut) * BigInt(10_000 - request.slippageTolerance) ? "PASS" : "FAIL",
+      observed_minimum_output: quote.minAmountOut,
+      quoted_output: quote.amountOut,
+      slippage_tolerance_bps: request.slippageTolerance,
+      required_minimum_output: (
+        (BigInt(quote.amountOut) * BigInt(10_000 - request.slippageTolerance) + 9_999n) / 10_000n
+      ).toString()
+    },
     { id: "QUOTE_EXPIRY_BOUNDED", status: Date.parse(quote.deadline || request.deadline) > Date.now() ? "PASS" : "FAIL" }
   ];
   const decision = checks.every(check => check.status === "PASS") ? "ALLOW" : "BLOCK";
