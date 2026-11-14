@@ -1300,7 +1300,9 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   preOrderTrigger.addEventListener("change", syncPreOrderFields);
   syncPreOrderFields();
   preOrderPanel.append(preOrderTrigger, preOrderTimeFields, preOrderPriceFields, preOrderSave, preOrderMessage, preOrderList);
-  fields.append(preOrderPanel);
+  const preOrdersDashboardMount = document.getElementById("preOrdersDashboardMount");
+  if (preOrdersDashboardMount) preOrdersDashboardMount.replaceChildren(preOrderPanel);
+  else fields.append(preOrderPanel);
   const refreshPreOrders = async () => {
     if (guestMode) { preOrderList.textContent = "Sign in to view your Pre-Orders."; return; }
     try {
