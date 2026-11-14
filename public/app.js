@@ -298,6 +298,19 @@ async function connectNearWalletFromGesture() {
     if (button) button.disabled = false;
   }
 }
+async function connectNearWalletForSwapFromGesture() {
+  if (!connectorReady || !connector) throw new Error('NEAR wallet options are still loading. Wait a moment, then tap Connect again.');
+  // Swap uses a connect-only action; it must never trigger the dashboard toggle.
+  if (connectedAccount && /^(?:[a-f0-9]{64}|[a-z0-9]+(?:[-_.][a-z0-9]+)*\\.testnet)$/i.test(connectedAccount)) return connectedAccount;
+  await connector.connect();
+  const current = await connector.getConnectedWallet();
+  const account = current?.accounts?.[0];
+  if (!account?.accountId || !/^(?:[a-f0-9]{64}|[a-z0-9]+(?:[-_.][a-z0-9]+)*\\.testnet)$/i.test(account.accountId)) {
+    throw new Error('Wallet selection finished without a valid NEAR Testnet account. Choose Meteor and approve the connection.');
+  }
+  syncWalletUI(account.accountId, current.wallet?.manifest?.name || 'NEAR wallet');
+  return account.accountId;
+}
 async function initWallet() {
   const button = $('walletBtn');
   button.disabled = false;
@@ -1585,7 +1598,7 @@ if (agentForm) {
       if (!GUEST_MODE) renderAuthenticatedPending(prompt);
       const swapRequest = (path, options = {}) => request(path, { ...options, signal: swapController.signal });
       try {
-        await renderChatSwap({ prompt, result: $('agentResult'), request: swapRequest, connector: () => connector, connectedAccount: () => connectedAccount, connectedWalletName, encodeBase58, guestMode: GUEST_MODE, onWalletConnected: syncWalletUI, onConnectNearWallet: connectNearWalletFromGesture, onDisconnectNearWallet: async () => {
+        await renderChatSwap({ prompt, result: $('agentResult'), request: swapRequest, connector: () => connector, connectedAccount: () => connectedAccount, connectedWalletName, encodeBase58, guestMode: GUEST_MODE, onWalletConnected: syncWalletUI, onConnectNearWallet: connectNearWalletForSwapFromGesture, onDisconnectNearWallet: async () => {
           if (!connectorReady || !connector || !connectedAccount) throw new Error('No active NEAR wallet session is available to disconnect.');
           await connector.disconnect();
           syncWalletUI(null, null);
@@ -1666,7 +1679,7 @@ if (agentForm) {
             const swapController = new AbortController();
             const swapRequest = (path, options = {}) => request(path, { ...options, signal: swapController.signal });
             try {
-              await renderChatSwap({ prompt: swapPrompt, result: swapResult, request: swapRequest, connector: () => connector, connectedAccount: () => connectedAccount, connectedWalletName, encodeBase58, guestMode: GUEST_MODE, onWalletConnected: syncWalletUI, onConnectNearWallet: connectNearWalletFromGesture, onDisconnectNearWallet: async () => {
+              await renderChatSwap({ prompt: swapPrompt, result: swapResult, request: swapRequest, connector: () => connector, connectedAccount: () => connectedAccount, connectedWalletName, encodeBase58, guestMode: GUEST_MODE, onWalletConnected: syncWalletUI, onConnectNearWallet: connectNearWalletForSwapFromGesture, onDisconnectNearWallet: async () => {
                 if (!connectorReady || !connector || !connectedAccount) throw new Error('No active NEAR wallet session is available to disconnect.');
                 await connector.disconnect();
                 syncWalletUI(null, null);
