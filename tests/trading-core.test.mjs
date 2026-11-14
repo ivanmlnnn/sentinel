@@ -261,6 +261,10 @@ test("risk evaluation emits quote-bound proof and blocks weakened minimum output
   const blocked = await evaluateTidepoolSwapRisk(weak, expectedNear);
   assert.equal(blocked.ok, false);
   assert.equal(blocked.reason, "SENTINEL_SWAP_RISK_BLOCKED");
+  const minimumCheck = blocked.value.checks.find(check => check.id === "MINIMUM_OUTPUT_PROTECTED");
+  assert.equal(minimumCheck.status, "FAIL");
+  assert.equal(minimumCheck.required_minimum_output, "247500000000000000000000");
+  assert.equal(minimumCheck.observed_minimum_output, "1");
 });
 
 test("creates a live multi-chain quote only on explicit live mode and verifies provider signature", async () => {
