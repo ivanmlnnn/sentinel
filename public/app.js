@@ -1669,7 +1669,6 @@ if (agentForm) {
       button.innerHTML = 'Send message <b>↗</b>';
     }
   });
-  window.__SENTINEL_AGENT_FORM_READY = true;
 }
 if (GUEST_MODE) {
   const intro = document.querySelector('.agent-lab-intro');
