@@ -2,7 +2,9 @@ name: Deploy Sentinel to Cloudflare Workers
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - feature/sentinel-trading-core-lab
   workflow_dispatch:
 
 permissions:
