@@ -59,15 +59,18 @@ export function resolveInitialSwapToken(tokens, symbol) {
       String(token.blockchain).toLowerCase() === "near");
   }
   if (!matches.length) return null;
-  const preferredChain = key === "NEAR" || key === "WNEAR" ? "near" :
-    key === "ETH" ? "eth" : key === "BNB" ? "bsc" : key === "SOL" ? "sol" :
-    key === "BTC" || key === "WBTC" ? "btc" :
+  // Sentinel's connected signer is Meteor's NEAR Testnet session. Prefer a
+  // registry-backed NEAR representation (including bridged ETH) so balance
+  // reads and deposits use that same signer instead of prompting for another
+  // EVM wallet. Fall back to the original chain only when no NEAR asset exists.
+  const nearMatch = matches.find(token => String(token.blockchain).toLowerCase() === "near");
+  if (nearMatch) return nearMatch;
+  const preferredChain = key === "ETH" ? "eth" : key === "BNB" ? "bsc" :
+    key === "SOL" ? "sol" : key === "BTC" || key === "WBTC" ? "btc" :
     key === "XLM" ? "stellar" : key === "XRP" ? "xrp" :
     key === "SUI" ? "sui" : "near";
   return matches.find(token => String(token.blockchain).toLowerCase() === preferredChain) ||
-    matches.find(token => String(token.blockchain).toLowerCase() === "near") ||
-    matches.find(token => CHAIN_IDS[String(token.blockchain).toLowerCase()]) ||
-    matches[0];
+    matches.find(token => CHAIN_IDS[String(token.blockchain).toLowerCase()]) || matches[0];
 }
 function formatToken(token) { return token.symbol + " · " + token.blockchain.toUpperCase() + " · TESTNET"; }
 function tokenAddressValid(token) {
@@ -728,7 +731,9 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
     window.addEventListener("scroll", positionPanel, true);
     refreshBalances();
   });
-  refresh.addEventListener("click", () => refreshBalances(null, true));
+  // Balance refresh is read-only: never trigger eth_requestAccounts or a
+  // second-wallet permission popup from the token picker.
+  refresh.addEventListener("click", () => refreshBalances(null, false));
   syncTrigger(); renderChains(); renderTokens();
   root.append(trigger, select, panel);
   return {
@@ -800,9 +805,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   const connectWalletForChain = async chain => {
     const key = String(chain || "").toLowerCase();
     if (CHAIN_IDS[key]) {
-      const wallet = await connectEvm(null, key);
-      activeEvmAccount = wallet.account;
-      return wallet.account;
+      throw new Error("This route needs an EVM signing session that the connected Meteor NEAR session does not expose. No second wallet will be requested. Select the NEAR Testnet representation of this asset when available.");
     }
     if (key === "near") {
       const sharedAccount = getConnectedAccount();
@@ -942,12 +945,6 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       const missingChain = routeChains.find(chain => !walletAddressFor(chain));
       if (missingChain) {
         await connectWalletForChain(missingChain);
-        const nextMissing = routeChains.find(chain => !walletAddressFor(chain));
-        if (nextMissing) {
-          connectButton.textContent = "Connect " + nextMissing.toUpperCase() + " wallet";
-          status.textContent = "Wallet connected. Tap again to connect the " + nextMissing.toUpperCase() + " wallet.";
-          return;
-        }
       }
 
       const addresses = [walletAddressFor(origin.blockchain), walletAddressFor(dest.blockchain)].filter(Boolean);
@@ -991,7 +988,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       disconnectButton.hidden = !nearAccount(activeNearAccount || getConnectedAccount());
     }
     connectButton.textContent = missingChains.length
-      ? "Connect " + missingChains[0].toUpperCase() + " wallet"
+      ? (CHAIN_IDS[missingChains[0]] ? "Use NEAR asset route" : "Connect Meteor")
       : "Verify quote";
     connectButton.classList.toggle("is-verify", missingChains.length === 0);
   })();
@@ -1131,7 +1128,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     const { origin, dest } = defaults();
     const chains = [...new Set([origin?.blockchain, dest?.blockchain].filter(Boolean).map(value => String(value).toLowerCase()))];
     const missing = chains.find(chain => !walletAddressFor(chain));
-    connectButton.textContent = missing ? "Connect " + missing.toUpperCase() + " wallet" : "Verify quote";
+    connectButton.textContent = missing ? (CHAIN_IDS[missing] ? "Use NEAR asset route" : "Connect Meteor") : "Verify quote";
     connectButton.classList.toggle("is-verify", !missing);
   };
   originSelect.addEventListener("change", () => { defaults(); originPicker.sync(); invalidate(); refreshConnectLabel(); });
