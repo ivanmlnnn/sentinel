@@ -21,6 +21,7 @@ import { onRequestGet as tradingStatusGet } from "../functions/api/trading-statu
 import { onRequestPost as tradingKeyStatusPost } from "../functions/api/trading-key-status.js";
 import { onRequestPost as tradingDepositSubmitPost } from "../functions/api/trading-deposit-submit.js";
 import { onRequestPost as tradingBalancePost } from "../functions/api/trading-balance.js";
+import { onRequestGet as tradingPreOrdersGet, onRequestPost as tradingPreOrdersPost, onRequestDelete as tradingPreOrdersDelete, runPreOrderScheduler } from "../functions/api/trading-preorders.js";
 
 const MAX_API_BODY_BYTES = 65536;
 const routes = {
@@ -48,7 +49,10 @@ const routes = {
   "POST /api/trading/submit-intent": tradingSubmitIntentPost,
   "GET /api/trading/status": tradingStatusGet,
   "POST /api/trading/key-status": tradingKeyStatusPost,
-  "POST /api/trading/deposit/submit": tradingDepositSubmitPost
+  "POST /api/trading/deposit/submit": tradingDepositSubmitPost,
+  "GET /api/trading/preorders": tradingPreOrdersGet,
+  "POST /api/trading/preorders": tradingPreOrdersPost,
+  "DELETE /api/trading/preorders": tradingPreOrdersDelete
 };
 
 async function validateBoundedJsonBody(request) {
@@ -163,7 +167,7 @@ export default {
           const ip = request.headers.get("CF-Connecting-IP") || "unknown";
           if (!env.API_RATE_LIMITER) return respond(serviceUnavailable("RATE_LIMIT_NOT_CONFIGURED"));
           if (!await enforceRateLimit(env.API_RATE_LIMITER, ip)) return respond(rateLimitResponse());
-          if (request.method === "POST" && ["/api/agent/run", "/api/agent/approve", "/api/guest/agent", "/api/trading/agent", "/api/trading/backtest", "/api/trading/live-quote", "/api/trading/generate-intent", "/api/trading/submit-intent", "/api/trading/key-status", "/api/trading/deposit/submit"].includes(url.pathname)) {
+          if (request.method === "POST" && ["/api/agent/run", "/api/agent/approve", "/api/guest/agent", "/api/trading/agent", "/api/trading/backtest", "/api/trading/live-quote", "/api/trading/generate-intent", "/api/trading/submit-intent", "/api/trading/key-status", "/api/trading/deposit/submit", "/api/trading/preorders"].includes(url.pathname)) {
             if (!env.AGENT_RATE_LIMITER) return respond(serviceUnavailable("AGENT_RATE_LIMIT_NOT_CONFIGURED"));
             if (!await enforceRateLimit(env.AGENT_RATE_LIMITER, ip)) return respond(rateLimitResponse());
           }
@@ -187,5 +191,10 @@ export default {
     }
     if (url.pathname.startsWith("/api/")) return respond(apiError("NOT_FOUND", 404));
     return respond(await env.ASSETS.fetch(request));
+  },
+  async scheduled(controller, env, ctx) {
+    ctx.waitUntil(runPreOrderScheduler(env).catch(error => {
+      console.error("Sentinel Pre-Order scheduler failed:", error);
+    }));
   }
 };
