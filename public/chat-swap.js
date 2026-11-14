@@ -212,6 +212,36 @@ async function executeNearIntents(args) {
   const settled = await pollStatus(request, liveQuote.deposit_address, liveQuote.deposit_memo, statusNode);
   detailsNode.textContent = JSON.stringify({ submission: submitted, settlement: settled }, null, 2);
 }
+export function buildNearWalletDepositActions(amount, depositAddress, wrapNativeNear = false) {
+  if (typeof amount !== "string" || !/^[1-9][0-9]*$/.test(amount) ||
+      typeof depositAddress !== "string" || !/^[a-f0-9]{64}$/i.test(depositAddress)) {
+    throw new Error("Invalid NEAR wallet deposit action parameters.");
+  }
+  return [
+    ...(wrapNativeNear ? [{
+      type: "FunctionCall",
+      params: {
+        methodName: "near_deposit",
+        args: {},
+        gas: "30000000000000",
+        deposit: amount
+      }
+    }] : []),
+    {
+      type: "FunctionCall",
+      params: {
+        methodName: "ft_transfer_call",
+        args: {
+          receiver_id: "verifier.tidepool-sandbox.testnet",
+          amount,
+          msg: depositAddress
+        },
+        gas: "100000000000000",
+        deposit: "1"
+      }
+    }
+  ];
+}
 async function executeNearWalletDeposit(args) {
   const { connector, connectedAccount, liveQuote, swap, statusNode, detailsNode, request, onSubmitted } = args;
   if (!connector || !nearAccount(connectedAccount)) throw new Error("Connect Meteor or another NEAR Testnet wallet first.");
@@ -261,30 +291,7 @@ async function executeNearWalletDeposit(args) {
     transaction: {
       signerId: connectedAccount,
       receiverId: swap.origin.contract_address,
-      actions: [
-        ...(swap.wrapNativeNear ? [{
-          type: "FunctionCall",
-          params: {
-            methodName: "near_deposit",
-            args: {},
-            gas: "30000000000000",
-            deposit: swap.amount
-          }
-        }] : []),
-        {
-          type: "FunctionCall",
-          params: {
-            methodName: "ft_transfer_call",
-            args: {
-              receiver_id: "verifier.tidepool-sandbox.testnet",
-              amount: swap.amount,
-              msg: liveQuote.deposit_address
-            },
-            gas: "100000000000000",
-            deposit: "1"
-          }
-        }
-      ]
+      actions: buildNearWalletDepositActions(swap.amount, liveQuote.deposit_address, swap.wrapNativeNear)
     },
     connectedAccount, liveQuote, swap
   };
