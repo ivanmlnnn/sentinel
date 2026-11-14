@@ -20,7 +20,8 @@ export function validatePreOrder(input, now = Date.now()) {
       intent.originAsset === intent.destinationAsset ||
       typeof intent.amount !== "string" || !INTEGER_RE.test(intent.amount) || intent.amount === "0" ||
       typeof intent.recipient !== "string" || !intent.recipient.trim() || intent.recipient.length > 160 ||
-      typeof intent.refundTo !== "string" || !intent.refundTo.trim() || intent.refundTo.length > 160 ||\n      intent.refundTo.trim().toLowerCase() !== walletAddress.toLowerCase() ||
+      typeof intent.refundTo !== "string" || !intent.refundTo.trim() || intent.refundTo.length > 160 ||
+      intent.refundTo.trim().toLowerCase() !== walletAddress.toLowerCase() ||
       !Number.isInteger(intent.slippageTolerance) || intent.slippageTolerance < 1 || intent.slippageTolerance > 300 ||
       typeof intent.userPrompt !== "string" || intent.userPrompt.length < 1 || intent.userPrompt.length > 500) {
     return { ok: false, reason: "INVALID_SWAP_INTENT" };
