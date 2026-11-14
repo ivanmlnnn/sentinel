@@ -39,7 +39,8 @@ test("Meteor approval launches directly in the second tap without an awaited ope
   assert.match(approval, /prepared\.wallet\.signAndSendTransaction\(/);
   const preLaunchCode = approval.slice(0, approval.indexOf('prepared.wallet.signAndSendTransaction(')).replace(/\/\/.*$/gm, "");
   assert.doesNotMatch(preLaunchCode, /await\s/);
-  assert.match(approval, /callbackUrl:\s*window\.location\.href/);
+  assert.match(approval, /receiverId:\s*prepared\.transaction\.receiverId/);
+  assert.doesNotMatch(approval, /callbackUrl|signerId:\s*prepared\.connectedAccount/);
 });
 
 test("EVM wallet balances are read from fixed testnet RPCs without forcing a wallet chain switch", () => {
@@ -60,10 +61,11 @@ test("Meteor NEAR deposit preflight reads both token and native gas balances thr
   assert.match(swapUi, /contract_address: null \}, connectedAccount, request\)/);
 });
 
-test("Meteor approval is invoked from the explicit approval tap with signer and callback URL", () => {
+test("Meteor approval uses the documented NEAR Connect payload from the explicit approval tap", () => {
   assert.match(swapUi, /prepared\.wallet\.signAndSendTransaction\(\{/);
-  assert.match(swapUi, /signerId: prepared\.connectedAccount/);
-  assert.match(swapUi, /callbackUrl: window\.location\.href/);
+  assert.match(swapUi, /receiverId: prepared\.transaction\.receiverId/);
+  assert.match(swapUi, /actions: prepared\.transaction\.actions/);
+  assert.doesNotMatch(swapUi, /callbackUrl:|signerId: prepared\.connectedAccount/);
   assert.match(swapUi, /Open Meteor & approve/);
 });
 
