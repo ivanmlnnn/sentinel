@@ -3,6 +3,23 @@ const NATIVE_EVM_SYMBOLS = { eth: new Set(["ETH"]), base: new Set(["ETH"]), arb:
 const TERMINAL = new Set(["SUCCESS", "REFUNDED", "FAILED"]);
 const PENDING_NEAR_APPROVAL_KEY = "sentinel:pending-near-approval:v1";
 
+// EIP-6963 discovery supports browsers exposing more than one wallet provider.
+// Meteor is preferred when it explicitly announces an EVM provider; otherwise
+// retain the browser's active EIP-1193 provider without pretending NEAR is EVM.
+const discoveredEvmProviders = new Map();
+let selectedEvmProvider = null;
+if (typeof window !== "undefined" && !window.__SENTINEL_EIP6963_LISTENER__) {
+  window.__SENTINEL_EIP6963_LISTENER__ = true;
+  window.addEventListener("eip6963:announceProvider", event => {
+    const detail = event?.detail;
+    if (detail?.provider && typeof detail.provider.request === "function") {
+      const key = detail.info?.uuid || detail.info?.rdns || detail.info?.name || String(discoveredEvmProviders.size);
+      discoveredEvmProviders.set(String(key), { provider: detail.provider, info: detail.info || {} });
+    }
+  });
+  window.dispatchEvent(new Event("eip6963:requestProvider"));
+}
+
 export function parseChatSwapPrompt(prompt) {
   const text = String(prompt || "").trim();
   const match = text.match(/\b(?:swap|tukar|exchange)\s+(\d+(?:[.,]\d+)?)\s+([a-z0-9]+)\s+(?:to|ke|jadi)\s+([a-z0-9]+)\b/i);
@@ -70,13 +87,22 @@ function encodeErc20Transfer(to, amount) {
   return "0xa9059cbb" + to.slice(2).toLowerCase().padStart(64, "0") + BigInt(amount).toString(16).padStart(64, "0");
 }
 function getInjectedEvmProvider() {
+  if (selectedEvmProvider && typeof selectedEvmProvider.request === "function") return selectedEvmProvider;
+  const announced = [...discoveredEvmProviders.values()];
+  const meteor = announced.find(item => /meteor/i.test(String(item.info?.name || "") + " " + String(item.info?.rdns || "")));
+  if (meteor) return meteor.provider;
   const providers = Array.isArray(window.ethereum?.providers) ? window.ethereum.providers : [window.ethereum];
   return providers.find(item => item && typeof item.request === "function" && !item.isBraveWallet) ||
-    providers.find(item => item && typeof item.request === "function") || null;
+    providers.find(item => item && typeof item.request === "function") || announced[0]?.provider || null;
+}
+function getEvmProviderLabel(provider) {
+  const match = [...discoveredEvmProviders.values()].find(item => item.provider === provider);
+  return match?.info?.name || provider?.walletName || provider?.name || "Connected EVM wallet";
 }
 async function connectEvm(refundInput, chain) {
   const provider = getInjectedEvmProvider();
-  if (!provider) throw new Error("No injected EVM wallet found. Install or unlock an EIP-1193 wallet, then retry.");
+  if (!provider) throw new Error("Meteor NEAR session is available, but this page cannot see an EVM provider from Meteor. Open Sentinel in Meteor's in-app browser or use a Meteor-supported EVM connection; no other wallet will be silently substituted.");
+  selectedEvmProvider = provider;
   const accounts = await provider.request({ method: "eth_requestAccounts" });
   const account = accounts?.[0];
   if (!evmAddress(account)) throw new Error("EVM wallet did not return a valid address.");
@@ -447,7 +473,7 @@ async function readSwapWalletBalance(token, nearWalletAccount, request, evmAccou
   const chain = String(token.blockchain || "").toLowerCase();
   if (CHAIN_IDS[chain]) {
     const provider = getInjectedEvmProvider();
-    if (!provider || typeof provider.request !== "function") return { value: null, note: "No EVM provider exposed by this wallet/browser" };
+    if (!provider || typeof provider.request !== "function") return { value: null, note: "Meteor NEAR is connected, but no EVM provider is exposed to this Sentinel page. Open Sentinel inside Meteor's supported in-app browser or enable its EVM provider." };
     const accounts = evmAccountOverride ? [evmAccountOverride] : await provider.request({ method: "eth_accounts" });
     const account = accounts?.[0];
     if (!evmAddress(account)) return { value: null, note: "Connect an EVM wallet to read this address" };
@@ -1075,6 +1101,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     refreshConnectLabel();
   });
   const observedEvmProvider = getInjectedEvmProvider();
+  if (observedEvmProvider) selectedEvmProvider = observedEvmProvider;
   if (observedEvmProvider?.on) {
     observedEvmProvider.on("accountsChanged", accounts => {
       handleEvmAccountsChanged(accounts);
