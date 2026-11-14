@@ -1156,6 +1156,20 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
             (TERMINAL.has(state) ? "" : " · Still pending; reload later to check again. Do not send again.");
           details.textContent = JSON.stringify({ recovered_session: pending, settlement: latest }, null, 2);
           details.hidden = false;
+          if ((state === "SUCCESS" && pending.unwrapNativeNear === true) ||
+              (state === "REFUNDED" && pending.wrapNativeNear === true)) {
+            await prepareNativeNearUnwrap({
+              swap: {
+                unwrapNativeNear: pending.unwrapNativeNear === true,
+                wrapNativeNear: pending.wrapNativeNear === true,
+                origin: { contract_address: pending.originContract || null },
+                destination: { contract_address: pending.destinationContract || null },
+                recipient: pending.recipient || "",
+                refundTo: pending.refundTo || ""
+              },
+              settled: latest
+            });
+          }
           if (TERMINAL.has(state)) sessionStorage.removeItem(PENDING_NEAR_APPROVAL_KEY);
         })
         .catch(error => { status.textContent = "Meteor session was recovered, but Tidepool status is temporarily unavailable: " + (error?.message || "retry later"); });
@@ -1174,8 +1188,15 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       ? settled?.swap_details?.amountOut
       : isNativeInputRefund ? settled?.swap_details?.refundedAmount : null;
     const wnearToken = isNativeOutput ? completedSwap?.destination : completedSwap?.origin;
-    const account = activeNearAccount;
     const connector = getConnector();
+    let account = activeNearAccount;
+    if (!nearAccount(account)) {
+      try {
+        const snapshot = await connector?.getConnectedWallet?.();
+        const restored = snapshot?.accounts?.find(item => nearAccount(item?.accountId))?.accountId;
+        if (nearAccount(restored)) { account = restored; activeNearAccount = restored; }
+      } catch {}
+    }
     const expectedAccount = isNativeOutput ? completedSwap?.recipient : completedSwap?.refundTo;
     if ((!isNativeOutput && !isNativeInputRefund) || !nearAccount(account) ||
         account.toLowerCase() !== String(expectedAccount || "").toLowerCase() ||
@@ -1192,7 +1213,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       pendingNearUnwrap = {
         wallet,
         account,
-        contract: completedSwap.destination.contract_address,
+        contract: wnearToken.contract_address,
         amount
       };
       approveButton.disabled = false;
@@ -1332,8 +1353,10 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         // Call Meteor synchronously in this explicit user tap so its wallet
         // redirect/deep-link flow retains browser user activation.
         const unwrapApproval = preparedUnwrap.wallet.signAndSendTransaction({
+          signerId: preparedUnwrap.account,
           receiverId: preparedUnwrap.contract,
-          actions: buildNearWalletUnwrapActions(preparedUnwrap.amount)
+          actions: buildNearWalletUnwrapActions(preparedUnwrap.amount),
+          callbackUrl: window.location.href
         });
         status.textContent = "Opening Meteor to unwrap the received WNEAR into native NEAR…";
         const result = await unwrapApproval;
@@ -1382,6 +1405,12 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
             tokenContract: prepared.swap.origin.contract_address,
             tokenSymbol: prepared.swap.origin.symbol,
             amount: prepared.swap.amount,
+            originContract: prepared.swap.origin.contract_address || null,
+            destinationContract: prepared.swap.destination.contract_address || null,
+            unwrapNativeNear: prepared.swap.unwrapNativeNear === true,
+            wrapNativeNear: prepared.swap.wrapNativeNear === true,
+            recipient: prepared.swap.recipient,
+            refundTo: prepared.swap.refundTo,
             createdAt: new Date().toISOString()
           }));
         } catch (storageError) {
@@ -1391,8 +1420,10 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         // The selected NEAR Connect session supplies the signer; do not pass a
         // callback URL or a second signer identity into Meteor's executor.
         const walletApproval = prepared.wallet.signAndSendTransaction({
+          signerId: prepared.connectedAccount,
           receiverId: prepared.transaction.receiverId,
-          actions: prepared.transaction.actions
+          actions: prepared.transaction.actions,
+          callbackUrl: window.location.href
         });
         status.textContent = "Opening Meteor. Review and approve the exact NEAR Testnet transfer…";
         await finishNearWalletDeposit(walletApproval, prepared, {
