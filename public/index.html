@@ -86,7 +86,7 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
    <button type="button" class="sentinel-skill-card" data-skill="payment" data-prompt="Help me prepare a NEAR Testnet payment. Recipient: "><span class="skill-card-icon">↗</span><span class="skill-card-copy"><b>Prepare a payment</b><small>Review before any transfer</small></span></button>
    <button type="button" class="sentinel-skill-card trading-research-card" data-skill="trading" data-prompt="Run Sentinel two-agent trading research for XBTUSD."><span class="skill-card-icon">⌁</span><span class="skill-card-copy"><b>Dual-agent market lab</b><small>Live market data · independent risk veto</small></span></button>
   </div></div>
-  <form id="agentForm" class="agent-chat-form">
+  <form id="agentForm" class="agent-chat-form" onsubmit="event.preventDefault()">
    <div id="agentResult" class="agent-result hidden" aria-live="polite"></div>
    <label class="agent-compose-label" for="agentPrompt">YOUR MESSAGE</label>
    <div class="agent-compose-box"><textarea id="agentPrompt" maxlength="4000" required placeholder="Example: Is alice.testnet safe to receive my tokens?" rows="3"></textarea><div class="agent-compose-bottom"><span>Press Send when you’re ready</span><button class="primary-btn" id="agentRunBtn" type="submit">Send <b>↗</b></button></div></div>
