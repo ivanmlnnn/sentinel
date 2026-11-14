@@ -209,13 +209,20 @@ async function fetchJson(url, init, fetchImpl) {
   const endpoint = new URL(url).pathname;
   let response;
   try {
-    response = await fetchImpl(url, { ...init, redirect: "follow", signal: AbortSignal.timeout(8000) });
+    response = await fetchImpl(url, { ...init, redirect: "manual", signal: AbortSignal.timeout(8000) });
   } catch (cause) {
     const error = new Error(cause?.name === "TimeoutError" || cause?.name === "AbortError"
       ? "TIDEPOOL_REQUEST_TIMEOUT" : "TIDEPOOL_NETWORK_ERROR");
     error.code = error.message;
     error.endpoint = endpoint;
     error.cause_name = typeof cause?.name === "string" ? cause.name.slice(0, 60) : "Error";
+    throw error;
+  }
+  if (response.status >= 300 && response.status < 400) {
+    const error = new Error("TIDEPOOL_REDIRECT_BLOCKED");
+    error.code = "TIDEPOOL_REDIRECT_BLOCKED";
+    error.endpoint = endpoint;
+    error.provider_status = response.status;
     throw error;
   }
   if (!response.ok) {
