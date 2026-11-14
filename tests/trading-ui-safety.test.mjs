@@ -23,3 +23,17 @@ test("submitted Tidepool intent stays locked while settlement is pending", () =>
 test("only a provider-reported SUCCESS is described as settlement confirmation", () => {
   assert.match(app, /finalStatus === 'SUCCESS' \? ' · settlement confirmed by Tidepool status'/);
 });
+
+
+test("Route only requests a dry quote; live risk and dual-agent review wait for explicit Approve", () => {
+  const routeStart = chatSwap.indexOf('quoteButton.addEventListener("click"');
+  const approveStart = chatSwap.indexOf('approveButton.addEventListener("click"', routeStart);
+  assert.ok(routeStart >= 0 && approveStart > routeStart, "Route and Approve handlers must both exist");
+  const routeHandler = chatSwap.slice(routeStart, approveStart);
+  const approveHandler = chatSwap.slice(approveStart);
+  assert.match(routeHandler, /request\("\/trading\/quote"/);
+  assert.doesNotMatch(routeHandler, /\/trading\/live-quote|prepareNearWalletApproval|runDualAgentSwapReview/);
+  assert.match(routeHandler, /approveButton\.disabled = false/);
+  assert.match(routeHandler, /approveButton\.hidden = false/);
+  assert.match(approveHandler, /request\("\/trading\/live-quote"/);
+});
