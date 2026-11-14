@@ -1021,15 +1021,21 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     const pending = JSON.parse(sessionStorage.getItem(PENDING_NEAR_APPROVAL_KEY) || "null");
     if (pending && typeof pending.depositAddress === "string" &&
         /^[a-f0-9]{64}$/i.test(pending.depositAddress) &&
-        Number.isFinite(Date.parse(pending.deadline)) && Date.parse(pending.deadline) > Date.now()) {
+        Number.isFinite(Date.parse(pending.createdAt)) && Date.now() - Date.parse(pending.createdAt) < 24 * 60 * 60 * 1000) {
       status.textContent = "Resuming the previous Meteor approval session. Checking Tidepool settlement; do not submit the transfer again…";
       request("/trading/status?depositAddress=" + encodeURIComponent(pending.depositAddress) +
         (pending.depositMemo ? "&depositMemo=" + encodeURIComponent(pending.depositMemo) : ""), { method: "GET" })
-        .then(latest => {
-          const state = String(latest.status || "UNKNOWN").toUpperCase();
+        .then(async initial => {
+          let latest = initial;
+          let state = String(latest.status || "UNKNOWN").toUpperCase();
+          if (!TERMINAL.has(state)) {
+            status.textContent = "Recovered Meteor session · Tidepool status: " + state + ". Tracking settlement; do not send again…";
+            latest = await pollStatus(request, pending.depositAddress, pending.depositMemo, status);
+            state = String(latest?.status || "UNKNOWN").toUpperCase();
+          }
           status.textContent = "Recovered Meteor session · Tidepool status: " + state +
-            (latest.explorer_url ? " · " + latest.explorer_url : "") +
-            (TERMINAL.has(state) ? "" : " · Do not send again; refresh status later.");
+            (latest?.explorer_url ? " · " + latest.explorer_url : "") +
+            (TERMINAL.has(state) ? "" : " · Still pending; reload later to check again. Do not send again.");
           details.textContent = JSON.stringify({ recovered_session: pending, settlement: latest }, null, 2);
           details.hidden = false;
           if (TERMINAL.has(state)) sessionStorage.removeItem(PENDING_NEAR_APPROVAL_KEY);
