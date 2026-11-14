@@ -128,6 +128,11 @@ function encodeErc20Transfer(to, amount) {
   return "0xa9059cbb" + to.slice(2).toLowerCase().padStart(64, "0") + BigInt(amount).toString(16).padStart(64, "0");
 }
 function getInjectedEvmProvider() {
+  // Re-request EIP-6963 announcements on demand. Some in-app browsers inject
+  // their wallet provider after the first module evaluation.
+  if (typeof window !== "undefined") {
+    try { window.dispatchEvent(new Event("eip6963:requestProvider")); } catch {}
+  }
   if (selectedEvmProvider && typeof selectedEvmProvider.request === "function") return selectedEvmProvider;
   const announced = [...discoveredEvmProviders.values()];
   const meteor = announced.find(item => /meteor/i.test(String(item.info?.name || "") + " " + String(item.info?.rdns || "")));
