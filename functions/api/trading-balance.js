@@ -1,8 +1,8 @@
 import { json, readTextLimited } from "./_shared.js";
 import { getTidepoolTestnetTokens } from "../../src/trading-core.mjs";
 
-const ACCOUNT_RE = /^(?:[a-f0-9]{64}|[a-z0-9]+(?:[-_.][a-z0-9]+)*\\.testnet)$/i;
-const CONTRACT_RE = /^[a-z0-9]+(?:[-_.][a-z0-9]+)*\\.testnet$/i;
+const ACCOUNT_RE = /^(?:[a-f0-9]{64}|[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet)$/i;
+const CONTRACT_RE = /^[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet$/i;
 const RPC_URL = "https://rpc.testnet.near.org";
 const EVM_RPCS = {
   eth: "https://ethereum-sepolia-rpc.publicnode.com",
