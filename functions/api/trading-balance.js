@@ -93,7 +93,7 @@ async function readNearBlocksBalance(accountId, token, native, env) {
     if (native) {
       const payload = await fetchNearBlocks(base + "/v3/accounts/" + account + "/balance", apiKey);
       const row = payload.data[0] || {};
-      const raw = findRawAmount(row) || findRawAmount(row.account || {});
+      const raw = findRawAmount(row) ?? findRawAmount(row.account || {});
       if (raw === null) return json({ error: "NEARBLOCKS_NATIVE_BALANCE_SCHEMA_UNRECOGNIZED" }, 502);
       return json({ raw, decimals: 24, source: "NearBlocks v3" });
     }
