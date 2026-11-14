@@ -206,64 +206,7 @@ The workflow logs show the Main and Signer D1 migration steps, deployment of the
 A separate [Independent Local Stress Lab report](INDEPENDENT_LOCAL_STRESS_LAB.md) records nine local simulation checks, including concurrency, simulated multi-instance claims, local HTTP load, fault injection, policy-model fuzzing, and synthetic E2E state transitions. Those results are explicitly local-only: they do not establish distributed Cloudflare D1 behavior, deployed Worker p95/p99 latency, live NEAR RPC saturation handling, deployed Rust contract fuzzing, or real concurrent Testnet payouts.
 
 
-## 9. Gemini provider migration — 11 November 2026
-
-The authenticated Agent, Guest Agent, and AI Review routes have been migrated from Anthropic Messages API calls to the shared Google Gemini adapter in `functions/api/_gemini.js`.
-
-| Area | Implementation |
-|---|---|
-| Provider endpoint | Google Gemini `generateContent` API |
-| Default model | `gemini-3.8-flash` |
-| Runtime credential | `GEMINI_API_KEY`, stored only as a Cloudflare Main Worker secret |
-| Tool calling | Sentinel allowlisted tools are converted to Gemini function declarations |
-| Multi-turn tool results | Gemini function calls/responses are normalized to the route's internal conversation format |
-| Route coverage | Authenticated Agent, Guest Agent, and AI Review |
-| Regression suite | `tests/gemini-provider.test.mjs` |
-| Authorization boundary | Deterministic policy, human NEP-413 approval, isolated signer, and payment contract remain independent of model output |
-
-The Gemini adapter test suite covers schema/conversation conversion, response normalization, missing-secret fail-closed behavior, request construction, and provider rate-limit handling. These are deterministic tests with a mocked HTTP response; they do not establish production Gemini availability.
-
-**PR #13 source-code CI evidence — commit `4a44e5665dded3c0785d3d78fc2df53adf0b1bdf`:**
-
-| Check | Result | Evidence |
-|---|---|---|
-| Automated regression | **135 passed, 0 failed** | [Sentinel checks run 42906396916](https://github.com/ivanmlnnn/sentinel/actions/runs/42906396916) |
-| Gemini adapter tests | **5 passed** | Same run; tests 44–48 |
-| Main D1 migrations | **PASS — 8 migrations, 10 tables, 24 indexes** | Same run |
-| Signer D1 migration | **PASS — 1 migration, 3 tables, 7 indexes** | Same run |
-| NEAR payment-contract WASM release build | **PASS** | Same run; `cargo build --manifest-path payment-contract/Cargo.toml --target wasm32-unknown-unknown --release` |
-| Sentinel Security CI | **PASS** | [Run 42906396166](https://github.com/ivanmlnnn/sentinel/actions/runs/42906396166) |
-| CodeQL JavaScript analysis workflow | **PASS** | [Run 42906396384](https://github.com/ivanmlnnn/sentinel/actions/runs/42906396384) |
-| Main Worker Cloudflare preview build | **PASS** | [Build d91f166c](https://dash.cloudflare.com/70700c67711eb5444dd645c3612eacf2/workers/services/view/sentinel/production/previews/fix-signer-reservation-order-and-lab-evidence/builds/d91f166c-a845-4159-9f18-8013bbf858c1) |
-| Signer Worker Cloudflare preview build | **PASS** | [Build 354387f8](https://dash.cloudflare.com/70700c67711eb5444dd645c3612eacf2/workers/services/view/sentinel-signer/production/previews/fix-signer-reservation-order-and-lab-evidence/builds/354387f8-fd52-4fa2-8f05-ca9c2dd60e06) |
-
-These are PR preview/build and CI results, not a production deployment or proof that the production Gemini secret is installed.
-
-**Production activation:** configure `GEMINI_API_KEY` on the Cloudflare Main Worker and deploy the exact reviewed commit. Then test all three routes with a real authenticated session. The isolated Signer Worker does not need the Gemini key.
-
-**Release evidence boundary:** Payment-contract WASM build, CodeQL, Security CI, Sentinel checks, Worker deployment, and live AI route verification must be read from the GitHub Actions runs associated with the exact PR head. Do not reuse a green run from an earlier commit as proof for this migration.
-
-
-## 10. Merged-main Gemini production release — 11 November 2026
-
-PR #13 was squash-merged to `main` as commit `7e88eee64954dbf61ce6e28dc4c31530c3ce14b2`. The push-to-main production workflow completed successfully:
-
-| Check | Result | Evidence |
-|---|---|---|
-| Main + Signer Worker release workflow | **SUCCESS** | [Deploy run #42907136456](https://github.com/ivanmlnnn/sentinel/actions/runs/42907136456) |
-| Main Worker production deployment | **SUCCESS** | Same run; deployed `https://sentinel.ivmaladin.workers.dev` |
-| Signer Worker deployment step | **SUCCESS / no code changes to deploy** | Same run; Wrangler reported no targets deployed for unchanged Signer Worker |
-| Production HTTP smoke | **8/8 PASS** | Same run; dashboard HTTP 200; expected Turnstile, bearer-auth, and internal-HMAC rejection responses returned |
-| Automated tests | **135 passed, 0 failed** | [Sentinel checks #42907136315](https://github.com/ivanmlnnn/sentinel/actions/runs/42907136315) |
-| NEAR payment-contract WASM release build | **PASS** | Same Sentinel checks run; optimized `wasm32-unknown-unknown` release build completed |
-| CodeQL JavaScript analysis | **PASS** | [CodeQL run #42907136225](https://github.com/ivanmlnnn/sentinel/actions/runs/42907136225) |
-| Security CI | **PASS** | [Security CI run #42907136354](https://github.com/ivanmlnnn/sentinel/actions/runs/42907136354) |
-| Cloudflare Main Worker and Signer Worker build checks | **PASS** | Both Worker build checks on merged commit completed successfully |
-
-The production smoke suite validates public endpoint availability and fail-closed authentication behavior. It does not exercise a live Gemini completion or a new NEAR payment. Configure `GEMINI_API_KEY` on the production Main Worker, then run authenticated Agent, Guest Agent, and AI Review conversation tests before claiming live Gemini provider activation. No signer secret or NEAR payment-contract configuration is changed by the AI provider migration.
-
-
-## 11. Latest merged-main deployment after agent-result placement — 11 November 2026
+## 9. Latest merged-main deployment after agent-result placement — 11 November 2026
 
 Commit [`c7bf59df0b5596e086f8011ef95057bf33bb1e3e`](https://github.com/ivanmlnnn/sentinel/commit/c7bf59df0b5596e086f8011ef95057bf33bb1e3e) was merged through [PR #15](https://github.com/ivanmlnnn/sentinel/pull/15). The push-to-main workflows completed successfully.
 
