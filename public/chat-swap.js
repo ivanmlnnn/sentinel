@@ -602,7 +602,7 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
   return { root, sync: syncTrigger, refresh: refreshBalances, close: closePanel };
 }
 
-export async function renderChatSwap({ prompt, result, request, connector: connectorSource, connectedAccount: accountSource, encodeBase58, guestMode, onWalletConnected, onConnectNearWallet }) {
+export async function renderChatSwap({ prompt, result, request, connector: connectorSource, connectedAccount: accountSource, encodeBase58, guestMode, onWalletConnected, onConnectNearWallet, onDisconnectNearWallet }) {
   const getConnector = () => typeof connectorSource === "function" ? connectorSource() : connectorSource;
   const getConnectedAccount = () => typeof accountSource === "function" ? accountSource() : accountSource;
   const parsed = parseChatSwapPrompt(prompt);
