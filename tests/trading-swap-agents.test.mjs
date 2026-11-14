@@ -4,7 +4,7 @@ import { runDualAgentSwapReview } from "../src/trading-swap-agents.mjs";
 
 const tokens = [
   { asset_id: "eth-test", symbol: "ETH", blockchain: "eth", decimals: 18 },
-  { asset_id: "near-test", symbol: "WNEAR", blockchain: "near", decimals: 24 }
+  { asset_id: "near-test", symbol: "WNEAR", blockchain: "near", decimals: 24, contract_address: "wnear.tidepool-sandbox.testnet" }
 ];
 const quoteInput = {
   originAsset: "eth-test", destinationAsset: "near-test",
@@ -45,6 +45,16 @@ test("both independent agents must pass before swap review is eligible", async (
   assert.equal(result.value.agent_one.verdict, "PASS");
   assert.equal(result.value.agent_two.verdict, "PASS");
   assert.equal(result.value.execution_authorized, false);
+  assert.equal(result.value.deterministic_checks.prompt_amount_valid, true);
+  assert.deepEqual(result.value.failed_checks, []);
+  assert.deepEqual(JSON.parse(ai.calls[0].messages[0].content).amount_normalization, {
+    user_amount: "0.1", token_decimals: 18, expected_base_units: "100000000000000000",
+    quote_input_base_units: "100000000000000000", equality_checked_as_integer_units: true
+  });
+  const evidence = JSON.parse(ai.calls[1].messages[0].content).evidence;
+  assert.equal(evidence.native_near_output_handling.approval_required, true);
+  assert.equal(evidence.native_near_output_handling.execution_model, "separate_explicit_user_approval_after_confirmed_settlement");
+  assert.equal(evidence.native_near_output_handling.action_template[0].params.methodName, "near_withdraw");
   assert.equal(ai.calls.length, 2);
   assert.match(ai.calls[0].messages[0].content, /user_prompt/);
   assert.match(ai.calls[1].messages[0].content, /deterministic_checks/);
@@ -146,3 +156,16 @@ test("reversed ETH-to-NEAR prompt cannot pass a WNEAR-to-ETH provider route", as
   assert.equal(result.value.execution_authorized, false);
 });
 
+
+
+test("native NEAR output fails closed when the selected WNEAR contract is not the verified contract", async () => {
+  const ai = aiMock([agentOnePass, agentTwoPass]);
+  const result = await runDualAgentSwapReview({
+    prompt: "swap 0.1 ETH to NEAR", quoteInput, liveQuote,
+    tokens: tokens.map(token => token.asset_id === "near-test" ? { ...token, contract_address: "attacker.testnet" } : token),
+    aiCall: ai.run, now: Date.parse("2026-11-14T11:00:00.000Z")
+  });
+  assert.equal(result.ok, false);
+  assert.ok(result.value.failed_checks.includes("NATIVE_NEAR_UNWRAP_PLAN_VALID"));
+  assert.equal(result.value.execution_authorized, false);
+});
