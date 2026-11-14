@@ -32,6 +32,20 @@ test("long-running two-agent endpoints are not aborted by the old 10-second clie
   assert.match(app, /path === '\/trading\/agent' \|\| path === '\/trading\/live-quote' \? 60000/);
 });
 
+test("Meteor approval launches directly in the second tap without an awaited operation first", () => {
+  const approval = swapUi.slice(swapUi.indexOf('if (pendingNearApproval)'), swapUi.indexOf('approveButton.disabled = true; quoteButton.disabled = true;', swapUi.indexOf('if (pendingNearApproval)')));
+  assert.match(approval, /prepared\.wallet\.signAndSendTransaction\(/);
+  assert.doesNotMatch(approval.slice(0, approval.indexOf('prepared.wallet.signAndSendTransaction(')), /await\s/);
+  assert.match(approval, /callbackUrl:\s*window\.location\.href/);
+});
+
+test("EVM wallet balances are read from fixed testnet RPCs without forcing a wallet chain switch", () => {
+  assert.match(swapUi, /request\("\/trading-balance",\s*\{\s*method:\s*"POST"/);
+  assert.match(swapUi, /Live " \+ chain\.toUpperCase\(\) \+ " Testnet RPC/);
+  assert.doesNotMatch(swapUi.slice(swapUi.indexOf('async function readSwapWalletBalance'), swapUi.indexOf('function createSwapTokenPicker')), /wallet_switchEthereumChain/);
+});
+
+
 test("legacy swap approval also forwards the exact natural-language intent", () => {
   assert.match(app, /let lastSwapPrompt = null/);
   assert.match(app, /lastSwapPrompt = 'swap ' \+ rawAmount \+ ' ' \+ draft\.from_asset \+ ' to ' \+ draft\.to_asset/);
