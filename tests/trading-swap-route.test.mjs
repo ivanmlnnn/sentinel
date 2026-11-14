@@ -10,7 +10,7 @@ const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
 const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
 
 test("swap approval sends the original prompt and requires both independent agent PASS results", () => {
-  assert.match(swapUi, /userPrompt:\s*prompt/);
+  assert.match(swapUi, /userPrompt:\s*selectedSwapPrompt/);
   assert.match(swapUi, /dualReview\?\.agent_one\?\.verdict !== "PASS"/);
   assert.match(swapUi, /dualReview\?\.agent_two\?\.verdict !== "PASS"/);
   assert.match(swapUi, /dualReview\?\.agent_two\?\.risk_level !== "LOW"/);
