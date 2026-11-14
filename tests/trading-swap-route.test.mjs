@@ -39,8 +39,10 @@ test("Meteor approval launches directly on the Approve tap without an awaited op
   assert.match(approval, /prepared\.wallet\.signAndSendTransaction\(/);
   const preLaunchCode = approval.slice(0, approval.indexOf('prepared.wallet.signAndSendTransaction(')).replace(/\/\/.*$/gm, "");
   assert.doesNotMatch(preLaunchCode, /await\s/);
+  assert.match(approval, /signerId:\s*prepared\.transaction\.signerId/);
   assert.match(approval, /receiverId:\s*prepared\.transaction\.receiverId/);
-  assert.doesNotMatch(approval, /callbackUrl|signerId:\s*prepared\.connectedAccount/);
+  assert.doesNotMatch(approval, /callbackUrl/);
+  assert.match(swapUi, /signerId:\s*preparedUnwrap\.account/);
 });
 
 test("EVM wallet balances are read from fixed testnet RPCs without forcing a wallet chain switch", () => {
