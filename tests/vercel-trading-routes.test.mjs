@@ -59,15 +59,16 @@ test("Vercel token route rejects unsupported methods", async () => {
 });
 
 
-test("Vercel balance route exposes the shared NEAR RPC balance reader", async () => {
+test("Vercel balance route reads native NEAR through the configured NearBlocks v3 API", async () => {
   const originalFetch = globalThis.fetch;
+  const originalApiKey = process.env.NEARBLOCKS_API_KEY;
+  process.env.NEARBLOCKS_API_KEY = "test-nearblocks-key";
   globalThis.fetch = async (url, options = {}) => {
-    assert.match(String(url), /rpc\.testnet\.(?:fastnear\.com|near\.org)/);
-    const request = JSON.parse(options.body);
-    assert.equal(request.method, "query");
-    assert.equal(request.params.request_type, "view_account");
+    assert.match(String(url), /^https:\/\/api-testnet\.nearblocks\.io\/v3\/accounts\/pilo\.testnet\/balance$/);
+    assert.equal(options.method, "GET");
+    assert.equal(options.headers.authorization, "Bearer test-nearblocks-key");
     return new Response(JSON.stringify({
-      result: { amount: "1230000000000000000000000", locked: "0", storage_usage: 1 }
+      data: [{ amount: "1230000000000000000000000" }]
     }), { status: 200, headers: { "content-type": "application/json" } });
   };
   try {
@@ -79,9 +80,17 @@ test("Vercel balance route exposes the shared NEAR RPC balance reader", async ()
       body: { accountId: "pilo.testnet", native: true }
     }, res);
     assert.equal(res.statusCode, 200);
-    assert.deepEqual(res.body, { raw: "1230000000000000000000000", decimals: 24 });
+    assert.deepEqual(res.body, {
+      raw: "1230000000000000000000000",
+      decimals: 24,
+      source: "NearBlocks v3"
+    });
     assert.equal(res.headers["Cache-Control"], "no-store");
-  } finally { globalThis.fetch = originalFetch; }
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalApiKey === undefined) delete process.env.NEARBLOCKS_API_KEY;
+    else process.env.NEARBLOCKS_API_KEY = originalApiKey;
+  }
 });
 
 test("Vercel balance route rejects unsupported methods and oversized requests", async () => {
