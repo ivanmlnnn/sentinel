@@ -1,7 +1,7 @@
 import { json, readTextLimited } from "./_shared.js";
 import { getTidepoolTestnetTokens } from "../../src/trading-core.mjs";
 
-const ACCOUNT_RE = /^(?:[a-f0-9]{64}|[a-z0-9]+(?:[-_.][a-z0-9]+)*\\.testnet)$/i;
+const ACCOUNT_RE = /^(?:[a-f0-9]{64}|[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet)$/i;
 const EVM_RPCS = {
   eth: "https://ethereum-sepolia-rpc.publicnode.com",
   base: "https://sepolia.base.org",
@@ -37,7 +37,26 @@ async function fetchNearBlocks(url, apiKey) {
   try { payload = await response.json(); }
   catch { throw new Error("NEARBLOCKS_INVALID_JSON"); }
   if (!payload || !Array.isArray(payload.data)) throw new Error("NEARBLOCKS_INVALID_RESPONSE");
-  return payload.data;
+  return payload;
+}
+
+async function fetchAllNearBlocksRows(baseUrl, apiKey) {
+  const rows = [];
+  const seen = new Set();
+  let next = null;
+  for (let page = 0; page < 20; page++) {
+    const url = new URL(baseUrl);
+    url.searchParams.set("limit", "100");
+    if (next) url.searchParams.set("next", next);
+    const payload = await fetchNearBlocks(url.toString(), apiKey);
+    rows.push(...payload.data);
+    const candidate = payload.meta?.next_page || null;
+    if (!candidate) return rows;
+    if (seen.has(candidate)) throw new Error("NEARBLOCKS_PAGINATION_CURSOR_REPEATED");
+    seen.add(candidate);
+    next = candidate;
+  }
+  throw new Error("NEARBLOCKS_ASSET_LIST_INCOMPLETE");
 }
 
 function findRawAmount(row) {
@@ -72,18 +91,18 @@ async function readNearBlocksBalance(accountId, token, native, env) {
   const account = encodeURIComponent(accountId);
   try {
     if (native) {
-      const rows = await fetchNearBlocks(base + "/v3/accounts/" + account + "/balance", apiKey);
-      const row = rows[0] || {};
+      const payload = await fetchNearBlocks(base + "/v3/accounts/" + account + "/balance", apiKey);
+      const row = payload.data[0] || {};
       const raw = findRawAmount(row) || findRawAmount(row.account || {});
       if (raw === null) return json({ error: "NEARBLOCKS_NATIVE_BALANCE_SCHEMA_UNRECOGNIZED" }, 502);
       return json({ raw, decimals: 24, source: "NearBlocks v3" });
     }
 
     const contract = String(token?.contract_address || "").toLowerCase();
-    if (!contract || !/^[a-z0-9]+(?:[-_.][a-z0-9]+)*\\.testnet$/i.test(contract)) {
+    if (!contract || !/^[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet$/i.test(contract)) {
       return json({ error: "INVALID_NEAR_FT_CONTRACT" }, 400);
     }
-    const rows = await fetchNearBlocks(base + "/v3/accounts/" + account + "/assets/fts", apiKey);
+    const rows = await fetchAllNearBlocksRows(base + "/v3/accounts/" + account + "/assets/fts", apiKey);
     const holding = rows.find(row => findFtContract(row) === contract);
     // A successful, schema-valid holdings response with no matching contract
     // means zero holdings. An API/schema failure is never represented as zero.
