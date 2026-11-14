@@ -37,7 +37,8 @@ test("Meteor approval launches directly in the second tap without an awaited ope
   const approvalEnd = swapUi.indexOf('\n    approveButton.disabled = true; quoteButton.disabled = true;\n    let submitted = false;', approvalStart);
   const approval = swapUi.slice(approvalStart, approvalEnd);
   assert.match(approval, /prepared\.wallet\.signAndSendTransaction\(/);
-  assert.doesNotMatch(approval.slice(0, approval.indexOf('prepared.wallet.signAndSendTransaction(')), /await\s/);
+  const preLaunchCode = approval.slice(0, approval.indexOf('prepared.wallet.signAndSendTransaction(')).replace(/\/\/.*$/gm, "");
+  assert.doesNotMatch(preLaunchCode, /await\s/);
   assert.match(approval, /callbackUrl:\s*window\.location\.href/);
 });
 
