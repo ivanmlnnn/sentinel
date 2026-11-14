@@ -33,7 +33,7 @@ test("dashboard imports the cache-busted app bundle", () => {
 
 test("chat bootstrap cancels native navigation before app module loads", () => {
   const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
-  assert.match(html, /getElementById\\('agentForm'\\)\\?\\.addEventListener\\('submit', event => event\\.preventDefault\\(\\), \\{ capture: true \\}\\)/);
+  assert.ok(html.includes("getElementById('agentForm')?.addEventListener('submit', event => event.preventDefault(), { capture: true })"));
   const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
-  assert.match(app, /agentForm\\.addEventListener\\('submit', async event => \\{\\s*event\\.preventDefault\\(\\);/);
+  assert.ok(app.includes("agentForm.addEventListener('submit', async event => {\n    event.preventDefault();"));
 });
