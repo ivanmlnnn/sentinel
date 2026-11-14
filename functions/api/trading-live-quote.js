@@ -19,14 +19,20 @@ export async function onRequestPost({ request, env }) {
   if (!userPrompt || userPrompt.length > 500) return json({ error: "SWAP_PROMPT_REQUIRED" }, 400);
   if (!env.AI || typeof env.AI.run !== "function") return json({ error: "AI_RUNTIME_NOT_CONFIGURED" }, 503);
   const quoteInput = Object.fromEntries(QUOTE_FIELDS.filter(key => body[key] !== undefined).map(key => [key, body[key]]));
+  let stage = "TIDEPOOL_TOKEN_REGISTRY";
   try {
-    const result = await getTidepoolLiveQuote(quoteInput);
+    // Fetch the registry once and pass the exact same verified snapshot to the
+    // quote validator and both independent reviewers. Avoid a second provider
+    // request between quote validation and Agent 1 / Agent 2.
+    const tokens = await getTidepoolTestnetTokens();
+    stage = "TIDEPOOL_LIVE_QUOTE";
+    const result = await getTidepoolLiveQuote(quoteInput, fetch, Date.now(), undefined, tokens);
     if (!result.ok) return json({
       error: result.reason,
       risk_evaluation: result.reason === "SENTINEL_SWAP_RISK_BLOCKED" ? result.value : undefined,
       execution_authorized: false
     }, 400);
-    const tokens = await getTidepoolTestnetTokens();
+    stage = "DUAL_AGENT_REVIEW";
     const review = await runDualAgentSwapReview({
       prompt: userPrompt,
       quoteInput,
@@ -46,6 +52,17 @@ export async function onRequestPost({ request, env }) {
       execution_authorized: false
     });
   } catch (error) {
-    return json({ error: error instanceof Error ? error.message : "TIDEPOOL_UNAVAILABLE", execution_authorized: false }, 502);
+    const code = typeof error?.code === "string" ? error.code
+      : error instanceof Error ? error.message : "UNKNOWN_ERROR";
+    return json({
+      error: code,
+      diagnostic: {
+        stage,
+        endpoint: typeof error?.endpoint === "string" ? error.endpoint : null,
+        provider_http_status: Number.isInteger(error?.provider_status) ? error.provider_status : null,
+        cause_name: typeof error?.cause_name === "string" ? error.cause_name : null
+      },
+      execution_authorized: false
+    }, 502);
   }
 }
