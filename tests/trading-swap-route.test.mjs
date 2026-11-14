@@ -67,7 +67,8 @@ test("Meteor approval uses the documented NEAR Connect payload from the explicit
   assert.match(swapUi, /prepared\.wallet\.signAndSendTransaction\(\{/);
   assert.match(swapUi, /receiverId: prepared\.transaction\.receiverId/);
   assert.match(swapUi, /actions: prepared\.transaction\.actions/);
-  assert.doesNotMatch(swapUi, /callbackUrl:|signerId: prepared\.connectedAccount/);
+  assert.match(swapUi, /signerId: prepared\.transaction\.signerId/);
+  assert.doesNotMatch(swapUi, /callbackUrl:/);
   assert.match(swapUi, /Open Meteor & approve/);
 });
 
