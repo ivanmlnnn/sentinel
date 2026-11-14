@@ -92,3 +92,29 @@ test("fails closed when either AI agent is unavailable", async () => {
   assert.equal(result.ok, false);
   assert.equal(result.reason, "SWAP_AGENT_ONE_UNAVAILABLE");
 });
+
+test("Agent 2 retries once when the model returns an invalid schema, then validates the corrected output", async () => {
+  const ai = aiMock([agentOnePass, { verdict: "PASS", risk_level: "LOW" }, agentTwoPass]);
+  const result = await runDualAgentSwapReview({
+    prompt: "swap 0.1 ETH to NEAR", quoteInput, liveQuote, tokens, aiCall: ai.run,
+    now: Date.parse("2026-11-14T11:00:00.000Z")
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.value.agent_two.verdict, "PASS");
+  assert.equal(ai.calls.length, 3);
+  assert.match(ai.calls[2].system, /previous response did not satisfy the required schema/i);
+});
+test("Agent 2 invalid output fails closed with schema diagnostics after one retry", async () => {
+  const ai = aiMock([agentOnePass, { verdict: "PASS" }, { verdict: "PASS" }]);
+  const result = await runDualAgentSwapReview({
+    prompt: "swap 0.1 ETH to NEAR", quoteInput, liveQuote, tokens, aiCall: ai.run,
+    now: Date.parse("2026-11-14T11:00:00.000Z")
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "SWAP_AGENT_TWO_INVALID_OUTPUT");
+  assert.equal(result.status, 502);
+  assert.equal(result.diagnostic.attempts, 2);
+  assert.deepEqual(result.diagnostic.output_keys, ["verdict"]);
+  assert.equal(result.diagnostic.parse_reason, "AGENT_TWO_SCHEMA_INVALID");
+  assert.equal(ai.calls.length, 3);
+});
