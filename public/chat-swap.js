@@ -410,7 +410,7 @@ function tokenLogo(token) {
     img.loading = "lazy";
     img.decoding = "async";
     img.src = "https://cdn.jsdelivr.net/npm/simple-icons@v15/icons/" + slug + ".svg";
-    img.addEventListener("error", () => { img.remove(); });
+    img.addEventListener("error", () => { logo.replaceChildren(el("span", glyphs[symbol] || symbol.slice(0, 2))); });
     logo.replaceChildren(img);
   }
   logo.setAttribute("aria-label", symbol + " token");
@@ -443,22 +443,18 @@ async function readSwapWalletBalance(token, nearWalletAccount, request) {
   const chain = String(token.blockchain || "").toLowerCase();
   if (CHAIN_IDS[chain]) {
     const provider = getInjectedEvmProvider();
-    if (!provider || typeof provider.request !== "function") return { value: null, note: "Open an EVM wallet browser or install a compatible wallet" };
+    if (!provider || typeof provider.request !== "function") return { value: null, note: "Open or connect an EVM wallet in this browser" };
     const accounts = await provider.request({ method: "eth_accounts" });
     const account = accounts?.[0];
-    if (!evmAddress(account)) return { value: null, note: "Connect an EVM wallet" };
-    const currentChain = String(await provider.request({ method: "eth_chainId" })).toLowerCase();
-    if (currentChain !== CHAIN_IDS[chain]) return { value: null, note: "Switch wallet to " + chain.toUpperCase() };
-    let raw;
-    if (token.contract_address) {
-      if (!tokenAddressValid(token)) return { value: null, note: "Invalid token contract" };
-      const data = "0x70a08231" + account.slice(2).toLowerCase().padStart(64, "0");
-      raw = await provider.request({ method: "eth_call", params: [{ to: token.contract_address, data }, "latest"] });
-    } else {
-      raw = await provider.request({ method: "eth_getBalance", params: [account, "latest"] });
+    if (!evmAddress(account)) return { value: null, note: "Connect an EVM wallet to read this address" };
+    const payload = token.asset_id
+      ? { accountId: account, assetId: token.asset_id }
+      : { accountId: account, native: true, blockchain: chain };
+    const balance = await request("/trading-balance", { method: "POST", body: JSON.stringify(payload) });
+    if (typeof balance.raw !== "string" || !/^(?:0|[1-9][0-9]*)$/.test(balance.raw)) {
+      throw new Error("EVM balance API returned an invalid value");
     }
-    if (typeof raw !== "string" || !/^0x[0-9a-f]+$/i.test(raw)) return { value: null, note: "Balance unavailable" };
-    return { raw: BigInt(raw).toString(), value: formatUnitsForDisplay(BigInt(raw).toString(), token.decimals), note: "Wallet balance" };
+    return { raw: balance.raw, value: formatUnitsForDisplay(balance.raw, balance.decimals ?? token.decimals), note: "Live " + chain.toUpperCase() + " Testnet RPC" };
   }
   if (chain === "near") {
     if (!nearAccount(nearWalletAccount)) return { value: null, note: "Connect a NEAR Testnet wallet" };
@@ -526,16 +522,18 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
   const renderTokens = () => {
     list.replaceChildren();
     const entries = tokenList.filter(token => String(token.blockchain || "").toLowerCase() === activeChain);
-    if (activeChain === "near") {
-      const gasBalance = balances.get("__near_native__");
+    if (activeChain === "near" || CHAIN_IDS[activeChain]) {
+      const isNearGas = activeChain === "near";
+      const gasBalance = balances.get(isNearGas ? "__near_native__" : "__evm_native__:" + activeChain);
+      const gasSymbol = isNearGas ? "NEAR" : (NATIVE_EVM_SYMBOLS[activeChain]?.values().next().value || "ETH");
       const gasRow = el("div", undefined, "swap-token-option swap-token-gas-balance");
       const gasIdentity = el("span", undefined, "swap-token-identity");
-      gasIdentity.append(chainLogo("near"), el("span", undefined, "swap-token-copy"));
-      gasIdentity.lastChild.append(el("strong", "NEAR"), el("small", "Native NEAR · gas balance"));
+      gasIdentity.append(chainLogo(activeChain), el("span", undefined, "swap-token-copy"));
+      gasIdentity.lastChild.append(el("strong", gasSymbol), el("small", "Native " + gasSymbol + " · network gas balance"));
       const gasValue = el("span", undefined, "swap-token-value");
       gasValue.append(
         el("strong", gasBalance?.value ?? "—", "swap-token-balance"),
-        el("small", gasBalance?.note || "Refresh to read Meteor balance", "swap-token-balance-note")
+        el("small", gasBalance?.note || "Refresh to read wallet balance", "swap-token-balance-note")
       );
       gasRow.append(gasIdentity, gasValue);
       list.append(gasRow);
@@ -626,6 +624,18 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
       }
     } else if (!onlyAssetId) {
       balances.set("__near_native__", { value: null, note: "Connect a NEAR Testnet wallet" });
+    }
+    if (!onlyAssetId) {
+      const evmChains = chains.filter(chain => Boolean(CHAIN_IDS[chain]));
+      await Promise.all(evmChains.map(async chain => {
+        try {
+          balances.set("__evm_native__:" + chain, await readSwapWalletBalance(
+            { blockchain: chain, symbol: NATIVE_EVM_SYMBOLS[chain]?.values().next().value || "ETH", decimals: 18 }, null, request
+          ));
+        } catch (error) {
+          balances.set("__evm_native__:" + chain, { value: null, note: error?.message || "Native " + chain.toUpperCase() + " balance unavailable" });
+        }
+      }));
     }
     balanceStamp.textContent = "Updated " + new Date().toLocaleTimeString();
     loading = false;
@@ -1037,9 +1047,16 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       try {
         // Invoke Meteor's redirecting wallet method synchronously in this tap,
         // before any await, so mobile browsers retain user activation.
+        const connector = getConnector();
+        const current = await connector?.getConnectedWallet?.();
+        const currentAccount = current?.accounts?.find(item =>
+          item.accountId?.toLowerCase() === prepared.connectedAccount.toLowerCase()
+        );
+        if (!currentAccount) throw new Error("Meteor session is no longer connected to the reviewed account. Reconnect and request a fresh quote.");
         const walletApproval = prepared.wallet.signAndSendTransaction({
-          ...prepared.transaction,
           signerId: prepared.connectedAccount,
+          receiverId: prepared.transaction.receiverId,
+          actions: prepared.transaction.actions,
           callbackUrl: window.location.href
         });
         status.textContent = "Opening Meteor. Review and approve the exact NEAR Testnet transfer…";
