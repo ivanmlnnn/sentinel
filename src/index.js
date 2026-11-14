@@ -93,11 +93,14 @@ async function enforceRateLimit(binding, key) {
   const result = await binding.limit({ key });
   return result?.success === true;
 }
-async function verifyTurnstileToken(token, request, env) {
-  if (typeof env.TURNSTILE_SECRET !== "string" || !env.TURNSTILE_SECRET.trim()) return { ok: false, reason: "TURNSTILE_NOT_CONFIGURED", status: 503 };
-  if (typeof token !== "string" || token.length < 1 || token.length > 2048) return { ok: false, reason: "TURNSTILE_TOKEN_REQUIRED", status: 400 };
+export async function verifyTurnstileToken(token, request, env = {}) {
+  const secret = typeof env.TURNSTILE_SECRET === "string" ? env.TURNSTILE_SECRET.trim() : "";
+  if (!secret) return { ok: false, reason: "TURNSTILE_NOT_CONFIGURED", status: 503 };
+  if (typeof token !== "string" || token.trim().length < 10 || token.length > 2048) {
+    return { ok: false, reason: "TURNSTILE_TOKEN_REQUIRED", status: 400 };
+  }
   try {
-    const form = new URLSearchParams({ secret: env.TURNSTILE_SECRET, response: token });
+    const form = new URLSearchParams({ secret, response: token });
     const ip = request.headers.get("CF-Connecting-IP");
     if (ip) form.set("remoteip", ip);
     const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
@@ -106,11 +109,14 @@ async function verifyTurnstileToken(token, request, env) {
     });
     if (!response.ok) throw new Error("Siteverify HTTP failure");
     const result = await response.json();
-    const hostname = new URL(request.url).hostname.toLowerCase();
-    if (result.success !== true || result.action !== "track_wallet" || String(result.hostname || "").toLowerCase() !== hostname) {
+    const configuredHosts = String(env.TURNSTILE_ALLOWED_HOSTNAMES || "")
+      .split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
+    const allowedHosts = configuredHosts.length ? configuredHosts : [new URL(request.url).hostname.toLowerCase()];
+    const verifiedHost = String(result?.hostname || "").trim().toLowerCase();
+    if (result?.success !== true || result.action !== "track_wallet" || !allowedHosts.includes(verifiedHost)) {
       return { ok: false, reason: "TURNSTILE_VERIFICATION_FAILED", status: 403 };
     }
-    return { ok: true };
+    return { ok: true, hostname: verifiedHost };
   } catch { return { ok: false, reason: "TURNSTILE_UNAVAILABLE", status: 503 }; }
 }
 function apiError(code, status) {
