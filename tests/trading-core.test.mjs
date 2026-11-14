@@ -274,6 +274,21 @@ test("risk evaluation emits quote-bound proof and blocks weakened minimum output
   assert.equal(minimumCheck.observed_minimum_output, "1");
 });
 
+test("accepts provider floor-rounded minimum output at the exact integer slippage boundary", async () => {
+  const providerRoundedQuote = liveQuoteResponse(expectedNear, {
+    quote: {
+      amountOut: "174442957949686",
+      minAmountOut: "172698528370189"
+    }
+  });
+  const result = await evaluateTidepoolSwapRisk(providerRoundedQuote, expectedNear);
+  assert.equal(result.ok, true);
+  const minimumCheck = result.value.checks.find(check => check.id === "MINIMUM_OUTPUT_PROTECTED");
+  assert.equal(minimumCheck.status, "PASS");
+  assert.equal(minimumCheck.required_minimum_output, "172698528370189");
+  assert.equal(minimumCheck.observed_minimum_output, "172698528370189");
+});
+
 test("creates a live multi-chain quote only on explicit live mode and verifies provider signature", async () => {
   const calls = [];
   const fetchImpl = async (url, init = {}) => {
