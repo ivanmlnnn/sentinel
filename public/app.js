@@ -1,5 +1,5 @@
 import { buildTradeSkillDraft } from './trade-skill-draft.js';
-import { renderChatSwap } from './chat-swap.js?v=20261114-dual-agent-gate2';
+import { renderChatSwap } from './chat-swap.js?v=20261114-dual-agent-gate3';
 const $ = id => document.getElementById(id);
 const API = '/api';
 const GUEST_MODE = Boolean(window.SENTINEL_GUEST);
