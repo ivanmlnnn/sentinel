@@ -63,7 +63,8 @@ test("legacy swap approval also forwards the exact natural-language intent", () 
 
 test("Meteor NEAR deposit preflight reads both token and native gas balances through the API", () => {
   assert.match(swapUi, /readSwapWalletBalance\(\s*swap\.wrapNativeNear \? nativeNearAsset : swap\.origin, connectedAccount, request\s*\)/);
-  assert.match(swapUi, /contract_address: null \}, connectedAccount, request\)/);
+  assert.match(swapUi, /const nativeNearAsset = \{ blockchain: "near", symbol: "NEAR", decimals: 24, contract_address: null \}/);
+  assert.match(swapUi, /readSwapWalletBalance\(nativeNearAsset, connectedAccount, request\)/);
 });
 
 test("Meteor approval uses the documented NEAR Connect payload from the explicit approval tap", () => {
