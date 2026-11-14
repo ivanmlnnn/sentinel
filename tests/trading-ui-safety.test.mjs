@@ -37,3 +37,16 @@ test("Route only requests a dry quote; live risk and dual-agent review wait for 
   assert.match(routeHandler, /approveButton\.hidden = false/);
   assert.match(approveHandler, /request\("\/trading\/live-quote"/);
 });
+
+test("swap Disconnect UI follows the active NEAR session and preserves any remaining EVM session", () => {
+  assert.match(chatSwap, /observedNearConnector\?\.on\?\.\("wallet:signOut", \(\) => \{[\s\S]*?disconnectButton\.hidden = true/);
+  assert.match(chatSwap, /walletStateText\.textContent = activeEvmAccount \? shortWalletAddress\(activeEvmAccount\) : "Wallet not connected"/);
+  assert.match(chatSwap, /disconnectButton\.hidden = !activeNearAccount/);
+  assert.match(chatSwap, /await onDisconnectNearWallet\(\);[\s\S]*?disconnectButton\.hidden = true[\s\S]*?refreshConnectLabel\(\)/);
+});
+
+test("minimum-output risk rejection exposes observed and required values in swap status", () => {
+  assert.match(chatSwap, /minimum output observed=/);
+  assert.match(chatSwap, /required=/);
+  assert.match(chatSwap, /slippage=.*bps/);
+});
