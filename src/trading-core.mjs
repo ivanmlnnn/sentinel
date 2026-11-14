@@ -357,12 +357,16 @@ export async function evaluateTidepoolSwapRisk(providerQuote, expected) {
     { id: "SLIPPAGE_CAP", status: request.slippageTolerance <= MAX_SLIPPAGE_BPS ? "PASS" : "FAIL" },
     {
       id: "MINIMUM_OUTPUT_PROTECTED",
-      status: BigInt(quote.minAmountOut) * 10_000n >= BigInt(quote.amountOut) * BigInt(10_000 - request.slippageTolerance) ? "PASS" : "FAIL",
+      // Tidepool expresses token output in integer base units and rounds its
+      // minimum down. Use the same floor convention; ceiling would reject a
+      // provider quote by one indivisible base unit despite matching 100 bps.
+      status: BigInt(quote.minAmountOut) >=
+        (BigInt(quote.amountOut) * BigInt(10_000 - request.slippageTolerance)) / 10_000n ? "PASS" : "FAIL",
       observed_minimum_output: quote.minAmountOut,
       quoted_output: quote.amountOut,
       slippage_tolerance_bps: request.slippageTolerance,
       required_minimum_output: (
-        (BigInt(quote.amountOut) * BigInt(10_000 - request.slippageTolerance) + 9_999n) / 10_000n
+        BigInt(quote.amountOut) * BigInt(10_000 - request.slippageTolerance) / 10_000n
       ).toString()
     },
     { id: "QUOTE_EXPIRY_BOUNDED", status: Date.parse(quote.deadline || request.deadline) > Date.now() ? "PASS" : "FAIL" }
