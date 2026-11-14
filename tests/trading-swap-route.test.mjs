@@ -95,6 +95,9 @@ test("swap NEAR connect uses a connect-only dashboard callback, never the discon
 test("EVM account and network changes invalidate stale swap quotes", () => {
   assert.match(swapUi, /observedEvmProvider\.on\("accountsChanged"/);
   assert.match(swapUi, /observedEvmProvider\.on\("chainChanged"/);
+  assert.match(swapUi, /balanceEvmProvider\.on\("accountsChanged"/);
+  assert.match(swapUi, /observedNearConnector\?\.on\?\.\("wallet:signIn"/);
+  assert.match(swapUi, /observedNearConnector\?\.on\?\.\("wallet:signOut"/);
   assert.match(swapUi, /Previous quote and approval were invalidated/);
 });
 
