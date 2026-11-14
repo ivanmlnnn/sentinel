@@ -1,6 +1,7 @@
 const CHAIN_IDS = { eth: "0xaa36a7", base: "0x14a34", arb: "0x66eee", bsc: "0x61" };
 const NATIVE_EVM_SYMBOLS = { eth: new Set(["ETH"]), base: new Set(["ETH"]), arb: new Set(["ETH"]), bsc: new Set(["BNB"]) };
 const TERMINAL = new Set(["SUCCESS", "REFUNDED", "FAILED"]);
+const PENDING_NEAR_APPROVAL_KEY = "sentinel:pending-near-approval:v1";
 
 export function parseChatSwapPrompt(prompt) {
   const text = String(prompt || "").trim();
@@ -268,6 +269,9 @@ async function finishNearWalletDeposit(walletApproval, prepared, args) {
     }
   }
   const settled = await pollStatus(request, liveQuote.deposit_address, liveQuote.deposit_memo, statusNode);
+  if (TERMINAL.has(String(settled?.status || "").toUpperCase())) {
+    try { sessionStorage.removeItem(PENDING_NEAR_APPROVAL_KEY); } catch {}
+  }
   detailsNode.textContent = JSON.stringify({ origin_tx_hash: txHash, settlement: settled }, null, 2);
   if (String(settled?.status || "").toUpperCase() !== "SUCCESS") {
     statusNode.textContent = "Tidepool status: " + String(settled?.status || "PENDING").toUpperCase() +
@@ -983,6 +987,28 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   addField(fields, "You receive · destination asset / network", destinationPicker.root);
   addField(fields, "Maximum slippage", slippage);
   const status = el("p", "Connect the wallets for both networks to check the route and price.", "sentinel-swap-status");
+  // Meteor may return to this page after a full-page wallet handoff. Keep only
+  // non-secret deposit metadata in sessionStorage so settlement tracking can resume.
+  try {
+    const pending = JSON.parse(sessionStorage.getItem(PENDING_NEAR_APPROVAL_KEY) || "null");
+    if (pending && typeof pending.depositAddress === "string" &&
+        /^[a-f0-9]{64}$/i.test(pending.depositAddress) &&
+        Number.isFinite(Date.parse(pending.deadline)) && Date.parse(pending.deadline) > Date.now()) {
+      status.textContent = "Resuming the previous Meteor approval session. Checking Tidepool settlement; do not submit the transfer again…";
+      request("/trading/status?depositAddress=" + encodeURIComponent(pending.depositAddress) +
+        (pending.depositMemo ? "&depositMemo=" + encodeURIComponent(pending.depositMemo) : ""), { method: "GET" })
+        .then(latest => {
+          const state = String(latest.status || "UNKNOWN").toUpperCase();
+          status.textContent = "Recovered Meteor session · Tidepool status: " + state +
+            (latest.explorer_url ? " · " + latest.explorer_url : "") +
+            (TERMINAL.has(state) ? "" : " · Do not send again; refresh status later.");
+          details.textContent = JSON.stringify({ recovered_session: pending, settlement: latest }, null, 2);
+          details.hidden = false;
+          if (TERMINAL.has(state)) sessionStorage.removeItem(PENDING_NEAR_APPROVAL_KEY);
+        })
+        .catch(error => { status.textContent = "Meteor session was recovered, but Tidepool status is temporarily unavailable: " + (error?.message || "retry later"); });
+    } else if (pending) sessionStorage.removeItem(PENDING_NEAR_APPROVAL_KEY);
+  } catch (error) { console.warn("[Sentinel swap] Could not recover pending Meteor session:", error); }
   const details = el("pre"); details.hidden = true;
   const quoteButton = el("button", "Get verified quote", "secondary-btn swap-quote-button"); quoteButton.type = "button"; quoteButton.hidden = true;
   const approveButton = el("button", "Approve swap", "primary-btn swap-approve-button"); approveButton.type = "button"; approveButton.disabled = true; approveButton.hidden = true;
@@ -1093,6 +1119,20 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         // All account/quote checks were completed while preparing this pending
         // approval. Do not await connector state here: that would lose the
         // mobile browser's user-activation window before Meteor can open.
+        try {
+          sessionStorage.setItem(PENDING_NEAR_APPROVAL_KEY, JSON.stringify({
+            depositAddress: prepared.liveQuote.deposit_address,
+            depositMemo: prepared.liveQuote.deposit_memo || null,
+            deadline: prepared.liveQuote.deadline,
+            signer: prepared.connectedAccount,
+            tokenContract: prepared.swap.origin.contract_address,
+            tokenSymbol: prepared.swap.origin.symbol,
+            amount: prepared.swap.amount,
+            createdAt: new Date().toISOString()
+          }));
+        } catch (storageError) {
+          console.warn("[Sentinel swap] Pending approval recovery metadata could not be saved:", storageError);
+        }
         const walletApproval = prepared.wallet.signAndSendTransaction({
           signerId: prepared.connectedAccount,
           receiverId: prepared.transaction.receiverId,
