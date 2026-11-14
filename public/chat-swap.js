@@ -217,20 +217,6 @@ async function executeNearWalletDeposit(args) {
     item.accountId?.toLowerCase() === connectedAccount.toLowerCase()
   );
   if (!selectedAccount) throw new Error("Meteor connection changed. Reconnect and request a fresh quote.");
-  const review = [
-    "METEOR WALLET DEPOSIT REVIEW",
-    "",
-    "Network: NEAR TESTNET",
-    "Wallet: " + connectedAccount,
-    "Token contract: " + swap.origin.contract_address,
-    "Token: " + swap.origin.symbol,
-    "Exact amount (base units): " + swap.amount,
-    "Receiver: verifier.tidepool-sandbox.testnet",
-    "Deposit reference: " + liveQuote.deposit_address,
-    "",
-    "Meteor will request approval for ft_transfer_call. The transfer credits this quote's Tidepool Intents deposit. Native NEAR is needed for gas."
-  ].join("\n");
-  if (!window.confirm(review)) throw new Error("Cancelled before Meteor approval. No token transfer was submitted.");
   return {
     wallet,
     transaction: {
@@ -988,11 +974,12 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
           onSubmitted: () => { approveButton.textContent = "Swap submitted · status tracked"; }
         });
       } catch (error) {
+        if (Date.parse(prepared.liveQuote?.deadline) > Date.now()) pendingNearApproval = prepared;
         status.textContent = error?.message || "Meteor approval was cancelled or failed. Check wallet activity before retrying.";
       } finally {
         quoteButton.disabled = false;
-        approveButton.disabled = true;
-        approveButton.textContent = "Approve swap";
+        approveButton.disabled = !pendingNearApproval;
+        approveButton.textContent = pendingNearApproval ? "Open Meteor & approve" : "Approve swap";
       }
       return;
     }
@@ -1071,6 +1058,18 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
           statusNode: status, detailsNode: details, request,
           onSubmitted: () => { submitted = true; }
         });
+        const reviewDetails = JSON.parse(details.textContent || "{}");
+        reviewDetails.meteor_wallet_transaction = {
+          network: "NEAR TESTNET",
+          signer: activeNearAccount,
+          token_contract: swap.origin.contract_address,
+          method: "ft_transfer_call",
+          receiver: "verifier.tidepool-sandbox.testnet",
+          amount_base_units: swap.amount,
+          deposit_reference: liveQuote.deposit_address
+        };
+        details.textContent = JSON.stringify(reviewDetails, null, 2);
+        details.hidden = false;
         quoteButton.disabled = false;
         approveButton.disabled = false;
         approveButton.textContent = "Open Meteor & approve";
