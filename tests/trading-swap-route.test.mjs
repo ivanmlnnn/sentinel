@@ -122,12 +122,12 @@ test("Meteor redirect stores only non-secret recovery metadata and checks Tidepo
   assert.match(swapUi, /sessionStorage\.removeItem\(PENDING_NEAR_APPROVAL_KEY\)/);
 });
 
-test("native NEAR unwrap is blocked before a wallet action can be prepared", () => {
+test("native NEAR conversion recovery is informational only and never creates a wallet action", () => {
   const prepareStart = swapUi.indexOf("const prepareNativeNearUnwrap = async");
   const prepareEnd = swapUi.indexOf("\n  };", prepareStart);
   const prepare = swapUi.slice(prepareStart, prepareEnd);
-  assert.match(prepare, /Native NEAR unwrap is disabled/);
-  assert.ok(prepare.indexOf("Native NEAR unwrap is disabled") < prepare.indexOf("pendingNearUnwrap ="));
+  assert.match(prepare, /Native NEAR conversion is disabled/);
+  assert.doesNotMatch(prepare, /signAndSendTransaction|pendingNearUnwrap/);
   assert.doesNotMatch(swapUi, /methodName: "near_withdraw"/);
 });
 
@@ -137,14 +137,12 @@ test("Meteor redirect recovery restores native NEAR unwrap intent without losing
   assert.match(swapUi, /await prepareNativeNearUnwrap\(/);
 });
 
-test("native NEAR unwrap recovery never reveals a second unsupported approval", () => {
+test("native NEAR recovery never reveals a second unsupported approval", () => {
   const prepareStart = swapUi.indexOf("const prepareNativeNearUnwrap = async");
   const prepareEnd = swapUi.indexOf("\n  };", prepareStart);
   const prepare = swapUi.slice(prepareStart, prepareEnd);
-  const guard = prepare.indexOf("Native NEAR unwrap is disabled");
-  const reveal = prepare.indexOf("approveButton.hidden = false");
-  assert.ok(guard >= 0 && reveal > guard);
-  assert.ok(prepare.indexOf("return;", guard) < reveal);
+  assert.match(prepare, /Native NEAR conversion is disabled/);
+  assert.doesNotMatch(prepare, /approveButton\.hidden = false|approveButton\.disabled = false/);
 });
 
 
