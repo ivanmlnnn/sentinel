@@ -1,4 +1,4 @@
-const ASSET_ID_RE = /^nep141:[a-z0-9._-]{1,150}\.testnet$/i;
+const ASSET_ID_RE = /^(?:native:near|nep141:[a-z0-9._-]{1,150}\.testnet)$/i;
 const ACCOUNT_RE = /^(?:[a-f0-9]{64}|[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet)$/i;
 const EVM_RE = /^0x[a-f0-9]{40}$/i;
 const INTEGER_RE = /^(?:0|[1-9][0-9]*)$/;
