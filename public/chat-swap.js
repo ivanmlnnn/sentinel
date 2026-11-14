@@ -234,6 +234,7 @@ async function executeNearWalletDeposit(args) {
   return {
     wallet,
     transaction: {
+      signerId: connectedAccount,
       receiverId: swap.origin.contract_address,
       actions: [{
         type: "FunctionCall",
@@ -469,6 +470,8 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
   trigger.setAttribute("aria-expanded", "false");
   const panel = el("div", undefined, "swap-token-panel");
   panel.hidden = true;
+  const backdrop = el("div", undefined, "swap-token-backdrop");
+  backdrop.setAttribute("aria-hidden", "true");
   const panelHead = el("div", undefined, "swap-token-panel-head");
   panelHead.append(el("strong", "Select token"), el("span", "LIVE TESTNET REGISTRY"));
   const chainRow = el("div", undefined, "swap-chain-options");
@@ -550,10 +553,13 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
     const rect = trigger.getBoundingClientRect();
     if (window.matchMedia("(max-width: 640px)").matches) {
       panel.classList.add("is-mobile-sheet");
+      if (panel.parentNode !== document.body) document.body.append(backdrop, panel);
       Object.assign(panel.style, { position: "fixed", left: "0", right: "0", bottom: "0", top: "auto", width: "100vw", maxWidth: "100vw", maxHeight: "min(82svh, 680px)" });
       return;
     }
     panel.classList.remove("is-mobile-sheet");
+    backdrop.remove();
+    if (panel.parentNode !== root) root.append(panel);
     panel.style.bottom = "auto";
     const width = Math.min(390, Math.max(260, window.innerWidth - 24));
     panel.style.position = "fixed";
@@ -571,11 +577,15 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
   };
   const closePanel = () => {
     panel.hidden = true;
+    backdrop.remove();
+    if (panel.parentNode !== root) root.append(panel);
+    panel.removeAttribute("style");
     trigger.setAttribute("aria-expanded", "false");
     window.removeEventListener("resize", positionPanel);
     window.removeEventListener("scroll", positionPanel, true);
     panel.classList.remove("is-mobile-sheet");
   };
+  backdrop.addEventListener("click", closePanel);
   const refreshBalances = async () => {
     if (loading) return;
     loading = true;
