@@ -1636,6 +1636,30 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
           minimumOutputDiagnostic;
         details.textContent = JSON.stringify({ api_error: error.data, risk_evaluation: riskEvaluation }, null, 2);
         details.hidden = false;
+      } else if (error?.data?.dual_agent_review && typeof error.data.dual_agent_review === "object") {
+        // A 403 VETO is a completed review, not an AI transport failure.
+        // Show both independent verdicts and every deterministic check so
+        // the operator can identify the exact blocker without guessing.
+        const review = error.data.dual_agent_review;
+        const failed = Array.isArray(review.failed_checks) ? review.failed_checks : [];
+        const agentOne = review.agent_one || {};
+        const agentTwo = review.agent_two || {};
+        const agentOneReasons = Array.isArray(agentOne.reasons) ? agentOne.reasons : [];
+        const agentTwoReasons = Array.isArray(agentTwo.reasons) ? agentTwo.reasons : [];
+        const agentOneText = agentOneReasons.length ? " · Agent 1: " + agentOneReasons.join("; ") : "";
+        const agentTwoText = agentTwoReasons.length ? " · Agent 2: " + agentTwoReasons.join("; ") : "";
+        status.textContent = "Dual-agent review VETO · Agent 1=" + String(agentOne.verdict || "UNKNOWN") +
+          " · Agent 2=" + String(agentTwo.verdict || "UNKNOWN") +
+          " · risk=" + String(agentTwo.risk_level || "UNKNOWN") +
+          (failed.length ? " · Failed checks: " + failed.join(", ") : "") +
+          agentOneText + agentTwoText;
+        details.textContent = JSON.stringify({
+          api_error: error.data,
+          agent_two_challenge: agentTwo.challenge || null,
+          deterministic_checks: review.deterministic_checks || null,
+          failed_checks: failed
+        }, null, 2);
+        details.hidden = false;
       } else if (diagnostic) {
         // Surface the backend's safe, structured failure reason instead of
         // hiding it behind the generic SWAP_AGENT_ONE_UNAVAILABLE message.
