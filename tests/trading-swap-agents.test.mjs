@@ -169,3 +169,30 @@ test("native NEAR output fails closed when the selected WNEAR contract is not th
   assert.ok(result.value.failed_checks.includes("NATIVE_NEAR_UNWRAP_PLAN_VALID"));
   assert.equal(result.value.execution_authorized, false);
 });
+
+test("Agent 1 retries once when the model returns an invalid schema, then validates the corrected output", async () => {
+  const ai = aiMock([{ verdict: "PASS" }, agentOnePass, agentTwoPass]);
+  const result = await runDualAgentSwapReview({
+    prompt: "swap 0.1 ETH to NEAR", quoteInput, liveQuote, tokens, aiCall: ai.run,
+    now: Date.parse("2026-11-14T11:00:00.000Z")
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.value.agent_one.verdict, "PASS");
+  assert.equal(ai.calls.length, 3);
+  assert.match(ai.calls[1].system, /previous answer did not satisfy the exact schema/i);
+});
+
+test("Agent 1 invalid output fails closed with schema diagnostics after one retry", async () => {
+  const ai = aiMock([{ verdict: "PASS" }, { verdict: "PASS" }]);
+  const result = await runDualAgentSwapReview({
+    prompt: "swap 0.1 ETH to NEAR", quoteInput, liveQuote, tokens, aiCall: ai.run,
+    now: Date.parse("2026-11-14T11:00:00.000Z")
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "SWAP_AGENT_ONE_INVALID_OUTPUT");
+  assert.equal(result.status, 502);
+  assert.equal(result.diagnostic.attempts, 2);
+  assert.deepEqual(result.diagnostic.output_keys, ["verdict"]);
+  assert.equal(result.diagnostic.parse_reason, "AGENT_ONE_SCHEMA_INVALID");
+  assert.equal(ai.calls.length, 2);
+});
