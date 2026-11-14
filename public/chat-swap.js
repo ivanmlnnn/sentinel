@@ -1452,6 +1452,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         // Call Meteor synchronously in this explicit user tap so its wallet
         // redirect/deep-link flow retains browser user activation.
         const unwrapApproval = preparedUnwrap.wallet.signAndSendTransaction({
+          signerId: preparedUnwrap.account,
           receiverId: preparedUnwrap.contract,
           actions: buildNearWalletUnwrapActions(preparedUnwrap.amount)
         });
@@ -1515,6 +1516,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         // The selected NEAR Connect session supplies the signer; do not pass a
         // callback URL or a second signer identity into Meteor's executor.
         const walletApproval = prepared.wallet.signAndSendTransaction({
+          signerId: prepared.transaction.signerId,
           receiverId: prepared.transaction.receiverId,
           actions: prepared.transaction.actions
         });
