@@ -333,7 +333,7 @@ async function executeNearWalletDeposit(args) {
   };
 }
 async function finishNearWalletDeposit(walletApproval, prepared, args) {
-  const { statusNode, detailsNode, request, onSubmitted } = args;
+  const { statusNode, detailsNode, request, onSubmitted, onNativeNearOutput } = args;
   const result = await walletApproval;
   const { connectedAccount, liveQuote, swap } = prepared;
   const txHash = result?.transaction?.hash || result?.transaction_outcome?.id ||
@@ -365,6 +365,10 @@ async function finishNearWalletDeposit(walletApproval, prepared, args) {
     try { sessionStorage.removeItem(PENDING_NEAR_APPROVAL_KEY); } catch {}
   }
   detailsNode.textContent = JSON.stringify({ origin_tx_hash: txHash, settlement: settled }, null, 2);
+  if (String(settled?.status || "").toUpperCase() === "SUCCESS" &&
+      swap.unwrapNativeNear && typeof onNativeNearOutput === "function") {
+    await onNativeNearOutput({ swap, settled });
+  }
   if (String(settled?.status || "").toUpperCase() !== "SUCCESS") {
     statusNode.textContent = "Tidepool status: " + String(settled?.status || "PENDING").toUpperCase() +
       ". Do not send again; wait for settlement or check the deposit status.";
@@ -372,7 +376,7 @@ async function finishNearWalletDeposit(walletApproval, prepared, args) {
 }
 
 async function executeEvmDeposit(args) {
-  const { request, token, liveQuote, swap, refundInput, statusNode, detailsNode, onSubmitted } = args;
+  const { request, token, liveQuote, swap, refundInput, statusNode, detailsNode, onSubmitted, onNativeNearOutput } = args;
   const { provider, account } = await connectEvm(refundInput, token.blockchain);
   if (account.toLowerCase() !== swap.refundTo.toLowerCase()) throw new Error("Connected EVM account differs from the reviewed refund address. Request a fresh quote.");
   if (!evmAddress(liveQuote.deposit_address)) throw new Error("Tidepool returned an invalid EVM deposit address.");
@@ -420,6 +424,10 @@ async function executeEvmDeposit(args) {
   }
   const settled = await pollStatus(request, liveQuote.deposit_address, liveQuote.deposit_memo, statusNode);
   detailsNode.textContent = JSON.stringify({ origin_tx_hash: txHash, settlement: settled }, null, 2);
+  if (String(settled?.status || "").toUpperCase() === "SUCCESS" &&
+      swap.unwrapNativeNear && typeof onNativeNearOutput === "function") {
+    await onNativeNearOutput({ swap, settled });
+  }
 }
 function renderManualDeposit(panel, liveQuote, token, swap, request, statusNode, detailsNode, onSubmitted) {
   const instructions = el("pre");
@@ -1147,6 +1155,36 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   const quoteButton = el("button", "Get verified quote", "secondary-btn swap-quote-button"); quoteButton.type = "button"; quoteButton.hidden = true;
   const approveButton = el("button", "Approve swap", "primary-btn swap-approve-button"); approveButton.type = "button"; approveButton.disabled = true; approveButton.hidden = true;
   let pendingNearApproval = null;
+  let pendingNearUnwrap = null;
+  const prepareNativeNearUnwrap = async ({ swap: completedSwap, settled }) => {
+    const amount = settled?.swap_details?.amountOut;
+    const account = activeNearAccount;
+    const connector = getConnector();
+    if (!completedSwap?.unwrapNativeNear || !nearAccount(account) ||
+        account.toLowerCase() !== String(completedSwap.recipient || "").toLowerCase() ||
+        typeof amount !== "string" || !/^[1-9][0-9]*$/.test(amount) ||
+        completedSwap.destination?.contract_address !== "wnear.tidepool-sandbox.testnet") {
+      status.textContent = "Swap settled to WNEAR, but native NEAR unwrap could not be prepared safely. WNEAR remains in the connected recipient account.";
+      return;
+    }
+    try {
+      const wallet = await connector?.wallet?.();
+      if (!wallet || typeof wallet.signAndSendTransaction !== "function") {
+        throw new Error("Meteor NEAR transaction approval is unavailable.");
+      }
+      pendingNearUnwrap = {
+        wallet,
+        account,
+        contract: completedSwap.destination.contract_address,
+        amount
+      };
+      approveButton.disabled = false;
+      approveButton.textContent = "Unwrap NEAR in Meteor";
+      status.textContent = "Swap SUCCESS. WNEAR arrived in Meteor. Tap “Unwrap NEAR in Meteor” to convert the exact received amount to native NEAR.";
+    } catch (error) {
+      status.textContent = "Swap SUCCESS. WNEAR arrived, but Meteor unwrap preparation failed: " + (error?.message || "wallet unavailable");
+    }
+  };
   fields.append(status, approveButton, details); card.append(fields);
   let swap = null, dryQuote = null;
   const invalidate = () => { approveButton.disabled = true; dryQuote = null; swap = null; };
@@ -1267,6 +1305,37 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     finally { quoteButton.disabled = false; }
   });
   approveButton.addEventListener("click", async () => {
+    if (pendingNearUnwrap) {
+      const preparedUnwrap = pendingNearUnwrap;
+      pendingNearUnwrap = null;
+      approveButton.disabled = true;
+      try {
+        // Call Meteor synchronously in this explicit user tap so its wallet
+        // redirect/deep-link flow retains browser user activation.
+        const unwrapApproval = preparedUnwrap.wallet.signAndSendTransaction({
+          receiverId: preparedUnwrap.contract,
+          actions: buildNearWalletUnwrapActions(preparedUnwrap.amount)
+        });
+        status.textContent = "Opening Meteor to unwrap the received WNEAR into native NEAR…";
+        const result = await unwrapApproval;
+        const txHash = result?.transaction?.hash || result?.transaction_outcome?.id ||
+          result?.transactionHash || result?.hash || null;
+        status.textContent = "Native NEAR unwrap submitted from Meteor." +
+          (typeof txHash === "string" ? " Transaction: " + txHash : " Check Meteor activity for confirmation.");
+        details.textContent = JSON.stringify({ native_near_unwrap: {
+          account: preparedUnwrap.account, wnear_contract: preparedUnwrap.contract,
+          amount_base_units: preparedUnwrap.amount, wallet_result: result
+        } }, null, 2);
+        details.hidden = false;
+      } catch (error) {
+        pendingNearUnwrap = preparedUnwrap;
+        status.textContent = error?.message || "Meteor unwrap was cancelled or failed. WNEAR remains in your wallet.";
+      } finally {
+        approveButton.disabled = !pendingNearUnwrap;
+        approveButton.textContent = pendingNearUnwrap ? "Unwrap NEAR in Meteor" : "Approve swap";
+      }
+      return;
+    }
     if (pendingNearApproval) {
       const prepared = pendingNearApproval;
       if (Date.parse(prepared.liveQuote?.deadline) <= Date.now()) {
@@ -1309,15 +1378,17 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         status.textContent = "Opening Meteor. Review and approve the exact NEAR Testnet transfer…";
         await finishNearWalletDeposit(walletApproval, prepared, {
           request, statusNode: status, detailsNode: details,
-          onSubmitted: () => { approveButton.textContent = "Swap submitted · status tracked"; }
+          onSubmitted: () => { approveButton.textContent = "Swap submitted · status tracked"; },
+          onNativeNearOutput: prepareNativeNearUnwrap
         });
       } catch (error) {
         if (Date.parse(prepared.liveQuote?.deadline) > Date.now()) pendingNearApproval = prepared;
         status.textContent = error?.message || "Meteor approval was cancelled or failed. Check wallet activity before retrying.";
       } finally {
         quoteButton.disabled = false;
-        approveButton.disabled = !pendingNearApproval;
-        approveButton.textContent = pendingNearApproval ? "Open Meteor & approve" : "Approve swap";
+        approveButton.disabled = !(pendingNearApproval || pendingNearUnwrap);
+        approveButton.textContent = pendingNearUnwrap ? "Unwrap NEAR in Meteor" :
+          pendingNearApproval ? "Open Meteor & approve" : "Approve swap";
       }
       return;
     }
@@ -1413,7 +1484,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         status.textContent = "Security checks passed. Tap “Open Meteor & approve” once more to launch Meteor and review the exact transfer.";
         return;
       } else if (liveQuote.deposit_type === "ORIGIN_CHAIN" && CHAIN_IDS[swap.origin.blockchain]) {
-        await executeEvmDeposit({ request, token: swap.origin, liveQuote, swap, refundInput, statusNode: status, detailsNode: details, onSubmitted: () => { submitted = true; } });
+        await executeEvmDeposit({ request, token: swap.origin, liveQuote, swap, refundInput, statusNode: status, detailsNode: details, onSubmitted: () => { submitted = true; }, onNativeNearOutput: prepareNativeNearUnwrap });
       } else if (liveQuote.deposit_type === "ORIGIN_CHAIN") {
         manualOnly = true;
         status.textContent = "Quote and risk checks passed. Use the exact deposit instructions below with your chain wallet, then submit its transaction hash for tracking.";
@@ -1456,8 +1527,9 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       }
     } finally {
       quoteButton.disabled = false;
-      approveButton.disabled = pendingNearApproval ? false : submitted || manualOnly;
-      approveButton.textContent = pendingNearApproval ? "Open Meteor & approve" :
+      approveButton.disabled = (pendingNearApproval || pendingNearUnwrap) ? false : submitted || manualOnly;
+      approveButton.textContent = pendingNearUnwrap ? "Unwrap NEAR in Meteor" :
+        pendingNearApproval ? "Open Meteor & approve" :
         submitted ? "Swap submitted · status tracked" : manualOnly ? "Manual deposit instructions ready" : "Approve swap";
     }
   });
