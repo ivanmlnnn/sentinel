@@ -138,31 +138,52 @@ export async function runDualAgentSwapReview({
   }
 
   let second;
+  let secondFailure = null;
   try {
-    const response = await aiCall({
-      system: [
-        "You are Sentinel Swap Agent 2, an independent adversarial quote and risk reviewer. You are not Agent 1's assistant.",
-        "Independently challenge the exact quote, signature-verification result, amount, token direction, recipient, refund address, deposit address, expiry, slippage and deterministic risk policy. Understand asset_resolution: a native NEAR user selection is represented to Tidepool as WNEAR on NEAR, with an explicit wrap before deposit or unwrap after confirmed settlement. This is valid only when the selected provider asset is the verified NEAR-chain WNEAR contract. Do not veto solely because native NEAR is not itself in the Tidepool token registry. Do not trust Agent 1's verdict; re-check the supplied structured evidence yourself.",
-        "Any failed deterministic check, missing field, mismatch, uncertain risk, or non-ALLOW policy requires VETO. PASS means only that the quote may be shown for explicit human wallet approval; it never authorizes signing, depositing, swapping, or trading.",
-        "Return exactly one JSON object with keys verdict, risk_level, challenge, reasons. verdict is PASS or VETO; risk_level is LOW, MEDIUM, or HIGH. If uncertain, VETO."
-      ].join("\n"),
-      messages: [{ role: "user", content: JSON.stringify({ evidence }) }],
-      maxOutputTokens: 400,
-      timeoutMs: 15000
-    });
-    if (!response?.ok) return {
-      ok: false, reason: "SWAP_AGENT_TWO_UNAVAILABLE", status: response?.status === 504 ? 504 : 502,
-      diagnostic: {
-        code: typeof response?.error === "string" ? response.error.slice(0, 80) : "AI_CALL_FAILED",
-        http_status: Number.isInteger(response?.status) ? response.status : null,
-        provider_status: Number.isInteger(response?.provider_status) ? response.provider_status : null,
-        provider_code: typeof response?.provider_code === "string" ? response.provider_code.slice(0, 80) : null,
-        output_shape: response?.output_shape && typeof response.output_shape === "object" ? response.output_shape : null
-      }
+    const agentTwoSystem = [
+      "You are Sentinel Swap Agent 2, an independent adversarial quote and risk reviewer. You are not Agent 1's assistant.",
+      "Independently challenge the exact quote, signature-verification result, amount, token direction, recipient, refund address, deposit address, expiry, slippage and deterministic risk policy. Understand asset_resolution: a native NEAR user selection is represented to Tidepool as WNEAR on NEAR, with an explicit wrap before deposit or unwrap after confirmed settlement. This is valid only when the selected provider asset is the verified NEAR-chain WNEAR contract. Do not veto solely because native NEAR is not itself in the Tidepool token registry. Do not trust Agent 1's verdict; re-check the supplied structured evidence yourself.",
+      "Any failed deterministic check, missing field, mismatch, uncertain risk, or non-ALLOW policy requires VETO. PASS means only that the quote may be shown for explicit human wallet approval; it never authorizes signing, depositing, swapping, or trading.",
+      "Return exactly one JSON object and no markdown or prose. Required keys: verdict, risk_level, challenge, reasons. verdict must be PASS or VETO; risk_level must be LOW, MEDIUM, or HIGH; challenge must be a non-empty explanatory string; reasons must be an array of strings (use [] when there are no reasons). Do not omit any key and do not add keys."
+    ].join("\n");
+    const agentTwoEvidence = JSON.stringify({ evidence });
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = await aiCall({
+        system: attempt === 0 ? agentTwoSystem : [
+          agentTwoSystem,
+          "Your previous response did not satisfy the required schema. Re-evaluate the evidence and return the complete JSON object with all four required keys. Keep challenge at 10-1200 characters and reasons to at most 6 strings, each at most 240 characters."
+        ].join("\n"),
+        messages: [{ role: "user", content: agentTwoEvidence }],
+        maxOutputTokens: attempt === 0 ? 500 : 700,
+        timeoutMs: 15000
+      });
+      if (!response?.ok) return {
+        ok: false, reason: "SWAP_AGENT_TWO_UNAVAILABLE", status: response?.status === 504 ? 504 : 502,
+        diagnostic: {
+          attempt: attempt + 1,
+          code: typeof response?.error === "string" ? response.error.slice(0, 80) : "AI_CALL_FAILED",
+          http_status: Number.isInteger(response?.status) ? response.status : null,
+          provider_status: Number.isInteger(response?.provider_status) ? response.provider_status : null,
+          provider_code: typeof response?.provider_code === "string" ? response.provider_code.slice(0, 80) : null,
+          output_shape: response?.output_shape && typeof response.output_shape === "object" ? response.output_shape : null
+        }
+      };
+      const raw = extractText(response);
+      const parsed = parseAgentJson(raw);
+      second = parsed.ok ? validateAgentOutput(parsed.value, 2) : null;
+      if (second) break;
+      const parsedKeys = parsed.ok ? Object.keys(parsed.value).slice(0, 12) : [];
+      secondFailure = {
+        parse_reason: parsed.ok ? "AGENT_TWO_SCHEMA_INVALID" : parsed.reason,
+        output_keys: parsedKeys,
+        output_length: raw.length,
+        output_empty: raw.length === 0
+      };
+    }
+    if (!second) return {
+      ok: false, reason: "SWAP_AGENT_TWO_INVALID_OUTPUT", status: 502,
+      diagnostic: { attempts: 2, ...secondFailure }
     };
-    const parsed = parseAgentJson(extractText(response));
-    second = parsed.ok ? validateAgentOutput(parsed.value, 2) : null;
-    if (!second) return { ok: false, reason: "SWAP_AGENT_TWO_INVALID_OUTPUT", status: 502 };
   } catch (error) {
     return {
       ok: false, reason: "SWAP_AGENT_TWO_UNAVAILABLE", status: 502,
