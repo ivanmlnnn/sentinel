@@ -1207,7 +1207,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         ? tokens.find(token => token.asset_id === "nep141:wnear.tidepool-sandbox.testnet")
         : origin;
       if (!quoteOrigin) throw new Error("Tidepool WNEAR is unavailable; native NEAR cannot be wrapped for this route.");
-      if (quoteOrigin.blockchain !== "near" || !/^[a-z0-9]+(?:[-_.][a-z0-9]+)*\\.testnet$/i.test(quoteOrigin.contract_address || "")) {
+      if (quoteOrigin.blockchain !== "near" || !/^[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet$/i.test(quoteOrigin.contract_address || "")) {
         throw new Error("Native NEAR wrapping requires the verified Tidepool WNEAR Testnet contract.");
       }
       const requestBody = {
