@@ -672,8 +672,12 @@ async function initTrackWalletTurnstile(retry = false) {
       execution: 'render',
       'refresh-expired': 'auto',
       callback: token => {
-        window.__sentinelTurnstileToken = typeof token === 'string' ? token : null;
-        setTrackWalletTurnstileStatus('Cloudflare verification complete. You can track this wallet.', 'verified');
+        const validToken = typeof token === 'string' && token.trim().length >= 10 && token.length <= 2048;
+        window.__sentinelTurnstileToken = validToken ? token : null;
+        setTrackWalletTurnstileStatus(
+          validToken ? 'Cloudflare verification complete. You can track this wallet.' : 'Cloudflare returned an invalid verification token. Retry verification.',
+          validToken ? 'verified' : 'error'
+        );
       },
       'error-callback': errorCode => {
         window.__sentinelTurnstileToken = null;
