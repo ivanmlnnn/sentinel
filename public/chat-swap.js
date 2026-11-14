@@ -1338,7 +1338,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         }
       }, null, 2);
       details.hidden = false;
-      const summary = "SWAP APPROVAL REVIEW\n\n" + swap.origin.symbol + " (" + swap.origin.blockchain + ") → " +
+      const summary = "SWAP APPROVAL REVIEW\n\n" + (swap.displayOrigin || swap.origin).symbol + (swap.wrapNativeNear ? " (native NEAR → wrap to WNEAR)" : " (" + swap.origin.blockchain + ")") + " → "
         swap.destination.symbol + " (" + swap.destination.blockchain + ")\nInput: " +
         (liveQuote.quote.amount_in_formatted || liveQuote.quote.amount_in) + "\nExpected output: " +
         (liveQuote.quote.amount_out_formatted || liveQuote.quote.amount_out) + "\nMinimum output: " +
@@ -1360,7 +1360,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
           network: "NEAR TESTNET",
           signer: activeNearAccount,
           token_contract: swap.origin.contract_address,
-          method: "ft_transfer_call",
+          methods: swap.wrapNativeNear ? ["near_deposit", "ft_transfer_call"] : ["ft_transfer_call"],
           receiver: "verifier.tidepool-sandbox.testnet",
           amount_base_units: swap.amount,
           deposit_reference: liveQuote.deposit_address
