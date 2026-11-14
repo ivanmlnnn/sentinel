@@ -29,12 +29,12 @@ test("resolves ETH to the NEAR Testnet asset when ticker exists on multiple chai
   assert.equal(resolveInitialSwapToken(tokens, "ETH").asset_id, "eth:near");
 });
 
-test("maps a NEAR prompt to registry-backed wNEAR when native NEAR is absent", () => {
+test("does not silently substitute WNEAR when native NEAR is absent", () => {
   const tokens = [
     { asset_id: "wnear:near", symbol: "wNEAR", blockchain: "near" },
     { asset_id: "near:usdc", symbol: "USDC", blockchain: "near" }
   ];
-  assert.equal(resolveInitialSwapToken(tokens, "NEAR").asset_id, "wnear:near");
+  assert.equal(resolveInitialSwapToken(tokens, "NEAR"), null);
 });
 
 test("does not replace an actual native NEAR registry asset with wNEAR", () => {
