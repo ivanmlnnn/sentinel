@@ -83,3 +83,24 @@ test("wallet balance reads never silently claim unsupported chains are connected
   assert.match(swapUi, /No EVM provider exposed by this wallet\/browser/);
   assert.match(swapUi, /Wallet balance adapter not connected for /);
 });
+
+test("swap NEAR connect uses a connect-only dashboard callback, never the disconnect toggle", () => {
+  assert.match(app, /async function connectNearWalletForSwapFromGesture/);
+  assert.match(app, /onConnectNearWallet: connectNearWalletForSwapFromGesture/);
+  const helper = app.slice(app.indexOf("async function connectNearWalletForSwapFromGesture"), app.indexOf("async function initWallet"));
+  assert.match(helper, /connector\.connect\(\)/);
+  assert.doesNotMatch(helper, /connector\.disconnect\(\)/);
+});
+
+test("EVM account and network changes invalidate stale swap quotes", () => {
+  assert.match(swapUi, /observedEvmProvider\.on\("accountsChanged"/);
+  assert.match(swapUi, /observedEvmProvider\.on\("chainChanged"/);
+  assert.match(swapUi, /Previous quote and approval were invalidated/);
+});
+
+test("Meteor redirect stores only non-secret recovery metadata and checks Tidepool status after return", () => {
+  assert.match(swapUi, /sessionStorage\.setItem\(PENDING_NEAR_APPROVAL_KEY/);
+  assert.match(swapUi, /sessionStorage\.getItem\(PENDING_NEAR_APPROVAL_KEY/);
+  assert.match(swapUi, /Recovered Meteor session/);
+  assert.match(swapUi, /sessionStorage\.removeItem\(PENDING_NEAR_APPROVAL_KEY\)/);
+});
