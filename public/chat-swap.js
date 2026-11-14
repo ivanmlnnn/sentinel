@@ -1349,7 +1349,8 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         originAsset: swap.originAsset, destinationAsset: swap.destinationAsset,
         amount: swap.amount, recipient: swap.recipient, refundTo: swap.refundTo,
         slippageTolerance: swap.slippageTolerance,
-        userPrompt: "Swap " + (swap.displayOrigin || swap.origin).symbol + " to " +
+        userPrompt: "Swap " + amountInput.value.trim() + " " +
+          (swap.displayOrigin || swap.origin).symbol + " to " +
           (swap.displayDestination || swap.destination).symbol
       }
     };
