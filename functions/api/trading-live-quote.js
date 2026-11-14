@@ -32,6 +32,7 @@ export async function onRequestPost({ request, env }) {
     });
     if (!review.ok) return json({
       error: review.reason,
+      diagnostic: review.diagnostic || null,
       dual_agent_review: review.value || null,
       execution_authorized: false
     }, review.status || 502);
