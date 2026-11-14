@@ -8,15 +8,17 @@ const CONTRACT_RE = /^[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet$/i;
 // a fallback so one provider's 429/5xx does not blank every NEAR balance.
 const NEAR_RPC_URLS = [
   "https://rpc.testnet.fastnear.com",
+  "https://rpc.testnet.drpc.org",
   "https://rpc.testnet.near.org"
 ];
 const EVM_RPCS = {
   eth: "https://ethereum-sepolia-rpc.publicnode.com",
   base: "https://sepolia.base.org",
   arb: "https://sepolia-rollup.arbitrum.io/rpc",
-  bsc: "https://data-seed-prebsc-1-s1.binance.org:8545"
+  bsc: "https://data-seed-prebsc-1-s1.binance.org:8545",
+  aurora: "https://testnet.aurora.dev"
 };
-const EVM_NATIVE = { eth: "ETH", base: "ETH", arb: "ETH", bsc: "BNB" };
+const EVM_NATIVE = { eth: "ETH", base: "ETH", arb: "ETH", bsc: "BNB", aurora: "ETH" };
 const EVM_ADDRESS_RE = /^0x[a-f0-9]{40}$/i;
 async function readEvmBalance(accountId, token, native, blockchain) {
   const chain = String(blockchain || token?.blockchain || "").toLowerCase();
