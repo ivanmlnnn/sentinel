@@ -1236,7 +1236,9 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   };
   fields.append(status, approveButton, details); card.append(fields);
   let swap = null, dryQuote = null;
+  let swapRevision = 0;
   const invalidate = () => {
+    swapRevision++;
     pendingNearApproval = null;
     dryQuote = null;
     swap = null;
@@ -1294,7 +1296,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     connectButton.textContent = missing ? (CHAIN_IDS[missing] ? "Use NEAR asset route" : "Connect Meteor") : "Verify quote";
     connectButton.classList.toggle("is-verify", !missing);
   };
-  const prepareNearWalletApproval = async swapDraft => {
+  const prepareNearWalletApproval = async (swapDraft, revision) => {
     status.textContent = "Running Sentinel's live quote, risk checks and both independent agents before enabling wallet approval…";
     const liveQuote = await request("/trading/live-quote", {
       method: "POST",
@@ -1308,6 +1310,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         userPrompt: prompt
       })
     });
+    if (revision !== swapRevision || swap !== swapDraft) throw new Error("Swap selection changed during security review. Request a fresh quote.");
     const dualReview = liveQuote.dual_agent_review;
     if (liveQuote.mode !== "LIVE_QUOTE_AWAITING_USER_SIGNATURE" || liveQuote.execution_enabled !== false ||
         liveQuote.provider_signature_verified !== true || liveQuote.risk_evaluation?.decision !== "ALLOW" ||
@@ -1333,7 +1336,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       }
     }, null, 2);
     details.hidden = false;
-    pendingNearApproval = await executeNearWalletDeposit({
+    const prepared = await executeNearWalletDeposit({
       connector: getConnector(),
       connectedAccount: activeNearAccount,
       liveQuote,
@@ -1343,6 +1346,8 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       request,
       onSubmitted: () => {}
     });
+    if (revision !== swapRevision || swap !== swapDraft) throw new Error("Swap selection changed during wallet preparation. Request a fresh quote.");
+    pendingNearApproval = prepared;
     const reviewDetails = JSON.parse(details.textContent || "{}");
     reviewDetails.meteor_wallet_transaction = {
       network: "NEAR TESTNET",
@@ -1363,6 +1368,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   destSelect.addEventListener("change", () => { defaults(); destinationPicker.sync(); invalidate(); refreshConnectLabel(); });
   for (const input of [amountInput, slippage]) input.addEventListener("change", invalidate);
   quoteButton.addEventListener("click", async () => {
+    const revision = ++swapRevision;
     quoteButton.disabled = true;
     pendingNearApproval = null;
     if (!pendingNearUnwrap) {
@@ -1429,7 +1435,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       if (guestMode) {
         status.textContent += " Guest mode is quote-only; sign in to approve.";
       } else if (origin.blockchain === "near") {
-        await prepareNearWalletApproval(swap);
+        await prepareNearWalletApproval(swap, revision);
       } else {
         approveButton.disabled = false;
         approveButton.hidden = false;
