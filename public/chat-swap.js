@@ -575,7 +575,25 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
       const isNearGas = activeChain === "near";
       const gasBalance = balances.get(isNearGas ? "__near_native__" : "__evm_native__:" + activeChain);
       const gasSymbol = isNearGas ? "NEAR" : (NATIVE_EVM_SYMBOLS[activeChain]?.values().next().value || "ETH");
-      const gasRow = el("div", undefined, "swap-token-option swap-token-gas-balance");
+      const wrappedNear = isNearGas
+        ? entries.find(token => String(token.symbol || "").toUpperCase() === "WNEAR")
+        : null;
+      const gasRow = el(wrappedNear ? "button" : "div", undefined,
+        "swap-token-option swap-token-gas-balance" + (wrappedNear ? " is-selectable" : ""));
+      if (wrappedNear) {
+        gasRow.type = "button";
+        gasRow.title = "Select WNEAR, the registry-backed tradable representation of NEAR on this route";
+        gasRow.setAttribute("aria-label", "Select WNEAR for swapping; native NEAR remains the network gas asset");
+        gasRow.addEventListener("click", () => {
+          select.value = wrappedNear.asset_id;
+          select.dispatchEvent(new Event("change", { bubbles: true }));
+          syncTrigger();
+          closePanel();
+          onSelected(wrappedNear);
+        });
+      } else if (isNearGas) {
+        gasRow.title = "Native NEAR is shown for network gas; no WNEAR swap asset is currently listed.";
+      }
       const gasIdentity = el("span", undefined, "swap-token-identity");
       gasIdentity.append(chainLogo(activeChain), el("span", undefined, "swap-token-copy"));
       gasIdentity.lastChild.append(el("strong", gasSymbol), el("small", "Native " + gasSymbol + " · network gas balance"));
