@@ -101,6 +101,16 @@ test("normalizes testnet assets across NEAR, Base and Sui while excluding mainne
   assert.ok(tokens.every(token => token.price_usd > 0));
 });
 
+test("keeps valid testnet assets discoverable when price metadata is temporarily unavailable", () => {
+  const withoutPrice = normalizeTidepoolTokens([
+    { assetId: "nep141:wnear.tidepool-sandbox.testnet", decimals: 24, blockchain: "near", symbol: "wNEAR" },
+    { assetId: "nep141:eth.tidepool-sandbox.testnet", decimals: 18, blockchain: "near", symbol: "ETH", price: null, priceUpdatedAt: null }
+  ]);
+  assert.equal(withoutPrice.length, 2);
+  assert.equal(withoutPrice.find(token => token.symbol === "wNEAR").contract_address, null);
+  assert.equal(withoutPrice.find(token => token.symbol === "ETH").price_usd, null);
+});
+
 test("validates NEAR Intents and cross-chain ORIGIN_CHAIN routes with separate refund and recipient addresses", () => {
   assert.equal(validateTradingQuoteInput(nearInput, tokens, NOW).ok, true);
   const nearToBase = validateTradingQuoteInput(nearToBaseInput, tokens, NOW);
