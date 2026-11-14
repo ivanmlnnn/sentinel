@@ -836,9 +836,9 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   const tokensResponse = await request("/trading/tokens", { method: "GET" });
   const tokens = tokensResponse.tokens;
   if (!Array.isArray(tokens) || !tokens.length) throw new Error("Tidepool did not return a usable testnet token registry.");
-  // Native NEAR is a wallet asset/gas coin, not WNEAR and not a Tidepool
-  // registry token. Keep it selectable as its own UI asset without pretending
-  // the current Tidepool quote API can route it.
+  // Native NEAR remains a distinct wallet asset. Tidepool quotes the
+  // corresponding WNEAR token, with an explicit wrap before deposit or an
+  // explicit Meteor unwrap approval after successful settlement.
   const nativeNearToken = {
     asset_id: "native:near",
     symbol: "NEAR",
