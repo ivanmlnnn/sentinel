@@ -647,7 +647,7 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
     panel.classList.remove("is-mobile-sheet");
   };
   backdrop.addEventListener("click", closePanel);
-  const refreshBalances = async (onlyAssetId = null, requestEvmPermission = false) => {
+  const refreshBalances = async (onlyAssetId = null) => {
     if (refreshState.loading) return;
     refreshState.loading = true;
     refresh.disabled = true;
@@ -657,19 +657,12 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
     const walletAccount = typeof nearWalletAccount === "function" ? nearWalletAccount() : nearWalletAccount;
     let evmAccount = null;
     const evmProvider = getInjectedEvmProvider();
-    // The provider is the source of truth. Do not keep a stale address from a
-    // previous wallet session after accountsChanged, disconnect, or account switch.
-    if (requestEvmPermission && evmProvider?.request) {
-      try {
-        const accounts = await evmProvider.request({ method: "eth_requestAccounts" });
-        evmAccount = evmAddress(accounts?.[0]) ? accounts[0] : null;
-      } catch {
-        balanceStamp.textContent = "EVM wallet connection was not approved";
-      }
-    } else if (evmProvider?.request) {
+    // Read-only account discovery from the existing wallet session. No
+    // permission request, new wallet connection, or provider substitution.
+    if (evmProvider?.request) {
       try {
         const accounts = await evmProvider.request({ method: "eth_accounts" });
-        evmAccount = evmAddress(accounts?.[0]) ? accounts[0] : null;
+        evmAccount = Array.isArray(accounts) && evmAddress(accounts[0]) ? accounts[0] : null;
       } catch { evmAccount = null; }
     }
     cachedEvmAccount = evmAccount;
@@ -734,7 +727,7 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
   });
   // Balance refresh is read-only: never trigger eth_requestAccounts or a
   // second-wallet permission popup from the token picker.
-  refresh.addEventListener("click", () => refreshBalances(null, false));
+  refresh.addEventListener("click", () => refreshBalances());
   syncTrigger(); renderChains(); renderTokens();
   root.append(trigger, select, panel);
   return {
