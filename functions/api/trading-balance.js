@@ -3,9 +3,8 @@ import { getTidepoolTestnetTokens } from "../../src/trading-core.mjs";
 
 const ACCOUNT_RE = /^(?:[a-f0-9]{64}|[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet)$/i;
 const CONTRACT_RE = /^[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet$/i;
-// The legacy near.org public RPC is rate-limited/deprecated for sustained
-// application traffic. Try FastNear first and retain the official endpoint as
-// a fallback so one provider's 429/5xx does not blank every NEAR balance.
+// Use independent Testnet RPC providers in order. A transient 429/5xx or
+// provider-side JSON-RPC failure must not blank every NEAR token balance.
 const NEAR_RPC_URLS = [
   "https://rpc.testnet.fastnear.com",
   "https://rpc.testnet.drpc.org",
