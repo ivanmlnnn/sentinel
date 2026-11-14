@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import tokensHandler from "../api/trading/tokens.js";
+import balanceHandler from "../api/trading/balance.js";
 import { createQuoteHandler } from "../api/trading/quote.js";
 const quoteHandler = createQuoteHandler(async () => ({
   ok: true,
@@ -55,6 +56,46 @@ test("Vercel token route rejects unsupported methods", async () => {
   await tokensHandler({ method: "POST" }, res);
   assert.equal(res.statusCode, 405);
   assert.equal(res.headers.Allow, "GET");
+});
+
+
+test("Vercel balance route exposes the shared NEAR RPC balance reader", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options = {}) => {
+    assert.match(String(url), /rpc\.testnet\.(?:fastnear\.com|near\.org)/);
+    const request = JSON.parse(options.body);
+    assert.equal(request.method, "query");
+    assert.equal(request.params.request_type, "view_account");
+    return new Response(JSON.stringify({
+      result: { amount: "1230000000000000000000000", locked: "0", storage_usage: 1 }
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  try {
+    const res = responseRecorder();
+    await balanceHandler({
+      method: "POST",
+      url: "/api/trading/balance",
+      headers: { host: "sentinel.test", "content-type": "application/json" },
+      body: { accountId: "pilo.testnet", native: true }
+    }, res);
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(res.body, { raw: "1230000000000000000000000", decimals: 24 });
+    assert.equal(res.headers["Cache-Control"], "no-store");
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test("Vercel balance route rejects unsupported methods and oversized requests", async () => {
+  const wrongMethod = responseRecorder();
+  await balanceHandler({ method: "GET", headers: {} }, wrongMethod);
+  assert.equal(wrongMethod.statusCode, 405);
+  assert.equal(wrongMethod.headers.Allow, "POST");
+
+  const tooLarge = responseRecorder();
+  await balanceHandler({
+    method: "POST", url: "/api/trading/balance", headers: {},
+    body: { accountId: "pilo.testnet", padding: "x".repeat(3000) }
+  }, tooLarge);
+  assert.equal(tooLarge.statusCode, 413);
 });
 
 test("Vercel quote route rejects wrong method and oversized bodies", async () => {
