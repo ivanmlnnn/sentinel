@@ -106,7 +106,7 @@ function getEvmProviderLabel(provider) {
 }
 async function connectEvm(refundInput, chain) {
   const provider = getInjectedEvmProvider();
-  if (!provider) throw new Error("The connected Meteor session does not expose an EVM provider to this page. Sentinel will not request or substitute a second wallet.");
+  if (!provider) throw new Error("This route requires an EVM account on " + chain.toUpperCase() + ". The connected Meteor NEAR session is separate; select the NEAR-testnet ETH asset if that is the balance shown in Meteor. Sentinel will not request or substitute a second wallet.");
   selectedEvmProvider = provider;
   // Reuse only an account that the already-connected Meteor provider exposes.
   // Never call eth_requestAccounts here: that would create a second wallet
@@ -479,7 +479,7 @@ async function readSwapWalletBalance(token, nearWalletAccount, request, evmAccou
   const chain = String(token.blockchain || "").toLowerCase();
   if (CHAIN_IDS[chain]) {
     const provider = getInjectedEvmProvider();
-    if (!provider || typeof provider.request !== "function") return { value: null, note: "Meteor NEAR is connected, but no EVM provider is exposed to this Sentinel page. Open Sentinel inside Meteor's supported in-app browser or enable its EVM provider." };
+    if (!provider || typeof provider.request !== "function") return { value: null, note: token.symbol === "ETH" ? "This is Ethereum Sepolia ETH, not Meteor NEAR-testnet ETH. For the ETH balance shown as a NEAR token in Meteor, select ETH · NEAR. Sepolia balance needs an exposed EVM address/provider." : "This asset is on " + chain.toUpperCase() + ", not NEAR Testnet. Meteor NEAR session alone cannot expose its EVM balance; an EVM address/provider is required." };
     const accounts = evmAccountOverride ? [evmAccountOverride] : await provider.request({ method: "eth_accounts" });
     const account = accounts?.[0];
     if (!evmAddress(account)) return { value: null, note: "Connect an EVM wallet to read this address" };
