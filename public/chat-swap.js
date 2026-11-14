@@ -680,6 +680,9 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
 
 export async function renderChatSwap({ prompt, result, request, connector: connectorSource, connectedAccount: accountSource, encodeBase58, guestMode, onWalletConnected, onConnectNearWallet, onDisconnectNearWallet }) {
   const getConnector = () => typeof connectorSource === "function" ? connectorSource() : connectorSource;
+  const handleEvmAccountsChanged = accounts => {
+    activeEvmAccount = evmAddress(accounts?.[0]) ? accounts[0] : null;
+  };
   const getConnectedAccount = () => typeof accountSource === "function" ? accountSource() : accountSource;
   const parsed = parseChatSwapPrompt(prompt);
   const card = el("section", undefined, "developer-trade-draft sentinel-swap-message");
@@ -910,7 +913,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     try {
       if (!activeEvmAccount) {
         const accounts = await getInjectedEvmProvider()?.request?.({ method: "eth_accounts" });
-        if (evmAddress(accounts?.[0])) activeEvmAccount = accounts[0];
+        handleEvmAccountsChanged(accounts);
       }
     } catch {}
     const detected = [activeNearAccount, activeEvmAccount].filter(Boolean);
@@ -987,6 +990,26 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   fields.append(status, approveButton, details); card.append(fields);
   let swap = null, dryQuote = null;
   const invalidate = () => { approveButton.disabled = true; dryQuote = null; swap = null; };
+  const observedEvmProvider = getInjectedEvmProvider();
+  if (observedEvmProvider?.on) {
+    observedEvmProvider.on("accountsChanged", accounts => {
+      handleEvmAccountsChanged(accounts);
+      pendingNearApproval = null;
+      invalidate();
+      walletStateText.textContent = activeEvmAccount ? shortWalletAddress(activeEvmAccount) : (activeNearAccount ? shortWalletAddress(activeNearAccount) : "Wallet not connected");
+      if (!activeEvmAccount && !activeNearAccount) walletState.classList.remove("is-connected");
+      originPicker.refresh();
+      destinationPicker.refresh();
+      status.textContent = "EVM wallet account changed. Previous quote and approval were invalidated. Verify the new wallet before continuing.";
+      refreshConnectLabel();
+    });
+    observedEvmProvider.on("chainChanged", () => {
+      pendingNearApproval = null;
+      invalidate();
+      status.textContent = "EVM network changed. Previous quote and approval were invalidated. Reconnect the intended Testnet network.";
+      refreshConnectLabel();
+    });
+  }
   const refreshConnectLabel = () => {
     const { origin, dest } = defaults();
     const chains = [...new Set([origin?.blockchain, dest?.blockchain].filter(Boolean).map(value => String(value).toLowerCase()))];
