@@ -1343,9 +1343,19 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         throw new Error("Provider deposit type does not match a supported deposit flow. No transaction was sent.");
       }
     } catch (error) {
+      const riskEvaluation = error?.data?.risk_evaluation && typeof error.data.risk_evaluation === "object"
+        ? error.data.risk_evaluation : null;
       const diagnostic = error?.data?.diagnostic && typeof error.data.diagnostic === "object"
         ? error.data.diagnostic : null;
-      if (diagnostic) {
+      if (riskEvaluation) {
+        const failedRiskChecks = Array.isArray(riskEvaluation.checks)
+          ? riskEvaluation.checks.filter(check => check?.status !== "PASS").map(check => check.id)
+          : [];
+        status.textContent = (error.message || "Swap blocked by Sentinel risk policy.") +
+          (failedRiskChecks.length ? " · Failed checks: " + failedRiskChecks.join(", ") : " · Risk decision: " + String(riskEvaluation.decision || "BLOCK"));
+        details.textContent = JSON.stringify({ api_error: error.data, risk_evaluation: riskEvaluation }, null, 2);
+        details.hidden = false;
+      } else if (diagnostic) {
         // Surface the backend's safe, structured failure reason instead of
         // hiding it behind the generic SWAP_AGENT_ONE_UNAVAILABLE message.
         const fields = [
