@@ -27,3 +27,11 @@ test("email login clears a previous Guest marker", () => {
 test("dashboard imports the cache-busted app bundle", () => {
   assert.ok(auth.includes("app.js?v=20261114-chatflow-recovery1"));
 });
+
+
+test("chat form cancels native navigation while app handles the same submit event", () => {
+  const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
+  assert.match(html, /<form id="agentForm" class="agent-chat-form" onsubmit="event\.preventDefault\(\)">/);
+  const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
+  assert.match(app, /agentForm\.addEventListener\('submit', async event => \{\s*event\.preventDefault\(\);/);
+});
