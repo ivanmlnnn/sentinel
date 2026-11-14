@@ -94,11 +94,12 @@ export async function callSentinelAI(env, {
     max_completion_tokens: Math.min(4096, Math.max(128, Number(maxOutputTokens) || 1200)),
     temperature: 0.2,
     // GLM-4.7-Flash can spend the completion budget on reasoning tokens.
-    // Agent reviews require a visible, machine-parseable verdict, not a
-    // hidden reasoning-only completion.
-    chat_template_kwargs: { enable_thinking: false },
-    response_format: { type: "json_object" }
+    // Sentinel's agent calls need a visible verdict, not a reasoning-only completion.
+    chat_template_kwargs: { enable_thinking: false }
   };
+  // JSON mode is only appropriate for review calls. Other Sentinel AI callers
+  // may provide function tools and must retain normal tool-call behavior.
+  if (!tools.length) input.response_format = { type: "json_object" };
   if (tools.length) {
     input.tools = tools.map(tool => ({
       type: "function",
