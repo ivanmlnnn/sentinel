@@ -37,7 +37,7 @@ test("native NEAR and WNEAR symbols never alias during prompt validation", () =>
   assert.equal(promptTokenMatchesSymbol("WNEAR", native), false);
   assert.equal(promptTokenMatchesSymbol("WNEAR", wnear), true);
   const tokens = [native, wnear];
-  assert.equal(resolvePromptSwapAssets(tokens, { from: "NEAR", to: "WNEAR" }), null);
+  assert.deepEqual(resolvePromptSwapAssets(tokens, { from: "NEAR", to: "WNEAR" }), { origin: native, destination: wnear });
   assert.deepEqual(resolvePromptSwapAssets(tokens, { from: "WNEAR", to: "NEAR" }), { origin: wnear, destination: native });
 });
 
