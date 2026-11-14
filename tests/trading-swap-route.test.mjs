@@ -72,15 +72,15 @@ test("percentage shortcuts use exact integer token units and are present for all
   assert.match(swapUi, /formatUnitsForInput\(amountUnits, Number\(origin\.decimals\)\)/);
 });
 
-test("explicit balance refresh requests EVM account access and reuses that address across registry chains", () => {
-  assert.match(swapUi, /refreshBalances = async \(onlyAssetId = null, requestEvmPermission = false\)/);
-  assert.match(swapUi, /eth_requestAccounts/);
+test("balance refresh reuses only an already-authorized EVM session and never requests a second wallet connection", () => {
+  assert.match(swapUi, /refreshBalances = async \(onlyAssetId = null\)/);
+  assert.match(swapUi, /eth_accounts/);
+  assert.doesNotMatch(swapUi, /eth_requestAccounts/);
   assert.match(swapUi, /readSwapWalletBalance\(token, walletAccount, request, evmAccount\)/);
-  assert.match(swapUi, /refresh\.addEventListener\("click", \(\) => refreshBalances\(null, true\)\)/);
 });
 
 test("wallet balance reads never silently claim unsupported chains are connected", () => {
-  assert.match(swapUi, /No EVM provider exposed by this wallet\/browser/);
+  assert.match(swapUi, /No EVM provider exposed to this Sentinel page|does not expose its EVM balance/);
   assert.match(swapUi, /Wallet balance adapter not connected for /);
 });
 
