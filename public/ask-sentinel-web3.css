@@ -236,3 +236,47 @@
 .swap-disconnect-button:disabled{opacity:.55!important;cursor:wait!important}
 .swap-disconnect-button[hidden]{display:none!important}
 @media(max-width:560px){.swap-wallet-bar{align-items:stretch!important;gap:8px!important}.swap-wallet-state{width:100%;min-width:0}.swap-connect-button,.swap-disconnect-button{flex:1 1 135px;min-width:0;padding-inline:10px!important}}
+
+
+/* Swap refinement: mobile token picker behaves as an animated bottom sheet. */
+@media(max-width:640px){
+  .sentinel-swap-message .swap-token-panel.is-mobile-sheet{
+    position:fixed!important;inset:auto 0 0!important;
+    width:100vw!important;max-width:100vw!important;
+    max-height:min(82svh,680px)!important;
+    overflow:hidden!important;overflow-y:auto!important;
+    padding:18px 16px calc(18px + env(safe-area-inset-bottom))!important;
+    border:1px solid rgba(184,228,162,.24)!important;
+    border-bottom:0!important;border-radius:24px 24px 0 0!important;
+    background:rgba(12,20,16,.985)!important;
+    box-shadow:0 -24px 80px rgba(0,0,0,.58),0 0 0 100vmax rgba(0,0,0,.48)!important;
+    transform-origin:bottom center!important;
+    animation:swap-mobile-sheet-in .34s cubic-bezier(.2,.8,.2,1) both!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior:contain!important;
+    z-index:1000!important;
+  }
+  .sentinel-swap-message .swap-token-panel.is-mobile-sheet .swap-token-panel-head{position:sticky;top:-18px;z-index:2;padding:8px 0 12px;background:rgba(12,20,16,.985)}
+  .sentinel-swap-message .swap-token-panel.is-mobile-sheet .swap-chain-options{padding:12px 0;gap:8px}
+  .sentinel-swap-message .swap-token-panel.is-mobile-sheet .swap-chain-chip{min-height:40px;padding:7px 12px!important}
+  .sentinel-swap-message .swap-token-panel.is-mobile-sheet .swap-token-option{min-height:58px;padding:11px 9px!important}
+  .sentinel-swap-message .swap-token-panel.is-mobile-sheet .swap-token-panel-foot{position:sticky;bottom:-18px;padding:12px 0 2px;background:rgba(12,20,16,.985)}
+  .sentinel-swap-message .swap-token-trigger{min-height:48px!important}
+  .sentinel-swap-message .swap-wallet-bar{display:flex!important;align-items:center!important;flex-direction:row!important;flex-wrap:wrap!important;gap:8px!important}
+  .sentinel-swap-message .swap-wallet-state{flex:1 1 100%;font-size:9px!important}
+  .sentinel-swap-message .swap-connect-button{width:auto!important;min-height:34px!important;flex:1 1 auto!important;padding:0 12px!important;font-size:9px!important}
+  .sentinel-swap-message .swap-disconnect-button{min-height:30px!important;flex:0 0 auto!important;padding:0 10px!important;font-size:8px!important;border-radius:9px!important}
+  .sentinel-swap-message .swap-quote-button{width:auto!important;min-height:36px!important;padding:0 13px!important;border-radius:10px!important;font-size:9px!important}
+  .sentinel-swap-message .swap-approve-button{min-height:44px!important;padding:0 14px!important;border-radius:12px!important;font-size:11px!important}
+}
+@keyframes swap-mobile-sheet-in{
+  from{opacity:0;transform:translate3d(0,24px,0) scale(.985)}
+  to{opacity:1;transform:translate3d(0,0,0) scale(1)}
+}
+@media(min-width:641px){
+  .sentinel-swap-message .swap-disconnect-button{min-height:30px!important;padding:0 10px!important;font-size:8px!important;border-radius:9px!important}
+  .sentinel-swap-message .swap-quote-button{min-height:34px!important;padding:0 12px!important;font-size:9px!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .sentinel-swap-message .swap-token-panel.is-mobile-sheet{animation:none!important}
+}
