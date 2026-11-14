@@ -70,6 +70,42 @@ export function resolveInitialSwapToken(tokens, symbol) {
   return matches.find(token => String(token.blockchain).toLowerCase() === preferredChain) ||
     matches.find(token => CHAIN_IDS[String(token.blockchain).toLowerCase()]) || matches[0];
 }
+export function resolveTidepoolSwapAssets(origin, destination, tokens) {
+  const isNativeNear = token => token?.native === true && token.asset_id === "native:near";
+  const nativeNear = tokens.find(token => token.asset_id === "nep141:wnear.tidepool-sandbox.testnet");
+  const wrapNativeNear = isNativeNear(origin);
+  const unwrapNativeNear = isNativeNear(destination);
+  const quoteOrigin = wrapNativeNear ? nativeNear : origin;
+  const quoteDestination = unwrapNativeNear ? nativeNear : destination;
+  if (!quoteOrigin || !quoteDestination) {
+    throw new Error("Tidepool WNEAR is not present in the live Testnet registry; native NEAR cannot be wrapped or unwrapped on this route.");
+  }
+  if (quoteOrigin.asset_id === quoteDestination.asset_id) {
+    throw new Error("The selected route resolves to the same WNEAR asset on both sides. Choose a different token.");
+  }
+  if ((wrapNativeNear || unwrapNativeNear) &&
+      (quoteOrigin.blockchain !== "near" && quoteDestination.blockchain !== "near" ||
+       nativeNear?.blockchain !== "near" ||
+       nativeNear?.contract_address !== "wnear.tidepool-sandbox.testnet")) {
+    throw new Error("Native NEAR conversion requires the verified Tidepool WNEAR Testnet contract.");
+  }
+  return { quoteOrigin, quoteDestination, wrapNativeNear, unwrapNativeNear };
+}
+
+export function buildNearWalletUnwrapActions(amount) {
+  if (typeof amount !== "string" || !/^[1-9][0-9]*$/.test(amount)) {
+    throw new Error("Invalid WNEAR amount for native NEAR withdrawal.");
+  }
+  return [{
+    type: "FunctionCall",
+    params: {
+      methodName: "near_withdraw",
+      args: { amount },
+      gas: "30000000000000",
+      deposit: "1"
+    }
+  }];
+}
 function formatToken(token) {
   return token.native && token.asset_id === "native:near"
     ? "NEAR · NATIVE · TESTNET"
@@ -1199,19 +1235,15 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       if (CHAIN_IDS[destination.blockchain] && !evmAddress(recipient)) throw new Error("Connected destination wallet is not a valid EVM address.");
       if (origin.blockchain === "near" && !nearAccount(refundTo)) throw new Error("Connected origin wallet is not a valid NEAR Testnet account.");
       if (CHAIN_IDS[origin.blockchain] && !evmAddress(refundTo)) throw new Error("Connected origin wallet is not a valid EVM address.");
-      if (destination.native) {
-        throw new Error("Native NEAR cannot be received directly from the Tidepool registry. Select WNEAR as the destination; native NEAR input is wrapped automatically before swap.");
-      }
-      const wrapNativeNear = origin.native === true && origin.asset_id === "native:near";
-      const quoteOrigin = wrapNativeNear
-        ? tokens.find(token => token.asset_id === "nep141:wnear.tidepool-sandbox.testnet")
-        : origin;
-      if (!quoteOrigin) throw new Error("Tidepool WNEAR is unavailable; native NEAR cannot be wrapped for this route.");
-      if (quoteOrigin.blockchain !== "near" || !/^[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet$/i.test(quoteOrigin.contract_address || "")) {
-        throw new Error("Native NEAR wrapping requires the verified Tidepool WNEAR Testnet contract.");
+      const routeAssets = resolveTidepoolSwapAssets(origin, destination, tokens);
+      const { quoteOrigin, quoteDestination, wrapNativeNear, unwrapNativeNear } = routeAssets;
+      if ((wrapNativeNear || unwrapNativeNear) &&
+          quoteOrigin.contract_address !== "wnear.tidepool-sandbox.testnet" &&
+          quoteDestination.contract_address !== "wnear.tidepool-sandbox.testnet") {
+        throw new Error("Native NEAR conversion requires the verified Tidepool WNEAR Testnet contract.");
       }
       const requestBody = {
-        originAsset: quoteOrigin.asset_id, destinationAsset: destination.asset_id,
+        originAsset: quoteOrigin.asset_id, destinationAsset: quoteDestination.asset_id,
         amount: decimalToUnits(amountInput.value.trim(), Number(origin.decimals)),
         recipient, refundTo, slippageTolerance: Number(slippage.value)
       };
@@ -1220,10 +1252,12 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
           dryQuote.origin_chain !== origin.blockchain || dryQuote.destination_chain !== destination.blockchain) {
         throw new Error("Dry quote did not match the selected route.");
       }
-      swap = { ...requestBody, origin: quoteOrigin, displayOrigin: origin, wrapNativeNear, destination };
-      status.textContent = "Route ready: " + origin.blockchain.toUpperCase() + (wrapNativeNear ? " (wrap NEAR → WNEAR)" : "") + " → " + destination.blockchain.toUpperCase() +
+      swap = { ...requestBody, origin: quoteOrigin, displayOrigin: origin, wrapNativeNear,
+        destination: quoteDestination, displayDestination: destination, unwrapNativeNear };
+      status.textContent = "Route ready: " + origin.blockchain.toUpperCase() + (wrapNativeNear ? " (wrap native NEAR → WNEAR)" : "") + " → " + destination.blockchain.toUpperCase() +
+        (unwrapNativeNear ? " (receive WNEAR, then unwrap to native NEAR)" : "") +
         " · " + (dryQuote.quote.amount_in_formatted || dryQuote.quote.amount_in) + " " + (wrapNativeNear ? "NEAR" : origin.symbol) +
-        " → " + (dryQuote.quote.amount_out_formatted || dryQuote.quote.amount_out) + " " + destination.symbol +
+        " → " + (dryQuote.quote.amount_out_formatted || dryQuote.quote.amount_out) + " " + (unwrapNativeNear ? "NEAR" : destination.symbol) +
         ". Security checks run again before wallet approval.";
       details.textContent = JSON.stringify({ route: { origin: formatToken(origin), destination: formatToken(destination) }, dry_quote: dryQuote }, null, 2);
       details.hidden = true;
@@ -1345,7 +1379,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         }
       }, null, 2);
       details.hidden = false;
-      const summary = "SWAP APPROVAL REVIEW\n\n" + (swap.displayOrigin || swap.origin).symbol + (swap.wrapNativeNear ? " (native NEAR → wrap to WNEAR)" : " (" + swap.origin.blockchain + ")") + " → " + swap.destination.symbol + " (" + swap.destination.blockchain + ")\nInput: " +
+      const summary = "SWAP APPROVAL REVIEW\n\n" + (swap.displayOrigin || swap.origin).symbol + (swap.wrapNativeNear ? " (native NEAR → wrap to WNEAR)" : " (" + swap.origin.blockchain + ")") + " → " + (swap.displayDestination || swap.destination).symbol + (swap.unwrapNativeNear ? " (WNEAR → native NEAR after settlement)" : " (" + swap.destination.blockchain + ")") + "\nInput: " +
         (liveQuote.quote.amount_in_formatted || liveQuote.quote.amount_in) + "\nExpected output: " +
         (liveQuote.quote.amount_out_formatted || liveQuote.quote.amount_out) + "\nMinimum output: " +
         liveQuote.quote.minimum_amount_out + "\nRecipient: " + swap.recipient + "\nRefund: " + swap.refundTo +
