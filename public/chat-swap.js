@@ -73,9 +73,9 @@ export function resolveInitialSwapToken(tokens, symbol) {
 export function promptTokenMatchesSymbol(promptSymbol, token) {
   const requested = String(promptSymbol || "").toUpperCase();
   const actual = String(token?.symbol || "").toUpperCase();
-  if (requested === actual) return true;
-  return requested === "NEAR" && actual === "WNEAR" &&
-    String(token?.blockchain || "").toLowerCase() === "near";
+  // Symbols are user intent, not aliases. Native NEAR and WNEAR
+  // are distinct assets; wrapping/unwrapping is handled explicitly later.
+  return requested.length > 0 && requested === actual;
 }
 
 export function resolvePromptSwapAssets(tokens, parsed) {
