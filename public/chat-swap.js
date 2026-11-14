@@ -51,13 +51,11 @@ function decimalToUnits(value, decimals) {
 }
 export function resolveInitialSwapToken(tokens, symbol) {
   const key = String(symbol || "").toUpperCase();
-  let matches = tokens.filter(token => String(token.symbol).toUpperCase() === key);
-  // Tidepool's current NEAR Testnet registry exposes wNEAR, not native NEAR.
-  // Use the wrapped asset only as an explicit registry-backed fallback.
-  if (!matches.length && key === "NEAR") {
-    matches = tokens.filter(token => String(token.symbol).toUpperCase() === "WNEAR" &&
-      String(token.blockchain).toLowerCase() === "near");
+  if (key === "NEAR") {
+    const nativeNear = tokens.find(token => token.native === true && token.asset_id === "native:near");
+    if (nativeNear) return nativeNear;
   }
+  const matches = tokens.filter(token => String(token.symbol).toUpperCase() === key);
   if (!matches.length) return null;
   // Sentinel's connected signer is Meteor's NEAR Testnet session. Prefer a
   // registry-backed NEAR representation (including bridged ETH) so balance
@@ -72,7 +70,11 @@ export function resolveInitialSwapToken(tokens, symbol) {
   return matches.find(token => String(token.blockchain).toLowerCase() === preferredChain) ||
     matches.find(token => CHAIN_IDS[String(token.blockchain).toLowerCase()]) || matches[0];
 }
-function formatToken(token) { return token.symbol + " · " + token.blockchain.toUpperCase() + " · TESTNET"; }
+function formatToken(token) {
+  return token.native && token.asset_id === "native:near"
+    ? "NEAR · NATIVE · TESTNET"
+    : token.symbol + " · " + token.blockchain.toUpperCase() + " · TESTNET";
+}
 function tokenAddressValid(token) {
   return typeof token.contract_address === "string" && /^0x[a-f0-9]{40}$/i.test(token.contract_address);
 }
@@ -575,25 +577,8 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
       const isNearGas = activeChain === "near";
       const gasBalance = balances.get(isNearGas ? "__near_native__" : "__evm_native__:" + activeChain);
       const gasSymbol = isNearGas ? "NEAR" : (NATIVE_EVM_SYMBOLS[activeChain]?.values().next().value || "ETH");
-      const wrappedNear = isNearGas
-        ? entries.find(token => String(token.symbol || "").toUpperCase() === "WNEAR")
-        : null;
-      const gasRow = el(wrappedNear ? "button" : "div", undefined,
-        "swap-token-option swap-token-gas-balance" + (wrappedNear ? " is-selectable" : ""));
-      if (wrappedNear) {
-        gasRow.type = "button";
-        gasRow.title = "Select WNEAR, the registry-backed tradable representation of NEAR on this route";
-        gasRow.setAttribute("aria-label", "Select WNEAR for swapping; native NEAR remains the network gas asset");
-        gasRow.addEventListener("click", () => {
-          select.value = wrappedNear.asset_id;
-          select.dispatchEvent(new Event("change", { bubbles: true }));
-          syncTrigger();
-          closePanel();
-          onSelected(wrappedNear);
-        });
-      } else if (isNearGas) {
-        gasRow.title = "Native NEAR is shown for network gas; no WNEAR swap asset is currently listed.";
-      }
+      const gasRow = el("div", undefined, "swap-token-option swap-token-gas-balance");
+      if (isNearGas) gasRow.title = "Native NEAR balance is shown here and is also available as a separate asset row below.";
       const gasIdentity = el("span", undefined, "swap-token-identity");
       gasIdentity.append(chainLogo(activeChain), el("span", undefined, "swap-token-copy"));
       gasIdentity.lastChild.append(el("strong", gasSymbol), el("small", "Native " + gasSymbol + " · network gas balance"));
@@ -612,7 +597,9 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
       const identity = el("span", undefined, "swap-token-identity");
       identity.append(tokenLogo(token), el("span", undefined, "swap-token-copy"));
       identity.lastChild.append(el("strong", token.symbol), el("small", String(token.name || token.symbol) + " · " + String(token.blockchain).toUpperCase()));
-      const balance = balances.get(token.asset_id);
+      const balance = token.native && token.asset_id === "native:near"
+        ? (balances.get(token.asset_id) || balances.get("__near_native__"))
+        : balances.get(token.asset_id);
       const amount = el("strong", balance?.value !== null && balance?.value !== undefined ? balance.value : "—", "swap-token-balance");
       const note = el("small", balance?.note || "Balance not checked", "swap-token-balance-note");
       const value = el("span", undefined, "swap-token-value");
@@ -777,22 +764,32 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   const tokensResponse = await request("/trading/tokens", { method: "GET" });
   const tokens = tokensResponse.tokens;
   if (!Array.isArray(tokens) || !tokens.length) throw new Error("Tidepool did not return a usable testnet token registry.");
+  // Native NEAR is a wallet asset/gas coin, not WNEAR and not a Tidepool
+  // registry token. Keep it selectable as its own UI asset without pretending
+  // the current Tidepool quote API can route it.
+  const nativeNearToken = {
+    asset_id: "native:near",
+    symbol: "NEAR",
+    name: "Native NEAR",
+    decimals: 24,
+    blockchain: "near",
+    network: "testnet",
+    contract_address: null,
+    native: true
+  };
+  if (!tokens.some(token => token.asset_id === nativeNearToken.asset_id)) tokens.unshift(nativeNearToken);
   const amountInput = document.createElement("input"); amountInput.value = parsed.amount; amountInput.inputMode = "decimal"; amountInput.autocomplete = "off";
   const originSelect = document.createElement("select"), destSelect = document.createElement("select");
   for (const token of tokens) {
     const originOption = el("option", formatToken(token)); originOption.value = String(token.asset_id ?? ""); originSelect.append(originOption);
     const destinationOption = el("option", formatToken(token)); destinationOption.value = String(token.asset_id ?? ""); destSelect.append(destinationOption);
   }
-  // Resolve ticker ambiguity by exact chain identity. NEAR prompts fall back
-  // to registry-backed wNEAR only when native NEAR is absent from Tidepool.
+  // NEAR and WNEAR are separate assets. A NEAR prompt resolves to native
+  // NEAR; WNEAR must be selected explicitly.
   const initialOrigin = resolveInitialSwapToken(tokens, parsed.from);
   const initialDestination = resolveInitialSwapToken(tokens, parsed.to);
   originSelect.value = initialOrigin ? String(initialOrigin.asset_id ?? "") : "";
   destSelect.value = initialDestination ? String(initialDestination.asset_id ?? "") : "";
-  if (String(parsed.to).toUpperCase() === "NEAR" && initialDestination &&
-      String(initialDestination.symbol).toUpperCase() === "WNEAR") {
-    card.append(el("p", "Tidepool does not list native NEAR as a swap asset. wNEAR · NEAR · TESTNET is selected instead; review the exact asset before continuing.", "sentinel-swap-intro"));
-  }
   originSelect.className = "swap-native-select";
   destSelect.className = "swap-native-select";
   // Both token pickers share one balance cache and one scan. A failed NEAR
@@ -1178,6 +1175,9 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       if (CHAIN_IDS[destination.blockchain] && !evmAddress(recipient)) throw new Error("Connected destination wallet is not a valid EVM address.");
       if (origin.blockchain === "near" && !nearAccount(refundTo)) throw new Error("Connected origin wallet is not a valid NEAR Testnet account.");
       if (CHAIN_IDS[origin.blockchain] && !evmAddress(refundTo)) throw new Error("Connected origin wallet is not a valid EVM address.");
+      if (origin.native || destination.native) {
+        throw new Error("Native NEAR is selected separately from WNEAR, but the current Tidepool Testnet registry does not list native NEAR as a tradable asset. Select WNEAR only if you intend to swap the wrapped token.");
+      }
       const requestBody = {
         originAsset: origin.asset_id, destinationAsset: destination.asset_id,
         amount: decimalToUnits(amountInput.value.trim(), Number(origin.decimals)),
