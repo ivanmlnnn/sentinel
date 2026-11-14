@@ -2,25 +2,45 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { onRequestPost } from "../functions/api/trading-balance.js";
 
-async function post(body) {
+async function post(body, env = {}) {
   return onRequestPost({
     request: new Request("https://sentinel.test/api/trading-balance", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body)
-    })
+    }),
+    env
   });
 }
 
 test("reads a named NEAR Testnet account balance", async () => {
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () => new Response(JSON.stringify({
-    result: { amount: "1000000000000000000000000", locked: "0", storage_usage: 1, block_height: 7, block_hash: "test" }
-  }), { status: 200, headers: { "content-type": "application/json" } });
+  let requestedUrl = "";
+  globalThis.fetch = async (url, options = {}) => {
+    requestedUrl = String(url);
+    assert.equal(options.headers.authorization, "Bearer test-nearblocks-key");
+    assert.equal(options.headers.accept, "application/json");
+    return new Response(JSON.stringify({
+      data: {
+        account_id: "pilo.testnet",
+        amount: "1000000000000000000000000",
+        amount_staked: "0",
+        storage_usage: "304"
+      }
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  };
   try {
-    const response = await post({ accountId: "pilo.testnet", native: true });
+    const response = await post(
+      { accountId: "pilo.testnet", native: true },
+      { NEAR_NETWORK: "testnet", NEARBLOCKS_API_KEY: "test-nearblocks-key" }
+    );
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { raw: "1000000000000000000000000", decimals: 24 });
+    assert.deepEqual(await response.json(), {
+      raw: "1000000000000000000000000",
+      decimals: 24,
+      source: "NearBlocks v3"
+    });
+    assert.equal(requestedUrl, "https://api-testnet.nearblocks.io/v3/accounts/pilo.testnet/balance");
   } finally { globalThis.fetch = originalFetch; }
 });
 
@@ -38,7 +58,7 @@ test("reads EVM native balances through the selected fixed Testnet RPC", async (
   try {
     const response = await post({ accountId: "0x1111111111111111111111111111111111111111", native: true, blockchain: "base" });
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { raw: "1000000000000000000", decimals: 18 });
+    assert.deepEqual(await response.json(), { raw: "1000000000000000000", decimals: 18, source: "EVM JSON-RPC" });
     assert.equal(rpcUrl, "https://sepolia.base.org");
   } finally { globalThis.fetch = originalFetch; }
 });
@@ -61,26 +81,35 @@ test("reads all six NEAR Testnet NEP-141 assets as separate balances from the co
     { assetId: "nep141:xaut.tidepool-sandbox.testnet", decimals: 6, blockchain: "near", symbol: "XAUT", contractAddress: "xaut.tidepool-sandbox.testnet", expected: "1000000" }
   ];
   globalThis.fetch = async (url, options = {}) => {
-    if (String(url) === "https://www.usetidepool.tech/v0/tokens") {
+    const requestUrl = new URL(String(url));
+    if (requestUrl.origin === "https://www.usetidepool.tech" && requestUrl.pathname === "/v0/tokens") {
       return new Response(JSON.stringify(assets.map(({ expected, ...token }) => token)), {
         status: 200, headers: { "content-type": "application/json" }
       });
     }
-    const rpc = JSON.parse(options.body);
-    assert.equal(rpc.method, "query");
-    assert.equal(rpc.params.request_type, "call_function");
-    const asset = assets.find(item => item.contractAddress === rpc.params.account_id);
-    assert.ok(asset, "NEAR token contract must match the selected registry asset");
-    assert.equal(rpc.params.method_name, "ft_balance_of");
+    assert.equal(requestUrl.origin, "https://api-testnet.nearblocks.io");
+    assert.equal(requestUrl.pathname, "/v3/accounts/pilo.testnet/assets/fts");
+    assert.equal(requestUrl.searchParams.get("limit"), "100");
+    assert.equal(options.headers.authorization, "Bearer test-nearblocks-key");
     return new Response(JSON.stringify({
-      result: { result: Array.from(new TextEncoder().encode(JSON.stringify(asset.expected))) }
+      data: assets.map(asset => ({
+        contract: asset.contractAddress,
+        amount: asset.expected
+      }))
     }), { status: 200, headers: { "content-type": "application/json" } });
   };
   try {
     for (const asset of assets) {
-      const response = await post({ accountId: "pilo.testnet", assetId: asset.assetId });
+      const response = await post(
+        { accountId: "pilo.testnet", assetId: asset.assetId },
+        { NEAR_NETWORK: "testnet", NEARBLOCKS_API_KEY: "test-nearblocks-key" }
+      );
       assert.equal(response.status, 200);
-      assert.deepEqual(await response.json(), { raw: asset.expected, decimals: asset.decimals });
+      assert.deepEqual(await response.json(), {
+        raw: asset.expected,
+        decimals: asset.decimals,
+        source: "NearBlocks v3"
+      });
     }
   } finally { globalThis.fetch = originalFetch; }
 });
