@@ -25,5 +25,5 @@ test("email login clears a previous Guest marker", () => {
 });
 
 test("dashboard imports the cache-busted app bundle", () => {
-  assert.ok(auth.includes("app.js?v=20261114-worker-routefix1"));
+  assert.ok(auth.includes("app.js?v=20261114-chatflow-recovery1"));
 });
