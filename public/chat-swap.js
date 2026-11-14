@@ -334,7 +334,8 @@ async function executeNearWalletDeposit(args) {
       receiverId: swap.origin.contract_address,
       actions: buildNearWalletDepositActions(swap.amount, liveQuote.deposit_address, swap.wrapNativeNear)
     },
-    connectedAccount, liveQuote, swap
+    connectedAccount, liveQuote, swap,
+    walletManifest: snapshot?.wallet?.manifest || null
   };
 }
 async function finishNearWalletDeposit(walletApproval, prepared, args) {
@@ -1185,6 +1186,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   const approveButton = el("button", "Approve swap", "primary-btn swap-approve-button"); approveButton.type = "button"; approveButton.disabled = true; approveButton.hidden = true;
   let pendingNearApproval = null;
   let pendingNearUnwrap = null;
+  let nearApprovalWatchdog = null;
   const prepareNativeNearUnwrap = async ({ swap: completedSwap, settled }) => {
     const settlementStatus = String(settled?.status || "").toUpperCase();
     const isNativeOutput = settlementStatus === "SUCCESS" && completedSwap?.unwrapNativeNear;
@@ -1515,17 +1517,52 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         // Keep the explicit signer bound to the account checked during
         // preflight. Meteor's NEAR Connect adapter uses this account for the
         // exact transaction; no callback redirect or second wallet is needed.
+        // Keep the wallet request as the first asynchronous operation after the
+        // synchronous call in this tap. NEAR Connect forwards this to Meteor's
+        // transaction bridge; callbackUrl is intentionally not used by Meteor.
+        const walletName = prepared.walletManifest?.name || "Meteor / connected NEAR wallet";
+        console.info("[Sentinel swap] Requesting Meteor approval", {
+          wallet: walletName,
+          signer: prepared.transaction.signerId,
+          receiver: prepared.transaction.receiverId,
+          actionCount: prepared.transaction.actions.length
+        });
         const walletApproval = prepared.wallet.signAndSendTransaction({
           signerId: prepared.transaction.signerId,
           receiverId: prepared.transaction.receiverId,
           actions: prepared.transaction.actions
         });
-        status.textContent = "Opening Meteor. Review and approve the exact NEAR Testnet transfer…";
-        await finishNearWalletDeposit(walletApproval, prepared, {
-          request, statusNode: status, detailsNode: details,
-          onSubmitted: () => { approveButton.textContent = "Swap submitted · status tracked"; },
-          onNativeNearOutput: prepareNativeNearUnwrap
-        });
+        let walletPromptSettled = false;
+        const observedWalletApproval = Promise.resolve(walletApproval).then(
+          result => { walletPromptSettled = true; return result; },
+          error => { walletPromptSettled = true; throw error; }
+        );
+        status.textContent = "Sending the exact NEAR Testnet transaction to " + walletName + " for approval…";
+        if (nearApprovalWatchdog) window.clearTimeout(nearApprovalWatchdog);
+        nearApprovalWatchdog = window.setTimeout(() => {
+          if (!walletPromptSettled) {
+            status.textContent = "Meteor has not returned an approval response yet. If the wallet did not open, the wallet bridge handoff is stalled. Do not tap Approve again or submit a duplicate transaction; check Meteor activity first.";
+            details.textContent = JSON.stringify({
+              wallet_handoff: "PENDING_NO_WALLET_RESPONSE",
+              wallet: walletName,
+              signer: prepared.transaction.signerId,
+              receiver: prepared.transaction.receiverId,
+              created_at: new Date().toISOString(),
+              safety: "No transaction success is assumed. Do not retry until wallet activity is checked."
+            }, null, 2);
+            details.hidden = false;
+          }
+        }, 12000);
+        try {
+          await finishNearWalletDeposit(observedWalletApproval, prepared, {
+            request, statusNode: status, detailsNode: details,
+            onSubmitted: () => { approveButton.textContent = "Swap submitted · status tracked"; },
+            onNativeNearOutput: prepareNativeNearUnwrap
+          });
+        } finally {
+          if (nearApprovalWatchdog) window.clearTimeout(nearApprovalWatchdog);
+          nearApprovalWatchdog = null;
+        }
       } catch (error) {
         if (Date.parse(prepared.liveQuote?.deadline) > Date.now()) pendingNearApproval = prepared;
         status.textContent = error?.message || "Meteor approval was cancelled or failed. Check wallet activity before retrying.";
