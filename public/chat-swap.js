@@ -500,6 +500,20 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
   let activeChain = tokenList.find(token => token.asset_id === select.value)?.blockchain || chains[0] || "";
   const balances = new Map();
   let cachedEvmAccount = null;
+  const balanceEvmProvider = getInjectedEvmProvider();
+  if (balanceEvmProvider?.on) {
+    balanceEvmProvider.on("accountsChanged", accounts => {
+      cachedEvmAccount = evmAddress(accounts?.[0]) ? accounts[0] : null;
+      for (const token of tokenList) if (CHAIN_IDS[String(token.blockchain || "").toLowerCase()]) balances.delete(token.asset_id);
+      for (const key of [...balances.keys()]) if (key.startsWith("__evm_native__:")) balances.delete(key);
+      renderTokens();
+    });
+    balanceEvmProvider.on("chainChanged", () => {
+      for (const token of tokenList) if (CHAIN_IDS[String(token.blockchain || "").toLowerCase()]) balances.delete(token.asset_id);
+      for (const key of [...balances.keys()]) if (key.startsWith("__evm_native__:")) balances.delete(key);
+      renderTokens();
+    });
+  }
   let loading = false;
   const selectedToken = () => tokenList.find(token => token.asset_id === select.value);
   const syncTrigger = () => {
@@ -1030,6 +1044,30 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   fields.append(status, approveButton, details); card.append(fields);
   let swap = null, dryQuote = null;
   const invalidate = () => { approveButton.disabled = true; dryQuote = null; swap = null; };
+  const observedNearConnector = getConnector();
+  observedNearConnector?.on?.("wallet:signIn", event => {
+    const accountId = event?.accounts?.[0]?.accountId;
+    activeNearAccount = nearAccount(accountId) ? accountId : null;
+    pendingNearApproval = null;
+    invalidate();
+    walletStateText.textContent = activeNearAccount ? shortWalletAddress(activeNearAccount) : (activeEvmAccount ? shortWalletAddress(activeEvmAccount) : "Wallet not connected");
+    walletState.classList.toggle("is-connected", Boolean(activeNearAccount || activeEvmAccount));
+    originPicker.refresh();
+    destinationPicker.refresh();
+    status.textContent = "NEAR wallet session updated. Balances are being refreshed; request a new quote before approval.";
+    refreshConnectLabel();
+  });
+  observedNearConnector?.on?.("wallet:signOut", () => {
+    activeNearAccount = null;
+    pendingNearApproval = null;
+    invalidate();
+    walletStateText.textContent = activeEvmAccount ? shortWalletAddress(activeEvmAccount) : "Wallet not connected";
+    walletState.classList.toggle("is-connected", Boolean(activeEvmAccount));
+    originPicker.refresh();
+    destinationPicker.refresh();
+    status.textContent = "NEAR wallet disconnected. Previous quote and approval were invalidated.";
+    refreshConnectLabel();
+  });
   const observedEvmProvider = getInjectedEvmProvider();
   if (observedEvmProvider?.on) {
     observedEvmProvider.on("accountsChanged", accounts => {
