@@ -32,7 +32,7 @@ test("long-running two-agent endpoints are not aborted by the old 10-second clie
   assert.match(app, /path === '\/trading\/agent' \|\| path === '\/trading\/live-quote' \? 60000/);
 });
 
-test("Meteor approval launches directly in the second tap without an awaited operation first", () => {
+test("Meteor approval launches directly on the Approve tap without an awaited operation first", () => {
   const approvalStart = swapUi.indexOf('if (pendingNearApproval)');
   const approvalEnd = swapUi.indexOf('\n    approveButton.disabled = true; quoteButton.disabled = true;\n    let submitted = false;', approvalStart);
   const approval = swapUi.slice(approvalStart, approvalEnd);
@@ -132,4 +132,24 @@ test("native NEAR unwrap approval button is revealed after recovered settlement 
   const prepare = swapUi.slice(prepareStart, prepareEnd);
   assert.match(prepare, /approveButton\.hidden = false/);
   assert.match(prepare, /approveButton\.disabled = false/);
+});
+
+
+test("NEAR live quote, dual-agent review and wallet transaction preparation finish before the Approve tap", () => {
+  const prepareStart = swapUi.indexOf("const prepareNearWalletApproval = async");
+  const prepareEnd = swapUi.indexOf("  originSelect.addEventListener", prepareStart);
+  const prepare = swapUi.slice(prepareStart, prepareEnd);
+  assert.match(prepare, /request\("\/trading\/live-quote"/);
+  assert.match(prepare, /dualReview\?\.agent_one\?\.verdict !== "PASS"/);
+  assert.match(prepare, /dualReview\?\.agent_two\?\.verdict !== "PASS"/);
+  assert.match(prepare, /pendingNearApproval = await executeNearWalletDeposit/);
+  const quoteStart = swapUi.indexOf('quoteButton.addEventListener("click"');
+  const quoteEnd = swapUi.indexOf('approveButton.addEventListener("click"', quoteStart);
+  const quoteHandler = swapUi.slice(quoteStart, quoteEnd);
+  assert.match(quoteHandler, /await prepareNearWalletApproval\(swap\)/);
+  const approvalStart = quoteEnd;
+  const approvalEnd = swapUi.indexOf("if (pendingNearApproval)", approvalStart);
+  const approvalHandler = swapUi.slice(approvalStart, swapUi.indexOf("approveButton.addEventListener", approvalStart + 1) < 0 ? undefined : approvalStart);
+  assert.ok(approvalEnd > approvalStart);
+  assert.match(swapUi.slice(approvalEnd, approvalEnd + 1600), /prepared\.wallet\.signAndSendTransaction\(/);
 });
