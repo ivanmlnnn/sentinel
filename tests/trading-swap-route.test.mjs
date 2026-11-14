@@ -188,3 +188,9 @@ test("native NEAR unwrap action builder is exported and binds an exact positive 
   assert.throws(() => buildNearWalletUnwrapActions("0"), /INVALID_WNEAR_UNWRAP_AMOUNT/);
   assert.throws(() => buildNearWalletUnwrapActions("1.5"), /INVALID_WNEAR_UNWRAP_AMOUNT/);
 });
+
+test("Pre-Order controls mount in the dashboard workspace rather than inside the chat result", () => {
+  assert.match(html, /id="preOrdersDashboardMount"/);
+  assert.match(swapUi, /getElementById\("preOrdersDashboardMount"\)/);
+  assert.match(swapUi, /preOrdersDashboardMount\.replaceChildren\(preOrderPanel\)/);
+});
