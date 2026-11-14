@@ -231,13 +231,19 @@ async function executeNearWalletDeposit(args) {
       liveQuote.quote_request?.originAsset !== swap.originAsset) {
     throw new Error("Live quote amount or origin asset does not match the reviewed request.");
   }
-  const walletTokenBalance = await readSwapWalletBalance(swap.origin, connectedAccount, request);
-  if (!walletTokenBalance.raw || BigInt(walletTokenBalance.raw) < BigInt(swap.amount)) {
-    throw new Error("Meteor wallet balance is insufficient for the exact quoted amount. Refresh balances and choose a smaller amount.");
-  }
-  const nativeGasBalance = await readSwapWalletBalance(
-    { blockchain: "near", symbol: "NEAR", decimals: 24, contract_address: null }, connectedAccount, request
+  const nativeNearAsset = { blockchain: "near", symbol: "NEAR", decimals: 24, contract_address: null };
+  const walletTokenBalance = await readSwapWalletBalance(
+    swap.wrapNativeNear ? nativeNearAsset : swap.origin, connectedAccount, request
   );
+  const requiredBalance = BigInt(swap.amount) + (swap.wrapNativeNear ? 10n ** 22n : 0n);
+  if (!walletTokenBalance.raw || BigInt(walletTokenBalance.raw) < requiredBalance) {
+    throw new Error(swap.wrapNativeNear
+      ? "Native NEAR balance must cover the wrap amount plus at least 0.01 NEAR for transaction gas."
+      : "Meteor wallet balance is insufficient for the exact quoted amount. Refresh balances and choose a smaller amount.");
+  }
+  const nativeGasBalance = swap.wrapNativeNear
+    ? walletTokenBalance
+    : await readSwapWalletBalance(nativeNearAsset, connectedAccount, request);
   if (!nativeGasBalance.raw || BigInt(nativeGasBalance.raw) <= 0n) {
     throw new Error("Meteor account has no native NEAR for Testnet transaction gas.");
   }
@@ -255,19 +261,30 @@ async function executeNearWalletDeposit(args) {
     transaction: {
       signerId: connectedAccount,
       receiverId: swap.origin.contract_address,
-      actions: [{
-        type: "FunctionCall",
-        params: {
-          methodName: "ft_transfer_call",
-          args: {
-            receiver_id: "verifier.tidepool-sandbox.testnet",
-            amount: swap.amount,
-            msg: liveQuote.deposit_address
-          },
-          gas: "100000000000000",
-          deposit: "1"
+      actions: [
+        ...(swap.wrapNativeNear ? [{
+          type: "FunctionCall",
+          params: {
+            methodName: "near_deposit",
+            args: {},
+            gas: "30000000000000",
+            deposit: swap.amount
+          }
+        }] : []),
+        {
+          type: "FunctionCall",
+          params: {
+            methodName: "ft_transfer_call",
+            args: {
+              receiver_id: "verifier.tidepool-sandbox.testnet",
+              amount: swap.amount,
+              msg: liveQuote.deposit_address
+            },
+            gas: "100000000000000",
+            deposit: "1"
+          }
         }
-      }]
+      ]
     },
     connectedAccount, liveQuote, swap
   };
@@ -1175,11 +1192,19 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       if (CHAIN_IDS[destination.blockchain] && !evmAddress(recipient)) throw new Error("Connected destination wallet is not a valid EVM address.");
       if (origin.blockchain === "near" && !nearAccount(refundTo)) throw new Error("Connected origin wallet is not a valid NEAR Testnet account.");
       if (CHAIN_IDS[origin.blockchain] && !evmAddress(refundTo)) throw new Error("Connected origin wallet is not a valid EVM address.");
-      if (origin.native || destination.native) {
-        throw new Error("Native NEAR is selected separately from WNEAR, but the current Tidepool Testnet registry does not list native NEAR as a tradable asset. Select WNEAR only if you intend to swap the wrapped token.");
+      if (destination.native) {
+        throw new Error("Native NEAR cannot be received directly from the Tidepool registry. Select WNEAR as the destination; native NEAR input is wrapped automatically before swap.");
+      }
+      const wrapNativeNear = origin.native === true && origin.asset_id === "native:near";
+      const quoteOrigin = wrapNativeNear
+        ? tokens.find(token => token.asset_id === "nep141:wnear.tidepool-sandbox.testnet")
+        : origin;
+      if (!quoteOrigin) throw new Error("Tidepool WNEAR is unavailable; native NEAR cannot be wrapped for this route.");
+      if (quoteOrigin.blockchain !== "near" || !/^[a-z0-9]+(?:[-_.][a-z0-9]+)*\\.testnet$/i.test(quoteOrigin.contract_address || "")) {
+        throw new Error("Native NEAR wrapping requires the verified Tidepool WNEAR Testnet contract.");
       }
       const requestBody = {
-        originAsset: origin.asset_id, destinationAsset: destination.asset_id,
+        originAsset: quoteOrigin.asset_id, destinationAsset: destination.asset_id,
         amount: decimalToUnits(amountInput.value.trim(), Number(origin.decimals)),
         recipient, refundTo, slippageTolerance: Number(slippage.value)
       };
@@ -1188,9 +1213,9 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
           dryQuote.origin_chain !== origin.blockchain || dryQuote.destination_chain !== destination.blockchain) {
         throw new Error("Dry quote did not match the selected route.");
       }
-      swap = { ...requestBody, origin, destination };
-      status.textContent = "Route ready: " + origin.blockchain.toUpperCase() + " → " + destination.blockchain.toUpperCase() +
-        " · " + (dryQuote.quote.amount_in_formatted || dryQuote.quote.amount_in) + " " + origin.symbol +
+      swap = { ...requestBody, origin: quoteOrigin, displayOrigin: origin, wrapNativeNear, destination };
+      status.textContent = "Route ready: " + origin.blockchain.toUpperCase() + (wrapNativeNear ? " (wrap NEAR → WNEAR)" : "") + " → " + destination.blockchain.toUpperCase() +
+        " · " + (dryQuote.quote.amount_in_formatted || dryQuote.quote.amount_in) + " " + (wrapNativeNear ? "NEAR" : origin.symbol) +
         " → " + (dryQuote.quote.amount_out_formatted || dryQuote.quote.amount_out) + " " + destination.symbol +
         ". Security checks run again before wallet approval.";
       details.textContent = JSON.stringify({ route: { origin: formatToken(origin), destination: formatToken(destination) }, dry_quote: dryQuote }, null, 2);
