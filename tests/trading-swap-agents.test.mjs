@@ -118,3 +118,31 @@ test("Agent 2 invalid output fails closed with schema diagnostics after one retr
   assert.equal(result.diagnostic.parse_reason, "AGENT_TWO_SCHEMA_INVALID");
   assert.equal(ai.calls.length, 3);
 });
+
+test("reversed ETH-to-NEAR prompt cannot pass a WNEAR-to-ETH provider route", async () => {
+  const reversedInput = {
+    ...quoteInput,
+    originAsset: "near-test",
+    destinationAsset: "eth-test"
+  };
+  const reversedQuote = {
+    ...liveQuote,
+    origin_chain: "near",
+    destination_chain: "eth",
+    quote: { ...liveQuote.quote, amount_in: reversedInput.amount }
+  };
+  const ai = aiMock([agentOnePass, agentTwoPass]);
+  const result = await runDualAgentSwapReview({
+    prompt: "swap 0.1 ETH to NEAR",
+    quoteInput: reversedInput,
+    liveQuote: reversedQuote,
+    tokens,
+    aiCall: ai.run,
+    now: Date.parse("2026-11-14T11:00:00.000Z")
+  });
+  assert.equal(result.ok, false);
+  assert.ok(result.value.failed_checks.includes("ORIGIN_SYMBOL_MATCHES"));
+  assert.ok(result.value.failed_checks.includes("DESTINATION_SYMBOL_MATCHES"));
+  assert.equal(result.value.execution_authorized, false);
+});
+
