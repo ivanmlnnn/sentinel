@@ -5,17 +5,27 @@ export async function onRequestGet({ request, env }) {
   const identity = await verifyPrivyAccessToken(request, env);
   if (!identity) return json({ error: "UNAUTHORIZED" }, 401);
   if (!env.DB) return json({ error: "DATABASE_NOT_CONFIGURED" }, 503);
-  const rows = await env.DB.prepare(
-    "SELECT id, wallet_address, wallet_chain, trigger_type, scheduled_at, trigger_asset_id, trigger_direction, target_price_usd, status, trigger_observed_price_usd, trigger_observed_at, review_status, session_authorization_status, execution_status, created_at, updated_at, triggered_at, cancelled_at FROM trading_preorders WHERE actor = ? ORDER BY created_at DESC LIMIT 100"
-  ).bind(identity.sub).all();
-  return json({ orders: rows.results || [] });
+  try {
+    const rows = await env.DB.prepare(
+      "SELECT id, wallet_address, wallet_chain, trigger_type, scheduled_at, trigger_asset_id, trigger_direction, target_price_usd, status, trigger_observed_price_usd, trigger_observed_at, review_status, session_authorization_status, execution_status, created_at, updated_at, triggered_at, cancelled_at FROM trading_preorders WHERE actor = ? ORDER BY created_at DESC LIMIT 100"
+    ).bind(identity.sub).all();
+    return json({ orders: rows.results || [] });
+  } catch (error) {
+    console.error("preorder_database_read_failed", { name: error?.name || "Error", message: String(error?.message || "Database read failed").slice(0, 180) });
+    return json({ error: "PREORDER_DATABASE_READ_FAILED", migration: "0010_trading_preorders.sql" }, 503);
+  }
 }
 
 async function cancelOrder(env, actor, id) {
-  const result = await env.DB.prepare(
-    "UPDATE trading_preorders SET status = 'CANCELLED', cancelled_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND actor = ? AND status = 'HELD'"
-  ).bind(id, actor).run();
-  return result.meta?.changes > 0;
+  try {
+    const result = await env.DB.prepare(
+      "UPDATE trading_preorders SET status = 'CANCELLED', cancelled_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND actor = ? AND status = 'HELD'"
+    ).bind(id, actor).run();
+    return result.meta?.changes > 0;
+  } catch (error) {
+    console.error("preorder_database_cancel_failed", { name: error?.name || "Error", message: String(error?.message || "Database cancel failed").slice(0, 180) });
+    throw new Error("PREORDER_DATABASE_CANCEL_FAILED");
+  }
 }
 
 export async function onRequestPost({ request, env }) {
@@ -35,11 +45,16 @@ export async function onRequestPost({ request, env }) {
   if (!validated.ok) return json({ error: validated.reason }, 400);
   const order = validated.value;
   const id = crypto.randomUUID();
-  await env.DB.prepare(
-    "INSERT INTO trading_preorders (id, actor, wallet_address, wallet_chain, trigger_type, scheduled_at, trigger_asset_id, trigger_direction, target_price_usd, swap_intent, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'HELD')"
-  ).bind(id, identity.sub, order.walletAddress, order.walletChain, order.triggerType,
-    order.scheduledAt || null, order.triggerAssetId || null, order.triggerDirection || null,
-    order.targetPriceUsd ?? null, JSON.stringify(order.swapIntent)).run();
+  try {
+    await env.DB.prepare(
+      "INSERT INTO trading_preorders (id, actor, wallet_address, wallet_chain, trigger_type, scheduled_at, trigger_asset_id, trigger_direction, target_price_usd, swap_intent, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'HELD')"
+    ).bind(id, identity.sub, order.walletAddress, order.walletChain, order.triggerType,
+      order.scheduledAt || null, order.triggerAssetId || null, order.triggerDirection || null,
+      order.targetPriceUsd ?? null, JSON.stringify(order.swapIntent)).run();
+  } catch (error) {
+    console.error("preorder_database_insert_failed", { name: error?.name || "Error", message: String(error?.message || "Database insert failed").slice(0, 180) });
+    return json({ error: "PREORDER_DATABASE_WRITE_FAILED", migration: "0010_trading_preorders.sql" }, 503);
+  }
   return json({
     id, status: "HELD", review_status: "PENDING",
     session_authorization_status: "NOT_CONFIGURED",
@@ -58,8 +73,12 @@ export async function onRequestDelete({ request, env }) {
   let body;
   try { body = JSON.parse(bodyResult.text); } catch { return json({ error: "INVALID_JSON" }, 400); }
   if (typeof body?.id !== "string" || Object.keys(body).some(key => key !== "id")) return json({ error: "INVALID_CANCEL_REQUEST" }, 400);
-  if (!await cancelOrder(env, identity.sub, body.id)) return json({ error: "ORDER_NOT_CANCELLABLE" }, 409);
-  return json({ id: body.id, status: "CANCELLED" });
+  try {
+    if (!await cancelOrder(env, identity.sub, body.id)) return json({ error: "ORDER_NOT_CANCELLABLE" }, 409);
+    return json({ id: body.id, status: "CANCELLED" });
+  } catch {
+    return json({ error: "PREORDER_DATABASE_CANCEL_FAILED", migration: "0010_trading_preorders.sql" }, 503);
+  }
 }
 
 export async function runPreOrderScheduler(env, now = Date.now()) {
