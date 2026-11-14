@@ -1,44 +1,85 @@
 # Multi-chain Execution Status — Honest Capability Matrix
 
-## Current status
+> **Status snapshot: 15 November 2026 · feature branch:** `feature/sentinel-trading-core-lab`
+>
+> This document describes code present on the feature branch, not a production release. “Implemented” means the code path exists; it does not mean a real wallet approval or successful provider settlement has been demonstrated.
 
-Sentinel discovers live Testnet assets from Tidepool and binds each quote to exact origin/destination asset IDs, amount, recipient, refund address, slippage and deadline. Quote support is not the same as wallet execution support.
+## Current release state
 
-| Capability | Current status | Evidence / boundary |
+The swap flow is separated into explicit stages:
+
+1. **Route preview** — load the live Tidepool Testnet token registry, resolve the requested origin/destination assets and request a dry quote. This stage does not ask the wallet to sign or send.
+2. **Approve / live review** — after the user presses **Approve**, request a fresh signed live quote and run the independent Agent 1 and Agent 2 reviews plus deterministic quote/risk checks.
+3. **Wallet confirmation** — only a fully valid review with Agent 1 `PASS`, Agent 2 `PASS`, Agent 2 risk `LOW`, and no deterministic failed checks may expose the wallet approval/signing step. The wallet must show the exact transaction/message for the user to confirm.
+4. **Submission and settlement** — submit the signed NEAR intent or EVM transaction reference to Tidepool, then poll provider status. A review PASS, wallet popup, wallet signature, or transaction hash is **not** settlement success. Only provider-reported `SUCCESS` is.
+
+The approval gate is implemented in the feature-branch source. It is not an automatic trade: `execution_authorized` remains false at the dual-agent review boundary, and neither agent can sign or submit on the user's behalf.
+
+## Asset identity and route correctness — critical gate
+
+- Native **NEAR** and **WNEAR** are different assets and must remain distinguishable in the UI, registry resolution, quote request, agent review, and wallet transaction.
+- A prompt requesting native NEAR must not silently become a WNEAR destination (or origin). A WNEAR route is acceptable only when the user explicitly selects WNEAR or explicitly confirms a documented wrap/unwrap step.
+- The origin and destination must match the user's requested direction exactly. For example, `ETH → NEAR` must never be accepted as `WNEAR → ETH`.
+- The latest observed dual-agent review veto reported both a destination-symbol mismatch (`NEAR` versus selected `wNEAR`) and a reversed route. This is a valid fail-closed rejection, **not** a successful approval test.
+- Native NEAR direct Tidepool swap support, including any explicit wrap/unwrap transaction and its verification, remains **unverified** until the exact native-asset route is present in the provider registry and exercised end to end. Do not describe native NEAR and WNEAR as interchangeable.
+
+## Wallet and chain capability matrix
+
+| Capability | Status | Evidence boundary / next acceptance gate |
 |---|---|---|
-| Tidepool Testnet token discovery | Implemented | Live `/v0/tokens` registry; unsupported/malformed entries are filtered |
-| Chain-specific recipient/refund validation | Implemented | Backend validates NEAR, EVM, Solana, Sui, Stellar, XRP and Bitcoin address formats |
-| Cross-chain dry/live quote | Implemented | Server verifies Tidepool quote signature and exact request binding |
-| NEAR-origin Intents signing | Implemented in chat flow | NEP-413 signing via NEAR Connect; Meteor is available through the NEAR wallet picker |
-| EVM-origin deposit | Implemented in chat flow, not E2E verified | EIP-1193 wallet; Sepolia, Base Sepolia, Arbitrum Sepolia and BSC Testnet; native transfer or ERC-20 transfer to the exact quote deposit address |
-| Multi-chain destination recipient | Implemented at quote layer | Destination address is selected/validated for the destination chain; depends on the live Tidepool token registry |
-| Solana-origin wallet signing | Not implemented in Sentinel chat | Quote, exact deposit instructions and transaction-hash tracking are available; wallet signing remains manual |
-| Sui-origin wallet signing | Not implemented in Sentinel chat | Quote, exact deposit instructions and transaction-hash tracking are available; wallet signing remains manual |
-| Stellar/XRP/Bitcoin-origin wallet signing | Not implemented in Sentinel chat | Quote, memo/tag instructions and transaction-hash tracking are available; wallet signing remains manual |
-| Tidepool deposit notification and status polling | Implemented for NEAR Intents and EVM deposit paths | NEAR uses `/v0/submit-intent`; EVM uses `/v0/deposit/submit`; both poll `/v0/status` |
-| End-to-end settlement | Not yet verified | Requires funded Testnet wallet runs and provider-confirmed `SUCCESS` for each origin adapter |
+| Tidepool Testnet token discovery | Implemented on feature branch | Reads provider registry; verify the selected asset IDs and symbols against the user's exact prompt |
+| Dry route quote | Implemented on feature branch | Preview only; no wallet signature or funds movement |
+| Fresh signed live quote | Implemented on feature branch | Backend verifies provider signature and request/quote binding; live provider availability can still fail |
+| Dual-agent swap review | Implemented on feature branch | Agent 1 checks intent/assets/amount/direction; Agent 2 independently challenges quote, recipient, refund address, expiry, slippage and risk |
+| Deterministic approval gate | Implemented on feature branch | Requires both agents PASS, Agent 2 LOW risk, and zero failed deterministic checks |
+| Native NEAR vs WNEAR identity | **Needs final correction/acceptance** | Never silently alias the two; latest observed review correctly vetoed a NEAR/WNEAR mismatch and reversed direction |
+| NEAR wallet approval via NEAR Connect / Meteor | Code path present; real-device acceptance pending | Verify Meteor Testnet account, NEP-413 message approval, transaction capability, redirect/popup return, and the exact native-NEAR or explicitly selected WNEAR flow on Android |
+| EVM-origin Testnet deposit | Code path present; real-wallet acceptance pending | EIP-1193 flow targets supported Testnet networks; verify provider selection, chain/account re-check, exact native/ERC-20 transfer and wallet confirmation in the actual wallet |
+| Tidepool submission and settlement polling | Code path present; live acceptance pending | Require funded Testnet run and provider-confirmed terminal status; only `SUCCESS` counts as completed swap |
+| Solana-origin wallet signing | Not implemented in Sentinel chat | Adapter, chain-specific transaction construction/verification and tests still required |
+| Sui-origin wallet signing | Not implemented in Sentinel chat | Adapter, chain-specific transaction construction/verification and tests still required |
+| Stellar/XRP/Bitcoin-origin wallet signing | Not implemented in Sentinel chat | Wallet adapters, memo/tag handling, transaction verification and tests still required |
+| Mainnet trading / autonomous execution | Not enabled | Out of scope; no mainnet or autonomous signing claim |
 
-## Wallet approval rules
+## Development and planned work
 
-- **NEAR origin:** use NEAR Connect (including Meteor when selected) and NEP-413. The connected NEAR account must equal the refund account. The destination recipient may be on another supported chain.
-- **EVM origin:** connect an EIP-1193 wallet, switch to the exact Testnet chain, re-check account and chain immediately before sending, then transfer the exact base-unit amount to Tidepool's quote deposit address. ERC-20 transfers are direct token transfers; Sentinel does not request an unlimited allowance.
-- **Other origin chains:** the chat UI fails closed and does not display a fake approval button. Use Tidepool's own wallet app/manual route until a chain-specific adapter, memo/tag handling, transaction verification and tests are implemented.
+### In development / acceptance pending
 
-## Two-stage swap gate
+- Correct and lock native NEAR versus WNEAR asset resolution end to end, including prompt parsing, token selection, quote direction, dual-agent inputs, and displayed wallet action.
+- Verify the Meteor Android in-app browser flow: connected account discovery, NEP-413 signing, wallet transaction confirmation, return to Sentinel, and clear pending/error/success states.
+- Verify EVM provider discovery and real wallet confirmation on each supported Testnet network.
+- Run funded Testnet swaps and independently verify Tidepool's final settlement status and destination-side evidence.
+- Run the complete repository test suite and inspect CI for the exact latest branch head before treating automated validation as passed.
 
-1. Route/quote stage: resolve the exact assets from the provider token registry and request a dry quote.
-2. Independent risk stage: request a fresh signed live quote; backend verifies provider signature, quote/request binding, chain-specific addresses, expiry, slippage and risk policy. Only an `ALLOW` response can expose wallet approval.
-3. Wallet stage: the compatible wallet presents the exact NEAR intent or EVM deposit transaction to the user.
-4. Settlement stage: Sentinel submits the signed intent or EVM transaction hash to Tidepool and polls status. A wallet approval or transaction hash is not a successful swap; only Tidepool `SUCCESS` is.
+### Planned / not yet scheduled
 
-## Required verification before enabling more chains
+- Solana and Sui native wallet adapters.
+- Stellar and XRP memo/tag-aware wallet adapters.
+- Bitcoin Testnet wallet transaction construction and verification.
+- Per-chain funded Testnet acceptance reports after each adapter is implemented.
 
-1. Add Solana and Sui wallet adapters using their official wallet interfaces and chain SDKs.
-2. Add Stellar memo and XRP destination-tag support, plus Bitcoin Testnet4 transaction construction.
-3. Bind every wallet transaction to quote asset, amount, recipient, refund address, deposit address, memo/tag, deadline and quote fingerprint.
-4. Add provider-mocked tests and wallet-adapter tests for every supported chain.
-5. Run funded Testnet end-to-end tests per origin chain and record Tidepool terminal status plus destination transaction evidence.
+No delivery dates are committed for the planned adapters. “Planned” must not be presented as “in development”, “scheduled”, or “available now”.
 
-## Safety boundary
+## Approval and failure behavior
 
-Tidepool is a community-built Testnet service. Test tokens have no value. No mainnet signing, mainnet deposit, autonomous signing or production deployment is enabled by this change.
+- Agent 1 PASS alone is insufficient.
+- Agent 2 VETO, MEDIUM/HIGH risk, malformed output, unavailable AI review, expired quote, invalid signature, wrong asset/direction, or any deterministic failed check must block wallet approval.
+- A VETO is a safety outcome. Do not bypass it, weaken the check, or relabel it as a successful review to make the Approve button appear.
+- The user must explicitly initiate approval. No background or automatic wallet signing is permitted.
+- Once a transaction/intent is submitted, keep the operation pending and prevent duplicate submission while settlement is unresolved.
+- Do not report success from a wallet popup or transaction hash alone. Poll Tidepool and report success only for provider status `SUCCESS`; surface `PENDING`, `REFUNDED`, `FAILED`, timeout, and provider-unavailable states accurately.
+
+## Verification status and evidence policy
+
+The feature-branch source contains the dry-quote/live-quote separation, dual-agent review endpoint, wallet approval handlers, and regression tests for the approval boundary and veto behavior. This document does **not** claim that the latest complete CI suite passed or that a real Meteor/EVM wallet transaction settled successfully.
+
+Before calling the flow end-to-end verified, record all of the following against the exact tested commit:
+
+1. CI result for the exact branch head, including full test count and failures.
+2. Prompt text and exact origin/destination symbols plus provider asset IDs.
+3. Dry quote and fresh live quote identifiers, signature verification, expiry and amount/direction binding.
+4. Agent 1 PASS and Agent 2 PASS/LOW with no deterministic failed checks.
+5. Actual wallet identity, network, approval screen and user-confirmed signature/transaction.
+6. Tidepool submission response, final provider status `SUCCESS`, and independently checkable destination-side transaction evidence.
+
+Until all six are recorded, describe the swap feature as **implemented on the feature branch; real-wallet approval and end-to-end settlement still pending**. No production deployment, mainnet transaction, or profitability claim is implied.
