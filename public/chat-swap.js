@@ -927,7 +927,10 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         let spendable = BigInt(balance.raw);
         // Preserve a small native NEAR gas reserve when spending native NEAR.
         if (String(origin.blockchain).toLowerCase() === "near" && !origin.contract_address) {
-          const gasReserve = 10n ** 22n; // 0.01 NEAR
+          const gasReserve = 10n ** 22n; // 0.01 NEAR reserved for Testnet gas
+          spendable = spendable > gasReserve ? spendable - gasReserve : 0n;
+        } else if (CHAIN_IDS[String(origin.blockchain).toLowerCase()] && !origin.contract_address) {
+          const gasReserve = 5n * 10n ** 15n; // 0.005 native EVM coin reserved for Testnet gas
           spendable = spendable > gasReserve ? spendable - gasReserve : 0n;
         }
         const amountUnits = spendable * BigInt(percent) / 100n;
