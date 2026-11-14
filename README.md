@@ -58,7 +58,6 @@ Commit [`c7bf59d`](https://github.com/ivanmlnnn/sentinel/commit/c7bf59df0b5596e0
 
 | Verification | Result | Evidence |
 |---|---|---|
-| Automated tests | **136 passed, 0 failed** | [Sentinel checks #42913399066](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399066) and deployment job log |
 | Main D1 remote migrations | **PASS — no migrations pending** | [Deployment run #42913399162](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399162) |
 | Signer D1 remote migrations | **PASS — no migrations pending** | Same deployment run |
 | Main Worker deployment | **PASS** — version `91d0798d-3af0-4853-a6ae-1e951e3eb8c7` | Same deployment run |
