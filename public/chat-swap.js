@@ -1346,7 +1346,24 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         throw new Error("Provider deposit type does not match a supported deposit flow. No transaction was sent.");
       }
     } catch (error) {
-      status.textContent = error.message || "Swap flow stopped. Check wallet activity and Tidepool status before retrying.";
+      const diagnostic = error?.data?.diagnostic && typeof error.data.diagnostic === "object"
+        ? error.data.diagnostic : null;
+      if (diagnostic) {
+        // Surface the backend's safe, structured failure reason instead of
+        // hiding it behind the generic SWAP_AGENT_ONE_UNAVAILABLE message.
+        const fields = [
+          diagnostic.code && "code=" + diagnostic.code,
+          Number.isInteger(diagnostic.http_status) && "http=" + diagnostic.http_status,
+          Number.isInteger(diagnostic.provider_status) && "provider_http=" + diagnostic.provider_status,
+          diagnostic.provider_code && "provider_code=" + diagnostic.provider_code
+        ].filter(Boolean);
+        status.textContent = (error.message || "Swap flow stopped.") +
+          (fields.length ? " · Diagnostic: " + fields.join(" · ") : "");
+        details.textContent = JSON.stringify({ api_error: error.data }, null, 2);
+        details.hidden = false;
+      } else {
+        status.textContent = error.message || "Swap flow stopped. Check wallet activity and Tidepool status before retrying.";
+      }
     } finally {
       quoteButton.disabled = false;
       approveButton.disabled = pendingNearApproval ? false : submitted || manualOnly;
