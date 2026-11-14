@@ -1446,29 +1446,17 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     }
     status.textContent = "Checking the selected route and current Tidepool price…";
     try {
-      // The natural-language prompt is the source of truth for swap direction.
-      // If a stale/manual picker state has reversed the pair, restore the
-      // prompt-resolved assets before requesting any quote. Never quote the
-      // reverse route and hope the agents catch it later.
-      let origin = tokens.find(token => String(token.asset_id ?? "") === originSelect.value);
-      let destination = tokens.find(token => String(token.asset_id ?? "") === destSelect.value);
+      // Verification is read-only with respect to the selected direction.
+      // Never silently rewrite the user's origin/destination from a stale
+      // prompt parse; reject a mismatch and require an explicit user selection.
+      const origin = tokens.find(token => String(token.asset_id ?? "") === originSelect.value);
+      const destination = tokens.find(token => String(token.asset_id ?? "") === destSelect.value);
       if (!origin || !destination) throw new Error("Choose exact origin and destination assets from the live token registry.");
       if (!promptTokenMatchesSymbol(parsed.from, origin) ||
           !promptTokenMatchesSymbol(parsed.to, destination)) {
-        const intended = resolvePromptSwapAssets(tokens, parsed);
-        if (!intended) {
-          throw new Error("The requested direction " + parsed.from + " → " + parsed.to +
-            " cannot be resolved from the live Testnet registry. No quote was requested.");
-        }
-        originSelect.value = intended.origin.asset_id;
-        destSelect.value = intended.destination.asset_id;
-        originPicker.sync();
-        destinationPicker.sync();
-        origin = intended.origin;
-        destination = intended.destination;
-        invalidate();
-        status.textContent = "Corrected token selection to match your instruction: " +
-          parsed.from + " → " + parsed.to + ". Checking the intended route…";
+        throw new Error("Selected direction " + origin.symbol + " → " + destination.symbol +
+          " does not match your instruction " + parsed.from + " → " + parsed.to +
+          ". Nothing was changed and no quote was requested. Select the intended assets explicitly or submit a corrected instruction.");
       }
       if (origin.blockchain === "near" || destination.blockchain === "near") {
         const dashboardNearAccount = getConnectedAccount();
