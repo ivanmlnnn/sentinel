@@ -41,7 +41,8 @@ export function evaluateAgentExecutionPolicy({ policy, order, session, review, n
   if (!policy?.enabled) return { allowed: false, reason: "AGENT_POLICY_DISABLED" };
   if (policy.network !== "testnet") return { allowed: false, reason: "TESTNET_ONLY" };
   if (!session || session.status !== "VERIFIED" || session.revoked === true) return { allowed: false, reason: "SESSION_NOT_VERIFIED_OR_REVOKED" };
-  const policyExpiry = Date.parse(policy.expiresAt), sessionExpiry = Date.parse(session.expiresAt);\n  if (!Number.isFinite(policyExpiry) || !Number.isFinite(sessionExpiry) || policyExpiry <= now || sessionExpiry <= now) return { allowed: false, reason: "SESSION_EXPIRED" };
+  const policyExpiry = Date.parse(policy.expiresAt), sessionExpiry = Date.parse(session.expiresAt);
+  if (!Number.isFinite(policyExpiry) || !Number.isFinite(sessionExpiry) || policyExpiry <= now || sessionExpiry <= now) return { allowed: false, reason: "SESSION_EXPIRED" };
   if (String(order?.walletAddress || "").toLowerCase() !== policy.walletAddress.toLowerCase() ||
       String(session.walletAddress || "").toLowerCase() !== policy.walletAddress.toLowerCase()) return { allowed: false, reason: "WALLET_IDENTITY_MISMATCH" };
   if (order?.status !== "TRIGGERED_AWAITING_REVIEW" || review?.decision !== "ALLOW" || review?.status !== "PASS") return { allowed: false, reason: "DUAL_AGENT_REVIEW_REQUIRED" };
