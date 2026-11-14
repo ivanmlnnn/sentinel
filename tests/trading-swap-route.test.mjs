@@ -92,6 +92,11 @@ test("swap NEAR connect uses a connect-only dashboard callback, never the discon
   assert.doesNotMatch(helper, /connector\.disconnect\(\)/);
 });
 
+test("EIP-6963 provider discovery is retried when the wallet injects after page load", () => {
+  assert.match(swapUi, /Re-request EIP-6963 announcements on demand/);
+  assert.match(swapUi, /window\.dispatchEvent\(new Event\("eip6963:requestProvider"\)\)/);
+});
+
 test("EVM account and network changes invalidate stale swap quotes", () => {
   assert.match(swapUi, /observedEvmProvider\.on\("accountsChanged"/);
   assert.match(swapUi, /observedEvmProvider\.on\("chainChanged"/);
