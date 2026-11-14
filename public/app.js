@@ -1562,7 +1562,13 @@ if (agentForm) {
       activeChatSwapController.abort();
       activeChatSwapController = null;
     }
-    if (!developerModeEnabled && /\b(swap|tukar|exchange)\s+\d/i.test(prompt)) {
+    const compoundSwapPayment = !developerModeEnabled
+      ? prompt.match(/\b(?:kirim|send|transfer)\s+(\d+(?:[.,]\d{1,6})?)\s*(?:near|Ⓝ)\s+(?:ke|to)\s+([a-z0-9]+(?:[-_.][a-z0-9]+)*)\b/i)
+      : null;
+    const paymentProposalPrompt = compoundSwapPayment
+      ? 'send ' + compoundSwapPayment[1].replace(',', '.') + ' NEAR to ' + compoundSwapPayment[2]
+      : prompt;
+    if (!developerModeEnabled && !compoundSwapPayment && /\b(swap|tukar|exchange)\s+\d/i.test(prompt)) {
       authenticatedPrompt = prompt;
       if (activeChatSwapController) activeChatSwapController.abort();
       const swapController = new AbortController();
@@ -1644,9 +1650,31 @@ if (agentForm) {
         const data = await request('/agent/run', {
           method: 'POST',
           headers: { 'Idempotency-Key': crypto.randomUUID() },
-          body: JSON.stringify({ prompt })
+          body: JSON.stringify({ prompt: paymentProposalPrompt })
         });
         renderAgentResult(data);
+        if (compoundSwapPayment) {
+          const swapResult = document.createElement('div');
+          const swapPrompt = (prompt.match(/\b(?:swap|tukar|exchange)\s+\d+(?:[.,]\d{1,6})?\s+[a-z0-9]+\s+(?:to|ke)\s+[a-z0-9]+/i) || [])[0];
+          if (swapPrompt) {
+            const swapController = new AbortController();
+            const swapRequest = (path, options = {}) => request(path, { ...options, signal: swapController.signal });
+            try {
+              await renderChatSwap({ prompt: swapPrompt, result: swapResult, request: swapRequest, connector: () => connector, connectedAccount: () => connectedAccount, connectedWalletName, encodeBase58, guestMode: GUEST_MODE, onWalletConnected: syncWalletUI, onConnectNearWallet: connectNearWalletFromGesture, onDisconnectNearWallet: async () => {
+                if (!connectorReady || !connector || !connectedAccount) throw new Error('No active NEAR wallet session is available to disconnect.');
+                await connector.disconnect();
+                syncWalletUI(null, null);
+                toast('NEAR wallet disconnected from Sentinel.');
+              } });
+              result.append(...swapResult.childNodes);
+            } catch (swapError) {
+              const note = document.createElement('p');
+              note.className = 'guest-chat-error';
+              note.textContent = 'Swap preview unavailable: ' + (swapError?.message || 'route lookup failed') + '. The separate payment proposal remains unchanged.';
+              result.append(note);
+            }
+          }
+        }
         $('agentPrompt').value = '';
         if (data.status === 'AWAITING_HUMAN_APPROVAL') toast('Review the exact receiver and amount before approving.');
         else toast('Sentinel replied.');
