@@ -25,13 +25,11 @@ export default async function handler(req, res) {
     return res.status(413).json({ error: "REQUEST_TOO_LARGE" });
   }
 
-  const headers = new Headers();
-  for (const [name, value] of Object.entries(req.headers || {})) {
-    if (typeof value === "string") headers.set(name, value);
-    else if (Array.isArray(value)) headers.set(name, value.join(", "));
-  }
-  if (!headers.has("content-type")) headers.set("content-type", "application/json");
-  const host = headers.get("host") || "sentinel.local";
+  const headers = new Headers({
+    "content-type": "application/json",
+    "content-length": String(Buffer.byteLength(serialized, "utf8"))
+  });
+  const host = typeof req.headers?.host === "string" ? req.headers.host : "sentinel.local";
   const url = new URL(req.url || "/api/trading/balance", "https://" + host);
   const request = new Request(url, {
     method: "POST",
