@@ -91,8 +91,13 @@ export async function callSentinelAI(env, {
     ? env.SENTINEL_AI_MODEL : DEFAULT_MODEL;
   const input = {
     messages: toModelMessages(system, messages),
-    max_tokens: Math.min(4096, Math.max(128, Number(maxOutputTokens) || 1200)),
-    temperature: 0.2
+    max_completion_tokens: Math.min(4096, Math.max(128, Number(maxOutputTokens) || 1200)),
+    temperature: 0.2,
+    // GLM-4.7-Flash can spend the completion budget on reasoning tokens.
+    // Agent reviews require a visible, machine-parseable verdict, not a
+    // hidden reasoning-only completion.
+    chat_template_kwargs: { enable_thinking: false },
+    response_format: { type: "json_object" }
   };
   if (tools.length) {
     input.tools = tools.map(tool => ({
@@ -117,7 +122,20 @@ export async function callSentinelAI(env, {
     finally { clearTimeout(timeout); }
     const normalized = normalizeSentinelAIResponse(response || {});
     if (!normalized.content.length) {
-      return { ok: false, status: 502, error: "AI_RUNTIME_EMPTY_RESPONSE", message: "Sentinel AI Runtime returned no usable text or tool call." };
+      const choice = Array.isArray(response?.choices) ? response.choices[0] : null;
+      const message = choice?.message || choice?.delta || null;
+      const outputShape = {
+        top_level_keys: response && typeof response === "object" ? Object.keys(response).slice(0, 20) : [],
+        choice_count: Array.isArray(response?.choices) ? response.choices.length : 0,
+        finish_reason: typeof choice?.finish_reason === "string" ? choice.finish_reason.slice(0, 40) : null,
+        message_keys: message && typeof message === "object" ? Object.keys(message).slice(0, 20) : []
+      };
+      console.error("sentinel_ai_empty_completion", { model: configuredModel, ...outputShape });
+      return {
+        ok: false, status: 502, error: "AI_RUNTIME_EMPTY_RESPONSE",
+        output_shape: outputShape,
+        message: "Sentinel AI Runtime returned no visible completion. Thinking is disabled and JSON output is required."
+      };
     }
     return { ok: true, data: normalized };
   } catch (error) {
