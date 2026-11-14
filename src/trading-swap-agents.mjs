@@ -122,7 +122,7 @@ export async function runDualAgentSwapReview({
         "Any failed deterministic check, missing field, mismatch, uncertain risk, or non-ALLOW policy requires VETO. PASS means only that the quote may be shown for explicit human wallet approval; it never authorizes signing, depositing, swapping, or trading.",
         "Return exactly one JSON object with keys verdict, risk_level, challenge, reasons. verdict is PASS or VETO; risk_level is LOW, MEDIUM, or HIGH. If uncertain, VETO."
       ].join("\n"),
-      messages: [{ role: "user", content: JSON.stringify({ evidence, agent_one_review: first }) }],
+      messages: [{ role: "user", content: JSON.stringify({ evidence }) }],
       maxOutputTokens: 400,
       timeoutMs: 15000
     });
