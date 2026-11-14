@@ -3,7 +3,13 @@ import { getTidepoolTestnetTokens } from "../../src/trading-core.mjs";
 
 const ACCOUNT_RE = /^(?:[a-f0-9]{64}|[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet)$/i;
 const CONTRACT_RE = /^[a-z0-9]+(?:[-_.][a-z0-9]+)*\.testnet$/i;
-const RPC_URL = "https://rpc.testnet.near.org";
+// The legacy near.org public RPC is rate-limited/deprecated for sustained
+// application traffic. Try FastNear first and retain the official endpoint as
+// a fallback so one provider's 429/5xx does not blank every NEAR balance.
+const NEAR_RPC_URLS = [
+  "https://rpc.testnet.fastnear.com",
+  "https://rpc.testnet.near.org"
+];
 const EVM_RPCS = {
   eth: "https://ethereum-sepolia-rpc.publicnode.com",
   base: "https://sepolia.base.org",
@@ -102,21 +108,42 @@ export async function onRequestPost({ request }) {
     return json({ error: "INVALID_BALANCE_REQUEST" }, 400);
   }
 
-  let response;
-  try {
-    response = await fetch(RPC_URL, {
-      method: "POST",
-      headers: { "content-type": "application/json", accept: "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: "sentinel-swap-balance", method: "query", params }),
-      signal: AbortSignal.timeout(8000)
-    });
-  } catch {
-    return json({ error: "NEAR_RPC_UNAVAILABLE" }, 502);
+  let payload = null;
+  let lastRpcFailure = null;
+  for (const rpcUrl of NEAR_RPC_URLS) {
+    let response;
+    try {
+      response = await fetch(rpcUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: "sentinel-swap-balance", method: "query", params }),
+        signal: AbortSignal.timeout(8000)
+      });
+    } catch {
+      lastRpcFailure = { error: "NEAR_RPC_UNAVAILABLE" };
+      continue;
+    }
+    if (!response.ok) {
+      lastRpcFailure = { error: "NEAR_RPC_HTTP_ERROR", status: response.status };
+      // Retry transient throttling/provider failures on the second RPC.
+      if (response.status === 429 || response.status >= 500) continue;
+      return json(lastRpcFailure, 502);
+    }
+    try { payload = await response.json(); }
+    catch {
+      lastRpcFailure = { error: "NEAR_RPC_INVALID_JSON" };
+      continue;
+    }
+    if (payload?.error) {
+      return json({
+        error: "NEAR_RPC_QUERY_FAILED",
+        detail: String(payload.error.message || "RPC query failed").slice(0, 240)
+      }, 502);
+    }
+    lastRpcFailure = null;
+    break;
   }
-  if (!response.ok) return json({ error: "NEAR_RPC_HTTP_ERROR", status: response.status }, 502);
-  let payload;
-  try { payload = await response.json(); } catch { return json({ error: "NEAR_RPC_INVALID_JSON" }, 502); }
-  if (payload?.error) return json({ error: "NEAR_RPC_QUERY_FAILED", detail: String(payload.error.message || "RPC query failed").slice(0, 240) }, 502);
+  if (lastRpcFailure || !payload) return json(lastRpcFailure || { error: "NEAR_RPC_UNAVAILABLE" }, 502);
 
   let raw;
   if (body.native === true) raw = payload?.result?.amount;
