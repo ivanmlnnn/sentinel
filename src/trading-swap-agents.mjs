@@ -17,6 +17,15 @@ function decimalToUnits(value, decimals) {
     BigInt((fraction + "0".repeat(decimals)).slice(0, decimals) || "0")).toString();
 }
 
+function promptSymbolMatches(promptSymbol, token) {
+  const requested = String(promptSymbol || "").toUpperCase();
+  const actual = String(token?.symbol || "").toUpperCase();
+  if (requested === actual) return true;
+  // The chat accepts "NEAR" as the user-facing name for Tidepool's
+  // NEAR-chain wrapped asset when the registry exposes WNEAR.
+  return requested === "NEAR" && actual === "WNEAR" && token?.blockchain === "near";
+}
+
 function validateAgentOutput(value, agent) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const allowed = agent === 1
@@ -49,8 +58,8 @@ export async function runDualAgentSwapReview({
   const expectedAmount = decimalToUnits(amountText, origin.decimals);
   const deterministic = {
     prompt_amount_valid: expectedAmount !== null && expectedAmount === quoteInput.amount,
-    origin_symbol_matches: match[2].toUpperCase() === origin.symbol.toUpperCase(),
-    destination_symbol_matches: match[3].toUpperCase() === destination.symbol.toUpperCase(),
+    origin_symbol_matches: promptSymbolMatches(match[2], origin),
+    destination_symbol_matches: promptSymbolMatches(match[3], destination),
     provider_signature_verified: liveQuote?.provider_signature_verified === true,
     risk_allowed: liveQuote?.risk_evaluation?.decision === "ALLOW",
     policy_hash_valid: typeof liveQuote?.risk_evaluation?.policy_hash === "string" &&
@@ -65,7 +74,7 @@ export async function runDualAgentSwapReview({
   const failedChecks = Object.entries(deterministic).filter(([, passed]) => !passed).map(([key]) => key.toUpperCase());
   const evidence = {
     user_prompt: prompt,
-    normalized_intent: { amount: amountText, from: origin.symbol, to: destination.symbol },
+    normalized_intent: { amount: amountText, from: match[2].toUpperCase(), to: match[3].toUpperCase() },
     selected_assets: {
       origin: { asset_id: origin.asset_id, symbol: origin.symbol, blockchain: origin.blockchain, decimals: origin.decimals },
       destination: { asset_id: destination.asset_id, symbol: destination.symbol, blockchain: destination.blockchain, decimals: destination.decimals }
