@@ -1311,9 +1311,9 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     pendingNearApproval = null;
     dryQuote = null;
     swap = null;
-    approveButton.disabled = !pendingNearUnwrap;
-    approveButton.hidden = !pendingNearUnwrap;
-    approveButton.textContent = pendingNearUnwrap ? "Unwrap NEAR in Meteor" : "Approve swap";
+    approveButton.disabled = true;
+    approveButton.hidden = true;
+    approveButton.textContent = "Approve swap";
   };
   const observedNearConnector = getConnector();
   observedNearConnector?.on?.("wallet:signIn", event => {
@@ -1375,11 +1375,9 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     const revision = ++swapRevision;
     quoteButton.disabled = true;
     pendingNearApproval = null;
-    if (!pendingNearUnwrap) {
-      approveButton.disabled = true;
-      approveButton.hidden = true;
-      approveButton.textContent = "Approve swap";
-    }
+    approveButton.disabled = true;
+    approveButton.hidden = true;
+    approveButton.textContent = "Approve swap";
     status.textContent = "Checking the selected route and current Tidepool price…";
     try {
       // Verification is read-only with respect to the selected direction.
@@ -1545,9 +1543,8 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         status.textContent = error?.message || "Meteor approval was cancelled or failed. Check wallet activity before retrying.";
       } finally {
         quoteButton.disabled = false;
-        approveButton.disabled = !(pendingNearApproval || pendingNearUnwrap);
-        approveButton.textContent = pendingNearUnwrap ? "Unwrap NEAR in Meteor" :
-          pendingNearApproval ? "Open Meteor & approve" : "Approve swap";
+        approveButton.disabled = !pendingNearApproval;
+        approveButton.textContent = pendingNearApproval ? "Open Meteor & approve" : "Approve swap";
       }
       return;
     }
@@ -1730,9 +1727,8 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       }
     } finally {
       quoteButton.disabled = false;
-      approveButton.disabled = (pendingNearApproval || pendingNearUnwrap) ? false : submitted || manualOnly;
-      approveButton.textContent = pendingNearUnwrap ? "Unwrap NEAR in Meteor" :
-        pendingNearApproval ? "Open Meteor & approve" :
+      approveButton.disabled = pendingNearApproval ? false : submitted || manualOnly;
+      approveButton.textContent = pendingNearApproval ? "Open Meteor & approve" :
         submitted ? "Swap submitted · status tracked" : manualOnly ? "Manual deposit instructions ready" : "Approve swap";
     }
   });
