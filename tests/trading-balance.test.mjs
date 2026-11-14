@@ -50,11 +50,15 @@ test("rejects EVM balance reads for networks without an audited RPC mapping", as
 });
 
 
-test("reads WNEAR and NEAR-testnet ETH as separate NEP-141 balances from the connected Meteor account", async () => {
+test("reads all six NEAR Testnet NEP-141 assets as separate balances from the connected Meteor account", async () => {
   const originalFetch = globalThis.fetch;
   const assets = [
+    { assetId: "nep141:usdc.tidepool-sandbox.testnet", decimals: 6, blockchain: "near", symbol: "USDC", contractAddress: "usdc.tidepool-sandbox.testnet", expected: "100000000" },
+    { assetId: "nep141:usdt.tidepool-sandbox.testnet", decimals: 6, blockchain: "near", symbol: "USDT", contractAddress: "usdt.tidepool-sandbox.testnet", expected: "200000000" },
     { assetId: "nep141:wnear.tidepool-sandbox.testnet", decimals: 24, blockchain: "near", symbol: "wNEAR", contractAddress: "wnear.tidepool-sandbox.testnet", expected: "40000000000000000000000000" },
-    { assetId: "nep141:eth.tidepool-sandbox.testnet", decimals: 18, blockchain: "near", symbol: "ETH", contractAddress: "eth.tidepool-sandbox.testnet", expected: "250000000000000000" }
+    { assetId: "nep141:wbtc.tidepool-sandbox.testnet", decimals: 8, blockchain: "near", symbol: "wBTC", contractAddress: "wbtc.tidepool-sandbox.testnet", expected: "100000" },
+    { assetId: "nep141:eth.tidepool-sandbox.testnet", decimals: 18, blockchain: "near", symbol: "ETH", contractAddress: "eth.tidepool-sandbox.testnet", expected: "250000000000000000" },
+    { assetId: "nep141:xaut.tidepool-sandbox.testnet", decimals: 6, blockchain: "near", symbol: "XAUT", contractAddress: "xaut.tidepool-sandbox.testnet", expected: "1000000" }
   ];
   globalThis.fetch = async (url, options = {}) => {
     if (String(url) === "https://www.usetidepool.tech/v0/tokens") {
