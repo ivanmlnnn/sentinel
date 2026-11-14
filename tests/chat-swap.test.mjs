@@ -54,7 +54,7 @@ test("does not silently substitute WNEAR when native NEAR is absent", () => {
 test("does not replace an actual native NEAR registry asset with wNEAR", () => {
   const tokens = [
     { asset_id: "wnear:near", symbol: "wNEAR", blockchain: "near" },
-    { asset_id: "near:native", symbol: "NEAR", blockchain: "near" }
+    { asset_id: "native:near", symbol: "NEAR", blockchain: "near", native: true }
   ];
   assert.equal(resolveInitialSwapToken(tokens, "NEAR").asset_id, "near:native");
 });
