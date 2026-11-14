@@ -135,15 +135,23 @@ export async function onRequestPost({ request }) {
       continue;
     }
     if (payload?.error) {
-      return json({
+      // Some public NEAR RPCs can reject a view call while another endpoint
+      // still serves it. Treat JSON-RPC errors like transient provider
+      // failures and try the next configured endpoint before failing WNEAR
+      // and other NEP-141 balance reads.
+      lastRpcFailure = {
         error: "NEAR_RPC_QUERY_FAILED",
         detail: String(payload.error.message || "RPC query failed").slice(0, 240)
-      }, 502);
+      };
+      continue;
     }
     lastRpcFailure = null;
     break;
   }
-  if (lastRpcFailure || !payload) return json(lastRpcFailure || { error: "NEAR_RPC_UNAVAILABLE" }, 502);
+  if (lastRpcFailure || !payload) return json({
+    ...(lastRpcFailure || { error: "NEAR_RPC_UNAVAILABLE" }),
+    rpc_endpoints_attempted: NEAR_RPC_URLS.length
+  }, 502);
 
   let raw;
   if (body.native === true) raw = payload?.result?.amount;
