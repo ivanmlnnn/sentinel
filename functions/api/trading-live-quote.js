@@ -1,5 +1,9 @@
 import { json, readTextLimited, verifyPrivyAccessToken } from "./_shared.js";
-import { getTidepoolLiveQuote } from "../../src/trading-core.mjs";
+import { getTidepoolLiveQuote, getTidepoolTestnetTokens } from "../../src/trading-core.mjs";
+import { runDualAgentSwapReview } from "../../src/trading-swap-agents.mjs";
+import { callSentinelAI } from "./_ai.js";
+
+const QUOTE_FIELDS = ["originAsset", "destinationAsset", "amount", "recipient", "refundTo", "slippageTolerance"];
 
 export async function onRequestPost({ request, env }) {
   if (!await verifyPrivyAccessToken(request, env)) return json({ error: "UNAUTHORIZED" }, 401);
@@ -7,11 +11,36 @@ export async function onRequestPost({ request, env }) {
   if (!bodyResult.ok) return json({ error: bodyResult.reason === "BODY_TOO_LARGE" ? "REQUEST_TOO_LARGE" : "INVALID_BODY" }, bodyResult.reason === "BODY_TOO_LARGE" ? 413 : 400);
   let body;
   try { body = JSON.parse(bodyResult.text); } catch { return json({ error: "INVALID_JSON" }, 400); }
+  if (!body || typeof body !== "object" || Array.isArray(body) ||
+      Object.keys(body).some(key => ![...QUOTE_FIELDS, "userPrompt"].includes(key))) {
+    return json({ error: "UNSUPPORTED_REQUEST_FIELD" }, 400);
+  }
+  const userPrompt = typeof body.userPrompt === "string" ? body.userPrompt.trim() : "";
+  if (!userPrompt || userPrompt.length > 500) return json({ error: "SWAP_PROMPT_REQUIRED" }, 400);
+  if (!env.AI || typeof env.AI.run !== "function") return json({ error: "AI_RUNTIME_NOT_CONFIGURED" }, 503);
+  const quoteInput = Object.fromEntries(QUOTE_FIELDS.filter(key => body[key] !== undefined).map(key => [key, body[key]]));
   try {
-    const result = await getTidepoolLiveQuote(body);
+    const result = await getTidepoolLiveQuote(quoteInput);
     if (!result.ok) return json({ error: result.reason }, 400);
-    return json(result.value);
+    const tokens = await getTidepoolTestnetTokens();
+    const review = await runDualAgentSwapReview({
+      prompt: userPrompt,
+      quoteInput,
+      liveQuote: result.value,
+      tokens,
+      aiCall: options => callSentinelAI(env, options)
+    });
+    if (!review.ok) return json({
+      error: review.reason,
+      dual_agent_review: review.value || null,
+      execution_authorized: false
+    }, review.status || 502);
+    return json({
+      ...result.value,
+      dual_agent_review: review.value,
+      execution_authorized: false
+    });
   } catch (error) {
-    return json({ error: error instanceof Error ? error.message : "TIDEPOOL_UNAVAILABLE" }, 502);
+    return json({ error: error instanceof Error ? error.message : "TIDEPOOL_UNAVAILABLE", execution_authorized: false }, 502);
   }
 }
