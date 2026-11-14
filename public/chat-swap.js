@@ -540,6 +540,13 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
   };
   const positionPanel = () => {
     const rect = trigger.getBoundingClientRect();
+    if (window.matchMedia("(max-width: 640px)").matches) {
+      panel.classList.add("is-mobile-sheet");
+      Object.assign(panel.style, { position: "fixed", left: "0", right: "0", bottom: "0", top: "auto", width: "100vw", maxWidth: "100vw", maxHeight: "min(82svh, 680px)" });
+      return;
+    }
+    panel.classList.remove("is-mobile-sheet");
+    panel.style.bottom = "auto";
     const width = Math.min(390, Math.max(260, window.innerWidth - 24));
     panel.style.position = "fixed";
     panel.style.width = width + "px";
@@ -559,6 +566,7 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
     trigger.setAttribute("aria-expanded", "false");
     window.removeEventListener("resize", positionPanel);
     window.removeEventListener("scroll", positionPanel, true);
+    panel.classList.remove("is-mobile-sheet");
   };
   const refreshBalances = async () => {
     if (loading) return;
@@ -706,7 +714,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   walletState.classList.toggle("is-connected", Boolean(walletAccountAtRender));
   const connectButton = el("button", walletAccountAtRender ? "Checking route wallets…" : "Connect required wallets", "swap-connect-button");
   connectButton.type = "button";
-  const disconnectButton = el("button", "Disconnect NEAR", "swap-disconnect-button");
+  const disconnectButton = el("button", "Disconnect", "swap-disconnect-button");
   disconnectButton.type = "button";
   disconnectButton.hidden = !nearAccount(walletAccountAtRender);
   walletBar.append(walletState, connectButton, disconnectButton);
@@ -738,7 +746,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       status.textContent = error?.message || "Could not disconnect the NEAR wallet.";
     } finally {
       disconnectButton.disabled = false;
-      disconnectButton.textContent = "Disconnect NEAR";
+      disconnectButton.textContent = "Disconnect";
     }
   });
   connectButton.addEventListener("click", async () => {
@@ -868,8 +876,8 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   addField(fields, "Maximum slippage", slippage);
   const status = el("p", "Connect the wallets for both networks to check the route and price.", "sentinel-swap-status");
   const details = el("pre"); details.hidden = true;
-  const quoteButton = el("button", "Get verified quote", "secondary-btn"); quoteButton.type = "button"; quoteButton.hidden = true;
-  const approveButton = el("button", "Approve swap", "primary-btn"); approveButton.type = "button"; approveButton.disabled = true; approveButton.hidden = true;
+  const quoteButton = el("button", "Get verified quote", "secondary-btn swap-quote-button"); quoteButton.type = "button"; quoteButton.hidden = true;
+  const approveButton = el("button", "Approve swap", "primary-btn swap-approve-button"); approveButton.type = "button"; approveButton.disabled = true; approveButton.hidden = true;
   fields.append(status, approveButton, details); card.append(fields);
   let swap = null, dryQuote = null;
   const invalidate = () => { approveButton.disabled = true; dryQuote = null; swap = null; };
