@@ -70,6 +70,24 @@ export function resolveInitialSwapToken(tokens, symbol) {
   return matches.find(token => String(token.blockchain).toLowerCase() === preferredChain) ||
     matches.find(token => CHAIN_IDS[String(token.blockchain).toLowerCase()]) || matches[0];
 }
+export function promptTokenMatchesSymbol(promptSymbol, token) {
+  const requested = String(promptSymbol || "").toUpperCase();
+  const actual = String(token?.symbol || "").toUpperCase();
+  if (requested === actual) return true;
+  return requested === "NEAR" && actual === "WNEAR" &&
+    String(token?.blockchain || "").toLowerCase() === "near";
+}
+
+export function resolvePromptSwapAssets(tokens, parsed) {
+  if (!Array.isArray(tokens) || !parsed) return null;
+  const origin = resolveInitialSwapToken(tokens, parsed.from);
+  const destination = resolveInitialSwapToken(tokens, parsed.to);
+  if (!origin || !destination || origin.asset_id === destination.asset_id) return null;
+  if (!promptTokenMatchesSymbol(parsed.from, origin) ||
+      !promptTokenMatchesSymbol(parsed.to, destination)) return null;
+  return { origin, destination };
+}
+
 export function resolveTidepoolSwapAssets(origin, destination, tokens) {
   const isNativeNear = token => token?.native === true && token.asset_id === "native:near";
   const nativeNear = tokens.find(token => token.asset_id === "nep141:wnear.tidepool-sandbox.testnet");
@@ -1316,9 +1334,30 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     }
     status.textContent = "Checking the selected route and current Tidepool price…";
     try {
-      const origin = tokens.find(token => String(token.asset_id ?? "") === originSelect.value);
-      const destination = tokens.find(token => String(token.asset_id ?? "") === destSelect.value);
+      // The natural-language prompt is the source of truth for swap direction.
+      // If a stale/manual picker state has reversed the pair, restore the
+      // prompt-resolved assets before requesting any quote. Never quote the
+      // reverse route and hope the agents catch it later.
+      let origin = tokens.find(token => String(token.asset_id ?? "") === originSelect.value);
+      let destination = tokens.find(token => String(token.asset_id ?? "") === destSelect.value);
       if (!origin || !destination) throw new Error("Choose exact origin and destination assets from the live token registry.");
+      if (!promptTokenMatchesSymbol(parsed.from, origin) ||
+          !promptTokenMatchesSymbol(parsed.to, destination)) {
+        const intended = resolvePromptSwapAssets(tokens, parsed);
+        if (!intended) {
+          throw new Error("The requested direction " + parsed.from + " → " + parsed.to +
+            " cannot be resolved from the live Testnet registry. No quote was requested.");
+        }
+        originSelect.value = intended.origin.asset_id;
+        destSelect.value = intended.destination.asset_id;
+        originPicker.sync();
+        destinationPicker.sync();
+        origin = intended.origin;
+        destination = intended.destination;
+        invalidate();
+        status.textContent = "Corrected token selection to match your instruction: " +
+          parsed.from + " → " + parsed.to + ". Checking the intended route…";
+      }
       if (origin.blockchain === "near" || destination.blockchain === "near") {
         const dashboardNearAccount = getConnectedAccount();
         const connector = getConnector();
@@ -1516,6 +1555,11 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     let manualOnly = false;
     try {
       if (!swap || !dryQuote) throw new Error("Request a fresh quote before approval.");
+      if (!promptTokenMatchesSymbol(parsed.from, swap.displayOrigin) ||
+          !promptTokenMatchesSymbol(parsed.to, swap.displayDestination)) {
+        throw new Error("Swap direction no longer matches your instruction (" + parsed.from + " → " + parsed.to +
+          "). Request a fresh quote; no wallet approval was opened.");
+      }
       if (guestMode) throw new Error("Guest mode cannot approve or sign transactions.");
       if (swap.origin.blockchain === "near") {
         const connector = getConnector();
