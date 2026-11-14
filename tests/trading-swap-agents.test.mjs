@@ -218,6 +218,38 @@ test("native NEAR unwrap evidence binds settlement and second approval to the sa
   assert.equal(evidence.native_near_output_handling.post_settlement_amount_source, "confirmed_settlement.swap_details.amountOut");
 });
 
+test("NEAR to ETH treats WNEAR as input representation and explicitly requires no NEAR output unwrap", async () => {
+  const nearToEthInput = {
+    ...quoteInput,
+    originAsset: "near-test",
+    destinationAsset: "eth-test",
+    amount: "100000000000000000000000"
+  };
+  const nearToEthQuote = {
+    ...liveQuote,
+    quote: { ...liveQuote.quote, amount_in: nearToEthInput.amount },
+    origin_chain: "near",
+    destination_chain: "eth"
+  };
+  const ai = aiMock([agentOnePass, agentTwoPass]);
+  const result = await runDualAgentSwapReview({
+    prompt: "swap 0.1 NEAR to ETH",
+    quoteInput: nearToEthInput,
+    liveQuote: nearToEthQuote,
+    tokens,
+    aiCall: ai.run,
+    now: Date.parse("2026-11-14T11:00:00.000Z")
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.value.deterministic_checks.native_near_unwrap_plan_valid, true);
+  const evidence = JSON.parse(ai.calls[1].messages[0].content).evidence;
+  assert.equal(evidence.native_near_input_handling.required, true);
+  assert.equal(evidence.native_near_input_handling.provider_symbol, "WNEAR");
+  assert.equal(evidence.native_near_output_handling.required, false);
+  assert.match(evidence.native_near_output_handling.reason, /destination is not NEAR/i);
+  assert.match(ai.calls[1].system, /does NOT require native NEAR output handling or near_withdraw/i);
+});
+
 test("native NEAR unwrap evidence fails closed if quote recipient differs from the selected wallet", async () => {
   const ai = aiMock([agentOnePass, agentTwoPass]);
   const result = await runDualAgentSwapReview({
