@@ -52,8 +52,9 @@ function decimalToUnits(value, decimals) {
 export function resolveInitialSwapToken(tokens, symbol) {
   const key = String(symbol || "").toUpperCase();
   if (key === "NEAR") {
-    const nativeNear = tokens.find(token => token.native === true && token.asset_id === "native:near");
-    if (nativeNear) return nativeNear;
+    // NEAR means the native coin only. Never fall through to a bridged,
+    // wrapped, or similarly named token when native NEAR is unavailable.
+    return tokens.find(token => token.native === true && token.asset_id === "native:near") || null;
   }
   const matches = tokens.filter(token => String(token.symbol).toUpperCase() === key);
   if (!matches.length) return null;
@@ -73,8 +74,11 @@ export function resolveInitialSwapToken(tokens, symbol) {
 export function promptTokenMatchesSymbol(promptSymbol, token) {
   const requested = String(promptSymbol || "").toUpperCase();
   const actual = String(token?.symbol || "").toUpperCase();
-  // Symbols are user intent, not aliases. Native NEAR and WNEAR
-  // are distinct assets; wrapping/unwrapping is handled explicitly later.
+  // NEAR means the exact native coin identity; WNEAR and bridged NEAR
+  // tokens must never pass this check.
+  if (requested === "NEAR") {
+    return actual === "NEAR" && token?.native === true && token?.asset_id === "native:near";
+  }
   return requested.length > 0 && requested === actual;
 }
 
