@@ -864,6 +864,7 @@ async function renderTradeSkillDraft(prompt) {
     liveStatus.className = 'developer-trade-draft-note';
     liveStatus.setAttribute('aria-live', 'polite');
     let lastSwapRequest = null;
+    let lastSwapPrompt = null;
     const quoteStatus = document.createElement('p');
     quoteStatus.className = 'developer-trade-draft-note';
     quoteStatus.setAttribute('aria-live', 'polite');
@@ -893,6 +894,7 @@ async function renderTradeSkillDraft(prompt) {
         const baseAmount = (BigInt(whole) * (10n ** BigInt(decimals)) +
           BigInt((fraction + '0'.repeat(decimals)).slice(0, decimals) || '0')).toString();
         if (baseAmount === '0') throw new Error('Amount must be greater than zero.');
+        lastSwapPrompt = 'swap ' + rawAmount + ' ' + draft.from_asset + ' to ' + draft.to_asset;
         lastSwapRequest = {
           originAsset: origin.asset_id,
           destinationAsset: destination.asset_id,
@@ -938,7 +940,7 @@ async function renderTradeSkillDraft(prompt) {
         }
         const liveQuote = await request('/trading/live-quote', {
           method: 'POST',
-          body: JSON.stringify(lastSwapRequest)
+          body: JSON.stringify({ ...lastSwapRequest, userPrompt: lastSwapPrompt })
         });
         if (liveQuote.mode !== 'LIVE_QUOTE_AWAITING_USER_SIGNATURE' ||
             liveQuote.execution_enabled !== false ||
