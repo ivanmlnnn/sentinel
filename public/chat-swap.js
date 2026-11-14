@@ -1183,59 +1183,13 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   const quoteButton = el("button", "Get verified quote", "secondary-btn swap-quote-button"); quoteButton.type = "button"; quoteButton.hidden = true;
   const approveButton = el("button", "Approve swap", "primary-btn swap-approve-button"); approveButton.type = "button"; approveButton.disabled = true; approveButton.hidden = true;
   let pendingNearApproval = null;
-  let pendingNearUnwrap = null;
   let nearApprovalWatchdog = null;
   const prepareNativeNearUnwrap = async ({ swap: completedSwap, settled }) => {
     const settlementStatus = String(settled?.status || "").toUpperCase();
-    const isNativeOutput = settlementStatus === "SUCCESS" && completedSwap?.unwrapNativeNear;
-    const isNativeInputRefund = settlementStatus === "REFUNDED" && completedSwap?.wrapNativeNear;
-    if (isNativeOutput || isNativeInputRefund) {
-      status.textContent = "Native NEAR unwrap is disabled: Tidepool WNEAR near_withdraw support is not verified. Leave the WNEAR in the wallet; no unwrap transaction was prepared.";
-      return;
-    }
-    const amount = isNativeOutput
-      ? settled?.swap_details?.amountOut
-      : isNativeInputRefund ? settled?.swap_details?.refundedAmount : null;
-    const wnearToken = isNativeOutput ? completedSwap?.destination : completedSwap?.origin;
-    const connector = getConnector();
-    let account = activeNearAccount;
-    if (!nearAccount(account)) {
-      try {
-        const snapshot = await connector?.getConnectedWallet?.();
-        const restored = snapshot?.accounts?.find(item => nearAccount(item?.accountId))?.accountId;
-        if (nearAccount(restored)) { account = restored; activeNearAccount = restored; }
-      } catch {}
-    }
-    const expectedAccount = isNativeOutput ? completedSwap?.recipient : completedSwap?.refundTo;
-    if ((!isNativeOutput && !isNativeInputRefund) || !nearAccount(account) ||
-        account.toLowerCase() !== String(expectedAccount || "").toLowerCase() ||
-        typeof amount !== "string" || !/^[1-9][0-9]*$/.test(amount) ||
-        wnearToken?.contract_address !== "wnear.tidepool-sandbox.testnet") {
-      status.textContent = "WNEAR was delivered or refunded, but native NEAR unwrap could not be prepared safely. WNEAR remains in the connected recipient account.";
-      return;
-    }
-    try {
-      const wallet = await connector?.wallet?.();
-      if (!wallet || typeof wallet.signAndSendTransaction !== "function") {
-        throw new Error("Meteor NEAR transaction approval is unavailable.");
-      }
-      pendingNearUnwrap = {
-        wallet,
-        account,
-        contract: wnearToken.contract_address,
-        amount
-      };
-      // On a mobile wallet return the page is rebuilt and the action button
-      // starts hidden. Reveal it only after the settlement and unwrap checks
-      // have passed and the exact WNEAR amount is ready for approval.
-      approveButton.hidden = false;
-      approveButton.disabled = false;
-      approveButton.textContent = "Unwrap NEAR in Meteor";
-      status.textContent = isNativeOutput
-        ? "Swap SUCCESS. WNEAR arrived in Meteor. Tap “Unwrap NEAR in Meteor” to convert the exact received amount to native NEAR."
-        : "Swap was refunded in WNEAR. Tap “Unwrap NEAR in Meteor” to return the exact refunded amount to native NEAR.";
-    } catch (error) {
-      status.textContent = "Swap SUCCESS. WNEAR arrived, but Meteor unwrap preparation failed: " + (error?.message || "wallet unavailable");
+    const nativeConversionRequested = completedSwap?.unwrapNativeNear ||
+      (settlementStatus === "REFUNDED" && completedSwap?.wrapNativeNear);
+    if (nativeConversionRequested) {
+      status.textContent = "Native NEAR conversion is disabled because the Tidepool WNEAR wrap/withdraw interface is unverified. Keep the settled or refunded WNEAR in the wallet; Sentinel will not open another approval.";
     }
   };
   fields.append(status, approveButton, details); card.append(fields);
@@ -1501,38 +1455,6 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     finally { quoteButton.disabled = false; }
   });
   approveButton.addEventListener("click", async () => {
-    if (pendingNearUnwrap) {
-      const preparedUnwrap = pendingNearUnwrap;
-      pendingNearUnwrap = null;
-      approveButton.disabled = true;
-      try {
-        // Call Meteor synchronously in this explicit user tap so its wallet
-        // redirect/deep-link flow retains browser user activation.
-        const unwrapApproval = preparedUnwrap.wallet.signAndSendTransaction({
-          signerId: preparedUnwrap.account,
-          receiverId: preparedUnwrap.contract,
-          actions: buildNearWalletUnwrapActions(preparedUnwrap.amount)
-        });
-        status.textContent = "Opening Meteor to unwrap the received WNEAR into native NEAR…";
-        const result = await unwrapApproval;
-        const txHash = result?.transaction?.hash || result?.transaction_outcome?.id ||
-          result?.transactionHash || result?.hash || null;
-        status.textContent = "Native NEAR unwrap submitted from Meteor." +
-          (typeof txHash === "string" ? " Transaction: " + txHash : " Check Meteor activity for confirmation.");
-        details.textContent = JSON.stringify({ native_near_unwrap: {
-          account: preparedUnwrap.account, wnear_contract: preparedUnwrap.contract,
-          amount_base_units: preparedUnwrap.amount, wallet_result: result
-        } }, null, 2);
-        details.hidden = false;
-      } catch (error) {
-        pendingNearUnwrap = preparedUnwrap;
-        status.textContent = error?.message || "Meteor unwrap was cancelled or failed. WNEAR remains in your wallet.";
-      } finally {
-        approveButton.disabled = !pendingNearUnwrap;
-        approveButton.textContent = pendingNearUnwrap ? "Unwrap NEAR in Meteor" : "Approve swap";
-      }
-      return;
-    }
     if (pendingNearApproval) {
       const prepared = pendingNearApproval;
       if (Date.parse(prepared.liveQuote?.deadline) <= Date.now()) {
