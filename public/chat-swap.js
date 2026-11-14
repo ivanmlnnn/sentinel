@@ -873,7 +873,8 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     }
     connectButton.textContent = missingChains.length
       ? "Connect " + missingChains[0].toUpperCase() + " wallet"
-      : "Get verified quote";
+      : "Verify quote";
+    connectButton.classList.toggle("is-verify", missingChains.length === 0);
   })();
   addField(fields, "Amount", amountInput);
   addField(fields, "You pay · origin asset / network", originPicker.root);
@@ -904,7 +905,8 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     const { origin, dest } = defaults();
     const chains = [...new Set([origin?.blockchain, dest?.blockchain].filter(Boolean).map(value => String(value).toLowerCase()))];
     const missing = chains.find(chain => !walletAddressFor(chain));
-    connectButton.textContent = missing ? "Connect " + missing.toUpperCase() + " wallet" : "Get verified quote";
+    connectButton.textContent = missing ? "Connect " + missing.toUpperCase() + " wallet" : "Verify quote";
+    connectButton.classList.toggle("is-verify", !missing);
   };
   originSelect.addEventListener("change", () => { defaults(); originPicker.sync(); invalidate(); refreshConnectLabel(); });
   destSelect.addEventListener("change", () => { defaults(); destinationPicker.sync(); invalidate(); refreshConnectLabel(); });
