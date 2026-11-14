@@ -132,7 +132,7 @@ test("reads Aurora Testnet native ETH through its fixed RPC mapping", async () =
       blockchain: "aurora"
     });
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { raw: "1000000000000000000", decimals: 18 });
+    assert.deepEqual(await response.json(), { raw: "1000000000000000000", decimals: 18, source: "EVM JSON-RPC" });
     assert.equal(rpcUrl, "https://testnet.aurora.dev");
   } finally { globalThis.fetch = originalFetch; }
 });
