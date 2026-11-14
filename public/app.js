@@ -1698,6 +1698,12 @@ if (agentForm) {
     }
   });
 }
+const agentSendButton = $('agentRunBtn');
+if (agentSendButton) {
+  agentSendButton.disabled = false;
+  agentSendButton.removeAttribute('aria-disabled');
+  agentSendButton.innerHTML = 'Send message <b>↗</b>';
+}
 if (GUEST_MODE) {
   const intro = document.querySelector('.agent-lab-intro');
   if (intro) intro.textContent = 'Guest AI access · up to 10 prompts per day. Ask questions and get security guidance. Wallet investigation is read-only; payment proposals, signing, and transfers are disabled.';
