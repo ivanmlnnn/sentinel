@@ -1512,9 +1512,9 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         } catch (storageError) {
           console.warn("[Sentinel swap] Pending approval recovery metadata could not be saved:", storageError);
         }
-        // Match the proven Sentinel dev-mode Meteor call shape exactly.
-        // The selected NEAR Connect session supplies the signer; do not pass a
-        // callback URL or a second signer identity into Meteor's executor.
+        // Keep the explicit signer bound to the account checked during
+        // preflight. Meteor's NEAR Connect adapter uses this account for the
+        // exact transaction; no callback redirect or second wallet is needed.
         const walletApproval = prepared.wallet.signAndSendTransaction({
           signerId: prepared.transaction.signerId,
           receiverId: prepared.transaction.receiverId,
