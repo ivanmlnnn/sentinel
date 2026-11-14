@@ -59,7 +59,6 @@ export async function runDualAgentSwapReview({
   const nativeNearOutputRequested = match[3].toUpperCase() === "NEAR";
   // Tidepool's WNEAR registry token is not native NEAR. No wrap/unwrap
   // contract method is assumed; both native-coin conversions fail closed.
-  const nearUnwrapActionTemplate = null;
   const nativeNearUnwrapPlanValid = !nativeNearOutputRequested;
   const deterministic = {
     prompt_amount_valid: expectedAmount !== null && expectedAmount === quoteInput.amount,
