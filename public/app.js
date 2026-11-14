@@ -1,3 +1,4 @@
+import { buildTradeSkillDraft } from './trade-skill-draft.js';
 const $ = id => document.getElementById(id);
 const API = '/api';
 const GUEST_MODE = Boolean(window.SENTINEL_GUEST);
@@ -696,6 +697,60 @@ $('sendReport').addEventListener('click',async () => {
 });
 
 const agentForm = $('agentForm');
+const developerModeToggle = $('developerModeToggle');
+const developerModeBanner = $('developerModeBanner');
+let developerModeEnabled = false;
+developerModeToggle?.addEventListener('change', () => {
+  developerModeEnabled = developerModeToggle.checked;
+  document.body.classList.toggle('sentinel-developer-mode', developerModeEnabled);
+  if (developerModeBanner) developerModeBanner.classList.toggle('hidden', !developerModeEnabled);
+  const status = document.querySelector('.developer-mode-status');
+  if (status) status.textContent = developerModeEnabled ? 'ON · SKILL DRAFTING' : 'OFF · SAFE CHAT';
+  toast(developerModeEnabled ? 'Developer Mode enabled. Trading requests create drafts only.' : 'Developer Mode disabled.');
+});
+async function renderTradeSkillDraft(prompt) {
+  const result = $('agentResult');
+  const draft = buildTradeSkillDraft(prompt);
+  const complete = Boolean(draft.action && draft.amount && draft.amount_unit && (draft.action === 'SWAP' ? draft.from_asset && draft.to_asset : draft.asset));
+  const canonical = JSON.stringify(draft);
+  let fingerprint = 'unavailable';
+  try {
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonical));
+    fingerprint = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+  } catch {}
+  const card = document.createElement('section');
+  card.className = 'developer-trade-draft';
+  const heading = document.createElement('div');
+  heading.className = 'developer-trade-draft-heading';
+  const title = document.createElement('strong');
+  title.textContent = complete ? 'Trading skill draft generated' : 'Trading request needs clarification';
+  const status = document.createElement('span');
+  status.textContent = 'DRAFT ONLY';
+  heading.append(title, status);
+  const summary = document.createElement('p');
+  summary.textContent = complete
+    ? draft.action + ' ' + draft.amount + ' ' + draft.amount_unit + ' · ' + (draft.action === 'SWAP' ? draft.from_asset + ' → ' + draft.to_asset : draft.asset) + ' · ' + draft.schedule
+    : 'Sentinel could not safely determine the asset pair and amount. Refine the prompt before creating a reviewable skill.';
+  const details = document.createElement('pre');
+  details.textContent = JSON.stringify(draft, null, 2);
+  const note = document.createElement('p');
+  note.className = 'developer-trade-draft-note';
+  note.textContent = 'Not approved. No wallet signature, quote, swap, buy, sell, or scheduled job was created. Trading execution is not connected yet.';
+  const hash = document.createElement('small');
+  hash.textContent = 'DRAFT SHA-256 · ' + fingerprint;
+  const copy = document.createElement('button');
+  copy.type = 'button';
+  copy.className = 'secondary-btn';
+  copy.textContent = 'Copy skill JSON';
+  copy.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(JSON.stringify(draft, null, 2)); toast('Skill draft copied.'); }
+    catch { toast('Clipboard unavailable.'); }
+  });
+  card.append(heading, summary, details, note, hash, copy);
+  result.replaceChildren(card);
+  result.classList.remove('hidden');
+  result.scrollTop = result.scrollHeight;
+}
 const GUEST_CHAT_KEY = 'sentinel.guestAgent.messages.v1';
 let guestConversation = [];
 let authenticatedPrompt = '';
@@ -1049,6 +1104,7 @@ if (agentForm) {
     const button = $('agentRunBtn');
     const prompt = $('agentPrompt').value.trim();
     if (!prompt) return;
+    if (developerModeEnabled && /\b(buy|sell|swap|trade|beli|jual|tukar|dca)\b/i.test(prompt) && /\b(BTC|ETH|NEAR|USDC|USDT|SOL|WNEAR)\b/i.test(prompt)) { await renderTradeSkillDraft(prompt); toast('Skill draft generated. Trading execution is not connected.'); return; }
     button.disabled = true;
     button.classList.add('agent-running');
     button.innerHTML = '<span class="agent-button-pulse" aria-hidden="true"></span> Agent running <b>…</b>';
