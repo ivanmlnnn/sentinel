@@ -4,6 +4,56 @@ import { getTidepoolTestnetTokens } from "../../src/trading-core.mjs";
 const ACCOUNT_RE = /^(?:[a-f0-9]{64}|[a-z0-9]+(?:[-_.][a-z0-9]+)*\\.testnet)$/i;
 const CONTRACT_RE = /^[a-z0-9]+(?:[-_.][a-z0-9]+)*\\.testnet$/i;
 const RPC_URL = "https://rpc.testnet.near.org";
+const EVM_RPCS = {
+  eth: "https://ethereum-sepolia-rpc.publicnode.com",
+  base: "https://sepolia.base.org",
+  arb: "https://sepolia-rollup.arbitrum.io/rpc",
+  bsc: "https://data-seed-prebsc-1-s1.binance.org:8545"
+};
+const EVM_NATIVE = { eth: "ETH", base: "ETH", arb: "ETH", bsc: "BNB" };
+const EVM_ADDRESS_RE = /^0x[a-f0-9]{40}$/i;
+async function readEvmBalance(accountId, token, native, blockchain) {
+  const chain = String(blockchain || token?.blockchain || "").toLowerCase();
+  const rpcUrl = EVM_RPCS[chain];
+  if (!rpcUrl || !EVM_ADDRESS_RE.test(accountId)) return json({ error: "UNSUPPORTED_EVM_WALLET_OR_CHAIN" }, 400);
+  let method, params, decimals;
+  if (native === true) {
+    if (EVM_NATIVE[chain] !== String(token?.symbol || EVM_NATIVE[chain]).toUpperCase()) {
+      return json({ error: "UNVERIFIED_EVM_NATIVE_ASSET" }, 400);
+    }
+    method = "eth_getBalance";
+    params = [accountId, "latest"];
+    decimals = 18;
+  } else {
+    if (!token || token.blockchain !== chain) return json({ error: "EVM_ASSET_CHAIN_MISMATCH" }, 400);
+    if (token.contract_address) {
+      if (!/^0x[a-f0-9]{40}$/i.test(token.contract_address)) return json({ error: "INVALID_EVM_TOKEN_CONTRACT" }, 400);
+      method = "eth_call";
+      params = [{ to: token.contract_address, data: "0x70a08231" + accountId.slice(2).toLowerCase().padStart(64, "0") }, "latest"];
+    } else {
+      if (EVM_NATIVE[chain] !== String(token.symbol).toUpperCase()) return json({ error: "UNVERIFIED_EVM_NATIVE_ASSET" }, 400);
+      method = "eth_getBalance";
+      params = [accountId, "latest"];
+    }
+    decimals = token.decimals;
+  }
+  let response;
+  try {
+    response = await fetch(rpcUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: "sentinel-evm-balance", method, params }),
+      signal: AbortSignal.timeout(8000)
+    });
+  } catch { return json({ error: "EVM_RPC_UNAVAILABLE", chain }, 502); }
+  if (!response.ok) return json({ error: "EVM_RPC_HTTP_ERROR", chain, status: response.status }, 502);
+  let payload;
+  try { payload = await response.json(); } catch { return json({ error: "EVM_RPC_INVALID_JSON" }, 502); }
+  if (payload?.error || typeof payload?.result !== "string" || !/^0x[0-9a-f]+$/i.test(payload.result)) {
+    return json({ error: "EVM_RPC_QUERY_FAILED", chain }, 502);
+  }
+  return json({ raw: BigInt(payload.result).toString(), decimals });
+}
 
 export async function onRequestPost({ request }) {
   const bodyResult = await readTextLimited(request, 2048);
@@ -12,6 +62,19 @@ export async function onRequestPost({ request }) {
   try { body = JSON.parse(bodyResult.text); } catch { return json({ error: "INVALID_JSON" }, 400); }
 
   const accountId = typeof body?.accountId === "string" ? body.accountId.trim() : "";
+  if (body?.native === true && typeof body?.blockchain === "string" &&
+      Object.keys(body).every(key => ["accountId", "native", "blockchain"].includes(key))) {
+    return readEvmBalance(accountId, null, true, body.blockchain);
+  }
+  if (typeof body?.assetId === "string" && Object.keys(body).every(key => ["accountId", "assetId"].includes(key))) {
+    let registry;
+    try { registry = await getTidepoolTestnetTokens(); }
+    catch { return json({ error: "TIDEPOOL_TOKEN_REGISTRY_UNAVAILABLE" }, 502); }
+    const candidate = registry.find(item => item.asset_id === body.assetId);
+    if (candidate && EVM_RPCS[String(candidate.blockchain || "").toLowerCase()]) {
+      return readEvmBalance(accountId, candidate, false, candidate.blockchain);
+    }
+  }
   if (!ACCOUNT_RE.test(accountId)) return json({ error: "INVALID_NEAR_ACCOUNT" }, 400);
 
   let params;
