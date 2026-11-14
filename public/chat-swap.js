@@ -1047,12 +1047,9 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       try {
         // Invoke Meteor's redirecting wallet method synchronously in this tap,
         // before any await, so mobile browsers retain user activation.
-        const connector = getConnector();
-        const current = await connector?.getConnectedWallet?.();
-        const currentAccount = current?.accounts?.find(item =>
-          item.accountId?.toLowerCase() === prepared.connectedAccount.toLowerCase()
-        );
-        if (!currentAccount) throw new Error("Meteor session is no longer connected to the reviewed account. Reconnect and request a fresh quote.");
+        // All account/quote checks were completed while preparing this pending
+        // approval. Do not await connector state here: that would lose the
+        // mobile browser's user-activation window before Meteor can open.
         const walletApproval = prepared.wallet.signAndSendTransaction({
           signerId: prepared.connectedAccount,
           receiverId: prepared.transaction.receiverId,
