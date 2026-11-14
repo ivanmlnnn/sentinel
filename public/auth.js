@@ -125,7 +125,7 @@ function AuthGate() {
 
       if (!dashboardStarted) {
         dashboardStarted = true;
-        import('./app.js?v=20261114-dual-agent-swap1&wallet=meteor-walletfund1&policy-reason=1&wallet-card=3').catch((error) => {
+        import('./app.js?v=20261114-dual-agent-swap2&wallet=meteor-walletfund1&policy-reason=1&wallet-card=3').catch((error) => {
           console.error('Sentinel dashboard failed to initialize:', error);
           dashboardStarted = false;
           setAuthError('Dashboard failed to load. Please reload and try again.');
