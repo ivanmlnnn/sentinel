@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { promptSymbolMatches } from "../src/trading-swap-agents.mjs";
 
 const swapUi = readFileSync(new URL("../public/chat-swap.js", import.meta.url), "utf8");
 const liveQuoteApi = readFileSync(new URL("../functions/api/trading-live-quote.js", import.meta.url), "utf8");
@@ -154,4 +155,11 @@ test("NEAR live quote, dual-agent review and wallet transaction preparation fini
   const approvalEnd = swapUi.indexOf("if (pendingNearApproval)", approvalStart);
   assert.ok(approvalEnd > approvalStart);
   assert.match(swapUi.slice(approvalEnd, approvalEnd + 1600), /prepared\.wallet\.signAndSendTransaction\(/);
+});
+
+
+test("native NEAR prompt is explicitly represented by NEAR-chain WNEAR for Tidepool", () => {
+  assert.equal(promptSymbolMatches("NEAR", { symbol: "WNEAR", blockchain: "near" }), true);
+  assert.equal(promptSymbolMatches("NEAR", { symbol: "WNEAR", blockchain: "eth" }), false);
+  assert.equal(promptSymbolMatches("WNEAR", { symbol: "WNEAR", blockchain: "near" }), true);
 });
