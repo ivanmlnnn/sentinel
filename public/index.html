@@ -130,7 +130,19 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
 <script src="/motion.js?v=20261111-divider-scroll1" defer></script>
 <script type="module">
 const authRoot = document.getElementById('auth-root');
-import('/auth.js?v=20261114-meteor-walletfund1').catch(error => {
+// Block native form navigation until the dashboard has attached its chat handler.
+const agentForm = document.getElementById('agentForm');
+agentForm?.addEventListener('submit', event => {
+  if (window.__SENTINEL_AGENT_FORM_READY) return;
+  event.preventDefault();
+  const result = document.getElementById('agentResult');
+  if (result) {
+    result.textContent = 'Sentinel is still initializing. Wait a moment, then retry. The page was not reloaded.';
+    result.classList.remove('hidden');
+  }
+  console.error('Sentinel chat submit blocked: dashboard submit handler is not ready.');
+}, true);
+import('/auth.js?v=20261114-sendflowguard1').catch(error => {
   console.error('Sentinel authentication module failed to load:', error);
   const copy = authRoot?.querySelector('.sentinel-auth-copy');
   if (copy) copy.textContent = 'Sign-in could not be loaded. Check your connection and reload this page.';
