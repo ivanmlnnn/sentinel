@@ -231,23 +231,31 @@ async function executeNearWalletDeposit(args) {
     "Meteor will request approval for ft_transfer_call. The transfer credits this quote's Tidepool Intents deposit. Native NEAR is needed for gas."
   ].join("\n");
   if (!window.confirm(review)) throw new Error("Cancelled before Meteor approval. No token transfer was submitted.");
-  statusNode.textContent = "Approve the exact NEAR token deposit in Meteor…";
-  const result = await wallet.signAndSendTransaction({
-    receiverId: swap.origin.contract_address,
-    actions: [{
-      type: "FunctionCall",
-      params: {
-        methodName: "ft_transfer_call",
-        args: {
-          receiver_id: "verifier.tidepool-sandbox.testnet",
-          amount: swap.amount,
-          msg: liveQuote.deposit_address
-        },
-        gas: "100000000000000",
-        deposit: "1"
-      }
-    }]
-  });
+  return {
+    wallet,
+    transaction: {
+      receiverId: swap.origin.contract_address,
+      actions: [{
+        type: "FunctionCall",
+        params: {
+          methodName: "ft_transfer_call",
+          args: {
+            receiver_id: "verifier.tidepool-sandbox.testnet",
+            amount: swap.amount,
+            msg: liveQuote.deposit_address
+          },
+          gas: "100000000000000",
+          deposit: "1"
+        }
+      }]
+    },
+    connectedAccount, liveQuote, swap
+  };
+}
+async function finishNearWalletDeposit(walletApproval, prepared, args) {
+  const { statusNode, detailsNode, request, onSubmitted } = args;
+  const result = await walletApproval;
+  const { connectedAccount, liveQuote, swap } = prepared;
   const txHash = result?.transaction?.hash || result?.transaction_outcome?.id ||
     result?.transactionHash || result?.hash || null;
   onSubmitted();
@@ -878,6 +886,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   const details = el("pre"); details.hidden = true;
   const quoteButton = el("button", "Get verified quote", "secondary-btn swap-quote-button"); quoteButton.type = "button"; quoteButton.hidden = true;
   const approveButton = el("button", "Approve swap", "primary-btn swap-approve-button"); approveButton.type = "button"; approveButton.disabled = true; approveButton.hidden = true;
+  let pendingNearApproval = null;
   fields.append(status, approveButton, details); card.append(fields);
   let swap = null, dryQuote = null;
   const invalidate = () => { approveButton.disabled = true; dryQuote = null; swap = null; };
@@ -945,6 +954,29 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     finally { quoteButton.disabled = false; }
   });
   approveButton.addEventListener("click", async () => {
+    if (pendingNearApproval) {
+      const prepared = pendingNearApproval;
+      pendingNearApproval = null;
+      approveButton.disabled = true;
+      quoteButton.disabled = true;
+      try {
+        // Invoke Meteor's redirecting wallet method synchronously in this tap,
+        // before any await, so mobile browsers retain user activation.
+        const walletApproval = prepared.wallet.signAndSendTransaction(prepared.transaction);
+        status.textContent = "Opening Meteor. Review and approve the exact NEAR Testnet transfer…";
+        await finishNearWalletDeposit(walletApproval, prepared, {
+          request, statusNode: status, detailsNode: details,
+          onSubmitted: () => { approveButton.textContent = "Swap submitted · status tracked"; }
+        });
+      } catch (error) {
+        status.textContent = error?.message || "Meteor approval was cancelled or failed. Check wallet activity before retrying.";
+      } finally {
+        quoteButton.disabled = false;
+        approveButton.disabled = true;
+        approveButton.textContent = "Approve swap";
+      }
+      return;
+    }
     approveButton.disabled = true; quoteButton.disabled = true;
     let submitted = false;
     let manualOnly = false;
@@ -1015,7 +1047,16 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
           "Continue to show the exact manual deposit instructions? No wallet prompt will open in Sentinel.");
       if (!window.confirm(summary)) throw new Error("Cancelled before wallet approval. No transaction was submitted.");
       if (liveQuote.deposit_type === "INTENTS" && swap.origin.blockchain === "near") {
-        await executeNearWalletDeposit({ request, connector: getConnector(), connectedAccount: activeNearAccount, liveQuote, swap, statusNode: status, detailsNode: details, onSubmitted: () => { submitted = true; } });
+        pendingNearApproval = await executeNearWalletDeposit({
+          connector: getConnector(), connectedAccount: activeNearAccount, liveQuote, swap,
+          statusNode: status, detailsNode: details, request,
+          onSubmitted: () => { submitted = true; }
+        });
+        quoteButton.disabled = false;
+        approveButton.disabled = false;
+        approveButton.textContent = "Open Meteor & approve";
+        status.textContent = "Security checks passed. Tap “Open Meteor & approve” once more to launch Meteor and review the exact transfer.";
+        return;
       } else if (liveQuote.deposit_type === "ORIGIN_CHAIN" && CHAIN_IDS[swap.origin.blockchain]) {
         await executeEvmDeposit({ request, token: swap.origin, liveQuote, swap, refundInput, statusNode: status, detailsNode: details, onSubmitted: () => { submitted = true; } });
       } else if (liveQuote.deposit_type === "ORIGIN_CHAIN") {
