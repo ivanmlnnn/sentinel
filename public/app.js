@@ -1,5 +1,5 @@
 import { buildTradeSkillDraft } from './trade-skill-draft.js';
-import { renderChatSwap } from './chat-swap.js?v=20261115-direction-unwrap-evidence3';
+import { renderChatSwap } from './chat-swap.js?v=20261115-explicit-route-direction1';
 const $ = id => document.getElementById(id);
 const API = '/api';
 const GUEST_MODE = Boolean(window.SENTINEL_GUEST);
