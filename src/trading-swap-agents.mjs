@@ -58,16 +58,31 @@ export async function runDualAgentSwapReview({
   const amountText = match[1].replace(",", ".");
   const expectedAmount = decimalToUnits(amountText, origin.decimals);
   const nativeNearOutputRequested = match[3].toUpperCase() === "NEAR";
-  const nearUnwrapActions = nativeNearOutputRequested ? buildNearWalletUnwrapActions("1") : null;
+  // The amount is intentionally a settlement-time binding, not a guessed
+  // placeholder. The wallet action is rebuilt from the confirmed WNEAR output
+  // immediately before the user's separate Meteor approval.
+  const nearUnwrapActionTemplate = nativeNearOutputRequested ? {
+    type: "FunctionCall",
+    receiverId: destination.contract_address,
+    params: {
+      methodName: "near_withdraw",
+      args: { amount: "<EXACT_CONFIRMED_SETTLED_WNEAR_BASE_UNITS>" },
+      gas: "30000000000000",
+      deposit: "1"
+    }
+  } : null;
   const nativeNearUnwrapPlanValid = !nativeNearOutputRequested || (
     destination.symbol.toUpperCase() === "WNEAR" &&
     destination.blockchain === "near" &&
     destination.contract_address === "wnear.tidepool-sandbox.testnet" &&
-    Array.isArray(nearUnwrapActions) && nearUnwrapActions.length === 1 &&
-    nearUnwrapActions[0]?.type === "FunctionCall" &&
-    nearUnwrapActions[0]?.params?.methodName === "near_withdraw" &&
-    nearUnwrapActions[0]?.params?.gas === "30000000000000" &&
-    nearUnwrapActions[0]?.params?.deposit === "1"
+    nearUnwrapActionTemplate?.type === "FunctionCall" &&
+    nearUnwrapActionTemplate.receiverId === destination.contract_address &&
+    nearUnwrapActionTemplate.params?.methodName === "near_withdraw" &&
+    nearUnwrapActionTemplate.params?.args?.amount === "<EXACT_CONFIRMED_SETTLED_WNEAR_BASE_UNITS>" &&
+    nearUnwrapActionTemplate.params?.gas === "30000000000000" &&
+    nearUnwrapActionTemplate.params?.deposit === "1" &&
+    typeof quoteInput.recipient === "string" && quoteInput.recipient.length > 0 &&
+    liveQuote?.recipient === quoteInput.recipient
   );
   const deterministic = {
     prompt_amount_valid: expectedAmount !== null && expectedAmount === quoteInput.amount,
@@ -116,12 +131,19 @@ export async function runDualAgentSwapReview({
     native_near_output_handling: nativeNearOutputRequested ? {
       provider_asset: destination.asset_id, provider_symbol: destination.symbol,
       provider_contract: destination.contract_address,
+      settlement_asset: { asset_id: destination.asset_id, symbol: destination.symbol, contract: destination.contract_address },
       settlement_recipient: quoteInput.recipient,
-      post_settlement_method: "near_withdraw",
+      post_settlement_wallet_account: quoteInput.recipient,
       post_settlement_contract: destination.contract_address,
-      wallet: "Meteor NEAR", approval_required: true,
+      post_settlement_method: "near_withdraw",
+      post_settlement_amount_source: "confirmed_settlement.swap_details.amountOut",
+      post_settlement_amount_unit: "WNEAR base units; exact positive integer string",
+      wallet: "Meteor NEAR",
+      approval_required: true,
+      approval_step: "A second explicit Meteor signAndSendTransaction prompt appears only after settlement is confirmed. The user must approve it separately.",
       execution_model: "separate_explicit_user_approval_after_confirmed_settlement",
-      action_template: nearUnwrapActions
+      settlement_and_unwrap_recipient_binding: "The same connected NEAR account intentionally receives WNEAR and signs near_withdraw; this is not a recipient mismatch.",
+      action_template: nearUnwrapActionTemplate
     } : null,
     expected: { amount: quoteInput.amount, recipient: quoteInput.recipient, refund_to: quoteInput.refundTo, slippage_tolerance: quoteInput.slippageTolerance },
     quote: {
@@ -193,7 +215,7 @@ export async function runDualAgentSwapReview({
   try {
     const agentTwoSystem = [
       "You are Sentinel Swap Agent 2, an independent adversarial quote and risk reviewer. You are not Agent 1's assistant.",
-      "Independently challenge the exact quote, signature-verification result, amount, token direction, recipient, refund address, deposit address, expiry, slippage and deterministic risk policy. Understand amount_normalization: user_amount is human-readable token units; expected_base_units is computed with token_decimals and must equal quote_input_base_units exactly. Never compare \"0.1\" directly with \"100000000000000000\". For native NEAR output, inspect native_near_output_handling: Tidepool settles WNEAR, then Sentinel prepares a separate near_withdraw wallet action against the exact verified WNEAR contract after confirmed settlement. The user must explicitly approve this second Meteor transaction; it is not automatic and is not included in the first approval. Require native_near_unwrap_plan_valid=true and exact contract/method/gas/deposit evidence. Do not veto solely because native NEAR is not itself in Tidepool token registry. Do not trust Agent 1 verdict; independently check the structured evidence.",
+      "Independently challenge the exact quote, signature-verification result, amount, token direction, recipient, refund address, deposit address, expiry, slippage and deterministic risk policy. Understand amount_normalization: user_amount is human-readable token units; expected_base_units is computed with token_decimals and must equal quote_input_base_units exactly. Never compare \"0.1\" directly with \"100000000000000000\". For native NEAR output, inspect native_near_output_handling: Tidepool settles WNEAR to settlement_recipient. That same connected NEAR account is intentionally post_settlement_wallet_account and must sign the separate near_withdraw call after confirmed settlement; equal settlement and unwrap account values are required, not a mismatch. Verify settlement_asset contract, receiverId, methodName, args.amount binding to confirmed settlement.swap_details.amountOut, gas, deposit, and the explicit second Meteor approval step. The template amount must remain a settlement-time placeholder until the actual positive integer amount is confirmed; never sign a placeholder. Require native_near_unwrap_plan_valid=true and exact contract/method/gas/deposit evidence. Do not veto solely because native NEAR is not itself in Tidepool token registry. Do not trust Agent 1 verdict; independently check the structured evidence.",
       "Any failed deterministic check, missing field, mismatch, uncertain risk, or non-ALLOW policy requires VETO. PASS means only that the quote may be shown for explicit human wallet approval; it never authorizes signing, depositing, swapping, or trading.",
       "Return exactly one JSON object and no markdown or prose. Required keys: verdict, risk_level, challenge, reasons. verdict must be PASS or VETO; risk_level must be LOW, MEDIUM, or HIGH; challenge must be a non-empty explanatory string; reasons must be an array of strings (use [] when there are no reasons). Do not omit any key and do not add keys."
     ].join("\n");
