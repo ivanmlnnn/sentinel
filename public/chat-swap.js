@@ -104,19 +104,20 @@ function getEvmProviderLabel(provider) {
 }
 async function connectEvm(refundInput, chain) {
   const provider = getInjectedEvmProvider();
-  if (!provider) throw new Error("Meteor NEAR session is available, but this page cannot see an EVM provider from Meteor. Open Sentinel in Meteor's in-app browser or use a Meteor-supported EVM connection; no other wallet will be silently substituted.");
+  if (!provider) throw new Error("The connected Meteor session does not expose an EVM provider to this page. Sentinel will not request or substitute a second wallet.");
   selectedEvmProvider = provider;
-  const accounts = await provider.request({ method: "eth_requestAccounts" });
-  const account = accounts?.[0];
-  if (!evmAddress(account)) throw new Error("EVM wallet did not return a valid address.");
+  // Reuse only an account that the already-connected Meteor provider exposes.
+  // Never call eth_requestAccounts here: that would create a second wallet
+  // permission/connect flow, contrary to Sentinel's single-session design.
+  const accounts = await provider.request({ method: "eth_accounts" });
+  const account = Array.isArray(accounts) ? accounts.find(evmAddress) : null;
+  if (!evmAddress(account)) throw new Error("Meteor is connected, but it has not exposed an EVM account to Sentinel. No additional wallet connection was requested.");
   const wantedChain = CHAIN_IDS[chain];
   if (!wantedChain) throw new Error("No audited EVM network mapping for " + chain + ".");
-  let currentChain = String(await provider.request({ method: "eth_chainId" })).toLowerCase();
+  const currentChain = String(await provider.request({ method: "eth_chainId" })).toLowerCase();
   if (currentChain !== wantedChain) {
-    await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: wantedChain }] });
-    currentChain = String(await provider.request({ method: "eth_chainId" })).toLowerCase();
+    throw new Error("Meteor's already-connected EVM provider is on a different network. Switch Meteor to the selected " + chain.toUpperCase() + " Testnet, then retry. Sentinel will not open a second wallet or switch networks behind your back.");
   }
-  if (currentChain !== wantedChain) throw new Error("Wallet network does not match the selected origin chain.");
   if (refundInput) refundInput.value = account;
   return { provider, account, chainId: wantedChain };
 }
