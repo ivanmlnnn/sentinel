@@ -116,7 +116,7 @@ test("Meteor redirect stores only non-secret recovery metadata and checks Tidepo
 });
 
 test("native NEAR unwrap uses the WNEAR contract for both successful output and refunded input", () => {
-  assert.match(swapUi, /const wnearToken = isNativeOutput \? completedSwap\.destination : completedSwap\.origin/);
+  assert.match(swapUi, /const wnearToken = isNativeOutput \? completedSwap\?\.destination : completedSwap\?\.origin/);
   assert.match(swapUi, /contract: wnearToken\.contract_address/);
 });
 
