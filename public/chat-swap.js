@@ -833,7 +833,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   heading.append(el("strong", "Swap preview"), el("span", "TESTNET"));
   card.append(heading);
   if (!parsed) {
-    card.append(el("p", "Use format: swap 0.1 ETH to NEAR. Decimal comma is accepted, e.g. swap 0,1 ETH to NEAR."));
+    card.append(el("p", "Use format: swap 0.1 ETH to WNEAR. Native NEAR coin swaps are disabled until a verified wrapper route is available."));
     result.replaceChildren(card); result.classList.remove("hidden"); return;
   }
   card.append(el("p", "Sentinel reuses your connected Meteor NEAR Testnet session. No second wallet connection is requested; choose assets available on that session for signing.", "sentinel-swap-intro"));
@@ -1438,10 +1438,9 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       }
       swap = { ...requestBody, origin: quoteOrigin, displayOrigin: origin, wrapNativeNear,
         destination: quoteDestination, displayDestination: destination, unwrapNativeNear };
-      status.textContent = "Route ready: " + origin.blockchain.toUpperCase() + (wrapNativeNear ? " (wrap native NEAR → WNEAR)" : "") + " → " + destination.blockchain.toUpperCase() +
-        (unwrapNativeNear ? " (receive WNEAR, then unwrap to native NEAR)" : "") +
-        " · " + (dryQuote.quote.amount_in_formatted || dryQuote.quote.amount_in) + " " + (wrapNativeNear ? "NEAR" : origin.symbol) +
-        " → " + (dryQuote.quote.amount_out_formatted || dryQuote.quote.amount_out) + " " + (unwrapNativeNear ? "NEAR" : destination.symbol) +
+      status.textContent = "Route ready: " + origin.blockchain.toUpperCase() + " → " + destination.blockchain.toUpperCase() +
+        " · " + (dryQuote.quote.amount_in_formatted || dryQuote.quote.amount_in) + " " + origin.symbol +
+        " → " + (dryQuote.quote.amount_out_formatted || dryQuote.quote.amount_out) + " " + destination.symbol +
         ". Security checks run again before wallet approval.";
       details.textContent = JSON.stringify({ route: { origin: formatToken(origin), destination: formatToken(destination) }, dry_quote: dryQuote }, null, 2);
       details.hidden = true;
@@ -1617,7 +1616,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         }
       }, null, 2);
       details.hidden = false;
-      const summary = "SWAP APPROVAL REVIEW\n\n" + (swap.displayOrigin || swap.origin).symbol + (swap.wrapNativeNear ? " (native NEAR → wrap to WNEAR)" : " (" + swap.origin.blockchain + ")") + " → " + (swap.displayDestination || swap.destination).symbol + (swap.unwrapNativeNear ? " (WNEAR → native NEAR after settlement)" : " (" + swap.destination.blockchain + ")") + "\nInput: " +
+      const summary = "SWAP APPROVAL REVIEW\n\n" + (swap.displayOrigin || swap.origin).symbol + " (" + swap.origin.blockchain + ")" + " → " + (swap.displayDestination || swap.destination).symbol + " (" + swap.destination.blockchain + ")" + "\nInput: "
         (liveQuote.quote.amount_in_formatted || liveQuote.quote.amount_in) + "\nExpected output: " +
         (liveQuote.quote.amount_out_formatted || liveQuote.quote.amount_out) + "\nMinimum output: " +
         liveQuote.quote.minimum_amount_out + "\nRecipient: " + swap.recipient + "\nRefund: " + swap.refundTo +
@@ -1640,7 +1639,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
           network: "NEAR TESTNET",
           signer: activeNearAccount,
           token_contract: swap.origin.contract_address,
-          methods: swap.wrapNativeNear ? ["near_deposit", "ft_transfer_call"] : ["ft_transfer_call"],
+          methods: ["ft_transfer_call"],
           receiver: "verifier.tidepool-sandbox.testnet",
           amount_base_units: swap.amount,
           deposit_reference: liveQuote.deposit_address
