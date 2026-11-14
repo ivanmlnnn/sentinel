@@ -280,3 +280,7 @@
 @media(prefers-reduced-motion:reduce){
   .sentinel-swap-message .swap-token-panel.is-mobile-sheet{animation:none!important}
 }
+
+/* Compact secondary wallet and quote controls on every viewport. */
+.sentinel-swap-message .swap-connect-button{min-height:34px!important;padding:0 12px!important;font-size:9px!important}
+.sentinel-swap-message .swap-disconnect-button{min-height:30px!important;padding:0 10px!important;font-size:8px!important}
