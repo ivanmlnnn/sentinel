@@ -36,7 +36,13 @@ async function fetchNearBlocks(url, apiKey) {
   let payload;
   try { payload = await response.json(); }
   catch { throw new Error("NEARBLOCKS_INVALID_JSON"); }
-  if (!payload || !Array.isArray(payload.data)) throw new Error("NEARBLOCKS_INVALID_RESPONSE");
+  // V3 collection endpoints return data as an array, while single-resource
+  // endpoints (including account balance) may return data as an object.
+  if (!payload || typeof payload !== "object" || !Object.prototype.hasOwnProperty.call(payload, "data")) {
+    const providerError = typeof payload?.message === "string" ? payload.message
+      : typeof payload?.error === "string" ? payload.error : null;
+    throw new Error(providerError ? "NEARBLOCKS_RESPONSE_ERROR: " + providerError : "NEARBLOCKS_INVALID_RESPONSE");
+  }
   return payload;
 }
 
@@ -49,6 +55,7 @@ async function fetchAllNearBlocksRows(baseUrl, apiKey) {
     url.searchParams.set("limit", "100");
     if (next) url.searchParams.set("next", next);
     const payload = await fetchNearBlocks(url.toString(), apiKey);
+    if (!Array.isArray(payload.data)) throw new Error("NEARBLOCKS_FT_LIST_SCHEMA_UNRECOGNIZED");
     rows.push(...payload.data);
     const candidate = payload.meta?.next_page || null;
     if (!candidate) return rows;
@@ -92,7 +99,8 @@ async function readNearBlocksBalance(accountId, token, native, env) {
   try {
     if (native) {
       const payload = await fetchNearBlocks(base + "/v3/accounts/" + account + "/balance", apiKey);
-      const row = payload.data[0] || {};
+      const row = Array.isArray(payload.data) ? (payload.data[0] || {})
+        : payload.data && typeof payload.data === "object" ? payload.data : {};
       const raw = findRawAmount(row) ?? findRawAmount(row.account || {});
       if (raw === null) return json({ error: "NEARBLOCKS_NATIVE_BALANCE_SCHEMA_UNRECOGNIZED" }, 502);
       return json({ raw, decimals: 24, source: "NearBlocks v3" });
