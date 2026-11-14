@@ -4,7 +4,7 @@ import { runDualAgentSwapReview } from "../src/trading-swap-agents.mjs";
 
 const tokens = [
   { asset_id: "eth-test", symbol: "ETH", blockchain: "eth", decimals: 18 },
-  { asset_id: "near-test", symbol: "NEAR", blockchain: "near", decimals: 24 }
+  { asset_id: "near-test", symbol: "WNEAR", blockchain: "near", decimals: 24 }
 ];
 const quoteInput = {
   originAsset: "eth-test", destinationAsset: "near-test",
