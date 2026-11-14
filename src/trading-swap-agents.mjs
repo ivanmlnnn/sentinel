@@ -137,12 +137,23 @@ export async function runDualAgentSwapReview({
       maxOutputTokens: 400,
       timeoutMs: 15000
     });
-    if (!response?.ok) return { ok: false, reason: "SWAP_AGENT_TWO_UNAVAILABLE", status: 502 };
+    if (!response?.ok) return {
+      ok: false, reason: "SWAP_AGENT_TWO_UNAVAILABLE", status: response?.status === 504 ? 504 : 502,
+      diagnostic: {
+        code: typeof response?.error === "string" ? response.error.slice(0, 80) : "AI_CALL_FAILED",
+        http_status: Number.isInteger(response?.status) ? response.status : null,
+        provider_status: Number.isInteger(response?.provider_status) ? response.provider_status : null,
+        provider_code: typeof response?.provider_code === "string" ? response.provider_code.slice(0, 80) : null
+      }
+    };
     const parsed = parseAgentJson(extractText(response));
     second = parsed.ok ? validateAgentOutput(parsed.value, 2) : null;
     if (!second) return { ok: false, reason: "SWAP_AGENT_TWO_INVALID_OUTPUT", status: 502 };
-  } catch {
-    return { ok: false, reason: "SWAP_AGENT_TWO_UNAVAILABLE", status: 502 };
+  } catch (error) {
+    return {
+      ok: false, reason: "SWAP_AGENT_TWO_UNAVAILABLE", status: 502,
+      diagnostic: { code: error?.name === "AbortError" ? "AI_CALL_ABORTED" : "AI_CALL_EXCEPTION" }
+    };
   }
 
   const passed = failedChecks.length === 0 && first.verdict === "PASS" &&
