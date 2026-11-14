@@ -429,7 +429,7 @@ async function executeEvmDeposit(args) {
     await onNativeNearOutput({ swap, settled });
   }
 }
-function renderManualDeposit(panel, liveQuote, token, swap, request, statusNode, detailsNode, onSubmitted) {
+function renderManualDeposit(panel, liveQuote, token, swap, request, statusNode, detailsNode, onSubmitted, onNativeNearOutput) {
   const instructions = el("pre");
   instructions.textContent = [
     "MANUAL ORIGIN-CHAIN DEPOSIT · SENTINEL WALLET ADAPTER NOT ENABLED",
@@ -468,6 +468,10 @@ function renderManualDeposit(panel, liveQuote, token, swap, request, statusNode,
       statusNode.textContent = "Deposit reference accepted. Waiting for Tidepool settlement…";
       const settled = await pollStatus(request, liveQuote.deposit_address, liveQuote.deposit_memo, statusNode);
       detailsNode.textContent = JSON.stringify({ deposit_submission: submitted, settlement: settled }, null, 2);
+      if (String(settled?.status || "").toUpperCase() === "SUCCESS" &&
+          swap.unwrapNativeNear && typeof onNativeNearOutput === "function") {
+        await onNativeNearOutput({ swap, settled });
+      }
     } catch (error) {
       statusNode.textContent = error.message || "Deposit reference failed. Verify the hash and retry without sending funds again.";
       submitHash.disabled = false;
@@ -1492,7 +1496,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
           submitted = true;
           approveButton.disabled = true;
           approveButton.textContent = "Deposit submitted · status tracked";
-        });
+        }, prepareNativeNearUnwrap);
       } else {
         throw new Error("Provider deposit type does not match a supported deposit flow. No transaction was sent.");
       }
