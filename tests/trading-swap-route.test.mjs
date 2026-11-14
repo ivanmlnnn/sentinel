@@ -31,3 +31,9 @@ test("Send is disabled until the chat submit handler is attached", () => {
 test("long-running two-agent endpoints are not aborted by the old 10-second client timeout", () => {
   assert.match(app, /path === '\/trading\/agent' \|\| path === '\/trading\/live-quote' \? 60000/);
 });
+
+test("legacy swap approval also forwards the exact natural-language intent", () => {
+  assert.match(app, /let lastSwapPrompt = null/);
+  assert.match(app, /lastSwapPrompt = 'swap ' \+ rawAmount \+ ' ' \+ draft\.from_asset \+ ' to ' \+ draft\.to_asset/);
+  assert.match(app, /JSON\.stringify\(\{ \.\.\.lastSwapRequest, userPrompt: lastSwapPrompt \}\)/);
+});
