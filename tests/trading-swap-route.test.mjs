@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { promptSymbolMatches } from "../src/trading-swap-agents.mjs";
+import { buildNearWalletUnwrapActions } from "../src/trading-core.mjs";
 
 const swapUi = readFileSync(new URL("../public/chat-swap.js", import.meta.url), "utf8");
 const liveQuoteApi = readFileSync(new URL("../functions/api/trading-live-quote.js", import.meta.url), "utf8");
@@ -171,4 +172,19 @@ test("dual-agent VETO UI exposes both verdicts, reasons and deterministic failed
   assert.match(swapUi, /agent_two_challenge/);
   assert.match(swapUi, /review\.deterministic_checks/);
   assert.match(swapUi, /review\.failed_checks/);
+});
+
+
+test("native NEAR unwrap action builder is exported and binds an exact positive WNEAR amount", () => {
+  assert.deepEqual(buildNearWalletUnwrapActions("1000000000000000000000000"), [{
+    type: "FunctionCall",
+    params: {
+      methodName: "near_withdraw",
+      args: { amount: "1000000000000000000000000" },
+      gas: "30000000000000",
+      deposit: "1"
+    }
+  }]);
+  assert.throws(() => buildNearWalletUnwrapActions("0"), /INVALID_WNEAR_UNWRAP_AMOUNT/);
+  assert.throws(() => buildNearWalletUnwrapActions("1.5"), /INVALID_WNEAR_UNWRAP_AMOUNT/);
 });
