@@ -29,9 +29,11 @@ test("dashboard imports the cache-busted app bundle", () => {
 });
 
 
-test("chat form cancels native navigation while app handles the same submit event", () => {
+
+
+test("chat bootstrap cancels native navigation before app module loads", () => {
   const html = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
-  assert.match(html, /<form id="agentForm" class="agent-chat-form" onsubmit="event\.preventDefault\(\)">/);
+  assert.match(html, /getElementById\\('agentForm'\\)\\?\\.addEventListener\\('submit', event => event\\.preventDefault\\(\\), \\{ capture: true \\}\\)/);
   const app = readFileSync(new URL("../public/app.js", import.meta.url), "utf8");
-  assert.match(app, /agentForm\.addEventListener\('submit', async event => \{\s*event\.preventDefault\(\);/);
+  assert.match(app, /agentForm\\.addEventListener\\('submit', async event => \\{\\s*event\\.preventDefault\\(\\);/);
 });
