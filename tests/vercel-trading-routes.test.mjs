@@ -68,7 +68,7 @@ test("Vercel balance route reads native NEAR through the configured NearBlocks v
     assert.equal(options.method, "GET");
     assert.equal(options.headers.authorization, "Bearer test-nearblocks-key");
     return new Response(JSON.stringify({
-      data: [{ amount: "1230000000000000000000000" }]
+      data: { amount: "1230000000000000000000000" }
     }), { status: 200, headers: { "content-type": "application/json" } });
   };
   try {
