@@ -127,7 +127,16 @@ export async function runDualAgentSwapReview({
         ? "Native NEAR requested as output; Tidepool settles WNEAR to the NEAR recipient. Sentinel then prepares a separate near_withdraw call for the exact settled WNEAR amount; the user must explicitly approve this second Meteor wallet transaction. It is not automatic and is not covered by the swap approval."
         : "User-facing symbol matches the selected provider asset."
     },
+    native_near_input_handling: match[2].toUpperCase() === "NEAR" && origin.symbol.toUpperCase() === "WNEAR" && origin.blockchain === "near" ? {
+      required: true,
+      user_selected_symbol: "NEAR",
+      provider_asset: origin.asset_id,
+      provider_symbol: origin.symbol,
+      provider_contract: origin.contract_address,
+      representation: "The selected NEAR input is represented in the Tidepool quote as this NEAR-chain WNEAR registry asset. This describes the quoted provider asset only; it does not claim an additional wrap transaction has occurred."
+    } : { required: false, reason: "The selected input is not native NEAR represented as WNEAR." },
     native_near_output_handling: nativeNearOutputRequested ? {
+      required: true,
       provider_asset: destination.asset_id, provider_symbol: destination.symbol,
       provider_contract: destination.contract_address,
       settlement_asset: { asset_id: destination.asset_id, symbol: destination.symbol, contract: destination.contract_address },
@@ -143,7 +152,10 @@ export async function runDualAgentSwapReview({
       execution_model: "separate_explicit_user_approval_after_confirmed_settlement",
       settlement_and_unwrap_recipient_binding: "The same connected NEAR account intentionally receives WNEAR and signs near_withdraw; this is not a recipient mismatch.",
       action_template: nearUnwrapActionTemplate
-    } : null,
+    } : {
+      required: false,
+      reason: "The requested destination is not NEAR. This swap ends in the selected non-NEAR destination asset, so no native NEAR output settlement or near_withdraw action is applicable. A WNEAR origin is an input representation and does not create an output unwrap requirement."
+    },
     expected: { amount: quoteInput.amount, recipient: quoteInput.recipient, refund_to: quoteInput.refundTo, slippage_tolerance: quoteInput.slippageTolerance },
     quote: {
       origin_chain: liveQuote.origin_chain, destination_chain: liveQuote.destination_chain,
@@ -214,7 +226,7 @@ export async function runDualAgentSwapReview({
   try {
     const agentTwoSystem = [
       "You are Sentinel Swap Agent 2, an independent adversarial quote and risk reviewer. You are not Agent 1's assistant.",
-      "Independently challenge the exact quote, signature-verification result, amount, token direction, recipient, refund address, deposit address, expiry, slippage and deterministic risk policy. Understand amount_normalization: user_amount is human-readable token units; expected_base_units is computed with token_decimals and must equal quote_input_base_units exactly. Never compare \"0.1\" directly with \"100000000000000000\". For native NEAR output, inspect native_near_output_handling: Tidepool settles WNEAR to settlement_recipient. That same connected NEAR account is intentionally post_settlement_wallet_account and must sign the separate near_withdraw call after confirmed settlement; equal settlement and unwrap account values are required, not a mismatch. Verify settlement_asset contract, receiverId, methodName, args.amount binding to confirmed settlement.swap_details.amountOut, gas, deposit, and the explicit second Meteor approval step. The template amount must remain a settlement-time placeholder until the actual positive integer amount is confirmed; never sign a placeholder. Require native_near_unwrap_plan_valid=true and exact contract/method/gas/deposit evidence. Do not veto solely because native NEAR is not itself in Tidepool token registry. Do not trust Agent 1 verdict; independently check the structured evidence.",
+      "Independently challenge the exact quote, signature-verification result, amount, token direction, recipient, refund address, deposit address, expiry, slippage and deterministic risk policy. Understand amount_normalization: user_amount is human-readable token units; expected_base_units is computed with token_decimals and must equal quote_input_base_units exactly. Never compare \"0.1\" directly with \"100000000000000000\". Distinguish input from output: a NEAR/WNEAR origin with a non-NEAR destination is an input representation only and does NOT require native NEAR output handling or near_withdraw. In that case native_near_output_handling.required must be false with the explicit no-unwrap reason, and native_near_unwrap_plan_valid=true means no output unwrap is needed. Do not invent a native NEAR output just because the origin symbol is WNEAR. Only when the user's requested destination is NEAR and the selected destination is the verified NEAR-chain WNEAR asset, native_near_output_handling.required is true: Tidepool settles WNEAR to settlement_recipient; that same connected NEAR account signs the separate near_withdraw call after confirmed settlement. Verify settlement_asset contract, receiverId, methodName, args.amount binding to confirmed settlement.swap_details.amountOut, gas, deposit, and explicit second Meteor approval. The template amount remains a settlement-time placeholder until the actual positive integer amount is confirmed; never sign a placeholder. Require native_near_unwrap_plan_valid=true. Do not veto solely because native NEAR is not itself in Tidepool token registry. Do not trust Agent 1 verdict; independently check the structured evidence.",
       "Any failed deterministic check, missing field, mismatch, uncertain risk, or non-ALLOW policy requires VETO. PASS means only that the quote may be shown for explicit human wallet approval; it never authorizes signing, depositing, swapping, or trading.",
       "Return exactly one JSON object and no markdown or prose. Required keys: verdict, risk_level, challenge, reasons. verdict must be PASS or VETO; risk_level must be LOW, MEDIUM, or HIGH; challenge must be a non-empty explanatory string; reasons must be an array of strings (use [] when there are no reasons). Do not omit any key and do not add keys."
     ].join("\n");
