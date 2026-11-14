@@ -600,13 +600,13 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
     panel.classList.remove("is-mobile-sheet");
   };
   backdrop.addEventListener("click", closePanel);
-  const refreshBalances = async () => {
+  const refreshBalances = async (onlyAssetId = null) => {
     if (loading) return;
     loading = true;
     refresh.disabled = true;
     refresh.textContent = "Refreshing…";
     balanceStamp.textContent = "Reading connected wallet";
-    const entries = tokenList;
+    const entries = onlyAssetId ? tokenList.filter(token => token.asset_id === onlyAssetId) : tokenList;
     const walletAccount = typeof nearWalletAccount === "function" ? nearWalletAccount() : nearWalletAccount;
     // Refresh the full Tidepool registry, not only the currently visible chain.
     // Bound concurrency to avoid flooding wallet/RPC providers on mobile.
@@ -616,7 +616,7 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
         catch (error) { balances.set(token.asset_id, { value: null, note: error?.message || "Balance unavailable" }); }
       }));
     }
-    if (nearAccount(walletAccount)) {
+    if (!onlyAssetId && nearAccount(walletAccount)) {
       try {
         balances.set("__near_native__", await readSwapWalletBalance(
           { blockchain: "near", symbol: "NEAR", decimals: 24, contract_address: null }, walletAccount, request
@@ -624,7 +624,7 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
       } catch (error) {
         balances.set("__near_native__", { value: null, note: error?.message || "Native NEAR balance unavailable" });
       }
-    } else {
+    } else if (!onlyAssetId) {
       balances.set("__near_native__", { value: null, note: "Connect a NEAR Testnet wallet" });
     }
     balanceStamp.textContent = "Updated " + new Date().toLocaleTimeString();
@@ -909,7 +909,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       if (!origin) { status.textContent = "Choose an origin token before selecting a balance percentage."; return; }
       shortcut.disabled = true;
       try {
-        await originPicker.refresh();
+        await originPicker.refresh(origin.asset_id);
         const balance = originPicker.balanceFor(origin.asset_id);
         if (!balance || typeof balance.raw !== "string") {
           throw new Error(balance?.note || "Wallet balance is not available for this token and network.");
