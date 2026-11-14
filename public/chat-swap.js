@@ -956,6 +956,13 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   approveButton.addEventListener("click", async () => {
     if (pendingNearApproval) {
       const prepared = pendingNearApproval;
+      if (Date.parse(prepared.liveQuote?.deadline) <= Date.now()) {
+        pendingNearApproval = null;
+        status.textContent = "The verified quote expired before Meteor opened. Request a fresh quote.";
+        approveButton.disabled = true;
+        approveButton.textContent = "Approve swap";
+        return;
+      }
       pendingNearApproval = null;
       approveButton.disabled = true;
       quoteButton.disabled = true;
@@ -1074,8 +1081,9 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       status.textContent = error.message || "Swap flow stopped. Check wallet activity and Tidepool status before retrying.";
     } finally {
       quoteButton.disabled = false;
-      approveButton.disabled = submitted || manualOnly;
-      approveButton.textContent = submitted ? "Swap submitted · status tracked" : manualOnly ? "Manual deposit instructions ready" : "Approve swap";
+      approveButton.disabled = pendingNearApproval ? false : submitted || manualOnly;
+      approveButton.textContent = pendingNearApproval ? "Open Meteor & approve" :
+        submitted ? "Swap submitted · status tracked" : manualOnly ? "Manual deposit instructions ready" : "Approve swap";
     }
   });
   result.replaceChildren(card); result.classList.remove("hidden"); result.scrollTop = result.scrollHeight;
