@@ -56,7 +56,7 @@ test("does not replace an actual native NEAR registry asset with wNEAR", () => {
     { asset_id: "wnear:near", symbol: "wNEAR", blockchain: "near" },
     { asset_id: "native:near", symbol: "NEAR", blockchain: "near", native: true }
   ];
-  assert.equal(resolveInitialSwapToken(tokens, "NEAR").asset_id, "near:native");
+  assert.equal(resolveInitialSwapToken(tokens, "NEAR").asset_id, "native:near");
 });
 
 test("formats percentage shortcut amounts without floating-point rounding", () => {
