@@ -54,7 +54,14 @@ test("both independent agents must pass before swap review is eligible", async (
   const evidence = JSON.parse(ai.calls[1].messages[0].content).evidence;
   assert.equal(evidence.native_near_output_handling.approval_required, true);
   assert.equal(evidence.native_near_output_handling.execution_model, "separate_explicit_user_approval_after_confirmed_settlement");
-  assert.equal(evidence.native_near_output_handling.action_template[0].params.methodName, "near_withdraw");
+  assert.equal(evidence.native_near_output_handling.action_template.receiverId, "wnear.tidepool-sandbox.testnet");
+  assert.equal(evidence.native_near_output_handling.action_template.params.methodName, "near_withdraw");
+  assert.equal(evidence.native_near_output_handling.action_template.params.args.amount, "<EXACT_CONFIRMED_SETTLED_WNEAR_BASE_UNITS>");
+  assert.equal(evidence.native_near_output_handling.action_template.params.gas, "30000000000000");
+  assert.equal(evidence.native_near_output_handling.action_template.params.deposit, "1");
+  assert.equal(evidence.native_near_output_handling.post_settlement_wallet_account, quoteInput.recipient);
+  assert.equal(evidence.native_near_output_handling.settlement_recipient, quoteInput.recipient);
+  assert.match(evidence.native_near_output_handling.approval_step, /second explicit Meteor/i);
   assert.equal(ai.calls.length, 2);
   assert.match(ai.calls[0].messages[0].content, /user_prompt/);
   assert.match(ai.calls[1].messages[0].content, /deterministic_checks/);
@@ -195,4 +202,29 @@ test("Agent 1 invalid output fails closed with schema diagnostics after one retr
   assert.deepEqual(result.diagnostic.output_keys, ["verdict"]);
   assert.equal(result.diagnostic.parse_reason, "AGENT_ONE_SCHEMA_INVALID");
   assert.equal(ai.calls.length, 2);
+});
+
+test("native NEAR unwrap evidence binds settlement and second approval to the same connected wallet", async () => {
+  const ai = aiMock([agentOnePass, agentTwoPass]);
+  const result = await runDualAgentSwapReview({
+    prompt: "swap 0.1 ETH to NEAR", quoteInput, liveQuote, tokens, aiCall: ai.run,
+    now: Date.parse("2026-11-14T11:00:00.000Z")
+  });
+  const evidence = JSON.parse(ai.calls[1].messages[0].content).evidence;
+  assert.equal(result.value.deterministic_checks.native_near_unwrap_plan_valid, true);
+  assert.equal(evidence.native_near_output_handling.settlement_recipient, "alice.testnet");
+  assert.equal(evidence.native_near_output_handling.post_settlement_wallet_account, "alice.testnet");
+  assert.match(evidence.native_near_output_handling.settlement_and_unwrap_recipient_binding, /not a recipient mismatch/i);
+  assert.equal(evidence.native_near_output_handling.post_settlement_amount_source, "confirmed_settlement.swap_details.amountOut");
+});
+
+test("native NEAR unwrap evidence fails closed if quote recipient differs from the selected wallet", async () => {
+  const ai = aiMock([agentOnePass, agentTwoPass]);
+  const result = await runDualAgentSwapReview({
+    prompt: "swap 0.1 ETH to NEAR", quoteInput,
+    liveQuote: { ...liveQuote, recipient: "mallory.testnet" },
+    tokens, aiCall: ai.run, now: Date.parse("2026-11-14T11:00:00.000Z")
+  });
+  assert.equal(result.ok, false);
+  assert.ok(result.value.failed_checks.includes("NATIVE_NEAR_UNWRAP_PLAN_VALID"));
 });
