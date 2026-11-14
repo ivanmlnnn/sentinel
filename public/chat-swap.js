@@ -611,22 +611,24 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
     balanceStamp.textContent = "Reading connected wallet";
     const entries = onlyAssetId ? tokenList.filter(token => token.asset_id === onlyAssetId) : tokenList;
     const walletAccount = typeof nearWalletAccount === "function" ? nearWalletAccount() : nearWalletAccount;
-    let evmAccount = typeof evmWalletAccount === "function" ? evmWalletAccount() : evmWalletAccount;
-    evmAccount = evmAccount || cachedEvmAccount;
+    let evmAccount = null;
     const evmProvider = getInjectedEvmProvider();
+    // The provider is the source of truth. Do not keep a stale address from a
+    // previous wallet session after accountsChanged, disconnect, or account switch.
     if (requestEvmPermission && evmProvider?.request) {
       try {
         const accounts = await evmProvider.request({ method: "eth_requestAccounts" });
-        if (evmAddress(accounts?.[0])) evmAccount = cachedEvmAccount = accounts[0];
-      } catch (error) {
+        evmAccount = evmAddress(accounts?.[0]) ? accounts[0] : null;
+      } catch {
         balanceStamp.textContent = "EVM wallet connection was not approved";
       }
-    } else if (!evmAccount && evmProvider?.request) {
+    } else if (evmProvider?.request) {
       try {
         const accounts = await evmProvider.request({ method: "eth_accounts" });
-        if (evmAddress(accounts?.[0])) evmAccount = cachedEvmAccount = accounts[0];
-      } catch {}
+        evmAccount = evmAddress(accounts?.[0]) ? accounts[0] : null;
+      } catch { evmAccount = null; }
     }
+    cachedEvmAccount = evmAccount;
     // Refresh the full Tidepool registry, not only the currently visible chain.
     // Bound concurrency to avoid flooding wallet/RPC providers on mobile.
     for (let index = 0; index < entries.length; index += 5) {
@@ -664,6 +666,18 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
     refresh.textContent = "Refresh balances ↻";
     renderTokens();
   };
+  const balanceProvider = getInjectedEvmProvider();
+  if (balanceProvider?.on) {
+    balanceProvider.on("accountsChanged", accounts => {
+      cachedEvmAccount = evmAddress(accounts?.[0]) ? accounts[0] : null;
+      balances.clear();
+      refreshBalances();
+    });
+    balanceProvider.on("chainChanged", () => {
+      balances.clear();
+      refreshBalances();
+    });
+  }
   trigger.addEventListener("click", () => {
     if (!panel.hidden) { closePanel(); return; }
     panel.hidden = false;
