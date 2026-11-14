@@ -56,22 +56,26 @@ export function normalizeTidepoolTokens(payload) {
       token.symbol.length > 0 &&
       Number.isInteger(token.decimals) &&
       token.decimals >= 0 &&
-      token.decimals <= 30 &&
-      Number.isFinite(Number(token.price)) &&
-      Number(token.price) > 0 &&
-      typeof token.priceUpdatedAt === "string" &&
-      Number.isFinite(Date.parse(token.priceUpdatedAt))
+      token.decimals <= 30
     )
-    .map(token => ({
-      asset_id: token.assetId,
-      symbol: token.symbol,
-      decimals: token.decimals,
-      blockchain: token.blockchain,
-      network: "testnet",
-      price_usd: Number(token.price),
-      price_updated_at: token.priceUpdatedAt,
-      contract_address: typeof token.contractAddress === "string" ? token.contractAddress : null
-    }))
+    // Balance discovery must not depend on price-oracle availability. Tidepool
+    // can list a valid NEP-141 asset while its price fields are temporarily
+    // absent; filtering it here hides WNEAR/ETH from the wallet scanner.
+    .map(token => {
+      const price = Number(token.price);
+      const priceUpdatedAt = typeof token.priceUpdatedAt === "string" &&
+        Number.isFinite(Date.parse(token.priceUpdatedAt)) ? token.priceUpdatedAt : null;
+      return {
+        asset_id: token.assetId,
+        symbol: token.symbol,
+        decimals: token.decimals,
+        blockchain: token.blockchain,
+        network: "testnet",
+        price_usd: Number.isFinite(price) && price > 0 ? price : null,
+        price_updated_at: priceUpdatedAt,
+        contract_address: typeof token.contractAddress === "string" ? token.contractAddress : null
+      };
+    })
     .sort((a, b) => a.blockchain.localeCompare(b.blockchain) || a.symbol.localeCompare(b.symbol));
 }
 
