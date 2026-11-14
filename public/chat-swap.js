@@ -966,10 +966,11 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       activeNearAccount = null;
       dryQuote = null;
       swap = null;
-      walletStateText.textContent = "Wallet not connected";
-      walletState.classList.remove("is-connected");
+      walletStateText.textContent = activeEvmAccount ? shortWalletAddress(activeEvmAccount) : "Wallet not connected";
+      walletState.classList.toggle("is-connected", Boolean(activeEvmAccount));
       disconnectButton.hidden = true;
       connectButton.textContent = "Connect required wallets";
+      refreshConnectLabel();
       approveButton.disabled = true;
       approveButton.hidden = true;
       status.textContent = "NEAR wallet disconnected from Sentinel. Connect again before requesting a new quote.";
@@ -1256,6 +1257,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     invalidate();
     walletStateText.textContent = activeNearAccount ? shortWalletAddress(activeNearAccount) : (activeEvmAccount ? shortWalletAddress(activeEvmAccount) : "Wallet not connected");
     walletState.classList.toggle("is-connected", Boolean(activeNearAccount || activeEvmAccount));
+    disconnectButton.hidden = !activeNearAccount;
     originPicker.refresh();
     status.textContent = "NEAR wallet session updated. Balances are being refreshed; request a new quote before approval.";
     refreshConnectLabel();
@@ -1266,6 +1268,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
     invalidate();
     walletStateText.textContent = activeEvmAccount ? shortWalletAddress(activeEvmAccount) : "Wallet not connected";
     walletState.classList.toggle("is-connected", Boolean(activeEvmAccount));
+    disconnectButton.hidden = true;
     originPicker.refresh();
     status.textContent = "NEAR wallet disconnected. Previous quote and approval were invalidated.";
     refreshConnectLabel();
@@ -1279,6 +1282,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       invalidate();
       walletStateText.textContent = activeEvmAccount ? shortWalletAddress(activeEvmAccount) : (activeNearAccount ? shortWalletAddress(activeNearAccount) : "Wallet not connected");
       if (!activeEvmAccount && !activeNearAccount) walletState.classList.remove("is-connected");
+      disconnectButton.hidden = !activeNearAccount;
       originPicker.refresh();
       destinationPicker.refresh();
       status.textContent = "EVM wallet account changed. Previous quote and approval were invalidated. Verify the new wallet before continuing.";
@@ -1620,8 +1624,16 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         const failedRiskChecks = Array.isArray(riskEvaluation.checks)
           ? riskEvaluation.checks.filter(check => check?.status !== "PASS").map(check => check.id)
           : [];
+        const minimumOutputCheck = riskEvaluation.checks?.find(check => check?.id === "MINIMUM_OUTPUT_PROTECTED" && check?.status !== "PASS");
+        const minimumOutputDiagnostic = minimumOutputCheck
+          ? " · minimum output observed=" + String(minimumOutputCheck.observed_minimum_output ?? "unknown") +
+            ", required=" + String(minimumOutputCheck.required_minimum_output ?? "unknown") +
+            ", quoted=" + String(minimumOutputCheck.quoted_output ?? "unknown") +
+            ", slippage=" + String(minimumOutputCheck.slippage_tolerance_bps ?? "unknown") + " bps"
+          : "";
         status.textContent = (error.message || "Swap blocked by Sentinel risk policy.") +
-          (failedRiskChecks.length ? " · Failed checks: " + failedRiskChecks.join(", ") : " · Risk decision: " + String(riskEvaluation.decision || "BLOCK"));
+          (failedRiskChecks.length ? " · Failed checks: " + failedRiskChecks.join(", ") : " · Risk decision: " + String(riskEvaluation.decision || "BLOCK")) +
+          minimumOutputDiagnostic;
         details.textContent = JSON.stringify({ api_error: error.data, risk_evaluation: riskEvaluation }, null, 2);
         details.hidden = false;
       } else if (diagnostic) {
