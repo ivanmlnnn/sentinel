@@ -195,14 +195,21 @@ test("Pre-Order controls mount in the dashboard workspace rather than inside the
   assert.match(swapUi, /preOrdersDashboardMount\.replaceChildren\(preOrderPanel\)/);
 });
 
-test("Verify quote never silently reverses the selected origin and destination", () => {
+test("Verify quote preserves the explicit UI direction, including a user-flipped NEAR to ETH pair", () => {
   const quoteStart = swapUi.indexOf('quoteButton.addEventListener("click"');
   const quoteEnd = swapUi.indexOf('approveButton.addEventListener("click"', quoteStart);
   const handler = swapUi.slice(quoteStart, quoteEnd);
-  assert.match(handler, /const origin = tokens\.find\(token => String\(token\.asset_id \?\? ""\) === originSelect\.value\)/);
-  assert.match(handler, /const destination = tokens\.find\(token => String\(token\.asset_id \?\? ""\) === destSelect\.value\)/);
-  assert.match(handler, /does not match your instruction/);
-  assert.doesNotMatch(handler, /originSelect\.value = intended\.origin\.asset_id/);
-  assert.doesNotMatch(handler, /destSelect\.value = intended\.destination\.asset_id/);
-  assert.match(handler, /originAsset: quoteOrigin\.asset_id, destinationAsset: quoteDestination\.asset_id/);
+  assert.match(handler, /const origin = tokens\\.find\\(token => String\\(token\\.asset_id \\?\\? ""\\) === originSelect\\.value\\)/);
+  assert.match(handler, /const destination = tokens\\.find\\(token => String\\(token\\.asset_id \\?\\? ""\\) === destSelect\\.value\\)/);
+  assert.doesNotMatch(handler, /promptTokenMatchesSymbol\\(parsed\\.from/);
+  assert.doesNotMatch(handler, /originSelect\\.value =/);
+  assert.doesNotMatch(handler, /destSelect\\.value =/);
+  assert.match(handler, /originAsset: quoteOrigin\\.asset_id, destinationAsset: quoteDestination\\.asset_id/);
+  const approvalStart = swapUi.indexOf('approveButton.addEventListener("click"');
+  const approval = swapUi.slice(approvalStart);
+  assert.doesNotMatch(approval, /promptTokenMatchesSymbol\\(parsed\\.from/);
+  assert.match(approval, /const selectedSwapPrompt = "Swap "/);
+  assert.match(approval, /userPrompt: selectedSwapPrompt/);
+  assert.match(approval, /swap\\.displayOrigin \\|\\| swap\\.origin/);
+  assert.match(approval, /swap\\.displayDestination \\|\\| swap\\.destination/);
 });
