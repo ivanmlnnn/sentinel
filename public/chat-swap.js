@@ -198,12 +198,12 @@ async function executeNearWalletDeposit(args) {
       liveQuote.quote_request?.originAsset !== swap.originAsset) {
     throw new Error("Live quote amount or origin asset does not match the reviewed request.");
   }
-  const walletTokenBalance = await readSwapWalletBalance(swap.origin, connectedAccount);
+  const walletTokenBalance = await readSwapWalletBalance(swap.origin, connectedAccount, request);
   if (!walletTokenBalance.raw || BigInt(walletTokenBalance.raw) < BigInt(swap.amount)) {
     throw new Error("Meteor wallet balance is insufficient for the exact quoted amount. Refresh balances and choose a smaller amount.");
   }
   const nativeGasBalance = await readSwapWalletBalance(
-    { blockchain: "near", symbol: "NEAR", decimals: 24, contract_address: null }, connectedAccount
+    { blockchain: "near", symbol: "NEAR", decimals: 24, contract_address: null }, connectedAccount, request
   );
   if (!nativeGasBalance.raw || BigInt(nativeGasBalance.raw) <= 0n) {
     throw new Error("Meteor account has no native NEAR for Testnet transaction gas.");
@@ -245,8 +245,11 @@ async function finishNearWalletDeposit(walletApproval, prepared, args) {
   const { connectedAccount, liveQuote, swap } = prepared;
   const txHash = result?.transaction?.hash || result?.transaction_outcome?.id ||
     result?.transactionHash || result?.hash || null;
-  onSubmitted();
-  statusNode.textContent = "Meteor wallet transfer submitted. Waiting for Tidepool to credit and settle the swap…";
+  const validTxHash = typeof txHash === "string" && /^[1-9A-HJ-NP-Za-km-z]{32,64}$/.test(txHash);
+  if (validTxHash) onSubmitted();
+  statusNode.textContent = validTxHash
+    ? "Meteor wallet transfer submitted. Waiting for Tidepool to credit and settle the swap…"
+    : "Meteor returned without a verifiable transaction hash. Checking Tidepool status; approval is not yet confirmed.";
   detailsNode.textContent = JSON.stringify({
     origin: "NEAR TESTNET",
     token_contract: swap.origin.contract_address,
@@ -254,7 +257,7 @@ async function finishNearWalletDeposit(walletApproval, prepared, args) {
     deposit_address: liveQuote.deposit_address,
     wallet_result: result
   }, null, 2);
-  if (typeof txHash === "string" && txHash.length >= 8 && !/\s/.test(txHash)) {
+  if (validTxHash) {
     try {
       await request("/trading/deposit-submit", {
         method: "POST",
