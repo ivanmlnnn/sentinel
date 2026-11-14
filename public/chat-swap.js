@@ -439,12 +439,12 @@ export function formatUnitsForInput(raw, decimals) {
   const fraction = places ? (value % base).toString().padStart(places, "0").replace(/0+$/, "") : "";
   return fraction ? whole.toString() + "." + fraction : whole.toString();
 }
-async function readSwapWalletBalance(token, nearWalletAccount, request) {
+async function readSwapWalletBalance(token, nearWalletAccount, request, evmAccountOverride = null) {
   const chain = String(token.blockchain || "").toLowerCase();
   if (CHAIN_IDS[chain]) {
     const provider = getInjectedEvmProvider();
-    if (!provider || typeof provider.request !== "function") return { value: null, note: "Open or connect an EVM wallet in this browser" };
-    const accounts = await provider.request({ method: "eth_accounts" });
+    if (!provider || typeof provider.request !== "function") return { value: null, note: "No EVM provider exposed by this wallet/browser" };
+    const accounts = evmAccountOverride ? [evmAccountOverride] : await provider.request({ method: "eth_accounts" });
     const account = accounts?.[0];
     if (!evmAddress(account)) return { value: null, note: "Connect an EVM wallet to read this address" };
     const payload = token.asset_id
@@ -472,7 +472,7 @@ async function readSwapWalletBalance(token, nearWalletAccount, request) {
   }
   return { value: null, note: "Wallet balance adapter not connected for " + chain.toUpperCase() };
 }
-function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccount, onSelected, request) {
+function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccount, onSelected, request, evmWalletAccount = null) {
   const root = el("div", undefined, "swap-token-picker");
   const trigger = el("button", undefined, "swap-token-trigger");
   trigger.type = "button";
@@ -495,6 +495,7 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
   const chains = [...new Set(tokenList.map(token => String(token.blockchain || "").toLowerCase()))].filter(Boolean);
   let activeChain = tokenList.find(token => token.asset_id === select.value)?.blockchain || chains[0] || "";
   const balances = new Map();
+  let cachedEvmAccount = null;
   let loading = false;
   const selectedToken = () => tokenList.find(token => token.asset_id === select.value);
   const syncTrigger = () => {
@@ -598,7 +599,7 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
     panel.classList.remove("is-mobile-sheet");
   };
   backdrop.addEventListener("click", closePanel);
-  const refreshBalances = async (onlyAssetId = null) => {
+  const refreshBalances = async (onlyAssetId = null, requestEvmPermission = false) => {
     if (loading) return;
     loading = true;
     refresh.disabled = true;
@@ -606,11 +607,27 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
     balanceStamp.textContent = "Reading connected wallet";
     const entries = onlyAssetId ? tokenList.filter(token => token.asset_id === onlyAssetId) : tokenList;
     const walletAccount = typeof nearWalletAccount === "function" ? nearWalletAccount() : nearWalletAccount;
+    let evmAccount = typeof evmWalletAccount === "function" ? evmWalletAccount() : evmWalletAccount;
+    evmAccount = evmAccount || cachedEvmAccount;
+    const evmProvider = getInjectedEvmProvider();
+    if (requestEvmPermission && evmProvider?.request) {
+      try {
+        const accounts = await evmProvider.request({ method: "eth_requestAccounts" });
+        if (evmAddress(accounts?.[0])) evmAccount = cachedEvmAccount = accounts[0];
+      } catch (error) {
+        balanceStamp.textContent = "EVM wallet connection was not approved";
+      }
+    } else if (!evmAccount && evmProvider?.request) {
+      try {
+        const accounts = await evmProvider.request({ method: "eth_accounts" });
+        if (evmAddress(accounts?.[0])) evmAccount = cachedEvmAccount = accounts[0];
+      } catch {}
+    }
     // Refresh the full Tidepool registry, not only the currently visible chain.
     // Bound concurrency to avoid flooding wallet/RPC providers on mobile.
     for (let index = 0; index < entries.length; index += 5) {
       await Promise.all(entries.slice(index, index + 5).map(async token => {
-        try { balances.set(token.asset_id, await readSwapWalletBalance(token, walletAccount, request)); }
+        try { balances.set(token.asset_id, await readSwapWalletBalance(token, walletAccount, request, evmAccount)); }
         catch (error) { balances.set(token.asset_id, { value: null, note: error?.message || "Balance unavailable" }); }
       }));
     }
@@ -630,7 +647,7 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
       await Promise.all(evmChains.map(async chain => {
         try {
           balances.set("__evm_native__:" + chain, await readSwapWalletBalance(
-            { blockchain: chain, symbol: NATIVE_EVM_SYMBOLS[chain]?.values().next().value || "ETH", decimals: 18 }, null, request
+            { blockchain: chain, symbol: NATIVE_EVM_SYMBOLS[chain]?.values().next().value || "ETH", decimals: 18 }, null, request, evmAccount
           ));
         } catch (error) {
           balances.set("__evm_native__:" + chain, { value: null, note: error?.message || "Native " + chain.toUpperCase() + " balance unavailable" });
@@ -652,7 +669,7 @@ function createSwapTokenPicker(select, tokenList, initialSymbol, nearWalletAccou
     window.addEventListener("scroll", positionPanel, true);
     refreshBalances();
   });
-  refresh.addEventListener("click", refreshBalances);
+  refresh.addEventListener("click", () => refreshBalances(null, true));
   syncTrigger(); renderChains(); renderTokens();
   root.append(trigger, select, panel);
   return {
@@ -699,8 +716,8 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   }
   originSelect.className = "swap-native-select";
   destSelect.className = "swap-native-select";
-  const originPicker = createSwapTokenPicker(originSelect, tokens, parsed.from, () => activeNearAccount, () => { defaults(); invalidate(); }, request);
-  const destinationPicker = createSwapTokenPicker(destSelect, tokens, parsed.to, () => activeNearAccount, () => { defaults(); invalidate(); }, request);
+  const originPicker = createSwapTokenPicker(originSelect, tokens, parsed.from, () => activeNearAccount, () => { defaults(); invalidate(); }, request, () => activeEvmAccount);
+  const destinationPicker = createSwapTokenPicker(destSelect, tokens, parsed.to, () => activeNearAccount, () => { defaults(); invalidate(); }, request, () => activeEvmAccount);
   const refundInput = null;
   const initialAccount = getConnectedAccount();
   let activeNearAccount = initialAccount && nearAccount(initialAccount) ? initialAccount : null;
