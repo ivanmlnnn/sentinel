@@ -66,15 +66,11 @@ test("formats percentage shortcut amounts without floating-point rounding", () =
 });
 
 
-test("native NEAR swap wraps the exact amount before depositing WNEAR into Intents", () => {
-  const actions = buildNearWalletDepositActions("100000000000000000000000", "a".repeat(64), true);
-  assert.equal(actions.length, 2);
-  assert.equal(actions[0].params.methodName, "near_deposit");
-  assert.equal(actions[0].params.deposit, "100000000000000000000000");
-  assert.equal(actions[1].params.methodName, "ft_transfer_call");
-  assert.equal(actions[1].params.args.receiver_id, "verifier.tidepool-sandbox.testnet");
-  assert.equal(actions[1].params.args.amount, "100000000000000000000000");
-  assert.equal(actions[1].params.args.msg, "a".repeat(64));
+test("native NEAR wrapping is rejected before any wallet action is built", () => {
+  assert.throws(
+    () => buildNearWalletDepositActions("100000000000000000000000", "a".repeat(64), true),
+    /NATIVE_NEAR_WRAP_UNSUPPORTED/
+  );
 });
 
 test("WNEAR swap does not wrap native NEAR a second time", () => {
@@ -88,38 +84,31 @@ test("NEAR wallet deposit action builder rejects invalid deposit references", ()
 });
 
 
-test("native NEAR input is quoted as WNEAR and marked for wrapping", () => {
+test("native NEAR input is rejected instead of being silently represented as WNEAR", () => {
   const native = { asset_id: "native:near", symbol: "NEAR", decimals: 24, blockchain: "near", native: true };
   const wnear = { asset_id: "nep141:wnear.tidepool-sandbox.testnet", symbol: "wNEAR", decimals: 24, blockchain: "near", contract_address: "wnear.tidepool-sandbox.testnet" };
   const usdc = { asset_id: "nep141:usdc.tidepool-sandbox.testnet", symbol: "USDC", decimals: 6, blockchain: "near", contract_address: "usdc.tidepool-sandbox.testnet" };
-  const route = resolveTidepoolSwapAssets(native, usdc, [wnear, usdc]);
-  assert.equal(route.quoteOrigin.asset_id, wnear.asset_id);
-  assert.equal(route.quoteDestination.asset_id, usdc.asset_id);
-  assert.equal(route.wrapNativeNear, true);
-  assert.equal(route.unwrapNativeNear, false);
-});
-
-test("native NEAR and WNEAR use distinct wallet paths for the same Tidepool quote asset", () => {
-  const native = { asset_id: "native:near", symbol: "NEAR", decimals: 24, blockchain: "near", native: true };
-  const wnear = { asset_id: "nep141:wnear.tidepool-sandbox.testnet", symbol: "wNEAR", decimals: 24, blockchain: "near", contract_address: "wnear.tidepool-sandbox.testnet" };
-  const usdc = { asset_id: "nep141:usdc.tidepool-sandbox.testnet", symbol: "USDC", decimals: 6, blockchain: "near", contract_address: "usdc.tidepool-sandbox.testnet" };
-  const nativeRoute = resolveTidepoolSwapAssets(native, usdc, [wnear, usdc]);
+  assert.throws(() => resolveTidepoolSwapAssets(native, usdc, [wnear, usdc]), /Native NEAR coin swaps are not supported/);
   const wrappedRoute = resolveTidepoolSwapAssets(wnear, usdc, [wnear, usdc]);
-  assert.equal(nativeRoute.quoteOrigin.asset_id, wnear.asset_id);
-  assert.equal(nativeRoute.wrapNativeNear, true);
   assert.equal(wrappedRoute.quoteOrigin.asset_id, wnear.asset_id);
   assert.equal(wrappedRoute.wrapNativeNear, false);
 });
 
-test("native NEAR output is quoted as WNEAR and marked for post-settlement unwrap", () => {
+test("native NEAR and WNEAR remain distinct: only explicit WNEAR uses the Tidepool token route", () => {
+  const native = { asset_id: "native:near", symbol: "NEAR", decimals: 24, blockchain: "near", native: true };
+  const wnear = { asset_id: "nep141:wnear.tidepool-sandbox.testnet", symbol: "wNEAR", decimals: 24, blockchain: "near", contract_address: "wnear.tidepool-sandbox.testnet" };
+  const usdc = { asset_id: "nep141:usdc.tidepool-sandbox.testnet", symbol: "USDC", decimals: 6, blockchain: "near", contract_address: "usdc.tidepool-sandbox.testnet" };
+  assert.throws(() => resolveTidepoolSwapAssets(native, usdc, [wnear, usdc]), /Native NEAR coin swaps are not supported/);
+  const wrappedRoute = resolveTidepoolSwapAssets(wnear, usdc, [wnear, usdc]);
+  assert.equal(wrappedRoute.quoteOrigin.asset_id, wnear.asset_id);
+  assert.equal(wrappedRoute.wrapNativeNear, false);
+});
+
+test("native NEAR output is rejected until the WNEAR withdrawal interface is verified", () => {
   const native = { asset_id: "native:near", symbol: "NEAR", decimals: 24, blockchain: "near", native: true };
   const wnear = { asset_id: "nep141:wnear.tidepool-sandbox.testnet", symbol: "wNEAR", decimals: 24, blockchain: "near", contract_address: "wnear.tidepool-sandbox.testnet" };
   const usdc = { asset_id: "nep141:usdc.base.tp-omft.testnet", symbol: "USDC", decimals: 6, blockchain: "base", contract_address: "0x0000000000000000000000000000000000000001" };
-  const route = resolveTidepoolSwapAssets(usdc, native, [wnear, usdc]);
-  assert.equal(route.quoteOrigin.asset_id, usdc.asset_id);
-  assert.equal(route.quoteDestination.asset_id, wnear.asset_id);
-  assert.equal(route.wrapNativeNear, false);
-  assert.equal(route.unwrapNativeNear, true);
+  assert.throws(() => resolveTidepoolSwapAssets(usdc, native, [wnear, usdc]), /Native NEAR coin swaps are not supported/);
 });
 
 test("native NEAR cannot be swapped to itself through a WNEAR round trip", () => {
@@ -128,16 +117,7 @@ test("native NEAR cannot be swapped to itself through a WNEAR round trip", () =>
   assert.throws(() => resolveTidepoolSwapAssets(native, native, [wnear]));
 });
 
-test("native NEAR unwrap sends the exact received WNEAR amount to near_withdraw", () => {
-  const actions = buildNearWalletUnwrapActions("123456789");
-  assert.deepEqual(actions, [{
-    type: "FunctionCall",
-    params: {
-      methodName: "near_withdraw",
-      args: { amount: "123456789" },
-      gas: "30000000000000",
-      deposit: "1"
-    }
-  }]);
-  assert.throws(() => buildNearWalletUnwrapActions("0"));
+test("native NEAR unwrap action builder fails closed until the WNEAR method is verified", () => {
+  assert.throws(() => buildNearWalletUnwrapActions("123456789"), /NATIVE_NEAR_UNWRAP_UNSUPPORTED/);
+  assert.throws(() => buildNearWalletUnwrapActions("0"), /Invalid WNEAR amount/);
 });
