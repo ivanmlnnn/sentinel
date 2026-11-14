@@ -111,7 +111,8 @@ export async function runDualAgentSwapReview({
         code: typeof response?.error === "string" ? response.error.slice(0, 80) : "AI_CALL_FAILED",
         http_status: Number.isInteger(response?.status) ? response.status : null,
         provider_status: Number.isInteger(response?.provider_status) ? response.provider_status : null,
-        provider_code: typeof response?.provider_code === "string" ? response.provider_code.slice(0, 80) : null
+        provider_code: typeof response?.provider_code === "string" ? response.provider_code.slice(0, 80) : null,
+        output_shape: response?.output_shape && typeof response.output_shape === "object" ? response.output_shape : null
       }
     };
     const parsed = parseAgentJson(extractText(response));
@@ -143,7 +144,8 @@ export async function runDualAgentSwapReview({
         code: typeof response?.error === "string" ? response.error.slice(0, 80) : "AI_CALL_FAILED",
         http_status: Number.isInteger(response?.status) ? response.status : null,
         provider_status: Number.isInteger(response?.provider_status) ? response.provider_status : null,
-        provider_code: typeof response?.provider_code === "string" ? response.provider_code.slice(0, 80) : null
+        provider_code: typeof response?.provider_code === "string" ? response.provider_code.slice(0, 80) : null,
+        output_shape: response?.output_shape && typeof response.output_shape === "object" ? response.output_shape : null
       }
     };
     const parsed = parseAgentJson(extractText(response));
