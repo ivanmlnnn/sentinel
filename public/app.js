@@ -1109,6 +1109,12 @@ async function renderTradeSkillDraft(prompt) {
         quoteDetails.hidden = false;
       } catch (error) {
         liveStatus.textContent = error.message || 'Swap flow stopped. Check wallet activity and provider status before retrying.';
+        // Preserve structured API diagnostics so a risk block is actionable,
+        // rather than hiding the provider's individual policy checks.
+        if (error?.data && typeof error.data === 'object') {
+          quoteDetails.textContent = JSON.stringify(error.data, null, 2);
+          quoteDetails.hidden = false;
+        }
       } finally {
         // Once a signed intent has been submitted, never let a second click
         // create another deposit while the first provider settlement is pending.
