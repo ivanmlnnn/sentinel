@@ -741,20 +741,13 @@ export async function getTidepoolPublicKeyStatus(input, fetchImpl = fetch) {
 }
 
 /**
- * Build the explicit Meteor wallet action that unwraps a settled WNEAR
- * balance into native NEAR. This is a separate user-approved transaction.
+ * Native NEAR unwrapping is intentionally disabled until the exact Tidepool
+ * WNEAR contract is verified to expose near_withdraw. Never manufacture a
+ * wallet action from an assumed token interface.
  */
 export function buildNearWalletUnwrapActions(amount) {
   if (typeof amount !== "string" || !/^[1-9][0-9]*$/.test(amount) || amount.length > MAX_AMOUNT_DIGITS) {
     throw new Error("INVALID_WNEAR_UNWRAP_AMOUNT");
   }
-  return [{
-    type: "FunctionCall",
-    params: {
-      methodName: "near_withdraw",
-      args: { amount },
-      gas: "30000000000000",
-      deposit: "1"
-    }
-  }];
+  throw new Error("NATIVE_NEAR_UNWRAP_UNSUPPORTED");
 }
