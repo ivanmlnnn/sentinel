@@ -1821,6 +1821,10 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         // hiding it behind the generic SWAP_AGENT_ONE_UNAVAILABLE message.
         const fields = [
           diagnostic.code && "code=" + diagnostic.code,
+          diagnostic.parse_reason && "schema=" + diagnostic.parse_reason,
+          Number.isInteger(diagnostic.attempts) && "attempts=" + diagnostic.attempts,
+          Array.isArray(diagnostic.output_keys) && diagnostic.output_keys.length && "output_keys=" + diagnostic.output_keys.join(","),
+          Number.isInteger(diagnostic.output_length) && "output_length=" + diagnostic.output_length,
           Number.isInteger(diagnostic.http_status) && "http=" + diagnostic.http_status,
           Number.isInteger(diagnostic.provider_status) && "provider_http=" + diagnostic.provider_status,
           diagnostic.provider_code && "provider_code=" + diagnostic.provider_code
