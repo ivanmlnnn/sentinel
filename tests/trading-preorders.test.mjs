@@ -57,3 +57,33 @@ test("price trigger fails closed unless the price source is cryptographically ve
   assert.equal(shouldTriggerPreOrder(order, { now: NOW, price: 3.2, priceUpdatedAt: fresh }).reason, "PRICE_UNVERIFIED_OR_STALE");
   assert.equal(shouldTriggerPreOrder(order, { now: NOW, price: 3.2, priceUpdatedAt: fresh, priceVerified: true }).reason, "PRICE_TRIGGER");
 });
+
+test("accepts native NEAR as a distinct asset from WNEAR in a Pre-Order", () => {
+  const native = {
+    ...base,
+    swapIntent: {
+      ...base.swapIntent,
+      originAsset: "native:near",
+      destinationAsset: "nep141:wnear.tidepool-sandbox.testnet",
+      userPrompt: "swap native NEAR to WNEAR"
+    }
+  };
+  const result = validatePreOrder(native, NOW);
+  assert.equal(result.ok, true);
+  assert.equal(result.value.swapIntent.originAsset, "native:near");
+  assert.notEqual(result.value.swapIntent.originAsset, result.value.swapIntent.destinationAsset);
+});
+test("does not confuse reverse WNEAR to native NEAR with native NEAR to WNEAR", () => {
+  const reverse = {
+    ...base,
+    swapIntent: {
+      ...base.swapIntent,
+      originAsset: "nep141:wnear.tidepool-sandbox.testnet",
+      destinationAsset: "native:near"
+    }
+  };
+  const result = validatePreOrder(reverse, NOW);
+  assert.equal(result.ok, true);
+  assert.equal(result.value.swapIntent.originAsset, "nep141:wnear.tidepool-sandbox.testnet");
+  assert.equal(result.value.swapIntent.destinationAsset, "native:near");
+});

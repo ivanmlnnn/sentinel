@@ -41,7 +41,7 @@ export function evaluateAgentExecutionPolicy({ policy, order, session, review, n
   if (!policy?.enabled) return { allowed: false, reason: "AGENT_POLICY_DISABLED" };
   if (policy.network !== "testnet") return { allowed: false, reason: "TESTNET_ONLY" };
   if (!session || session.status !== "VERIFIED" || session.revoked === true) return { allowed: false, reason: "SESSION_NOT_VERIFIED_OR_REVOKED" };
-  if (Date.parse(policy.expiresAt) <= now || Date.parse(session.expiresAt) <= now) return { allowed: false, reason: "SESSION_EXPIRED" };
+  const policyExpiry = Date.parse(policy.expiresAt), sessionExpiry = Date.parse(session.expiresAt);\n  if (!Number.isFinite(policyExpiry) || !Number.isFinite(sessionExpiry) || policyExpiry <= now || sessionExpiry <= now) return { allowed: false, reason: "SESSION_EXPIRED" };
   if (String(order?.walletAddress || "").toLowerCase() !== policy.walletAddress.toLowerCase() ||
       String(session.walletAddress || "").toLowerCase() !== policy.walletAddress.toLowerCase()) return { allowed: false, reason: "WALLET_IDENTITY_MISMATCH" };
   if (order?.status !== "TRIGGERED_AWAITING_REVIEW" || review?.decision !== "ALLOW" || review?.status !== "PASS") return { allowed: false, reason: "DUAL_AGENT_REVIEW_REQUIRED" };
@@ -50,7 +50,7 @@ export function evaluateAgentExecutionPolicy({ policy, order, session, review, n
   if (!policy.allowedAssetPairs.some(pair => pair.originAsset === intent.originAsset && pair.destinationAsset === intent.destinationAsset)) return { allowed: false, reason: "ASSET_PAIR_NOT_ALLOWED" };
   if (BigInt(intent.amount) > BigInt(policy.maxOrderAmount)) return { allowed: false, reason: "ORDER_AMOUNT_LIMIT_EXCEEDED" };
   if (!Number.isInteger(intent.slippageTolerance) || intent.slippageTolerance < 1 || intent.slippageTolerance > policy.maxSlippageBps) return { allowed: false, reason: "SLIPPAGE_LIMIT_EXCEEDED" };
-  if (!INTEGER_RE.test(String(dailySpent)) || BigInt(dailySpent) + BigInt(intent.amount) > BigInt(policy.maxDailyAmount)) return { allowed: false, reason: "DAILY_SPEND_LIMIT_EXCEEDED" };
+  if (typeof dailySpent !== "string" || dailySpent.length > MAX_AMOUNT_DIGITS || !INTEGER_RE.test(dailySpent) || BigInt(dailySpent) + BigInt(intent.amount) > BigInt(policy.maxDailyAmount)) return { allowed: false, reason: "DAILY_SPEND_LIMIT_EXCEEDED" };
   if (!Number.isInteger(ordersUsed) || ordersUsed < 0 || ordersUsed >= policy.maxOrders) return { allowed: false, reason: "ORDER_COUNT_LIMIT_EXCEEDED" };
   return { allowed: true, reason: "POLICY_CHECKS_PASSED", executionEnabled: false };
 }
