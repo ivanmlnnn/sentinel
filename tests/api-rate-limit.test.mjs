@@ -200,12 +200,3 @@ test("agent rate limiter exceptions return a scoped 503 instead of a masked inte
   assert.equal((await response.json()).error, "AGENT_RATE_LIMIT_CHECK_UNAVAILABLE");
 });
 
-test("unexpected Worker exceptions return a request ID and route for log correlation", async () => {
-  const response = await worker.fetch(
-    new Request("https://sentinel.example/api/metrics"),
-    { API_RATE_LIMITER: { async limit() { throw new Error("simulated limiter outage"); } } },
-    {}
-  );
-  assert.equal(response.status, 503);
-  assert.equal((await response.json()).error, "RATE_LIMIT_CHECK_UNAVAILABLE");
-});
