@@ -268,7 +268,7 @@ async function finishNearWalletDeposit(walletApproval, prepared, args) {
     deposit_address: liveQuote.deposit_address,
     wallet_result: result
   }, null, 2);
-  if (typeof txHash === "string" && txHash.length >= 8 && !/\\s/.test(txHash)) {
+  if (typeof txHash === "string" && txHash.length >= 8 && !/\s/.test(txHash)) {
     try {
       await request("/trading/deposit-submit", {
         method: "POST",
