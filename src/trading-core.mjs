@@ -73,7 +73,12 @@ export function normalizeTidepoolTokens(payload) {
         network: "testnet",
         price_usd: Number.isFinite(price) && price > 0 ? price : null,
         price_updated_at: priceUpdatedAt,
-        contract_address: typeof token.contractAddress === "string" ? token.contractAddress : null
+        // For NEAR NEP-141 assets, the asset ID itself contains the contract
+        // account after the "nep141:" namespace. Some Tidepool token responses
+        // omit contractAddress; keep the contract resolvable for ft_balance_of.
+        contract_address: typeof token.contractAddress === "string" && token.contractAddress
+          ? token.contractAddress
+          : token.blockchain === "near" ? token.assetId.slice("nep141:".length) : null
       };
     })
     .sort((a, b) => a.blockchain.localeCompare(b.blockchain) || a.symbol.localeCompare(b.symbol));
