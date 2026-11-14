@@ -33,7 +33,9 @@ test("long-running two-agent endpoints are not aborted by the old 10-second clie
 });
 
 test("Meteor approval launches directly in the second tap without an awaited operation first", () => {
-  const approval = swapUi.slice(swapUi.indexOf('if (pendingNearApproval)'), swapUi.indexOf('approveButton.disabled = true; quoteButton.disabled = true;', swapUi.indexOf('if (pendingNearApproval)')));
+  const approvalStart = swapUi.indexOf('if (pendingNearApproval)');
+  const approvalEnd = swapUi.indexOf('\n    approveButton.disabled = true; quoteButton.disabled = true;\n    let submitted = false;', approvalStart);
+  const approval = swapUi.slice(approvalStart, approvalEnd);
   assert.match(approval, /prepared\.wallet\.signAndSendTransaction\(/);
   assert.doesNotMatch(approval.slice(0, approval.indexOf('prepared.wallet.signAndSendTransaction(')), /await\s/);
   assert.match(approval, /callbackUrl:\s*window\.location\.href/);
