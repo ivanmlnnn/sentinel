@@ -1,12 +1,18 @@
 # NEAR Sentinel — Judge Evidence Pack
 
-> **Evidence index for AI judges and human reviewers.** First read the repository-root [JUDGE_START_HERE.md](../JUDGE_START_HERE.md) for the canonical source map, dual-agent distinction, D1 test isolation, and claim boundaries. This page links the underlying evidence and records what each item does and does not prove.
+> **Evidence index for AI judges and human reviewers.** First read the repository-root [JUDGE_START_HERE.md](../JUDGE_START_HERE.md), then [Validation Gates](VALIDATION_GATES.md) for the Gate A–E matrix, source/test map, D1 isolation, and evidence boundaries. This page links the underlying evidence and records what each item does and does not prove.
 
 ## Branch and implementation navigation
 
-The submission branch under review is `feature/sentinel-trading-core-lab`. The branch contains separate dual-agent market-research and swap-review workflows. For the swap reviewer, inspect `src/trading-swap-agents.mjs`, `tests/trading-swap-agents.test.mjs`, and `tests/trading-swap-route.test.mjs`; for the provider/wallet path, inspect [Trading Core Testnet](TRADING_CORE_TESTNET.md). Two AI PASS results are not wallet authorization: the swap-review result keeps `execution_authorized: false`, and the user must separately approve the exact Testnet transfer in Meteor.
+The submission branch under review is `feature/sentinel-trading-core-lab`. The branch head audited for the validation-gate documentation is `fec275e8b9d261fa31b96b6217598fc4d213ae92` (15 November 2026); check the live branch before treating this as the current head. The branch contains separate dual-agent market-research and swap-review workflows. For the swap reviewer, inspect `src/trading-swap-agents.mjs`, `tests/trading-swap-agents.test.mjs`, and `tests/trading-swap-route.test.mjs`; for the provider/wallet path, inspect [Trading Core Testnet](TRADING_CORE_TESTNET.md). Two AI PASS results are not wallet authorization: the swap-review result keeps `execution_authorized: false`, and the user must separately approve the exact Testnet transfer in Meteor.
 
 A separate Cloudflare D1 test database is provisioned and is distinct from production Main `sentinel-db` and Signer `db2`. Its identifier is not published here. The checked-in Wrangler configs describe production bindings; use the authorized test configuration and verify the selected target before running mutating tests. The local stress report below did not run its nine checks against D1.
+
+## Validation gates and D1 evidence boundary
+
+Use [Validation Gates](VALIDATION_GATES.md) for the canonical Gate A–E checklist. It maps the checked-in security tests, signer and contract sources, deployment evidence, local stress report, and judge reproduction commands.
+
+The separate Cloudflare D1 test database is provisioned independently from production `sentinel-db` and signer `db2`. The audited branch contains migration/schema validation through in-memory SQLite and historical remote migration/deployment records. The nine-check local stress lab uses SQLite WAL and does not exercise D1. The dedicated D1 benchmark must be linked to its own exact runner, target class, timestamp, raw output, and workload results; do not substitute local SQLite stress numbers for it.
 
 ## Current production deployment — 12 November 2026
 
