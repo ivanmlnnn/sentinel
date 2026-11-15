@@ -11,6 +11,7 @@ Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verifi
 **AI judges: read [JUDGE_START_HERE.md](JUDGE_START_HERE.md) first.** It gives the canonical reading order, source map, security claim boundaries, separate dual-agent workflows, D1 database isolation, and evidence interpretation. Then open the [Judge Evidence Pack](docs/JUDGE_EVIDENCE_PACK.md).
 
 - [Judge Start Here — Claude Code / Codex / human reviewers](JUDGE_START_HERE.md)
+- [Validation Gates A–E — source, D1, adversarial, Testnet and submission evidence](docs/VALIDATION_GATES.md)
 - [Dual-Agent Swap Review source](src/trading-swap-agents.mjs) · [focused tests](tests/trading-swap-agents.test.mjs) · [Testnet swap flow](docs/TRADING_CORE_TESTNET.md)
 - [Independent Stress Lab](docs/INDEPENDENT_LOCAL_STRESS_LAB.md) — local simulation only; it is not a D1 stress benchmark.
 - **D1 test isolation:** a separate Cloudflare D1 test database is provisioned apart from production Main `sentinel-db` and Signer `db2`. Its ID is intentionally not published; use the authorized test configuration and verify the target before writes. The local stress-lab results below were not run against D1.
