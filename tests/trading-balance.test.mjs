@@ -243,3 +243,38 @@ test("falls back to NEAR Testnet RPC ft_balance_of when NearBlocks token holding
     });
   } finally { globalThis.fetch = originalFetch; }
 });
+
+
+test("falls back to NEAR Testnet RPC when NearBlocks returns an unrecognized native balance schema", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    const target = String(url);
+    calls.push(target);
+    if (target.includes("nearblocks")) {
+      return new Response(JSON.stringify({ data: { account_id: "pilo.testnet", unexpected_balance_field: "123" } }), {
+        status: 200, headers: { "content-type": "application/json" }
+      });
+    }
+    const body = JSON.parse(options.body);
+    assert.equal(body.params.request_type, "view_account");
+    return new Response(JSON.stringify({ result: { amount: "765400000000000000000000" } }), {
+      status: 200, headers: { "content-type": "application/json" }
+    });
+  };
+  try {
+    const response = await post(
+      { accountId: "pilo.testnet", native: true },
+      { NEAR_NETWORK: "testnet", NEARBLOCKS_API_KEY: "test-key" }
+    );
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      raw: "765400000000000000000000",
+      decimals: 24,
+      source: "NEAR Testnet RPC",
+      rpc_endpoint: "rpc.testnet.fastnear.com",
+      fallback_from: "NearBlocks v3"
+    });
+    assert.equal(calls.length, 2);
+  } finally { globalThis.fetch = originalFetch; }
+});
