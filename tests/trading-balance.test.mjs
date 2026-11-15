@@ -238,6 +238,7 @@ test("falls back to NEAR Testnet RPC ft_balance_of when NearBlocks token holding
       raw: "42000000000000000000000000",
       decimals: 24,
       source: "NEAR Testnet RPC",
+      rpc_endpoint: "rpc.testnet.fastnear.com",
       fallback_from: "NearBlocks v3"
     });
   } finally { globalThis.fetch = originalFetch; }
