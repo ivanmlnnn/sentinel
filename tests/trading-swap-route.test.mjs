@@ -239,6 +239,7 @@ test("native NEAR remains visible for wallet balance but is never fabricated as 
   assert.match(swapUi, /NEAR · NATIVE · BALANCE ONLY/);
   assert.match(swapUi, /live token registry lists WNEAR, not the native coin/);
   assert.match(swapUi, /Select WNEAR explicitly for Tidepool/);
-  assert.match(swapUi, /originOption\.disabled = true/);
-  assert.match(swapUi, /destinationOption\.disabled = true/);
+  assert.doesNotMatch(swapUi, /originOption\.disabled = true/);
+  assert.doesNotMatch(swapUi, /destinationOption\.disabled = true/);
+  assert.match(swapUi, /Discovering a native NEAR Testnet route from Tidepool/);
 });
