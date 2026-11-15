@@ -93,6 +93,46 @@ function findFtContract(row) {
   return null;
 }
 
+async function readNearRpcBalance(accountId, token, native) {
+  const body = native
+    ? { jsonrpc: "2.0", id: "sentinel-near-native-balance", method: "query", params: {
+        request_type: "view_account", finality: "final", account_id: accountId
+      } }
+    : { jsonrpc: "2.0", id: "sentinel-near-ft-balance", method: "query", params: {
+        request_type: "call_function",
+        finality: "final",
+        account_id: token.contract_address,
+        method_name: "ft_balance_of",
+        args_base64: btoa(JSON.stringify({ account_id: accountId }))
+      } };
+  const response = await fetch("https://rpc.testnet.near.org", {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(8000)
+  });
+  if (!response.ok) throw new Error("NEAR_RPC_HTTP_ERROR_" + response.status);
+  let payload;
+  try { payload = await response.json(); }
+  catch { throw new Error("NEAR_RPC_INVALID_JSON"); }
+  if (payload?.error || !payload?.result) throw new Error("NEAR_RPC_QUERY_FAILED");
+  if (native) {
+    const raw = payload.result.amount;
+    if (typeof raw !== "string" || !/^(?:0|[1-9][0-9]*)$/.test(raw)) {
+      throw new Error("NEAR_RPC_NATIVE_BALANCE_SCHEMA_UNRECOGNIZED");
+    }
+    return { raw, decimals: 24 };
+  }
+  const bytes = payload.result.result;
+  if (!Array.isArray(bytes) || !bytes.length ||
+      bytes.some(value => !Number.isInteger(value) || value < 0 || value > 255)) {
+    throw new Error("NEAR_RPC_FT_BALANCE_SCHEMA_UNRECOGNIZED");
+  }
+  const raw = new TextDecoder().decode(new Uint8Array(bytes));
+  if (!/^(?:0|[1-9][0-9]*)$/.test(raw)) throw new Error("NEAR_RPC_FT_BALANCE_INVALID");
+  return { raw, decimals: token.decimals };
+}
+
 async function readNearBlocksBalance(accountId, token, native, env) {
   const { base, apiKey } = nearBlocksConfig(env);
   const account = encodeURIComponent(accountId);
@@ -119,12 +159,22 @@ async function readNearBlocksBalance(accountId, token, native, env) {
     if (raw === null) return json({ error: "NEARBLOCKS_FT_BALANCE_SCHEMA_UNRECOGNIZED", contract }, 502);
     return json({ raw, decimals: token.decimals, source: "NearBlocks v3" });
   } catch (error) {
-    const status = Number.isInteger(error?.status) ? error.status : 502;
-    return json({
-      error: error?.message || "NEARBLOCKS_BALANCE_UNAVAILABLE",
-      source: "NearBlocks v3",
-      ...(status !== 502 ? { provider_status: status } : {})
-    }, 502);
+    // NearBlocks is useful for indexing, but it must not be the only balance
+    // source. Fall back to the NEAR Testnet RPC for both native NEAR and
+    // NEP-141 ft_balance_of reads so a temporary indexer/API-key failure does
+    // not make the connected Meteor wallet appear empty.
+    try {
+      const fallback = await readNearRpcBalance(accountId, token, native);
+      return json({ ...fallback, source: "NEAR Testnet RPC", fallback_from: "NearBlocks v3" });
+    } catch (rpcError) {
+      return json({
+        error: "NEAR_BALANCE_SOURCES_UNAVAILABLE",
+        sources: {
+          nearblocks: typeof error?.message === "string" ? error.message : "NEARBLOCKS_BALANCE_UNAVAILABLE",
+          rpc: typeof rpcError?.message === "string" ? rpcError.message : "NEAR_RPC_UNAVAILABLE"
+        }
+      }, 502);
+    }
   }
 }
 
