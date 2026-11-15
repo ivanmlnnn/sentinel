@@ -1411,18 +1411,27 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
           const discovery = {
             provider: latestRegistry?.provider || "Tidepool community testnet",
             network: latestRegistry?.network || "NEAR Testnet",
+            wallet: "Meteor NEAR Testnet signer",
             requested_asset: "native:near",
             native_near_route: "NOT_LISTED",
+            native_near_wrap_route: "NOT_VERIFIED",
             wnear_asset_id: wnear?.asset_id || null,
+            wnear_contract: wnear?.contract_address || null,
+            wnear_is_native_near: false,
+            required_action: wnear
+              ? "Select WNEAR explicitly; native NEAR cannot be substituted or wrapped through an unverified Tidepool contract."
+              : "No supported NEAR-origin asset is currently listed.",
             execution_authorized: false
           };
           details.textContent = JSON.stringify({ route_discovery: discovery }, null, 2);
           details.hidden = false;
           throw new Error(
-            "No native NEAR Testnet route is currently listed by Tidepool. " +
-            "Sentinel refreshed the live registry; it found " +
-            (wnear ? "WNEAR, which is a separate token." : "no compatible native-NEAR asset.") +
-            " Select WNEAR explicitly to use the available Tidepool route. No quote or wallet approval was created."
+            "Tidepool's live NEAR Testnet registry does not list native NEAR as a swap asset. " +
+            (wnear
+              ? "It lists WNEAR as a separate NEP-141 token, not native NEAR. The Tidepool WNEAR contract has no verified native-NEAR wrap interface, so Sentinel will not invent a near_deposit call or silently convert the asset. "
+              : "No compatible NEAR-origin token is currently listed. ") +
+            "Meteor can sign NEAR Testnet transactions, but wallet support does not create a Tidepool route. " +
+            "Select WNEAR explicitly only if you hold that exact token. No quote or wallet approval was created."
           );
         }
         // A future provider listing is not enough by itself: the backend
