@@ -211,8 +211,18 @@ test("Verify quote preserves the explicit UI direction, including a user-flipped
 });
 
 test("native NEAR dropdown entry is visibly disabled while explicit WNEAR remains selectable", () => {
-  assert.match(swapUi, /NEAR · NATIVE · NOT SUPPORTED BY TIDEPOOL/);
+  assert.match(swapUi, /NEAR · NATIVE · BALANCE ONLY/);
   assert.match(swapUi, /originOption\.disabled = true/);
   assert.match(swapUi, /destinationOption\.disabled = true/);
-  assert.match(swapUi, /Native NEAR coin swaps are not supported/);
+  assert.match(swapUi, /Native NEAR is not a Tidepool Testnet swap asset/);
+});
+
+
+test("native NEAR remains visible for wallet balance but is never fabricated as a Tidepool quote asset", () => {
+  assert.match(swapUi, /asset_id: "native:near"/);
+  assert.match(swapUi, /NEAR · NATIVE · BALANCE ONLY/);
+  assert.match(swapUi, /live token registry lists WNEAR, not the native coin/);
+  assert.match(swapUi, /Select WNEAR explicitly for Tidepool/);
+  assert.match(swapUi, /originOption\.disabled = true/);
+  assert.match(swapUi, /destinationOption\.disabled = true/);
 });
