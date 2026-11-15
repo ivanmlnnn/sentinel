@@ -95,7 +95,7 @@ export function resolvePromptSwapAssets(tokens, parsed) {
 export function resolveTidepoolSwapAssets(origin, destination, tokens) {
   const isNativeNear = token => token?.native === true && token.asset_id === "native:near";
   if (isNativeNear(origin) || isNativeNear(destination)) {
-    throw new Error("Native NEAR coin swaps are not supported by the current Tidepool Testnet wallet-deposit route. Select WNEAR explicitly; no wallet approval was opened.");
+    throw new Error("Native NEAR is not a Tidepool Testnet swap asset: its live token registry lists WNEAR, not the native coin. Meteor's built-in swap uses a separate route. Select WNEAR explicitly for Tidepool; no wallet approval was opened.");
   }
   if (!origin || !destination || origin.asset_id === destination.asset_id) {
     throw new Error("Select two different assets from the live Tidepool Testnet registry.");
@@ -118,7 +118,7 @@ export function buildNearWalletUnwrapActions(amount) {
 }
 function formatToken(token) {
   return token.native && token.asset_id === "native:near"
-    ? "NEAR · NATIVE · NOT SUPPORTED BY TIDEPOOL"
+    ? "NEAR · NATIVE · BALANCE ONLY"
     : token.symbol + " · " + token.blockchain.toUpperCase() + " · TESTNET";
 }
 function tokenAddressValid(token) {
@@ -833,7 +833,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   heading.append(el("strong", "Swap preview"), el("span", "TESTNET"));
   card.append(heading);
   if (!parsed) {
-    card.append(el("p", "Use format: swap 0.1 ETH to WNEAR. Native NEAR coin swaps are disabled until a verified wrapper route is available."));
+    card.append(el("p", "Use format: swap 0.1 ETH to WNEAR. Native NEAR balance is visible, but Tidepool does not list native NEAR as a swap asset; select WNEAR for a Tidepool swap."));
     result.replaceChildren(card); result.classList.remove("hidden"); return;
   }
   card.append(el("p", "Sentinel reuses your connected Meteor NEAR Testnet session. No second wallet connection is requested; choose assets available on that session for signing.", "sentinel-swap-intro"));
@@ -844,9 +844,9 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   const tokensResponse = await request("/trading/tokens", { method: "GET" });
   const tokens = tokensResponse.tokens;
   if (!Array.isArray(tokens) || !tokens.length) throw new Error("Tidepool did not return a usable testnet token registry.");
-  // Keep native NEAR visible as a distinct wallet asset, but disable it for
-  // swaps until a verified wrapper contract and deposit/withdraw flow exist.
-  // WNEAR is a separate NEP-141 token and must be selected explicitly.
+  // Keep native NEAR visible for balance and gas context. The live Tidepool
+  // registry contains WNEAR but no native-NEAR asset id, so never fabricate a
+  // quote asset or silently substitute WNEAR for a user's NEAR selection.
   const nativeNearToken = {
     asset_id: "native:near",
     symbol: "NEAR",
