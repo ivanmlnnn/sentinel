@@ -278,3 +278,48 @@ test("falls back to NEAR Testnet RPC when NearBlocks returns an unrecognized nat
     assert.equal(calls.length, 2);
   } finally { globalThis.fetch = originalFetch; }
 });
+
+
+test("uses NEAR Testnet ft_balance_of when NearBlocks omits a Tidepool FT holding", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    const target = String(url);
+    calls.push(target);
+    if (target.includes("usetidepool.tech")) {
+      return new Response(JSON.stringify([{
+        assetId: "nep141:wnear.tidepool-sandbox.testnet",
+        decimals: 24, blockchain: "near", symbol: "wNEAR",
+        contractAddress: "wnear.tidepool-sandbox.testnet"
+      }]), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    if (target.includes("nearblocks")) {
+      return new Response(JSON.stringify({ data: [] }), {
+        status: 200, headers: { "content-type": "application/json" }
+      });
+    }
+    const body = JSON.parse(options.body);
+    assert.equal(body.params.request_type, "call_function");
+    assert.equal(body.params.account_id, "wnear.tidepool-sandbox.testnet");
+    assert.equal(body.params.method_name, "ft_balance_of");
+    const encoded = new TextEncoder().encode("42000000000000000000000000");
+    return new Response(JSON.stringify({ result: { result: [...encoded] } }), {
+      status: 200, headers: { "content-type": "application/json" }
+    });
+  };
+  try {
+    const response = await post(
+      { accountId: "pilo.testnet", assetId: "nep141:wnear.tidepool-sandbox.testnet" },
+      { NEAR_NETWORK: "testnet", NEARBLOCKS_API_KEY: "test-key" }
+    );
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      raw: "42000000000000000000000000",
+      decimals: 24,
+      source: "NEAR Testnet RPC",
+      rpc_endpoint: "rpc.testnet.fastnear.com",
+      fallback_from: "NearBlocks v3"
+    });
+    assert.equal(calls.length, 3);
+  } finally { globalThis.fetch = originalFetch; }
+});
