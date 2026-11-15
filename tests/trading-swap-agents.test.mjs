@@ -208,7 +208,7 @@ test("native NEAR output fails closed and never constructs an unverified near_wi
   assert.ok(result.value.failed_checks.includes("DESTINATION_SYMBOL_MATCHES"));
   assert.equal(result.value.deterministic_checks.native_near_unwrap_plan_valid, false);
   assert.equal(evidence.native_near_output_handling.supported, false);
-  assert.match(evidence.native_near_output_handling.reason, /not been verified/i);
+  assert.match(evidence.native_near_output_handling.reason, /has not been verified/i);
   assert.equal(evidence.native_near_output_handling.action_template, undefined);
 });
 
