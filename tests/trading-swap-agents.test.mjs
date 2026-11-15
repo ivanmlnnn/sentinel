@@ -55,6 +55,12 @@ test("both independent agents must pass before swap review is eligible", async (
   assert.equal(evidence.native_near_output_handling.required, false);
   assert.match(evidence.native_near_output_handling.reason, /not native NEAR/i);
   assert.equal(evidence.native_near_input_handling.required, false);
+  assert.deepEqual(evidence.risk_policy_verification, {
+    verifier: "SENTINEL_DETERMINISTIC_SHA256",
+    status: "VERIFIED_ALLOW",
+    policy_hash: liveQuote.risk_evaluation.policy_hash
+  });
+  assert.match(ai.calls[1].system, /Never fabricate an expected hash/i);
   assert.equal(ai.calls.length, 2);
   assert.match(ai.calls[0].messages[0].content, /user_prompt/);
   assert.match(ai.calls[1].messages[0].content, /deterministic_checks/);
