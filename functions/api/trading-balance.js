@@ -93,7 +93,12 @@ function findFtContract(row) {
   return null;
 }
 
-async function readNearRpcBalance(accountId, token, native) {
+const NEAR_TESTNET_RPCS = [
+  "https://rpc.testnet.fastnear.com",
+  "https://rpc.testnet.near.org"
+];
+
+async function readNearRpcBalanceAt(accountId, token, native, rpcUrl) {
   const body = native
     ? { jsonrpc: "2.0", id: "sentinel-near-native-balance", method: "query", params: {
         request_type: "view_account", finality: "final", account_id: accountId
@@ -105,7 +110,7 @@ async function readNearRpcBalance(accountId, token, native) {
         method_name: "ft_balance_of",
         args_base64: btoa(JSON.stringify({ account_id: accountId }))
       } };
-  const response = await fetch("https://rpc.testnet.near.org", {
+  const response = await fetch(rpcUrl, {
     method: "POST",
     headers: { "content-type": "application/json", accept: "application/json" },
     body: JSON.stringify(body),
@@ -131,6 +136,22 @@ async function readNearRpcBalance(accountId, token, native) {
   const raw = new TextDecoder().decode(new Uint8Array(bytes));
   if (!/^(?:0|[1-9][0-9]*)$/.test(raw)) throw new Error("NEAR_RPC_FT_BALANCE_INVALID");
   return { raw, decimals: token.decimals };
+}
+
+async function readNearRpcBalance(accountId, token, native) {
+  const failures = [];
+  for (const rpcUrl of NEAR_TESTNET_RPCS) {
+    try {
+      const balance = await readNearRpcBalanceAt(accountId, token, native, rpcUrl);
+      return { ...balance, rpc_endpoint: new URL(rpcUrl).hostname };
+    } catch (error) {
+      failures.push(new URL(rpcUrl).hostname + ":" +
+        (typeof error?.message === "string" ? error.message : "NEAR_RPC_UNAVAILABLE"));
+    }
+  }
+  const error = new Error("NEAR_TESTNET_RPC_SOURCES_UNAVAILABLE");
+  error.sources = failures;
+  throw error;
 }
 
 async function readNearBlocksBalance(accountId, token, native, env) {
@@ -165,13 +186,13 @@ async function readNearBlocksBalance(accountId, token, native, env) {
     // not make the connected Meteor wallet appear empty.
     try {
       const fallback = await readNearRpcBalance(accountId, token, native);
-      return json({ ...fallback, source: "NEAR Testnet RPC", fallback_from: "NearBlocks v3" });
+      return json({ raw: fallback.raw, decimals: fallback.decimals, source: "NEAR Testnet RPC", rpc_endpoint: fallback.rpc_endpoint, fallback_from: "NearBlocks v3" });
     } catch (rpcError) {
       return json({
         error: "NEAR_BALANCE_SOURCES_UNAVAILABLE",
         sources: {
           nearblocks: typeof error?.message === "string" ? error.message : "NEARBLOCKS_BALANCE_UNAVAILABLE",
-          rpc: typeof rpcError?.message === "string" ? rpcError.message : "NEAR_RPC_UNAVAILABLE"
+          rpc: Array.isArray(rpcError?.sources) ? rpcError.sources : (typeof rpcError?.message === "string" ? rpcError.message : "NEAR_RPC_UNAVAILABLE")
         }
       }, 502);
     }
