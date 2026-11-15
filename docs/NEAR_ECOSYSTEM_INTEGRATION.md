@@ -47,6 +47,12 @@ Do not conflate the above integrations with other NEAR ecosystem products:
 
 These are possible future expansion paths, not prerequisites to explain the existing NEAR-specific architecture.
 
+### Separate Tidepool / 1Click Testnet swap integration
+
+The feature branch also contains a separate intent-based swap workflow through the community-operated Tidepool Testnet provider and its 1Click SDK integration. It uses two swap-review agents: Agent 1 checks user intent, selected assets, amount and route; Agent 2 independently challenges the signed quote and risk evidence. Deterministic checks bind the exact quote parameters, and either agent can veto. The review result is not a wallet signature or execution authorization; the user separately approves the exact token transfer in Meteor. The flow waits for provider status `SUCCESS` before reporting settlement.
+
+This provider integration must not be mislabeled as the core NEAR payment-contract flow, official NEAR/Defuse production Intents, or mainnet execution. See [Trading Core Testnet](TRADING_CORE_TESTNET.md), [Dual-Agent Trading Demo](DUAL_AGENT_TRADING_DEMO.md), and `src/trading-swap-agents.mjs`.
+
 ## Evidence and honest verification boundary
 
 Source implementation, automated tests, Cloudflare deployment records and live blockchain transactions are different evidence categories:
