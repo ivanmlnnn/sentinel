@@ -88,7 +88,7 @@ test("native NEAR input is rejected instead of being silently represented as WNE
   const native = { asset_id: "native:near", symbol: "NEAR", decimals: 24, blockchain: "near", native: true };
   const wnear = { asset_id: "nep141:wnear.tidepool-sandbox.testnet", symbol: "wNEAR", decimals: 24, blockchain: "near", contract_address: "wnear.tidepool-sandbox.testnet" };
   const usdc = { asset_id: "nep141:usdc.tidepool-sandbox.testnet", symbol: "USDC", decimals: 6, blockchain: "near", contract_address: "usdc.tidepool-sandbox.testnet" };
-  assert.throws(() => resolveTidepoolSwapAssets(native, usdc, [wnear, usdc]), /Native NEAR coin swaps are not supported/);
+  assert.throws(() => resolveTidepoolSwapAssets(native, usdc, [wnear, usdc]), /Native NEAR is not a Tidepool Testnet swap asset/);
   const wrappedRoute = resolveTidepoolSwapAssets(wnear, usdc, [wnear, usdc]);
   assert.equal(wrappedRoute.quoteOrigin.asset_id, wnear.asset_id);
   assert.equal(wrappedRoute.wrapNativeNear, false);
@@ -98,7 +98,7 @@ test("native NEAR and WNEAR remain distinct: only explicit WNEAR uses the Tidepo
   const native = { asset_id: "native:near", symbol: "NEAR", decimals: 24, blockchain: "near", native: true };
   const wnear = { asset_id: "nep141:wnear.tidepool-sandbox.testnet", symbol: "wNEAR", decimals: 24, blockchain: "near", contract_address: "wnear.tidepool-sandbox.testnet" };
   const usdc = { asset_id: "nep141:usdc.tidepool-sandbox.testnet", symbol: "USDC", decimals: 6, blockchain: "near", contract_address: "usdc.tidepool-sandbox.testnet" };
-  assert.throws(() => resolveTidepoolSwapAssets(native, usdc, [wnear, usdc]), /Native NEAR coin swaps are not supported/);
+  assert.throws(() => resolveTidepoolSwapAssets(native, usdc, [wnear, usdc]), /Native NEAR is not a Tidepool Testnet swap asset/);
   const wrappedRoute = resolveTidepoolSwapAssets(wnear, usdc, [wnear, usdc]);
   assert.equal(wrappedRoute.quoteOrigin.asset_id, wnear.asset_id);
   assert.equal(wrappedRoute.wrapNativeNear, false);
@@ -108,7 +108,7 @@ test("native NEAR output is rejected until the WNEAR withdrawal interface is ver
   const native = { asset_id: "native:near", symbol: "NEAR", decimals: 24, blockchain: "near", native: true };
   const wnear = { asset_id: "nep141:wnear.tidepool-sandbox.testnet", symbol: "wNEAR", decimals: 24, blockchain: "near", contract_address: "wnear.tidepool-sandbox.testnet" };
   const usdc = { asset_id: "nep141:usdc.base.tp-omft.testnet", symbol: "USDC", decimals: 6, blockchain: "base", contract_address: "0x0000000000000000000000000000000000000001" };
-  assert.throws(() => resolveTidepoolSwapAssets(usdc, native, [wnear, usdc]), /Native NEAR coin swaps are not supported/);
+  assert.throws(() => resolveTidepoolSwapAssets(usdc, native, [wnear, usdc]), /Native NEAR is not a Tidepool Testnet swap asset/);
 });
 
 test("native NEAR cannot be swapped to itself through a WNEAR round trip", () => {
