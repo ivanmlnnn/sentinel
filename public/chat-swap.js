@@ -1250,7 +1250,7 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
         const triggerText = order.trigger_type === "TIME"
           ? "Time · " + new Date(order.scheduled_at).toLocaleString()
           : "Price · " + order.trigger_direction + " $" + order.target_price_usd;
-        const label = el("span", triggerText + " · " + order.status + " · " + order.execution_status);
+        const label = el("span", triggerText + " · " + order.status + " · dual-agent " + (order.review_status || "PENDING") + " · " + order.execution_status);
         item.append(label);
         if (order.status === "HELD") {
           const cancel = el("button", "Cancel", "secondary-btn");
