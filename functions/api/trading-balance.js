@@ -163,7 +163,7 @@ async function readNearBlocksBalance(accountId, token, native, env) {
       const row = Array.isArray(payload.data) ? (payload.data[0] || {})
         : payload.data && typeof payload.data === "object" ? payload.data : {};
       const raw = findRawAmount(row) ?? findRawAmount(row.account || {});
-      if (raw === null) return json({ error: "NEARBLOCKS_NATIVE_BALANCE_SCHEMA_UNRECOGNIZED" }, 502);
+      if (raw === null) throw new Error("NEARBLOCKS_NATIVE_BALANCE_SCHEMA_UNRECOGNIZED");
       return json({ raw, decimals: 24, source: "NearBlocks v3" });
     }
 
@@ -177,7 +177,7 @@ async function readNearBlocksBalance(accountId, token, native, env) {
     // means zero holdings. An API/schema failure is never represented as zero.
     if (!holding) return json({ raw: "0", decimals: token.decimals, source: "NearBlocks v3" });
     const raw = findRawAmount(holding);
-    if (raw === null) return json({ error: "NEARBLOCKS_FT_BALANCE_SCHEMA_UNRECOGNIZED", contract }, 502);
+    if (raw === null) throw new Error("NEARBLOCKS_FT_BALANCE_SCHEMA_UNRECOGNIZED");
     return json({ raw, decimals: token.decimals, source: "NearBlocks v3" });
   } catch (error) {
     // NearBlocks is useful for indexing, but it must not be the only balance
