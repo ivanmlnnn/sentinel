@@ -20,6 +20,7 @@ NEAR Sentinel is a security checkpoint for AI-proposed actions: it evaluates NEA
 7. [Independent Local Stress Lab](docs/INDEPENDENT_LOCAL_STRESS_LAB.md) — local simulation results and explicit limits.
 8. [Judge Evidence Pack](docs/JUDGE_EVIDENCE_PACK.md) — linked CI, deployment, regression, and manual evidence.
 9. [End-to-End Verification](docs/END_TO_END_VERIFICATION.md) and [Real Integration Verification](docs/REAL_INTEGRATION_VERIFICATION.md) — what external integrations and recorded deployment checks prove.
+10. [Validation Gates](docs/VALIDATION_GATES.md) — Gate A–E matrix, D1 topology, source/test map, historical CI boundaries, and judge reproduction checklist.
 
 ## 3. Security architecture: do not reduce Sentinel to a TEE claim
 
@@ -135,3 +136,8 @@ Run D1-mutating tests only after selecting and verifying the dedicated test data
 ## 10. Maintainer evidence rule
 
 When adding new evidence, include: source commit, exact command or workflow URL, environment (local / dedicated D1 test / production Worker / NEAR Testnet), raw outcome, timestamp, and limitations. Never overwrite a historical result with a newer result without identifying the revision each result belongs to.
+
+
+## 11. Validation gates and branch audit
+
+Use [Validation Gates](docs/VALIDATION_GATES.md) as the canonical Gate A–E review matrix. The currently audited branch head is `fec275e8b9d261fa31b96b6217598fc4d213ae92` (15 November 2026). The matrix distinguishes in-memory migration validation, remote D1 migration records, the separate D1 test database, the local 9/9 SQLite stress lab, production HTTP smoke, and NEAR Testnet payout evidence. Do not combine their counts or environments.
