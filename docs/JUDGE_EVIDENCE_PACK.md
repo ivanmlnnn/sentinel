@@ -1,6 +1,12 @@
 # NEAR Sentinel — Judge Evidence Pack
 
-> **Start here for AI judges and human reviewers.** This page is the concise, evidence-linked guide to what Sentinel does, how to run it, which security controls are implemented, and what the published deployment records prove.
+> **Evidence index for AI judges and human reviewers.** First read the repository-root [JUDGE_START_HERE.md](../JUDGE_START_HERE.md) for the canonical source map, dual-agent distinction, D1 test isolation, and claim boundaries. This page links the underlying evidence and records what each item does and does not prove.
+
+## Branch and implementation navigation
+
+The submission branch under review is `feature/sentinel-trading-core-lab`. The branch contains separate dual-agent market-research and swap-review workflows. For the swap reviewer, inspect `src/trading-swap-agents.mjs`, `tests/trading-swap-agents.test.mjs`, and `tests/trading-swap-route.test.mjs`; for the provider/wallet path, inspect [Trading Core Testnet](TRADING_CORE_TESTNET.md). Two AI PASS results are not wallet authorization: the swap-review result keeps `execution_authorized: false`, and the user must separately approve the exact Testnet transfer in Meteor.
+
+A separate Cloudflare D1 test database is provisioned and is distinct from production Main `sentinel-db` and Signer `db2`. Its identifier is not published here. The checked-in Wrangler configs describe production bindings; use the authorized test configuration and verify the selected target before running mutating tests. The local stress report below did not run its nine checks against D1.
 
 ## Current production deployment — 12 November 2026
 
