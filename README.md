@@ -8,6 +8,12 @@ Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verifi
 
 ## Judge start here — 5-minute evidence path
 
+**AI judges: read [JUDGE_START_HERE.md](JUDGE_START_HERE.md) first.** It gives the canonical reading order, source map, security claim boundaries, separate dual-agent workflows, D1 database isolation, and evidence interpretation. Then open the [Judge Evidence Pack](docs/JUDGE_EVIDENCE_PACK.md).
+
+- [Judge Start Here — Claude Code / Codex / human reviewers](JUDGE_START_HERE.md)
+- [Dual-Agent Swap Review source](src/trading-swap-agents.mjs) · [focused tests](tests/trading-swap-agents.test.mjs) · [Testnet swap flow](docs/TRADING_CORE_TESTNET.md)
+- [Independent Stress Lab](docs/INDEPENDENT_LOCAL_STRESS_LAB.md) — local simulation only; it is not a D1 stress benchmark.
+
 ## Current production deployment — 12 November 2026
 
 The current production Workers were deployed directly with Wrangler from the local repository, not by a GitHub Actions deployment queue.
@@ -70,12 +76,21 @@ The deployment log confirms both remote D1 migration commands completed with “
 
 The independent local stress lab remains a separate evidence set: its nine checks passed in a local SQLite/Python simulation, including nonce, approval, idempotency, spend-cap and simulated multi-instance races. These results are not represented as production D1 concurrency measurements.
 
-## Experimental branch — dual-agent trading research
+## Feature branch — dual-agent research and swap review
 
-The feature branch `feature/sentinel-trading-core-lab` contains a separate, read-only trading-research prototype: live Kraken Spot OHLCV, deterministic EMA/RSI/ATR/volume evidence, Agent 1 market thesis, Agent 2 independent adversarial risk review, and a cost-aware long-only historical backtest against buy-and-hold. A deterministic gate can veto unsupported or risky proposals. It produces paper-trading candidates only; it does not authorize a swap, sign a wallet transaction, or move funds. This feature has not been deployed to the production Cloudflare Worker and is not evidence of profitability.
+The `feature/sentinel-trading-core-lab` branch contains two distinct dual-agent workflows; do not conflate them:
 
-- [Dual-Agent Trading Research — Judge Demo](docs/DUAL_AGENT_TRADING_DEMO.md)
-- [Live Market Analysis and Agent Architecture](docs/LIVE_MARKET_ANALYSIS.md)
+1. **Market research:** Agent 1 forms an evidence-backed market thesis; Agent 2 performs an independent adversarial review. This produces research/paper-trading candidates, not wallet authorization.
+2. **Swap review:** `src/trading-swap-agents.mjs` runs Agent 1 intent/route review and Agent 2 independent signed-quote/risk review. Deterministic checks bind the user prompt to the selected assets, integer base-unit amount, chains, provider signature, policy hash, recipient, refund address, deposit address, and deadline. Either agent can VETO; model PASS cannot override failed deterministic checks. The review result itself sets `execution_authorized: false`.
+
+The separate Tidepool community Testnet / 1Click SDK path is documented in [Trading Core Testnet](docs/TRADING_CORE_TESTNET.md). It obtains a fresh signed quote, validates exact parameters, opens Meteor wallet approval for the exact token transfer, and waits for provider `SUCCESS` before describing a swap as successful. Native NEAR and WNEAR remain separate assets; unsupported wrap/unwrap paths fail closed.
+
+**Scope boundary:** this feature branch is not the same thing as the currently deployed production Cloudflare Worker. Tidepool is a community-operated Testnet sandbox, not an official NEAR/Defuse production service. Do not claim mainnet readiness, unattended agent signing, or profitability.
+
+- [Dual-Agent Judge Demo](docs/DUAL_AGENT_TRADING_DEMO.md)
+- [Dual-Agent Swap Review implementation](src/trading-swap-agents.mjs)
+- [Swap review regression tests](tests/trading-swap-agents.test.mjs)
+- [Trading Core Testnet flow](docs/TRADING_CORE_TESTNET.md)
 
 ## What is implemented
 
