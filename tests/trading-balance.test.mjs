@@ -164,9 +164,46 @@ test("falls back to NEAR Testnet RPC when NearBlocks rejects native balance requ
       raw: "1234500000000000000000000",
       decimals: 24,
       source: "NEAR Testnet RPC",
+      rpc_endpoint: "rpc.testnet.fastnear.com",
       fallback_from: "NearBlocks v3"
     });
     assert.equal(calls.length, 2);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test("retries a second independent NEAR Testnet RPC when FastNear is unavailable", async () => {
+  const originalFetch = globalThis.fetch;
+  const endpoints = [];
+  globalThis.fetch = async (url, options = {}) => {
+    const target = String(url);
+    if (target.includes("nearblocks")) {
+      return new Response(JSON.stringify({ message: "indexer temporarily unavailable" }), { status: 503 });
+    }
+    endpoints.push(target);
+    if (target.includes("fastnear")) return new Response("gateway unavailable", { status: 503 });
+    const body = JSON.parse(options.body);
+    assert.equal(body.params.request_type, "view_account");
+    return new Response(JSON.stringify({ result: { amount: "987650000000000000000000" } }), {
+      status: 200, headers: { "content-type": "application/json" }
+    });
+  };
+  try {
+    const response = await post(
+      { accountId: "pilo.testnet", native: true },
+      { NEAR_NETWORK: "testnet", NEARBLOCKS_API_KEY: "test-key" }
+    );
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      raw: "987650000000000000000000",
+      decimals: 24,
+      source: "NEAR Testnet RPC",
+      rpc_endpoint: "rpc.testnet.near.org",
+      fallback_from: "NearBlocks v3"
+    });
+    assert.deepEqual(endpoints, [
+      "https://rpc.testnet.fastnear.com",
+      "https://rpc.testnet.near.org"
+    ]);
   } finally { globalThis.fetch = originalFetch; }
 });
 
