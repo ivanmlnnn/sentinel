@@ -331,6 +331,15 @@ test("tries the Pagoda Testnet RPC when the first two NEAR RPC providers fail", 
   globalThis.fetch = async (url, options = {}) => {
     const target = String(url);
     requested.push(target);
+    if (target === "https://www.usetidepool.tech/v0/tokens") {
+      return new Response(JSON.stringify([{
+        assetId: "nep141:wnear.tidepool-sandbox.testnet",
+        decimals: 24,
+        blockchain: "near",
+        symbol: "wNEAR",
+        contractAddress: "wnear.tidepool-sandbox.testnet"
+      }]), { status: 200, headers: { "content-type": "application/json" } });
+    }
     if (target.includes("nearblocks")) {
       return new Response(JSON.stringify({ data: [] }), {
         status: 200, headers: { "content-type": "application/json" }
@@ -357,6 +366,6 @@ test("tries the Pagoda Testnet RPC when the first two NEAR RPC providers fail", 
     assert.equal(payload.raw, "1000000000000000000000000");
     assert.equal(payload.source, "NEAR Testnet RPC");
     assert.equal(payload.rpc_endpoint, "rpc.testnet.pagoda.co");
-    assert.equal(requested.length, 4);
+    assert.equal(requested.length, 5);
   } finally { globalThis.fetch = originalFetch; }
 });
