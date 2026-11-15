@@ -211,11 +211,26 @@ test("Verify quote preserves the explicit UI direction, including a user-flipped
   assert.ok(approval.includes('(swap.displayDestination || swap.destination).symbol'));
 });
 
-test("native NEAR dropdown entry is visibly disabled while explicit WNEAR remains selectable", () => {
+test("native NEAR remains selectable for live route discovery while WNEAR stays a distinct asset", () => {
   assert.match(swapUi, /NEAR · NATIVE · BALANCE ONLY/);
-  assert.match(swapUi, /originOption\.disabled = true/);
-  assert.match(swapUi, /destinationOption\.disabled = true/);
-  assert.match(swapUi, /Native NEAR is not a Tidepool Testnet swap asset/);
+  assert.doesNotMatch(swapUi, /originOption\.disabled = true/);
+  assert.doesNotMatch(swapUi, /destinationOption\.disabled = true/);
+  assert.match(swapUi, /Discovering a native NEAR Testnet route from Tidepool/);
+  assert.match(swapUi, /requested_asset: "native:near"/);
+  assert.match(swapUi, /native_near_route: "NOT_LISTED"/);
+  assert.match(swapUi, /Select WNEAR explicitly/);
+  assert.match(swapUi, /No quote or wallet approval was created/);
+});
+
+test("native NEAR Quote refreshes Tidepool registry before wallet checks or approval", () => {
+  const quoteStart = swapUi.indexOf('quoteButton.addEventListener("click"');
+  const quoteEnd = swapUi.indexOf('approveButton.addEventListener("click"', quoteStart);
+  const handler = swapUi.slice(quoteStart, quoteEnd);
+  const discovery = handler.indexOf('request("/trading/tokens", { method: "GET" })');
+  const walletCheck = handler.indexOf('const recipient = walletAddressFor(destination.blockchain)');
+  assert.ok(discovery >= 0 && walletCheck > discovery);
+  assert.match(handler, /token\?\.asset_id === "native:near"/);
+  assert.match(handler, /execution_authorized: false/);
 });
 
 
