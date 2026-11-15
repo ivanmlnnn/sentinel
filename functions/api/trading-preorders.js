@@ -1,5 +1,8 @@
 import { json, readTextLimited, verifyPrivyAccessToken } from "./_shared.js";
 import { validatePreOrder, shouldTriggerPreOrder } from "../../src/trading-preorders.mjs";
+import { getTidepoolLiveQuote, getTidepoolTestnetTokens } from "../../src/trading-core.mjs";
+import { runDualAgentSwapReview } from "../../src/trading-swap-agents.mjs";
+import { callSentinelAI } from "./_ai.js";
 
 export async function onRequestGet({ request, env }) {
   const identity = await verifyPrivyAccessToken(request, env);
@@ -7,7 +10,7 @@ export async function onRequestGet({ request, env }) {
   if (!env.DB) return json({ error: "DATABASE_NOT_CONFIGURED" }, 503);
   try {
     const rows = await env.DB.prepare(
-      "SELECT id, wallet_address, wallet_chain, trigger_type, scheduled_at, trigger_asset_id, trigger_direction, target_price_usd, status, trigger_observed_price_usd, trigger_observed_at, review_status, session_authorization_status, execution_status, created_at, updated_at, triggered_at, cancelled_at FROM trading_preorders WHERE actor = ? ORDER BY created_at DESC LIMIT 100"
+      "SELECT id, wallet_address, wallet_chain, trigger_type, scheduled_at, trigger_asset_id, trigger_direction, target_price_usd, status, trigger_observed_price_usd, trigger_observed_at, review_status, session_authorization_status, execution_status, review_result_json, reviewed_quote_json, reviewed_at, review_error, created_at, updated_at, triggered_at, cancelled_at FROM trading_preorders WHERE actor = ? ORDER BY created_at DESC LIMIT 100"
     ).bind(identity.sub).all();
     return json({ orders: rows.results || [] });
   } catch (error) {
@@ -85,6 +88,83 @@ export async function onRequestDelete({ request, env }) {
   }
 }
 
+async function reviewTriggeredPreOrder(env, order, now = Date.now()) {
+  const failClosed = async (code, { terminal = true, review = null, quote = null } = {}) => {
+    await env.DB.prepare(
+      "UPDATE trading_preorders SET status = ?, review_status = ?, execution_status = 'NOT_AUTHORIZED', review_result_json = ?, reviewed_quote_json = ?, reviewed_at = ?, review_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'TRIGGERED_AWAITING_REVIEW'"
+    ).bind(
+      terminal ? "REJECTED" : "TRIGGERED_AWAITING_REVIEW",
+      terminal ? "VETO" : "PENDING",
+      review ? JSON.stringify(review) : null,
+      quote ? JSON.stringify(quote) : null,
+      terminal ? new Date(now).toISOString() : null,
+      String(code).slice(0, 120),
+      order.id
+    ).run();
+  };
+
+  let intent;
+  try { intent = JSON.parse(order.swap_intent); }
+  catch { await failClosed("INVALID_STORED_SWAP_INTENT"); return { id: order.id, review: "VETO" }; }
+  if (!intent || typeof intent !== "object" || order.wallet_chain !== "near" ||
+      intent.refundTo?.toLowerCase() !== order.wallet_address?.toLowerCase()) {
+    await failClosed("PREORDER_WALLET_OR_REFUND_MISMATCH");
+    return { id: order.id, review: "VETO" };
+  }
+
+  try {
+    // A scheduled order never reuses the quote captured when it was created.
+    // Re-discover the Testnet registry and request a fresh provider quote at trigger time.
+    const tokens = await getTidepoolTestnetTokens();
+    const quoteInput = {
+      originAsset: intent.originAsset,
+      destinationAsset: intent.destinationAsset,
+      amount: intent.amount,
+      recipient: intent.recipient,
+      refundTo: intent.refundTo,
+      slippageTolerance: intent.slippageTolerance
+    };
+    const fresh = await getTidepoolLiveQuote(quoteInput, fetch, now, undefined, tokens);
+    if (!fresh?.ok) {
+      await failClosed(fresh?.reason || "FRESH_PREORDER_QUOTE_REJECTED");
+      return { id: order.id, review: "VETO", reason: fresh?.reason || "FRESH_PREORDER_QUOTE_REJECTED" };
+    }
+
+    const review = await runDualAgentSwapReview({
+      prompt: intent.userPrompt,
+      quoteInput,
+      liveQuote: fresh.value,
+      tokens,
+      now,
+      aiCall: options => callSentinelAI(env, options)
+    });
+    if (!review.ok) {
+      const retryable = ["SWAP_AGENT_ONE_UNAVAILABLE", "SWAP_AGENT_TWO_UNAVAILABLE",
+        "SWAP_AGENT_ONE_INVALID_OUTPUT", "SWAP_AGENT_TWO_INVALID_OUTPUT"].includes(review.reason);
+      await failClosed(review.reason || "DUAL_AGENT_REVIEW_FAILED", {
+        terminal: !retryable,
+        review: review.value || { status: retryable ? "PENDING" : "VETO", reason: review.reason },
+        quote: fresh.value
+      });
+      return { id: order.id, review: retryable ? "PENDING" : "VETO", reason: review.reason };
+    }
+
+    // PASS means the two agents approved this fresh quote for display only.
+    // The quote is time-bound and the bounded Meteor session authorization is
+    // not implemented here; therefore execution_status must remain NOT_AUTHORIZED.
+    await env.DB.prepare(
+      "UPDATE trading_preorders SET review_status = 'PASS', review_result_json = ?, reviewed_quote_json = ?, reviewed_at = ?, review_error = NULL, execution_status = 'NOT_AUTHORIZED', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'TRIGGERED_AWAITING_REVIEW'"
+    ).bind(JSON.stringify(review.value), JSON.stringify(fresh.value),
+      new Date(now).toISOString(), order.id).run();
+    return { id: order.id, review: "PASS", execution_authorized: false };
+  } catch (error) {
+    const code = typeof error?.code === "string" ? error.code :
+      error instanceof Error ? error.message : "PREORDER_DUAL_AGENT_REVIEW_UNAVAILABLE";
+    await failClosed(code, { terminal: false });
+    return { id: order.id, review: "PENDING", reason: code };
+  }
+}
+
 export async function runPreOrderScheduler(env, now = Date.now()) {
   if (!env.DB) throw new Error("PREORDER_DATABASE_NOT_CONFIGURED");
   const dueTimes = await env.DB.prepare(
@@ -93,19 +173,30 @@ export async function runPreOrderScheduler(env, now = Date.now()) {
   const prices = await env.DB.prepare(
     "SELECT * FROM trading_preorders WHERE status = 'HELD' AND trigger_type = 'PRICE' ORDER BY created_at ASC LIMIT 100"
   ).all();
-  // Tidepool's token registry price metadata is not a cryptographically verified
-  // oracle feed. Do not trigger a price order from that field. Keep price orders
-  // held until a signed/verified oracle adapter is configured.
-  const candidates = [...(dueTimes.results || [])];
-  let triggered = 0;
-  for (const order of candidates) {
+
+  // Price triggers remain disabled until a cryptographically verified oracle
+  // adapter exists. Token registry metadata is not an oracle.
+  const triggeredOrders = [];
+  for (const order of dueTimes.results || []) {
     const decision = shouldTriggerPreOrder(order, { now, priceVerified: false });
     if (!decision.trigger) continue;
     const update = await env.DB.prepare(
       "UPDATE trading_preorders SET status = 'TRIGGERED_AWAITING_REVIEW', trigger_observed_price_usd = ?, trigger_observed_at = ?, triggered_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'HELD'"
-    ).bind(decision.observedPrice, decision.observedPrice === null ? null : new Date(now).toISOString(),
-      new Date(now).toISOString(), order.id).run();
-    if (update.meta?.changes) triggered++;
+    ).bind(null, null, new Date(now).toISOString(), order.id).run();
+    if (update.meta?.changes) triggeredOrders.push(order);
   }
-  return { scanned: candidates.length + (prices.results || []).length, triggered, price_orders_held: (prices.results || []).length, price_trigger_status: "SIGNED_ORACLE_NOT_CONFIGURED" };
+
+  const reviews = [];
+  for (const order of triggeredOrders) {
+    reviews.push(await reviewTriggeredPreOrder(env, order, now));
+  }
+  return {
+    scanned: (dueTimes.results || []).length + (prices.results || []).length,
+    triggered: triggeredOrders.length,
+    reviewed: reviews.length,
+    reviews,
+    price_orders_held: (prices.results || []).length,
+    price_trigger_status: "SIGNED_ORACLE_NOT_CONFIGURED",
+    execution_authorized: false
+  };
 }
