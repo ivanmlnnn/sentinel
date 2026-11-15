@@ -13,6 +13,7 @@ Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verifi
 - [Judge Start Here — Claude Code / Codex / human reviewers](JUDGE_START_HERE.md)
 - [Dual-Agent Swap Review source](src/trading-swap-agents.mjs) · [focused tests](tests/trading-swap-agents.test.mjs) · [Testnet swap flow](docs/TRADING_CORE_TESTNET.md)
 - [Independent Stress Lab](docs/INDEPENDENT_LOCAL_STRESS_LAB.md) — local simulation only; it is not a D1 stress benchmark.
+- **D1 test isolation:** a separate Cloudflare D1 test database is provisioned apart from production Main `sentinel-db` and Signer `db2`. Its ID is intentionally not published; use the authorized test configuration and verify the target before writes. The local stress-lab results below were not run against D1.
 
 ## Current production deployment — 12 November 2026
 
