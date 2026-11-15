@@ -173,9 +173,10 @@ async function readNearBlocksBalance(accountId, token, native, env) {
     }
     const rows = await fetchAllNearBlocksRows(base + "/v3/accounts/" + account + "/assets/fts", apiKey);
     const holding = rows.find(row => findFtContract(row) === contract);
-    // A successful, schema-valid holdings response with no matching contract
-    // means zero holdings. An API/schema failure is never represented as zero.
-    if (!holding) return json({ raw: "0", decimals: token.decimals, source: "NearBlocks v3" });
+    // NearBlocks holdings can lag or omit newly indexed Tidepool testnet FTs.
+    // Do not turn an absent row into a zero balance: verify against the token's
+    // NEP-141 ft_balance_of RPC before declaring the wallet insufficient.
+    if (!holding) throw new Error("NEARBLOCKS_FT_HOLDING_NOT_INDEXED");
     const raw = findRawAmount(holding);
     if (raw === null) throw new Error("NEARBLOCKS_FT_BALANCE_SCHEMA_UNRECOGNIZED");
     return json({ raw, decimals: token.decimals, source: "NearBlocks v3" });
