@@ -1408,7 +1408,6 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
             String(token?.symbol || "").toUpperCase() === "WNEAR" &&
             String(token?.blockchain || "").toLowerCase() === "near"
           );
-          const direction = origin.nativeNearSelected ? "origin" : "destination";
           const discovery = {
             provider: latestRegistry?.provider || "Tidepool community testnet",
             network: latestRegistry?.network || "NEAR Testnet",
