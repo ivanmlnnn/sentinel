@@ -218,6 +218,9 @@ test("native NEAR remains selectable for live route discovery while WNEAR stays 
   assert.match(swapUi, /Discovering a native NEAR Testnet route from Tidepool/);
   assert.match(swapUi, /requested_asset: "native:near"/);
   assert.match(swapUi, /native_near_route: "NOT_LISTED"/);
+  assert.match(swapUi, /native_near_wrap_route: "NOT_VERIFIED"/);
+  assert.match(swapUi, /wnear_is_native_near: false/);
+  assert.match(swapUi, /Meteor can sign NEAR Testnet transactions, but wallet support does not create a Tidepool route/);
   assert.match(swapUi, /Select WNEAR explicitly/);
   assert.match(swapUi, /No quote or wallet approval was created/);
 });
