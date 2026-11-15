@@ -173,6 +173,9 @@ export async function runPreOrderScheduler(env, now = Date.now()) {
   const prices = await env.DB.prepare(
     "SELECT * FROM trading_preorders WHERE status = 'HELD' AND trigger_type = 'PRICE' ORDER BY created_at ASC LIMIT 100"
   ).all();
+  const retryReviews = await env.DB.prepare(
+    "SELECT * FROM trading_preorders WHERE status = 'TRIGGERED_AWAITING_REVIEW' AND review_status = 'PENDING' AND review_error IS NOT NULL AND updated_at <= datetime('now', '-1 minute') ORDER BY triggered_at ASC LIMIT 20"
+  ).all();
 
   // Price triggers remain disabled until a cryptographically verified oracle
   // adapter exists. Token registry metadata is not an oracle.
@@ -187,12 +190,13 @@ export async function runPreOrderScheduler(env, now = Date.now()) {
   }
 
   const reviews = [];
-  for (const order of triggeredOrders) {
+  for (const order of [...triggeredOrders, ...(retryReviews.results || [])]) {
     reviews.push(await reviewTriggeredPreOrder(env, order, now));
   }
   return {
-    scanned: (dueTimes.results || []).length + (prices.results || []).length,
+    scanned: (dueTimes.results || []).length + (prices.results || []).length + (retryReviews.results || []).length,
     triggered: triggeredOrders.length,
+    retried: (retryReviews.results || []).length,
     reviewed: reviews.length,
     reviews,
     price_orders_held: (prices.results || []).length,
