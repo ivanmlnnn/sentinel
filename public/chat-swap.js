@@ -863,10 +863,9 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
   for (const token of tokens) {
     const originOption = el("option", formatToken(token)); originOption.value = String(token.asset_id ?? "");
     const destinationOption = el("option", formatToken(token)); destinationOption.value = String(token.asset_id ?? "");
-    if (token.native === true && token.asset_id === "native:near") {
-      originOption.disabled = true;
-      destinationOption.disabled = true;
-    }
+    // Keep native NEAR selectable so Quote can perform a fresh provider
+    // capability check. It remains a balance-only asset unless Tidepool
+    // explicitly registers a native-NEAR route; it is never aliased to WNEAR.
     originSelect.append(originOption);
     destSelect.append(destinationOption);
   }
@@ -1391,6 +1390,46 @@ export async function renderChatSwap({ prompt, result, request, connector: conne
       const origin = tokens.find(token => String(token.asset_id ?? "") === originSelect.value);
       const destination = tokens.find(token => String(token.asset_id ?? "") === destSelect.value);
       if (!origin || !destination) throw new Error("Choose exact origin and destination assets from the live token registry.");
+      const nativeNearSelected = token => token?.native === true && token.asset_id === "native:near";
+      if (nativeNearSelected(origin) || nativeNearSelected(destination)) {
+        // Re-fetch the provider registry at the moment Quote is pressed. The
+        // synthetic native-NEAR balance row is not a Tidepool asset and must
+        // never be treated as WNEAR or sent to the quote/signing pipeline.
+        status.textContent = "Discovering a native NEAR Testnet route from Tidepool…";
+        const latestRegistry = await request("/trading/tokens", { method: "GET" });
+        const providerTokens = Array.isArray(latestRegistry?.tokens) ? latestRegistry.tokens : [];
+        const nativeRoute = providerTokens.find(token =>
+          token?.asset_id === "native:near" ||
+          (token?.native === true && String(token?.blockchain || "").toLowerCase() === "near" &&
+            String(token?.symbol || "").toUpperCase() === "NEAR")
+        );
+        if (!nativeRoute) {
+          const wnear = providerTokens.find(token =>
+            String(token?.symbol || "").toUpperCase() === "WNEAR" &&
+            String(token?.blockchain || "").toLowerCase() === "near"
+          );
+          const direction = origin.nativeNearSelected ? "origin" : "destination";
+          const discovery = {
+            provider: latestRegistry?.provider || "Tidepool community testnet",
+            network: latestRegistry?.network || "NEAR Testnet",
+            requested_asset: "native:near",
+            native_near_route: "NOT_LISTED",
+            wnear_asset_id: wnear?.asset_id || null,
+            execution_authorized: false
+          };
+          details.textContent = JSON.stringify({ route_discovery: discovery }, null, 2);
+          details.hidden = false;
+          throw new Error(
+            "No native NEAR Testnet route is currently listed by Tidepool. " +
+            "Sentinel refreshed the live registry; it found " +
+            (wnear ? "WNEAR, which is a separate token." : "no compatible native-NEAR asset.") +
+            " Select WNEAR explicitly to use the available Tidepool route. No quote or wallet approval was created."
+          );
+        }
+        // A future provider listing is not enough by itself: the backend
+        // validator must also support the exact native asset ID before use.
+        throw new Error("Tidepool listed a native-NEAR-like entry, but Sentinel's signed-quote validator does not yet support that asset identity. Route blocked safely; no approval opened.");
+      }
       // The selectors are the user's explicit route choice. The chat prompt
       // supplies the initial defaults only; flipping or editing the pair is
       // an intentional override and must survive quote verification.
