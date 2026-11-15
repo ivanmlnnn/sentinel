@@ -45,7 +45,8 @@ test("Meteor approval launches directly on the Approve tap without an awaited op
   assert.match(approval, /signerId:\s*prepared\.transaction\.signerId/);
   assert.match(approval, /receiverId:\s*prepared\.transaction\.receiverId/);
   assert.doesNotMatch(approval, /callbackUrl\s*:/);
-  assert.match(swapUi, /signerId:\s*preparedUnwrap\.account/);
+  assert.match(swapUi, /NATIVE_NEAR_UNWRAP_UNSUPPORTED/);
+  assert.match(swapUi, /buildNearWalletUnwrapActions/);
 });
 
 test("EVM wallet balances are read from fixed testnet RPCs without forcing a wallet chain switch", () => {
