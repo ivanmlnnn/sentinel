@@ -95,7 +95,8 @@ function findFtContract(row) {
 
 const NEAR_TESTNET_RPCS = [
   "https://rpc.testnet.fastnear.com",
-  "https://rpc.testnet.near.org"
+  "https://rpc.testnet.near.org",
+  "https://rpc.testnet.pagoda.co"
 ];
 
 async function readNearRpcBalanceAt(accountId, token, native, rpcUrl) {
