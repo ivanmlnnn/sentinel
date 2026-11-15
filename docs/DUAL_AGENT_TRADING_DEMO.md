@@ -4,6 +4,21 @@
 
 This feature branch adds an authenticated, read-only research workflow. It uses a real public market-data provider, computes deterministic indicators, asks two separately prompted AI runs to perform different jobs, and applies deterministic checks to the outputs.
 
+## Important: this repository has two separate dual-agent workflows
+
+The market-research workflow described in this document is not the swap-review workflow. The swap-review implementation is in `src/trading-swap-agents.mjs` and has focused tests in `tests/trading-swap-agents.test.mjs` and `tests/trading-swap-route.test.mjs`.
+
+### Dual-agent swap review
+
+- **Agent 1 — intent and route reviewer:** checks the natural-language instruction against the selected provider registry assets, amount converted to integer base units, chain direction, and fresh quote.
+- **Agent 2 — independent quote/risk challenger:** reviews the signed quote and the evidence for provider signature, deterministic risk-policy fingerprint, amount, recipient, refund address, deposit address, deadline, route/chain binding, and asset identity.
+- **Deterministic gate:** required checks are evaluated independently of model output. Any failed check or either agent's VETO stops the review. An AI response cannot override a failed deterministic check.
+- **No signing authority:** the review response explicitly sets `execution_authorized: false`. It does not sign, approve, or move funds.
+- **Asset safety:** native NEAR and WNEAR are different assets. Unsupported native-NEAR wrap/unwrap paths fail closed.
+
+The separate Testnet wallet flow is documented in [Trading Core Testnet](TRADING_CORE_TESTNET.md). It obtains and verifies a fresh Tidepool quote, binds the exact deposit parameters, opens the user's Meteor approval, and waits for Tidepool status `SUCCESS`. Tidepool is a community-operated Testnet sandbox using the 1Click SDK integration; do not call it an official NEAR/Defuse production deployment or a mainnet integration.
+
+
 - Agent 1: market research thesis (BUY / SELL / HOLD), cited evidence IDs, invalidation condition, and horizon.
 - Agent 2: independent adversarial review (PASS / VETO), risk level, challenge, and reasons. The two roles are separate sequential LLM calls through the configured Cloudflare AI binding; they are not claimed to be independently trained foundation models.
 - Sentinel deterministic gate: rejects invented evidence, directional contradictions, risk flags, and non-low risk reviews.
@@ -75,6 +90,6 @@ The added focused test files cover market-data normalization and failure cases, 
 
 This is not yet an autonomous trading system and does not prove profitability. It does not yet maintain a persistent paper-trade position ledger or provide out-of-sample validated performance evidence. It does not execute swaps or support cross-chain settlement through this new agent flow.
 
-The existing Tidepool execution code is a separate NEAR Testnet path. Before connecting it to these agents, Sentinel must independently compare a fresh route quote, net output after fees/gas/slippage, chain and wallet capabilities, exact approval binding, idempotency, and final provider settlement. Meteor wallet signing is not itself a liquidity route.
+The swap-review agents are a separate workflow from the market-research agents. The swap review is connected to the Testnet trading core through its own exact-quote and deterministic risk checks; it remains a review gate, not a signer. Meteor wallet signing is user authorization, not a liquidity route.
 
-The dual-agent feature is on the feature branch and has not been deployed to the production Cloudflare Worker. The Vercel preview is a frontend build, not proof that the Cloudflare API route is live. Do not use real funds.
+The dual-agent research and swap-review features are on the feature branch and are not evidence that the same feature-branch API implementation is deployed to the production Cloudflare Worker. A Vercel preview is a frontend build, not proof that the Cloudflare API route is live. The Tidepool path is Testnet-only; do not use real funds.
