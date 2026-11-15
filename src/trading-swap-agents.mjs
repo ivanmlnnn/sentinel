@@ -132,6 +132,14 @@ export async function runDualAgentSwapReview({
       provider_signature_verified: liveQuote.provider_signature_verified,
       risk_evaluation: liveQuote.risk_evaluation
     },
+    // trading-core computes this SHA-256 fingerprint from the signed provider
+    // quote, deterministic checks, and normalized intent before this reviewer
+    // runs. Agent 2 must inspect this exact value, never invent a second hash.
+    risk_policy_verification: {
+      verifier: "SENTINEL_DETERMINISTIC_SHA256",
+      status: deterministic.risk_allowed && deterministic.policy_hash_valid ? "VERIFIED_ALLOW" : "NOT_VERIFIED",
+      policy_hash: liveQuote?.risk_evaluation?.policy_hash || null
+    },
     deterministic_checks: deterministic
   };
 
@@ -192,7 +200,7 @@ export async function runDualAgentSwapReview({
   try {
     const agentTwoSystem = [
       "You are Sentinel Swap Agent 2, an independent adversarial quote and risk reviewer. You are not Agent 1's assistant.",
-      "Independently challenge the exact quote, signature-verification result, amount, token direction, recipient, refund address, deposit address, expiry, slippage and deterministic risk policy. Understand amount_normalization: user_amount is human-readable token units; expected_base_units is computed with token_decimals and must equal quote_input_base_units exactly. Never compare decimal token amounts directly with base units. NEAR and WNEAR are distinct assets; never alias them. Native NEAR input or output is unsupported by this adapter until a real wrap/unwrap contract path is verified. If the prompt requests NEAR but the selected registry token is WNEAR, require VETO. No near_withdraw or near_deposit wallet action may be inferred from the WNEAR token contract. Do not trust Agent 1 verdict; independently check the structured evidence.",
+      "Independently challenge the exact quote, signature-verification result, amount, token direction, recipient, refund address, deposit address, expiry, slippage and deterministic risk policy. Understand amount_normalization: user_amount is human-readable token units; expected_base_units is computed with token_decimals and must equal quote_input_base_units exactly. Never compare decimal token amounts directly with base units. NEAR and WNEAR are distinct assets; never alias them. Native NEAR input or output is unsupported by this adapter until a real wrap/unwrap contract path is verified. If the prompt requests NEAR but the selected registry token is WNEAR, require VETO. No near_withdraw or near_deposit wallet action may be inferred from the WNEAR token contract. Do not trust Agent 1 verdict; independently check the structured evidence. POLICY HASH RULE: the risk_policy_verification object is produced by Sentinel's deterministic SHA-256 verifier over the signed quote and normalized policy inputs. Read its policy_hash literally. If status is VERIFIED_ALLOW and deterministic_checks.risk_allowed and deterministic_checks.policy_hash_valid are true, do not claim a policy hash mismatch and do not invent, derive, or compare against any other hash. A policy hash mismatch may be reported only when the supplied deterministic verification status is NOT_VERIFIED or the deterministic checks explicitly fail. Never fabricate an expected hash.",
       "Any failed deterministic check, missing field, mismatch, uncertain risk, or non-ALLOW policy requires VETO. PASS means only that the quote may be shown for explicit human wallet approval; it never authorizes signing, depositing, swapping, or trading.",
       "Return exactly one JSON object and no markdown or prose. Required keys: verdict, risk_level, challenge, reasons. verdict must be PASS or VETO; risk_level must be LOW, MEDIUM, or HIGH; challenge must be a non-empty explanatory string; reasons must be an array of strings (use [] when there are no reasons). Do not omit any key and do not add keys."
     ].join("\n");
