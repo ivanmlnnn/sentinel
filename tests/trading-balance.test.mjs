@@ -323,3 +323,40 @@ test("uses NEAR Testnet ft_balance_of when NearBlocks omits a Tidepool FT holdin
     assert.equal(calls.length, 3);
   } finally { globalThis.fetch = originalFetch; }
 });
+
+
+test("tries the Pagoda Testnet RPC when the first two NEAR RPC providers fail", async () => {
+  const originalFetch = globalThis.fetch;
+  const requested = [];
+  globalThis.fetch = async (url, options = {}) => {
+    const target = String(url);
+    requested.push(target);
+    if (target.includes("nearblocks")) {
+      return new Response(JSON.stringify({ data: [] }), {
+        status: 200, headers: { "content-type": "application/json" }
+      });
+    }
+    if (target.includes("fastnear.com") || target.includes("rpc.testnet.near.org")) {
+      return new Response(JSON.stringify({ error: { message: "provider unavailable" } }), {
+        status: 200, headers: { "content-type": "application/json" }
+      });
+    }
+    assert.equal(target, "https://rpc.testnet.pagoda.co");
+    const bytes = new TextEncoder().encode("1000000000000000000000000");
+    return new Response(JSON.stringify({ result: { result: [...bytes] } }), {
+      status: 200, headers: { "content-type": "application/json" }
+    });
+  };
+  try {
+    const response = await post(
+      { accountId: "pilo.testnet", assetId: "nep141:wnear.tidepool-sandbox.testnet" },
+      { NEAR_NETWORK: "testnet", NEARBLOCKS_API_KEY: "test-key" }
+    );
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.raw, "1000000000000000000000000");
+    assert.equal(payload.source, "NEAR Testnet RPC");
+    assert.equal(payload.rpc_endpoint, "rpc.testnet.pagoda.co");
+    assert.equal(requested.length, 4);
+  } finally { globalThis.fetch = originalFetch; }
+});
