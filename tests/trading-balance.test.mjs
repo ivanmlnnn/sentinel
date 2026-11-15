@@ -136,3 +136,72 @@ test("reads Aurora Testnet native ETH through its fixed RPC mapping", async () =
     assert.equal(rpcUrl, "https://testnet.aurora.dev");
   } finally { globalThis.fetch = originalFetch; }
 });
+
+
+test("falls back to NEAR Testnet RPC when NearBlocks rejects native balance requests", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push(String(url));
+    if (String(url).includes("nearblocks")) {
+      return new Response(JSON.stringify({ message: "invalid api key" }), { status: 401 });
+    }
+    const body = JSON.parse(options.body);
+    assert.equal(body.method, "query");
+    assert.equal(body.params.request_type, "view_account");
+    assert.equal(body.params.account_id, "pilo.testnet");
+    return new Response(JSON.stringify({ result: { amount: "1234500000000000000000000" } }), {
+      status: 200, headers: { "content-type": "application/json" }
+    });
+  };
+  try {
+    const response = await post(
+      { accountId: "pilo.testnet", native: true },
+      { NEAR_NETWORK: "testnet", NEARBLOCKS_API_KEY: "bad-key" }
+    );
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      raw: "1234500000000000000000000",
+      decimals: 24,
+      source: "NEAR Testnet RPC",
+      fallback_from: "NearBlocks v3"
+    });
+    assert.equal(calls.length, 2);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test("falls back to NEAR Testnet RPC ft_balance_of when NearBlocks token holdings fail", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options = {}) => {
+    if (String(url).includes("usetidepool.tech")) {
+      return new Response(JSON.stringify([{
+        assetId: "nep141:wnear.tidepool-sandbox.testnet",
+        decimals: 24, blockchain: "near", symbol: "wNEAR",
+        contractAddress: "wnear.tidepool-sandbox.testnet"
+      }]), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    if (String(url).includes("nearblocks")) return new Response("upstream unavailable", { status: 503 });
+    const body = JSON.parse(options.body);
+    assert.equal(body.params.request_type, "call_function");
+    assert.equal(body.params.account_id, "wnear.tidepool-sandbox.testnet");
+    assert.equal(body.params.method_name, "ft_balance_of");
+    assert.deepEqual(JSON.parse(atob(body.params.args_base64)), { account_id: "pilo.testnet" });
+    const encoded = new TextEncoder().encode("42000000000000000000000000");
+    return new Response(JSON.stringify({ result: { result: [...encoded] } }), {
+      status: 200, headers: { "content-type": "application/json" }
+    });
+  };
+  try {
+    const response = await post(
+      { accountId: "pilo.testnet", assetId: "nep141:wnear.tidepool-sandbox.testnet" },
+      { NEAR_NETWORK: "testnet", NEARBLOCKS_API_KEY: "test-key" }
+    );
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      raw: "42000000000000000000000000",
+      decimals: 24,
+      source: "NEAR Testnet RPC",
+      fallback_from: "NearBlocks v3"
+    });
+  } finally { globalThis.fetch = originalFetch; }
+});
