@@ -5,14 +5,14 @@
   "purpose": "Pre-sign security checkpoint and proof-carrying payment research for NEAR agent payments",
   "audit_target": {
     "branch": "lab/proof-carrying-agent-economy",
-    "commit": "7d2009bf82e4557be92d1be62d112a652def8580",
+    "commit": "1cb67d1f301a8ce815604fb0533a63335e276c06",
     "pull_request": 42,
     "pull_request_url": "https://github.com/ivanmlnnn/sentinel/pull/42",
-    "status": "OPEN_READY_FOR_REVIEW_NOT_MERGEABLE",
+    "status": "OPEN_DRAFT_NOT_MERGEABLE",
     "production_branch": "main",
-    "implementation_snapshot_commit": "ed86e0fd76f47e8ecebe33a926e0e39542ae6bbe",
-    "documentation_and_workflow_updates": "The reviewed branch head is recorded separately from the implementation snapshot; documentation corrections are committed after this snapshot.",
-    "last_reviewed_branch_head_before_manifest_refresh": "f81cfe5add8b7279e7e2e8fb1f39c43e9dbdbac3"
+    "implementation_snapshot_commit": "1cb67d1f301a8ce815604fb0533a63335e276c06",
+    "documentation_and_workflow_updates": "Subsequent review commits update documentation and PR state only; they do not change the inspected signer or contract implementation.",
+    "last_reviewed_branch_head_before_manifest_refresh": "1cb67d1f301a8ce815604fb0533a63335e276c06"
   },
   "verdict_policy": {
     "production_claims_must_be_limited_to_main": true,
@@ -170,15 +170,14 @@
     "npm run check:d1"
   ],
   "not_verified": [
-    "Current PR head has not been shown to have a fresh complete test run in GitHub Actions.",
     "Remote Cloudflare production D1 concurrency or regional behavior.",
     "Production Main Worker and Signer Worker integration with the new proof envelope.",
     "Fresh NEAR Testnet deployment and proof signer public-key installation.",
     "Live proof-carrying NEAR payment and final receipt verification.",
     "Independent external evidence authentication by the contract.",
     "External AI reviewers' conclusions or hackathon outcome.",
-    "A successful GitHub Actions run for PR #42 / lab branch head.",
-    "Hardware TEE remote attestation and hardware isolation; proof-carrying authorization is a distinct verification model and must not be represented as a TEE implementation."
+    "Hardware TEE remote attestation and hardware isolation; proof-carrying authorization is a distinct verification model and must not be represented as a TEE implementation.",
+    "No fresh GitHub Actions run was found for implementation/audit snapshot 1cb67d1f301a8ce815604fb0533a63335e276c06 on 2026-11-16."
   ],
   "review_instructions": [
     "Read README.md first, then docs/AI_AUDIT_INDEX.md and this JSON manifest.",
@@ -190,7 +189,8 @@
     "Do not infer a win, security certification, or unanimous AI verdict from repository documentation.",
     "Evaluate the proof-carrying/beyond-TEE claim separately from hardware TEE properties: inspect contract verification, signer trust assumptions, evidence authenticity, key custody, and deployment status.",
     "Do not report the contract's approval_id field being a signer-bound identifier rather than a wallet signature as a confirmed vulnerability: the intended trust boundary requires the independent signer to validate human approval before signing. Escalate only if signer behavior or product claims contradict this.",
-    "Do not report pre-transfer nonce/daily-spend reservation as a confirmed exploit: it is fail-closed reservation accounting before an asynchronous NEAR transfer promise. A failed promise may leave the reservation consumed; describe this as an operational/reconciliation design note unless a reproducible security impact is demonstrated."
+    "Do not report pre-transfer nonce/daily-spend reservation as a confirmed exploit: it is fail-closed reservation accounting before an asynchronous NEAR transfer promise. A failed promise may leave the reservation consumed; describe this as an operational/reconciliation design note unless a reproducible security impact is demonstrated.",
+    "Inspect transaction-hash replay across approvals: verifyFinalTransfer checks wallet, receiver, amount and successful receipts but does not bind transaction inclusion time to the signed preflight issuance/approval; signer agent_execution.transaction_hash is not unique. Treat this as a confirmed verification/integrity gap and add regression coverage before marking the PR ready."
   ],
   "related_pull_requests": {
     "pcpi_reference": "https://github.com/ivanmlnnn/sentinel/pull/36",
@@ -207,6 +207,12 @@
       "id": "pre_transfer_reservation",
       "classification": "FAIL_CLOSED_ACCOUNTING_BEHAVIOR_NOT_CONFIRMED_EXPLOIT",
       "detail": "Nonce, approval, and daily spend reservation are recorded before scheduling the asynchronous NEAR transfer promise. A later promise failure does not automatically roll back the prior receipt's state; treat as an operational reconciliation/retry design consideration, not a demonstrated unauthorized-payment vulnerability."
+    },
+    {
+      "id": "transaction_hash_replay_across_approvals",
+      "classification": "CONFIRMED_VERIFICATION_GAP_REQUIRES_FIX",
+      "severity": "MEDIUM_INTEGRITY",
+      "detail": "The signer accepts a caller-supplied transaction hash after checking successful status, signer wallet, receiver and exact amount, but does not check transaction block time against the approval/preflight issuance. The signer agent_execution schema has no unique constraint on transaction_hash. A previously successful matching transfer can therefore potentially be reused to satisfy a later approval. This can falsely record an approval as executed without a fresh transfer; it is not evidence of direct fund theft. Fix with signed-time/block-time binding and atomic one-time transaction-hash claiming, plus a regression test."
     }
   ]
 }
