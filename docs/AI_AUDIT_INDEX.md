@@ -6,9 +6,9 @@
 
 - Repository: [ivanmlnnn/sentinel](https://github.com/ivanmlnnn/sentinel)
 - Branch: `lab/proof-carrying-agent-economy`
-- Commit: `ed86e0fd76f47e8ecebe33a926e0e39542ae6bbe`
+- Implementation/audit snapshot reviewed: `f81cfe5add8b7279e7e2e8fb1f39c43e9dbdbac3` (documentation updates may create a newer branch tip)
 - Review PR: [#42 — Proof-Carrying Payment v1](https://github.com/ivanmlnnn/sentinel/pull/42)
-- PR state at index creation: **Open · Draft · not mergeable**
+- PR state: **Open · Ready for review · not mergeable yet**
 - Production baseline: `main`
 
 Reviewers must inspect this exact commit and must not silently treat lab-branch code as deployed production code.
@@ -35,7 +35,13 @@ Reviewers must inspect this exact commit and must not silently treat lab-branch 
 | Ed25519 contract proof envelope | Contract source and local tests on lab branch | Contract verifies signer signature and exact bound context; not deployed |
 | Production signer submitting proof envelope | **Not implemented** | Do not claim end-to-end proof-carrying payment |
 | NEAR Testnet proof payment | **Not verified** | No live contract deployment/payment/receipt claimed |
-| Hardware TEE remote attestation | **Not implemented** | TEE is not a current verified feature |
+| Hardware TEE remote attestation | **Not implemented** | No hardware quote verification or remote-attestation path; proof-carrying authorization is a separate verification model, not a TEE claim |
+
+### Proof-carrying vs TEE: what “beyond-TEE” means
+
+The lab is **beyond-TEE in its verification model**: the relying contract checks a signed, context-bound proof envelope at the enforcement boundary instead of relying solely on the integrity of a particular execution environment. This is a meaningful architectural distinction because the authorization can be independently verified by the contract.
+
+It is not accurate to say that proof-carrying automatically provides all TEE properties. The envelope does not itself provide hardware isolation, protect a compromised signer private key, prove the truth of external evidence, or prove that the signer validated evidence correctly. Those properties remain dependent on signer implementation, source authentication, policy, approval, and key custody. A TEE may still be useful as defense-in-depth for the signer. No hardware TEE quote verifier or remote-attestation integration is implemented in this branch.
 
 ### Do not conflate these distinct proof layers
 
@@ -97,7 +103,7 @@ These runs are evidence for the **main branch baseline only**. They do not valid
 
 ### Current lab-branch CI status
 
-No GitHub Actions run was found for PR #42 branch head `202c21e92506f006f304e55277c49e2d599651a4`. The Vercel status for that commit reports an account build-rate-limit failure; that is not a code-test failure, but it is also not a successful test result. The lab workflow must run successfully on the current PR head before its branch test totals can be treated as fresh CI evidence.
+No GitHub Actions run was found for PR #42 branch head `f81cfe5add8b7279e7e2e8fb1f39c43e9dbdbac3`. The Vercel status for that commit reports an account build-rate-limit failure; that is not a code-test failure, but it is also not a successful test result. The lab workflow must run successfully on the current PR head before its branch test totals can be treated as fresh CI evidence.
 
 ## 6. Reproduce locally
 
@@ -126,8 +132,8 @@ Run commands from the repository root unless the command explicitly changes dire
 - HMAC in the provenance lab is a simplification, not production multi-party identity or protected key custody.
 - The semantic firewall detects structured field mutations and selected confusables; it does not understand arbitrary natural-language meaning or OCR documents.
 - The portable JSON verifier checks proof structure/digest, not a deployed transaction.
-- No hardware TEE remote-attestation verifier is implemented.
-- PR #42 is Draft and currently not mergeable; resolve/rebase conflicts, rerun the complete suite, and obtain independent review before merging.
+- No hardware TEE remote-attestation verifier is implemented; this is distinct from the contract-verified proof-carrying authorization model.
+- PR #42 is open and Ready for Review, but currently not mergeable; synchronize with `main`, resolve conflicts, rerun the complete suite on the resulting head, and obtain independent review before merging.
 
 ## 8. Independent AI / human reviewer protocol
 
