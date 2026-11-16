@@ -6,7 +6,7 @@ Isolated reference implementation and contract experiment. This branch modifies 
 
 - [AI and human audit index](../../docs/AI_AUDIT_INDEX.md) — architecture map, exact source paths, production/lab/reference status, evidence provenance, reproduction commands, limitations, and reviewer protocol.
 - [Machine-readable audit manifest](../../docs/AI_AUDIT_MANIFEST.json) — structured JSON scope and evidence ledger for automated review.
-- [PR #42](https://github.com/ivanmlnnn/sentinel/pull/42) — this experiment remains Draft until CI, conflict resolution, and independent review are complete.
+- [PR #42](https://github.com/ivanmlnnn/sentinel/pull/42) — open and ready for review; merge is still blocked pending branch synchronization/conflict resolution and fresh CI evidence.
 
 ## Run the proof and adversarial suite
 
@@ -35,6 +35,12 @@ This starts an isolated Wrangler/Miniflare Worker with local-only bindings for t
 
 - [Recorded local run evidence](evidence/local-run-2026-11-12.json)
 - [Proof-carrying contract boundary specification](docs/proof-carrying-payment-v1.md) — contract-side Ed25519 verification is implemented and unit-tested on this branch; signer-service integration and deployment remain incomplete.
+
+## Proof-carrying vs TEE: precise security claim
+
+This experiment is **proof-carrying / beyond-TEE in its verification model**, not a hardware-TEE implementation. A relying contract verifies an Ed25519 authorization envelope and binds it to chain, contract, caller, receiver, amount, memo-derived intent, approval, nonce, validity window, provenance/evidence commitments, policy version, and signer-key version. This makes the authorization independently checkable at the enforcement boundary and avoids treating a trusted execution environment as the sole source of correctness.
+
+Proof-carrying does not automatically provide hardware isolation, protect a compromised signer key, prove that off-chain evidence is truthful, or establish that the signer actually followed its policy. Those guarantees depend on the independent signer's evidence validation, approval/policy controls, key custody, and operational deployment. A TEE can still be added as defense-in-depth for signer key custody or execution integrity; no TEE quote verifier or remote-attestation path is implemented here. The accurate claim is **proof-carrying authorization with contract-side verification, designed to reduce reliance on TEE-only trust**, not “TEE implemented” or “TEE replaced in every threat model.”
 
 ## Explicit limitations
 
