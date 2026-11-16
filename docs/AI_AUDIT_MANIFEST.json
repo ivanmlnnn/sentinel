@@ -5,7 +5,7 @@
   "purpose": "Pre-sign security checkpoint and proof-carrying payment research for NEAR agent payments",
   "audit_target": {
     "branch": "lab/proof-carrying-agent-economy",
-    "commit": "f81cfe5add8b7279e7e2e8fb1f39c43e9dbdbac3",
+    "commit": "7d2009bf82e4557be92d1be62d112a652def8580",
     "pull_request": 42,
     "pull_request_url": "https://github.com/ivanmlnnn/sentinel/pull/42",
     "status": "OPEN_READY_FOR_REVIEW_NOT_MERGEABLE",
@@ -123,10 +123,10 @@
       "required_action": "Rerun all commands on the exact PR head and attach fresh raw logs/evidence JSON."
     },
     "github_ci_for_audit_target": {
-      "commit": "f81cfe5add8b7279e7e2e8fb1f39c43e9dbdbac3",
+      "commit": "7d2009bf82e4557be92d1be62d112a652def8580",
       "github_actions_runs_found": 0,
-      "combined_status": "No GitHub Actions run found for this reviewed lab branch head.",
-      "interpretation": "No fresh lab CI result is available for this reviewed branch head. PR status is Ready for Review, not mergeable."
+      "combined_status": "No GitHub Actions workflow runs found for the latest documentation commit checked on 2026-11-16.",
+      "interpretation": "No fresh lab CI result is available for this exact commit. PR status is Ready for Review, not mergeable."
     },
     "production_main_baseline_ci": {
       "commit": "67f9896fc81068d9ad17eb119f33895eaf82c6b2",
