@@ -5,14 +5,14 @@
   "purpose": "Pre-sign security checkpoint and proof-carrying payment research for NEAR agent payments",
   "audit_target": {
     "branch": "lab/proof-carrying-agent-economy",
-    "commit": "ed86e0fd76f47e8ecebe33a926e0e39542ae6bbe",
+    "commit": "f81cfe5add8b7279e7e2e8fb1f39c43e9dbdbac3",
     "pull_request": 42,
     "pull_request_url": "https://github.com/ivanmlnnn/sentinel/pull/42",
-    "status": "OPEN_DRAFT_NOT_MERGEABLE",
+    "status": "OPEN_READY_FOR_REVIEW_NOT_MERGEABLE",
     "production_branch": "main",
     "implementation_snapshot_commit": "ed86e0fd76f47e8ecebe33a926e0e39542ae6bbe",
-    "documentation_and_workflow_updates": "Documentation and CI-trigger updates were committed after the implementation snapshot; inspect the current PR head for the latest documentation.",
-    "last_reviewed_branch_head_before_manifest_refresh": "630d7184134584911f39c3a9e5ff93b419a4c278"
+    "documentation_and_workflow_updates": "The reviewed branch head is recorded separately from the implementation snapshot; documentation corrections are committed after this snapshot.",
+    "last_reviewed_branch_head_before_manifest_refresh": "f81cfe5add8b7279e7e2e8fb1f39c43e9dbdbac3"
   },
   "verdict_policy": {
     "production_claims_must_be_limited_to_main": true,
@@ -71,6 +71,11 @@
       "id": "tee_remote_attestation",
       "status": "NOT_IMPLEMENTED",
       "role": "No hardware TEE remote-attestation verifier is claimed"
+    },
+    {
+      "id": "proof_carrying_beyond_tee_verification_model",
+      "status": "CONTRACT_VERIFICATION_IMPLEMENTED_ON_LAB_BRANCH_NOT_DEPLOYED",
+      "role": "Beyond-TEE verification model: relying Rust contract verifies a context-bound Ed25519 proof envelope at the enforcement boundary; this reduces reliance on TEE-only execution trust but does not provide hardware isolation, signer key protection, evidence truth, or remote attestation."
     }
   ],
   "proof_layers_must_not_be_conflated": [
@@ -78,7 +83,9 @@
     "authorizeSignedPreflight() is signer-side policy re-evaluation on the lab branch; it is not PCPI commitment verification.",
     "The JavaScript contract-envelope helper is a reference/test signer, not the production private-key custody service.",
     "The Rust contract verifies the configured proof signer's signature and bound context; it does not independently fetch or authenticate external evidence.",
-    "The proof-carrying contract is not the current production payment path."
+    "The proof-carrying contract is not the current production payment path.",
+    "Proof-carrying authorization is beyond-TEE in its verification model, not a hardware TEE implementation or a universal replacement for TEE isolation and key-custody properties.",
+    "A valid contract-verified proof establishes that the configured key signed the bound message; it does not by itself establish that the signer validated external evidence correctly or that the evidence is truthful."
   ],
   "evidence": {
     "historical_local_run": {
@@ -116,10 +123,10 @@
       "required_action": "Rerun all commands on the exact PR head and attach fresh raw logs/evidence JSON."
     },
     "github_ci_for_audit_target": {
-      "commit": "630d7184134584911f39c3a9e5ff93b419a4c278",
+      "commit": "f81cfe5add8b7279e7e2e8fb1f39c43e9dbdbac3",
       "github_actions_runs_found": 0,
-      "combined_status": "Vercel status failure due account build-rate limit; no GitHub Actions run found for this branch head",
-      "interpretation": "Vercel preview status is not a code test result. No fresh lab CI result is available for this audit snapshot."
+      "combined_status": "No GitHub Actions run found for this reviewed lab branch head.",
+      "interpretation": "No fresh lab CI result is available for this reviewed branch head. PR status is Ready for Review, not mergeable."
     },
     "production_main_baseline_ci": {
       "commit": "67f9896fc81068d9ad17eb119f33895eaf82c6b2",
@@ -169,9 +176,9 @@
     "Fresh NEAR Testnet deployment and proof signer public-key installation.",
     "Live proof-carrying NEAR payment and final receipt verification.",
     "Independent external evidence authentication by the contract.",
-    "Hardware TEE remote attestation.",
     "External AI reviewers' conclusions or hackathon outcome.",
-    "A successful GitHub Actions run for PR #42 / lab branch head."
+    "A successful GitHub Actions run for PR #42 / lab branch head.",
+    "Hardware TEE remote attestation and hardware isolation; proof-carrying authorization is a distinct verification model and must not be represented as a TEE implementation."
   ],
   "review_instructions": [
     "Read README.md first, then docs/AI_AUDIT_INDEX.md and this JSON manifest.",
@@ -180,7 +187,8 @@
     "Check the exact tested_commit in the evidence JSON before repeating test totals.",
     "Treat all local Miniflare and local Rust results as local tests, not production or Testnet evidence.",
     "Report production, lab, reference-only, planned and unverified capabilities separately.",
-    "Do not infer a win, security certification, or unanimous AI verdict from repository documentation."
+    "Do not infer a win, security certification, or unanimous AI verdict from repository documentation.",
+    "Evaluate the proof-carrying/beyond-TEE claim separately from hardware TEE properties: inspect contract verification, signer trust assumptions, evidence authenticity, key custody, and deployment status."
   ],
   "related_pull_requests": {
     "pcpi_reference": "https://github.com/ivanmlnnn/sentinel/pull/36",
