@@ -6,7 +6,7 @@ Isolated reference implementation and contract experiment. This branch modifies 
 
 - [AI and human audit index](../../docs/AI_AUDIT_INDEX.md) — architecture map, exact source paths, production/lab/reference status, evidence provenance, reproduction commands, limitations, and reviewer protocol.
 - [Machine-readable audit manifest](../../docs/AI_AUDIT_MANIFEST.json) — structured JSON scope and evidence ledger for automated review.
-- [PR #42](https://github.com/ivanmlnnn/sentinel/pull/42) — open and ready for review; merge is still blocked pending branch synchronization/conflict resolution and fresh CI evidence.
+- [PR #42](https://github.com/ivanmlnnn/sentinel/pull/42) — open as Draft; merge is blocked pending a transaction-hash replay verification fix, branch synchronization/conflict resolution, and fresh CI evidence.
 
 ## Run the proof and adversarial suite
 
