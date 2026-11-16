@@ -6,9 +6,9 @@
 
 - Repository: [ivanmlnnn/sentinel](https://github.com/ivanmlnnn/sentinel)
 - Branch: `lab/proof-carrying-agent-economy`
-- Implementation/audit snapshot reviewed: `f81cfe5add8b7279e7e2e8fb1f39c43e9dbdbac3` (documentation updates may create a newer branch tip)
+- Implementation/audit snapshot reviewed: `1cb67d1f301a8ce815604fb0533a63335e276c06` (source audit snapshot; subsequent commits in this review are documentation-only)
 - Review PR: [#42 — Proof-Carrying Payment v1](https://github.com/ivanmlnnn/sentinel/pull/42)
-- PR state: **Open · Ready for review · not mergeable yet**
+- PR state: **Open · Draft · not mergeable**
 - Production baseline: `main`
 
 Reviewers must inspect this exact commit and must not silently treat lab-branch code as deployed production code.
@@ -59,6 +59,8 @@ The following observations must **not** be reported as confirmed vulnerabilities
 
 Do not list either item as a confirmed security anomaly based only on source inspection. Report them, if relevant, as trust-boundary or operational-design notes with the above qualification. The broader reviewer checklist below asks reviewers to inspect these areas; it does not assert that a vulnerability exists.
 
+- **Confirmed verification gap — transaction replay across approvals:** `signer-worker/src/index.mjs` validates a supplied transaction hash against wallet, receiver, amount and successful receipts, but does not check that the transaction's inclusion time is after the approval/preflight token was issued. The signer ledger schema also has no unique constraint on `agent_execution.transaction_hash`. Therefore, a previously successful transfer by the same wallet to the same receiver for the same amount can potentially be submitted again against a later approval and counted as that approval's execution. This is an integrity/accounting verification gap, not evidence of a new transfer or direct fund theft. Fix by binding verification to transaction block time after the signed preflight issuance/approval and enforcing one-time transaction-hash claims atomically; add a regression test that reuses an old matching transaction hash for a fresh approval and expects rejection.
+
 ## 4. Source map — where to inspect
 
 | Area | Source / test | Review question |
@@ -98,7 +100,7 @@ The lab README records a later **222/222** root-suite and **16/16** isolated sig
 
 ### CI status for the audit target
 
-At the time this index was created, GitHub reported **zero GitHub Actions workflow runs** for audit commit `ed86e0fd76f47e8ecebe33a926e0e39542ae6bbe`. The combined status contained a Vercel success status only. A Vercel preview deployment is not evidence that the repository test workflow passed.
+The implementation/audit snapshot `1cb67d1f301a8ce815604fb0533a63335e276c06` had **zero GitHub Actions workflow runs** when checked on 2026-11-16. A Vercel preview deployment is not evidence that the repository test workflow passed.
 
 ### Main-branch CI baseline — not lab-branch proof
 
@@ -112,7 +114,7 @@ These runs are evidence for the **main branch baseline only**. They do not valid
 
 ### Current lab-branch CI status
 
-No GitHub Actions run was found for PR #42 branch head `7d2009bf82e4557be92d1be62d112a652def8580` (the latest documentation commit checked on 2026-11-16). The Vercel status for that commit reports an account build-rate-limit failure; that is not a code-test failure, but it is also not a successful test result. The lab workflow must run successfully on the current PR head before its branch test totals can be treated as fresh CI evidence.
+No GitHub Actions run was found for the implementation/audit snapshot `1cb67d1f301a8ce815604fb0533a63335e276c06` when checked on 2026-11-16. The lab workflow must run successfully on the resulting code-fix head before branch test totals can be treated as fresh CI evidence.
 
 ## 6. Reproduce locally
 
@@ -142,7 +144,7 @@ Run commands from the repository root unless the command explicitly changes dire
 - The semantic firewall detects structured field mutations and selected confusables; it does not understand arbitrary natural-language meaning or OCR documents.
 - The portable JSON verifier checks proof structure/digest, not a deployed transaction.
 - No hardware TEE remote-attestation verifier is implemented; this is distinct from the contract-verified proof-carrying authorization model.
-- PR #42 is open and Ready for Review, but currently not mergeable; synchronize with `main`, resolve conflicts, rerun the complete suite on the resulting head, and obtain independent review before merging.
+- PR #42 is open as **Draft** and currently not mergeable. Keep it Draft until the transaction-hash replay gap is fixed, the branch is synchronized with `main`, conflicts are resolved, and the complete suite passes on the resulting head.
 
 ## 8. Independent AI / human reviewer protocol
 
