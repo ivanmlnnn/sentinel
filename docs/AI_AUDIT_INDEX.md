@@ -103,7 +103,7 @@ These runs are evidence for the **main branch baseline only**. They do not valid
 
 ### Current lab-branch CI status
 
-No GitHub Actions run was found for PR #42 branch head `f81cfe5add8b7279e7e2e8fb1f39c43e9dbdbac3`. The Vercel status for that commit reports an account build-rate-limit failure; that is not a code-test failure, but it is also not a successful test result. The lab workflow must run successfully on the current PR head before its branch test totals can be treated as fresh CI evidence.
+No GitHub Actions run was found for PR #42 branch head `7d2009bf82e4557be92d1be62d112a652def8580` (the latest documentation commit checked on 2026-11-16). The Vercel status for that commit reports an account build-rate-limit failure; that is not a code-test failure, but it is also not a successful test result. The lab workflow must run successfully on the current PR head before its branch test totals can be treated as fresh CI evidence.
 
 ## 6. Reproduce locally
 
