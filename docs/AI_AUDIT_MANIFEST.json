@@ -188,11 +188,25 @@
     "Treat all local Miniflare and local Rust results as local tests, not production or Testnet evidence.",
     "Report production, lab, reference-only, planned and unverified capabilities separately.",
     "Do not infer a win, security certification, or unanimous AI verdict from repository documentation.",
-    "Evaluate the proof-carrying/beyond-TEE claim separately from hardware TEE properties: inspect contract verification, signer trust assumptions, evidence authenticity, key custody, and deployment status."
+    "Evaluate the proof-carrying/beyond-TEE claim separately from hardware TEE properties: inspect contract verification, signer trust assumptions, evidence authenticity, key custody, and deployment status.",
+    "Do not report the contract's approval_id field being a signer-bound identifier rather than a wallet signature as a confirmed vulnerability: the intended trust boundary requires the independent signer to validate human approval before signing. Escalate only if signer behavior or product claims contradict this.",
+    "Do not report pre-transfer nonce/daily-spend reservation as a confirmed exploit: it is fail-closed reservation accounting before an asynchronous NEAR transfer promise. A failed promise may leave the reservation consumed; describe this as an operational/reconciliation design note unless a reproducible security impact is demonstrated."
   ],
   "related_pull_requests": {
     "pcpi_reference": "https://github.com/ivanmlnnn/sentinel/pull/36",
     "beyond_tee_research": "https://github.com/ivanmlnnn/sentinel/pull/34",
     "proof_carrying_contract_lab": "https://github.com/ivanmlnnn/sentinel/pull/42"
-  }
+  },
+  "design_review_notes": [
+    {
+      "id": "approval_id_trust_boundary",
+      "classification": "DESIGN_BOUNDARY_NOT_CONFIRMED_VULNERABILITY",
+      "detail": "The contract binds approval_id into the configured signer's Ed25519 proof; the independent signer is responsible for validating the human wallet approval before signing. The contract does not independently verify a wallet signature."
+    },
+    {
+      "id": "pre_transfer_reservation",
+      "classification": "FAIL_CLOSED_ACCOUNTING_BEHAVIOR_NOT_CONFIRMED_EXPLOIT",
+      "detail": "Nonce, approval, and daily spend reservation are recorded before scheduling the asynchronous NEAR transfer promise. A later promise failure does not automatically roll back the prior receipt's state; treat as an operational reconciliation/retry design consideration, not a demonstrated unauthorized-payment vulnerability."
+    }
+  ]
 }
