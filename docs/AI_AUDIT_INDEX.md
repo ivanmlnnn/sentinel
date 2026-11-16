@@ -50,6 +50,15 @@ It is not accurate to say that proof-carrying automatically provides all TEE pro
 - **Contract proof envelope** in PR #42: Ed25519 signature over deterministic binary message checked by the Rust contract.
 - These are related but distinct controls. They are not yet assembled into one production end-to-end execution path.
 
+## 3A. Review notes: distinguish design boundaries from confirmed findings
+
+The following observations must **not** be reported as confirmed vulnerabilities without additional evidence:
+
+- **Approval ID is not a wallet signature checked by the contract.** The contract binds the approval ID into the configured signer's Ed25519 proof. The intended trust boundary is that the independent signer validates the human wallet approval and only then signs. This is an explicit signer responsibility, not by itself a contract bug. It becomes a finding only if the signer can sign without validating the actual approval or if the product claims the contract independently verifies a wallet signature.
+- **Nonce and daily allowance are recorded before the transfer promise completes.** The contract reserves replay identifiers and spend allowance in the authorization receipt, then schedules the NEAR transfer promise. A later transfer failure does not automatically roll back the earlier receipt's state. This is observable reservation/accounting behavior, not by itself evidence of unauthorized payment or a demonstrated exploit. It should be treated as a deliberate fail-closed reservation policy unless product requirements demand refund/reconciliation; any change needs tests for failed promise handling and safe retry semantics.
+
+Do not list either item as a confirmed security anomaly based only on source inspection. Report them, if relevant, as trust-boundary or operational-design notes with the above qualification. The broader reviewer checklist below asks reviewers to inspect these areas; it does not assert that a vulnerability exists.
+
 ## 4. Source map — where to inspect
 
 | Area | Source / test | Review question |
