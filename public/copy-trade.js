@@ -3,7 +3,6 @@ const ACCOUNT_RE = /^(?=.{2,64}$)[a-z0-9]+(?:[._-][a-z0-9]+)*$/i;
 const grid = document.getElementById("copyWatchlistGrid");
 const leaderboardGrid = document.getElementById("copyTraderGrid");
 const feedStatus = document.getElementById("copyTradeFeedStatus");
-const refreshButton = document.getElementById("copyTradeRefresh");
 const windowLabel = document.getElementById("copyTradeWindow");
 const form = document.getElementById("copyTraderForm");
 const accountInput = document.getElementById("copyTraderAccount");
@@ -34,7 +33,7 @@ function node(tag, className, value) {
 // Profitability ranking is intentionally locked. The connected public Explorer
 // data cannot prove trader ownership, complete DEX fills, or realized PnL.
 if (windowLabel) windowLabel.textContent = "Monthly eligibility · 20+ closed trades · ≥80% win rate";
-if (feedStatus) feedStatus.textContent = "RANKING LOCKED · verified performance source not integrated";
+if (feedStatus) feedStatus.textContent = "VERIFIED TRADER LEADERBOARD LOCKED · performance source not integrated";
 if (leaderboardGrid) {
   const empty = node("article", "copy-trader-empty");
   empty.append(node("b", "", "No verified traders qualify for display yet"));
