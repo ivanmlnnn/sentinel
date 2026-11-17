@@ -36,8 +36,8 @@ if (windowLabel) windowLabel.textContent = "Monthly eligibility · 20+ closed tr
 if (feedStatus) feedStatus.textContent = "VERIFIED TRADER LEADERBOARD LOCKED · performance source not integrated";
 if (leaderboardGrid) {
   const empty = node("article", "copy-trader-empty");
-  empty.append(node("b", "", "No verified traders qualify for display yet"));
-  empty.append(node("p", "", "Sentinel requires receipt-attributed settled DEX fills, realized PnL after fees, holding periods, drawdown, and a complete monthly observation window. No cards appear until every metric is verifiable."));
+  empty.append(node("b", "", "Verified trader leaderboard is not available yet"));
+  empty.append(node("p", "", "Sentinel has not integrated a source that can verify receipt-attributed settled DEX fills, realized PnL after fees, holding periods, drawdown, and complete monthly coverage. This is an unavailable data source, not a finding that no profitable traders exist."));
   leaderboardGrid.replaceChildren(empty);
 }
 
