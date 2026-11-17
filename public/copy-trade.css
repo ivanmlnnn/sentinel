@@ -86,3 +86,20 @@
 .copy-trade-source-links a{display:inline-flex;align-items:center;min-height:32px;padding:7px 10px;border:1px solid rgba(145,165,215,.18);border-radius:8px;background:rgba(12,20,34,.68);color:#a9c6dc;font-size:9px;text-decoration:none}
 .copy-trade-source-links a:hover{border-color:rgba(85,230,223,.4);color:#c8fff7}
 @media(max-width:560px){.copy-trade-source-links{display:grid;grid-template-columns:1fr;gap:7px}.copy-trade-source-links a{min-height:38px;font-size:10px}}
+
+.copy-leaderboard-panel{margin:14px 0 20px;padding:15px;border:1px solid rgba(85,230,223,.2);border-radius:16px;background:rgba(8,16,29,.78)}
+.copy-leaderboard-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.copy-leaderboard-head b,.copy-leaderboard-head small{display:block}
+.copy-leaderboard-head b,.copy-watchlist-heading b{font:800 11px "IBM Plex Mono",monospace;letter-spacing:.08em;color:#eaf5ff}
+.copy-leaderboard-head small,.copy-watchlist-heading span{margin-top:5px;color:#8da1bf;font-size:9px}
+.copy-leaderboard-controls{display:flex;align-items:center;gap:9px}
+.copy-leaderboard-controls label{color:#8da1bf;font:8px "IBM Plex Mono",monospace}
+.copy-leaderboard-controls strong{color:#73eadb}
+.copy-leaderboard-controls button{min-height:36px;padding:0 12px;border:1px solid rgba(85,230,223,.3);border-radius:9px;background:rgba(85,230,223,.08);color:#c8fff7;font-size:10px;font-weight:700}
+.copy-leaderboard-controls button:disabled{opacity:.55}
+.copy-leaderboard-panel .copy-trader-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.copy-leaderboard-foot{margin:11px 0 0;color:#8193ae;font-size:9px;line-height:1.6}
+.copy-watchlist-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:18px 0 10px}
+.copy-watchlist-heading span{margin:0}
+@media(max-width:850px){.copy-leaderboard-panel .copy-trader-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.copy-leaderboard-panel{padding:12px}.copy-leaderboard-head{align-items:flex-start;flex-direction:column}.copy-leaderboard-controls{width:100%;justify-content:space-between}.copy-leaderboard-panel .copy-trader-grid{grid-template-columns:1fr}.copy-leaderboard-foot{font-size:8px}}
