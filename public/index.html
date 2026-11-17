@@ -109,15 +109,15 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
 
 
 <section class="copy-trade-section reveal" id="copy-trade">
- <div class="section-heading copy-trade-heading"><div><span class="section-index">05 / SOCIAL TRADING</span><h2>NEAR copy trade</h2><p class="copy-trade-intro">Explore successful 1Click swaps indexed by NEAR Intents. Activity volume is not a profit ranking.</p></div><span class="section-meta">1CLICK EXPLORER · READ ONLY</span></div>
+ <div class="section-heading copy-trade-heading"><div><span class="section-index">05 / SOCIAL TRADING</span><h2>NEAR copy trade</h2><p class="copy-trade-intro">Rank only traders with receipt-attributed DEX fills and complete, independently verifiable monthly performance.</p></div><span class="section-meta">VERIFIED PERFORMANCE · FAIL CLOSED</span></div>
  <div class="copy-trade-toolbar">
   <div class="copy-trade-network"><span class="copy-live-dot"></span><span>TRADER DISCOVERY</span><b>NEAR MAINNET</b></div>
-  <div class="copy-trade-toolbar-note" id="copyTradeFeedStatus" role="status" aria-live="polite">Verified feed unavailable · no fabricated rankings</div>
+  <div class="copy-trade-toolbar-note" id="copyTradeFeedStatus" role="status" aria-live="polite">Ranking locked · verified performance source not integrated</div>
  </div>
  <div class="copy-leaderboard-panel">
-  <div class="copy-leaderboard-head"><div><b>TOP INTENTS ACTIVITY</b><small id="copyTradeWindow">Monthly sample · loading…</small></div><div class="copy-leaderboard-controls"><label>METRIC <strong>SUCCESS + INPUT VOLUME</strong></label><button type="button" id="copyTradeRefresh">↻ Refresh</button></div></div>
-  <div class="copy-trader-grid" id="copyTraderGrid"><article class="copy-trader-empty"><b>Explorer activity feed loading</b><p>Cards summarize successful 1Click swaps returned by the official Explorer API. The feed is one page only and does not establish profitability or cover every NEAR DEX.</p></article></div>
-  <p class="copy-leaderboard-foot">Current month · latest Explorer page only · refreshed every 5 minutes. Activity ranking only; no PnL or win-rate claims.</p>
+  <div class="copy-leaderboard-head"><div><b>VERIFIED TRADER LEADERBOARD</b><small id="copyTradeWindow">Monthly eligibility · 20+ closed trades · ≥80% win rate</small></div><div class="copy-leaderboard-controls"><label>REQUIRED <strong>REALIZED PNL AFTER FEES</strong></label></div></div>
+  <div class="copy-trader-grid" id="copyTraderGrid"><article class="copy-trader-empty"><b>No verified traders qualify for display yet</b><p>Sentinel requires receipt-attributed settled DEX fills, realized PnL after fees, holding periods, drawdown, and a complete monthly observation window. No cards appear until every metric is verifiable.</p></article></div>
+  <p class="copy-leaderboard-foot">Eligibility: current calendar month · at least 20 closed trades · at least 80% win rate · realized PnL net of fees · drawdown and holding-period evidence. This leaderboard remains disabled until its data source proves wallet attribution and complete coverage.</p>
  </div>
  <div class="copy-watchlist-heading"><b>YOUR WATCHLIST</b><span>Local wallets · not ranked</span></div>
  <div class="copy-trade-source-links"><a href="https://nearly.trade/traders" target="_blank" rel="noopener noreferrer">Nearly · platform trader leaderboard ↗</a><a href="https://explorer.near-intents.org/" target="_blank" rel="noopener noreferrer">NEAR Intents Explorer ↗</a><a href="https://docs.near-intents.org/api-reference/get-transactions" target="_blank" rel="noopener noreferrer">Explorer API docs ↗</a></div>
