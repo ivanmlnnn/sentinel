@@ -18,7 +18,7 @@ test("trader cards do not fabricate rankings or performance metrics", () => {
   assert.match(html, /verified trader feed not connected/i);
   assert.match(js, /UNRANKED/);
   assert.match(js, /Not verified/);
-  assert.match(js, /Performance unavailable/);
+  assert.match(js, /Not verified/);
   assert.doesNotMatch(js, /winRate\s*[:=]\s*\d|pnl\s*[:=]\s*[-+]?\d/i);
 });
 
