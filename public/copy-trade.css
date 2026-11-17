@@ -103,3 +103,7 @@
 .copy-watchlist-heading span{margin:0}
 @media(max-width:850px){.copy-leaderboard-panel .copy-trader-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.copy-leaderboard-panel{padding:12px}.copy-leaderboard-head{align-items:flex-start;flex-direction:column}.copy-leaderboard-controls{width:100%;justify-content:space-between}.copy-leaderboard-panel .copy-trader-grid{grid-template-columns:1fr}.copy-leaderboard-foot{font-size:8px}}
+
+.copy-trader-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+@media(max-width:850px){.copy-trader-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.copy-trader-grid{grid-template-columns:1fr;gap:10px}}
