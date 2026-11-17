@@ -42,3 +42,18 @@ test("mobile trader cards link to real data providers without claiming a univers
   assert.match(css, /@media\(max-width:560px\)/);
   assert.match(js, /Not ranked/);
 });
+
+test("monthly top-trader leaderboard is separate from local watchlist and fails closed", () => {
+  assert.match(html, /TOP TRADERS/);
+  assert.match(html, /Monthly window/);
+  assert.match(html, /MIN WIN RATE/);
+  assert.match(html, /copyWatchlistGrid/);
+  assert.match(js, /MIN_WIN_RATE = 80/);
+  assert.match(js, /MIN_CLOSED_TRADES = 20/);
+  assert.match(js, /REFRESH_INTERVAL_MS = 5 \* 60 \* 1000/);
+  assert.match(js, /payload\.verified !== true/);
+  assert.match(js, /item\.verified === true/);
+  assert.match(js, /realizedPnlUsd/);
+  assert.match(js, /maxDrawdownPct/);
+  assert.match(js, /renderLeaderboard\(\[\]\)/);
+});
