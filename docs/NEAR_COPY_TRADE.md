@@ -18,7 +18,7 @@ Configure `NEAR_INTENTS_EXPLORER_JWT` as a Cloudflare Pages/Workers secret. Obta
 Example local development setup (do not commit the secret):
 
 ```bash
-wrangler pages secret put NEAR_INTENTS_EXPLORER_JWT
+wrangler secret put NEAR_INTENTS_EXPLORER_JWT
 ```
 
 The Explorer requires `Authorization: Bearer <JWT>` and documents a limit of one request every five seconds per partner. The UI makes one request on page load; do not add aggressive polling.
