@@ -21,7 +21,7 @@ test("Copy Trade UI fetches and renders unranked NEAR Intents activity cards", (
 
 test("activity cards never represent observed USD output as PnL or ranking", () => {
   assert.match(js, /RECEIVED VALUE/);
-  assert.match(js, /profitabilityVerified: false|profitabilityVerified/);
+  assert.match(js, /UNRANKED/);
   assert.match(js, /Activity only/);
   assert.match(docs, /never treated as profit/i);
   assert.doesNotMatch(js, /REALIZED PNL.*formatUsd/);
