@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#123d3b"><meta name="description" content="NEAR Sentinel — on-chain security for NEAR Protocol.">
 <title>NEAR Sentinel — Account Risk Intelligence</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/styles.css?v=20261111-brand-match1"><link rel="stylesheet" href="/future-ui.css?v=20261111-promptstudio1"><link rel="stylesheet" href="/brand-chat-fix.css?v=20261112-developer-mode-cyan1"><link rel="stylesheet" href="/trading-core.css?v=20261115-preorders-dashboard2"><link rel="stylesheet" href="/ask-sentinel-web3.css?v=20261114-multichain-swap6">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/styles.css?v=20261111-brand-match1"><link rel="stylesheet" href="/future-ui.css?v=20261111-promptstudio1"><link rel="stylesheet" href="/brand-chat-fix.css?v=20261112-developer-mode-cyan1"><link rel="stylesheet" href="/trading-core.css?v=20261115-preorders-dashboard2"><link rel="stylesheet" href="/ask-sentinel-web3.css?v=20261114-multichain-swap6"><link rel="stylesheet" href="/copy-trade.css?v=20261117-cards1">
 <script type="importmap">{"imports":{"react":"https://esm.sh/react@18.3.1","react/":"https://esm.sh/react@18.3.1/","react-dom":"https://esm.sh/react-dom@18.3.1","react-dom/client":"https://esm.sh/react-dom@18.3.1/client"}}</script>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 </head>
@@ -16,7 +16,7 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
 <header class="topbar">
  <a class="brand" href="#overview"><span class="brand-icon brand-logo"><img src="/IMG_20260629_220728_136.jpg?v=1" alt="Wayang Tech and Kitchen Needs"></span><span class="brand-name">NEAR <b>SENTINEL</b></span></a>
  <nav class="main-nav" aria-label="Main navigation">
-  <a class="nav-item active" href="#overview">Overview</a><a class="nav-item" href="#investigate">Wallet tracker</a><a class="nav-item" id="agentNav" href="#agentLab">AI agent</a><a class="nav-item" href="#threats">Threat registry</a><a class="nav-item" href="#activity">Audit log</a><a class="nav-item" href="#protocol">Protocol</a>
+  <a class="nav-item active" href="#overview">Overview</a><a class="nav-item" href="#investigate">Wallet tracker</a><a class="nav-item" id="agentNav" href="#agentLab">AI agent</a><a class="nav-item" href="#threats">Threat registry</a><a class="nav-item" href="#activity">Audit log</a><a class="nav-item" href="#copy-trade">Copy trade</a><a class="nav-item" href="#protocol">Protocol</a>
  </nav>
  <div class="top-actions"><span class="network-pill"><i></i> NEAR TESTNET</span><button id="walletBtn" class="wallet-btn" type="button">Connect NEAR Wallet <span>↗</span></button><a class="wallet-help-link" href="#wallet-guide">Wallet help</a></div>
 </header>
@@ -107,7 +107,25 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
  </aside>
 </section>
 
-<section class="preorders-dashboard reveal" id="preOrdersDashboard">
+
+<section class="copy-trade-section reveal" id="copy-trade">
+ <div class="section-heading copy-trade-heading"><div><span class="section-index">05 / SOCIAL TRADING</span><h2>NEAR copy trade</h2><p class="copy-trade-intro">Discover and track public NEAR trader wallets. Performance rankings appear only after a verifiable trade-history source is connected.</p></div><span class="section-meta">MAINNET DISCOVERY · TESTNET PAPER MODE</span></div>
+ <div class="copy-trade-toolbar">
+  <div class="copy-trade-network"><span class="copy-live-dot"></span><span>TRADER DISCOVERY</span><b>NEAR MAINNET</b></div>
+  <div class="copy-trade-toolbar-note">No fabricated rankings · no automatic signing</div>
+ </div>
+ <div class="copy-trade-grid" id="copyTraderGrid">
+  <article class="copy-trader-empty"><div class="copy-empty-icon">⌁</div><b>Verified trader feed not connected</b><p>Sentinel will not label wallets “top traders” or invent PnL and win-rate figures without indexed DEX trade history. Add public trader accounts to build a watchlist while the verified analytics adapter is prepared.</p></article>
+ </div>
+ <form class="copy-trader-add" id="copyTraderForm">
+  <div class="copy-trader-form-copy"><b>Add a trader wallet</b><span>Public NEAR Mainnet account · read-only verification</span></div>
+  <label class="copy-trader-account"><span>near://</span><input id="copyTraderAccount" autocomplete="off" maxlength="64" placeholder="trader.near" required></label>
+  <button class="copy-trader-add-button" type="submit">＋ Add trader</button>
+ </form>
+ <div class="copy-trade-safety"><div><span class="copy-safety-icon">◈</span><span><b>Paper-follow only</b><small>Follow settings are saved locally; no live order is placed.</small></span></div><div><span class="copy-safety-icon">⛨</span><span><b>Sentinel risk gate</b><small>Live copying stays disabled until trade feed, attribution, and execution are independently verified.</small></span></div><div><span class="copy-safety-icon">↗</span><span><b>Human approval</b><small>Any future transaction must pass dual-agent checks and wallet approval.</small></span></div></div>
+ <p class="copy-trade-footnote">Important: wallet balance and transaction count do not prove trading skill. Ranking requires verified DEX fills, realized PnL, fees, holding periods, drawdown, and a defined observation window.</p>
+</section>
+\n<section class="preorders-dashboard reveal" id="preOrdersDashboard">
  <div class="section-heading"><div><span class="section-index">04 / AUTOMATION QUEUE</span><h2>Pre-Orders</h2></div><span class="section-meta">HELD · HUMAN APPROVAL REQUIRED</span></div>
  <p class="preorders-dashboard-intro">Schedule a reviewed swap by time or verified price condition. Select a swap route in Ask Sentinel to load the Pre-Order controls here.</p>
  <div id="preOrdersDashboardMount" class="preorders-dashboard-mount"><div class="empty-state">No active swap route selected. Start a swap in Ask Sentinel to configure a Pre-Order.</div></div>
@@ -133,7 +151,7 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
 <footer><span>NEAR SENTINEL <b>·</b> NEAR SECURITY</span><span>TESTNET / READ-ONLY SCANNER + TESTNET AGENT / 2026 · <a href="https://testnet.nearblocks.io/" target="_blank" rel="noopener noreferrer">Powered by NearBlocks.io APIs</a></span></footer>
 </main>
 <div id="toast" class="toast"></div>
-<script src="/motion.js?v=20261111-divider-scroll1" defer></script>
+<script src="/motion.js?v=20261111-divider-scroll1" defer></script>\n<script type="module" src="/copy-trade.js?v=20261117-cards1"></script>
 <script type="module">
 // Cancel native chat navigation before auth/app modules finish loading.
 // Do not stop propagation: app.js still receives this event and sends the prompt.
