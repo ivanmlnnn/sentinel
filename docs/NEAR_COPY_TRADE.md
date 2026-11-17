@@ -46,7 +46,7 @@ Therefore the previous one-page activity aggregation has been removed from the r
 
 The leaderboard empty state says **"Verified trader leaderboard is not available yet"**. It explicitly explains that the required source is not integrated; it must not imply that Sentinel queried a complete market and found no profitable traders.
 
-The Privy login/loading screen is an authentication gate, not a dashboard section. While unauthenticated, the auth root and screen are fixed to the viewport and document scrolling is locked. After authentication, the auth root no longer occupies a layout layer, so the dashboard can scroll normally. A regression test checks these CSS invariants.
+The Privy login/loading screen is an authentication gate, not a dashboard section. While unauthenticated, `body` scrolling is locked, `#auth-root` is fixed to the viewport, and `.sentinel-auth-screen` remains a full-viewport fixed overlay with contained internal overscroll. This prevents the login/loading UI from reappearing as a scrollable page section. Once `body.sentinel-authenticated` is set, the auth root switches to `display: contents` so it does not create a dashboard layout layer and normal dashboard scrolling remains available. The CSS override is cache-busted in `public/index.html` (`styles.css?v=20261117-auth-fixed-scroll1`). Regression coverage is in `tests/copy-trade-ui.test.mjs`.
 
 ## API behavior
 
@@ -98,4 +98,4 @@ From the repository root:
 node --test tests/copy-trade-ui.test.mjs tests/near-intents-explorer.test.mjs
 ```
 
-These tests validate the fail-closed API contract, the UI eligibility gate, and local-only watchlist behavior. They do not prove that a future indexer exists, that trader PnL is available, or that copy execution works.
+These tests validate the fail-closed API contract, the UI eligibility gate, local-only watchlist behavior, and the auth overlay/scroll CSS invariants. They do not prove that a future indexer exists, that trader PnL is available, that the browser has been visually tested on every device, or that copy execution works. Record test results only after running the command against the checked-out branch.
