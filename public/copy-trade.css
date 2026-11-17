@@ -107,3 +107,8 @@
 .copy-trader-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
 @media(max-width:850px){.copy-trader-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.copy-trader-grid{grid-template-columns:1fr;gap:10px}}
+
+/* Activity card action links share the same visual treatment as action buttons. */
+.copy-trader-actions a{display:inline-flex;align-items:center;justify-content:center;min-height:37px;padding:8px 11px;border:1px solid rgba(85,230,223,.27);border-radius:10px;background:rgba(85,230,223,.08);color:#c8fff7;font-size:10px;font-weight:700;text-decoration:none;cursor:pointer}
+.copy-trader-actions a:hover{filter:brightness(1.18)}
+@media(max-width:560px){.copy-trader-actions a{min-height:40px;padding:9px 7px;font-size:10px}}
