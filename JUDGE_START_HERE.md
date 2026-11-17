@@ -17,7 +17,7 @@ NEAR Sentinel is a security checkpoint for AI-proposed actions: it evaluates NEA
 4. [Signed Verdict](docs/SIGNED_VERDICT.md) — Ed25519 assessment attestation and exact-intent binding.
 5. [Trading Core Testnet](docs/TRADING_CORE_TESTNET.md) — Tidepool/1Click Testnet quote, deposit, Meteor approval, and provider settlement flow.
 6. [Dual-Agent Trading Demo](docs/DUAL_AGENT_TRADING_DEMO.md) — distinction between market-research agents and swap-review agents.
-7. [NEAR Copy Trade](docs/NEAR_COPY_TRADE.md) — fail-closed monthly profitability leaderboard (20+ closed trades, ≥80% win rate, realized PnL after fees, holding periods, drawdown, and complete wallet-attributed fill coverage); the unavailable state is not evidence that no profitable traders exist; local-only watchlist; no ranking or copy execution until the evidence gate is met. Auth loading/login uses a fixed viewport overlay and must not reappear during dashboard scrolling.
+7. [NEAR Copy Trade](docs/NEAR_COPY_TRADE.md) — NEAR Intents Explorer-backed, unranked activity cards; start with the API contract, UI renderer, focused tests, and documented JWT setup. Cards show successful 1Click recipient activity only, not verified trader identity or profit. Profit ranking and copy execution remain disabled. Auth loading/login uses a fixed viewport overlay and must not reappear during dashboard scrolling.
 8. [Independent Local Stress Lab](docs/INDEPENDENT_LOCAL_STRESS_LAB.md) — local simulation results and explicit limits.
 9. [Judge Evidence Pack](docs/JUDGE_EVIDENCE_PACK.md) — linked CI, deployment, regression, and manual evidence.
 10. [End-to-End Verification](docs/END_TO_END_VERIFICATION.md) and [Real Integration Verification](docs/REAL_INTEGRATION_VERIFICATION.md) — what external integrations and recorded deployment checks prove.
@@ -142,3 +142,23 @@ When adding new evidence, include: source commit, exact command or workflow URL,
 ## 11. Validation gates and branch audit
 
 Use [Validation Gates](docs/VALIDATION_GATES.md) as the canonical Gate A–E review matrix. The currently audited branch head is `fec275e8b9d261fa31b96b6217598fc4d213ae92` (15 November 2026). The matrix distinguishes in-memory migration validation, remote D1 migration records, the separate D1 test database, the local 9/9 SQLite stress lab, production HTTP smoke, and NEAR Testnet payout evidence. Do not combine their counts or environments.
+
+
+## 12. NEAR Intents Copy Trade — quick judge walkthrough
+
+This feature is an **Explorer activity-card integration**, not a verified profitability leaderboard.
+
+1. Read [NEAR Copy Trade implementation notes](docs/NEAR_COPY_TRADE.md) for the source contract, authentication, query parameters, sampling boundary, and claim limits.
+2. Inspect [Explorer API route](functions/api/copy-trade/leaderboard.js). It calls the NEAR Intents Explorer server-side and fails closed if the Partner JWT is missing or the upstream request fails.
+3. Inspect [Copy Trade UI](public/copy-trade.js) and the Copy Trade section in [public/index.html](public/index.html). The UI renders unranked recipient activity cards; it does not label received USD as PnL.
+4. Inspect [Explorer route tests](tests/near-intents-explorer.test.mjs) and [UI tests](tests/copy-trade-ui.test.mjs).
+5. For a live environment, the operator must provision `NEAR_INTENTS_EXPLORER_JWT` as a Worker secret. Never commit or expose the JWT. Without it, the endpoint intentionally returns `EXPLORER_AUTH_NOT_CONFIGURED`.
+
+**What a judge should expect:** cards may be empty if the secret is not configured, Explorer is unavailable, or the sampled page contains no matching NEAR recipients. The endpoint currently samples at most one 1,000-row page for the current UTC month; it does not claim complete month coverage. Recipient is a destination field, not proof of the originating trader or beneficial wallet owner. No profitability ranking, order copying, or wallet signing is enabled.
+
+Focused reproduction:
+```bash
+node --test tests/near-intents-explorer.test.mjs tests/copy-trade-ui.test.mjs
+```
+
+Do not report these tests as passed unless they are run on the exact reviewed commit.
