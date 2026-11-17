@@ -42,6 +42,12 @@ More importantly, its fields do not satisfy the ranking contract:
 
 Therefore the previous one-page activity aggregation has been removed from the ranking path. It must not be relabeled as a top-trader or profitability leaderboard.
 
+## Dashboard presentation and authentication scroll behavior
+
+The leaderboard empty state says **"Verified trader leaderboard is not available yet"**. It explicitly explains that the required source is not integrated; it must not imply that Sentinel queried a complete market and found no profitable traders.
+
+The Privy login/loading screen is an authentication gate, not a dashboard section. While unauthenticated, the auth root and screen are fixed to the viewport and document scrolling is locked. After authentication, the auth root no longer occupies a layout layer, so the dashboard can scroll normally. A regression test checks these CSS invariants.
+
 ## API behavior
 
 `GET /api/copy-trade/leaderboard`
