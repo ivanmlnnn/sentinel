@@ -34,7 +34,7 @@ Query:
 - `startTimestampUnix=<UTC month start>`
 - `direction=next`
 
-The endpoint is read-only and covers historical 1Click Swap transactions, not all NEAR DEX activity. A single page is a bounded sample; response metadata explicitly reports sampled count and the 1,000-row limit. It is not complete market coverage and does not paginate through the entire month.
+The endpoint is read-only and covers historical 1Click Swap transactions, not all NEAR DEX activity. A single page is a bounded sample; the response marks coverage as `SAMPLED_PAGE_NOT_COMPLETE_MARKET_COVERAGE` and reports sampled count and the 1,000-row limit. It is not complete market coverage and does not paginate through the entire month.
 
 Recipient aggregation is a discovery heuristic only:
 - only successful records with a syntactically recognizable NEAR account in `recipient` become cards;
