@@ -1,0 +1,54 @@
+/* NEAR copy-trade trader cards */
+.copy-trade-section{margin-top:clamp(42px,6vw,78px);scroll-margin-top:100px}
+.copy-trade-heading{align-items:start;gap:18px}
+.copy-trade-heading h2{font-size:clamp(25px,3vw,34px);letter-spacing:-1.2px}
+.copy-trade-intro{max-width:720px;margin:10px 0 0;color:#9aabc0;font-size:12px;line-height:1.7}
+.copy-trade-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0 14px;padding:13px 16px;border:1px solid rgba(85,230,223,.18);border-radius:14px;background:linear-gradient(100deg,rgba(85,230,223,.07),rgba(155,140,255,.045))}
+.copy-trade-network{display:flex;align-items:center;gap:9px;font:700 9px "IBM Plex Mono",monospace;letter-spacing:.08em;color:#a9bbd5}
+.copy-trade-network b{padding:6px 9px;border:1px solid rgba(85,230,223,.22);border-radius:7px;color:#a8fff1;background:rgba(85,230,223,.07)}
+.copy-live-dot{width:7px;height:7px;border-radius:50%;background:#68e0bd;box-shadow:0 0 10px #68e0bd}
+.copy-trade-toolbar-note{font:9px "IBM Plex Mono",monospace;color:#8193ae}
+.copy-trade-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.copy-trader-empty{grid-column:1/-1;display:grid;justify-items:center;text-align:center;gap:10px;padding:34px 22px;border:1px dashed rgba(145,165,215,.26);border-radius:18px;background:radial-gradient(ellipse at 50% 0,rgba(85,230,223,.08),transparent 55%),#0b1422}
+.copy-empty-icon{display:grid;place-items:center;width:46px;height:46px;border:1px solid rgba(85,230,223,.3);border-radius:14px;background:rgba(85,230,223,.08);color:#72eee0;font-size:23px}
+.copy-trader-empty>b{font-size:14px;color:#eff5ff}
+.copy-trader-empty>p{max-width:660px;margin:0;color:#91a3c0;font-size:11px;line-height:1.75}
+.copy-trader-card{position:relative;display:flex;flex-direction:column;gap:15px;min-width:0;padding:17px;border:1px solid rgba(145,165,215,.19);border-radius:18px;background:linear-gradient(155deg,rgba(19,32,53,.96),rgba(8,16,29,.98));box-shadow:0 12px 34px rgba(0,0,0,.16);transition:transform .2s,border-color .2s,box-shadow .2s}
+.copy-trader-card:hover{transform:translateY(-3px);border-color:rgba(85,230,223,.38);box-shadow:0 18px 42px rgba(0,0,0,.23)}
+.copy-trader-card-head{display:flex;align-items:center;gap:11px;min-width:0}
+.copy-trader-avatar{display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px;border:1px solid rgba(85,230,223,.28);border-radius:14px;background:linear-gradient(145deg,rgba(85,230,223,.2),rgba(155,140,255,.16));color:#b9fff3;font:800 15px "IBM Plex Mono",monospace}
+.copy-trader-identity{min-width:0;flex:1}
+.copy-trader-identity b{display:block;overflow:hidden;color:#f0f5ff;font-size:12px;text-overflow:ellipsis;white-space:nowrap}
+.copy-trader-identity small{display:block;margin-top:5px;color:#8fa2c0;font:9px "IBM Plex Mono",monospace;overflow-wrap:anywhere}
+.copy-trader-badge{padding:5px 7px;border:1px solid rgba(233,189,104,.22);border-radius:7px;color:#e9c987;background:rgba(233,189,104,.07);font:700 8px "IBM Plex Mono",monospace;white-space:nowrap}
+.copy-trader-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.copy-trader-stat{padding:11px;border:1px solid rgba(145,165,215,.12);border-radius:11px;background:rgba(255,255,255,.025)}
+.copy-trader-stat span{display:block;color:#8295b2;font:8px "IBM Plex Mono",monospace;letter-spacing:.08em}
+.copy-trader-stat b{display:block;margin-top:7px;color:#e9efff;font:600 13px "IBM Plex Mono",monospace}
+.copy-trader-status{padding:9px 10px;border-radius:9px;background:rgba(233,189,104,.07);color:#e9c987;font-size:10px;line-height:1.5}
+.copy-trader-actions{display:flex;gap:8px;margin-top:auto}
+.copy-trader-actions button{min-height:37px;padding:8px 11px;border:1px solid rgba(85,230,223,.27);border-radius:10px;background:rgba(85,230,223,.08);color:#c8fff7;font-size:10px;font-weight:700;cursor:pointer}
+.copy-trader-actions button:last-child{border-color:rgba(255,151,151,.2);background:rgba(145,54,67,.08);color:#ffc1c8}
+.copy-trader-actions button:hover{filter:brightness(1.18)}
+.copy-trader-follow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:12px;border-top:1px solid rgba(145,165,215,.13)}
+.copy-trader-follow label{display:grid;gap:4px;color:#dce7f8;font-size:10px;font-weight:700}
+.copy-trader-follow small{color:#8295b2;font-size:9px;font-weight:400}
+.copy-trader-follow input{width:17px;height:17px;accent-color:#68e0bd}
+.copy-trader-add{display:grid;grid-template-columns:minmax(180px,1fr) minmax(220px,1.2fr) auto;align-items:center;gap:12px;margin-top:14px;padding:15px;border:1px solid rgba(145,165,215,.16);border-radius:15px;background:rgba(11,20,34,.86)}
+.copy-trader-form-copy b,.copy-trader-form-copy span{display:block}
+.copy-trader-form-copy b{color:#edf3ff;font-size:12px}
+.copy-trader-form-copy span{margin-top:5px;color:#8295b2;font-size:9px;line-height:1.5}
+.copy-trader-account{display:flex;align-items:center;min-width:0;border:1px solid rgba(145,165,215,.23);border-radius:10px;background:#080f1b}
+.copy-trader-account>span{padding:0 10px;color:#68e0bd;font:10px "IBM Plex Mono",monospace}
+.copy-trader-account input{min-width:0;border:0;background:transparent;color:#eff5ff;font-size:11px}
+.copy-trader-add-button{min-height:42px;padding:0 15px;border:1px solid rgba(85,230,223,.4);border-radius:10px;background:linear-gradient(100deg,#43d8d0,#9382ff);color:#071321;font-size:10px;font-weight:800;cursor:pointer}
+.copy-trade-safety{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
+.copy-trade-safety>div{display:flex;align-items:flex-start;gap:10px;padding:13px;border:1px solid rgba(145,165,215,.14);border-radius:13px;background:rgba(12,20,34,.72)}
+.copy-safety-icon{color:#70e6d6;font-size:17px}
+.copy-trade-safety b,.copy-trade-safety small{display:block}
+.copy-trade-safety b{color:#e8f0ff;font-size:10px}
+.copy-trade-safety small{margin-top:5px;color:#8799b7;font-size:9px;line-height:1.55}
+.copy-trade-footnote{margin:13px 0 0;color:#8295b2;font-size:9px;line-height:1.7}
+@media(max-width:850px){.copy-trade-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.copy-trade-add{grid-template-columns:1fr 1.2fr}.copy-trader-add-button{grid-column:1/-1}}
+@media(max-width:560px){.copy-trade-grid,.copy-trade-safety{grid-template-columns:1fr}.copy-trade-toolbar{align-items:flex-start;flex-direction:column}.copy-trade-add{grid-template-columns:1fr}.copy-trader-add-button{grid-column:auto;width:100%}.copy-trade-heading{display:block}.copy-trade-heading>.section-meta{display:block;margin-top:10px}}
+@media(prefers-reduced-motion:reduce){.copy-trader-card{transition:none}}
