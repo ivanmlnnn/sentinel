@@ -33,3 +33,12 @@ test("wallet IDs are validated and duplicate/oversized watchlists are rejected",
   assert.match(js, /already in your watchlist/);
   assert.match(js, /traders\.length >= 30/);
 });
+
+
+test("mobile trader cards link to real data providers without claiming a universal ranking", () => {
+  assert.match(html, /nearly\.trade\/traders/);
+  assert.match(html, /api\.nearblocks\.io\/api-docs/);
+  assert.match(html, /nearstats\.org/);
+  assert.match(css, /@media\(max-width:560px\)/);
+  assert.match(js, /Not ranked/);
+});
