@@ -50,5 +50,34 @@
 .copy-trade-safety small{margin-top:5px;color:#8799b7;font-size:9px;line-height:1.55}
 .copy-trade-footnote{margin:13px 0 0;color:#8295b2;font-size:9px;line-height:1.7}
 @media(max-width:850px){.copy-trade-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.copy-trade-add{grid-template-columns:1fr 1.2fr}.copy-trader-add-button{grid-column:1/-1}}
-@media(max-width:560px){.copy-trade-grid,.copy-trade-safety{grid-template-columns:1fr}.copy-trade-toolbar{align-items:flex-start;flex-direction:column}.copy-trade-add{grid-template-columns:1fr}.copy-trader-add-button{grid-column:auto;width:100%}.copy-trade-heading{display:block}.copy-trade-heading>.section-meta{display:block;margin-top:10px}}
+@media(max-width:560px){
+.copy-trade-section{margin-top:34px;padding-inline:0}
+.copy-trade-grid,.copy-trade-safety{grid-template-columns:1fr;gap:10px}
+.copy-trade-heading{display:block;margin-bottom:12px}
+.copy-trade-heading h2{font-size:25px;letter-spacing:-.8px}
+.copy-trade-heading>.section-meta{display:inline-flex;margin-top:9px;padding:6px 8px;border:1px solid rgba(85,230,223,.18);border-radius:7px;font-size:8px}
+.copy-trade-intro{font-size:11px;line-height:1.65}
+.copy-trade-toolbar{align-items:flex-start;flex-direction:column;gap:7px;margin:12px 0;padding:11px 12px}
+.copy-trade-toolbar-note{font-size:8px;line-height:1.5}
+.copy-trader-card{gap:12px;padding:14px;border-radius:15px}
+.copy-trader-card-head{gap:9px}
+.copy-trader-avatar{width:38px;height:38px;flex-basis:38px;border-radius:12px;font-size:13px}
+.copy-trader-identity b{font-size:11px}
+.copy-trader-identity small{font-size:8px}
+.copy-trader-badge{font-size:7px;padding:5px 6px}
+.copy-trader-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.copy-trader-stat{padding:9px}
+.copy-trader-stat span{font-size:7px;letter-spacing:.04em}
+.copy-trader-stat b{font-size:12px;margin-top:5px}
+.copy-trader-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.copy-trader-actions button{min-height:40px;padding:9px 7px;font-size:10px}
+.copy-trader-follow{padding-top:10px}
+.copy-trader-add{grid-template-columns:1fr;gap:9px;margin-top:11px;padding:13px}
+.copy-trader-account{min-height:43px}
+.copy-trader-add-button{grid-column:auto;width:100%;min-height:44px}
+.copy-trade-safety>div{padding:11px}
+.copy-trade-footnote{font-size:8px;line-height:1.65}
+}
+@media(min-width:561px) and (max-width:850px){.copy-trade-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(prefers-reduced-motion:reduce){.copy-trader-card{transition:none}}
 @media(prefers-reduced-motion:reduce){.copy-trader-card{transition:none}}
