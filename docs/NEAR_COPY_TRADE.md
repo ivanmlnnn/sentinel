@@ -52,7 +52,7 @@ Returns HTTP `503` with:
 - `ranking: disabled`
 - the exact eligibility criteria and current data-source blockers.
 
-This is intentional. It prevents clients and judges from mistaking an incomplete sample for a valid empty leaderboard or a ranked performance result. No Explorer Partner JWT is required for this locked response.
+This is intentional. It prevents clients and judges from mistaking an incomplete sample for a valid empty leaderboard or a ranked performance result. No Explorer JWT is required for this locked response.
 
 ## Watchlist behavior
 
@@ -80,8 +80,8 @@ Only after those gates pass should the server emit `verified: true` records. The
 
 ## Official source references
 
-- [NEAR Intents Explorer — Get transactions](https://docs.agentsonintents.com/api-reference/get-transactions) — response fields, filters, and pagination.
-- [NEAR Intents — Receipts](https://docs.agentsonintents.com/integration/agent-api/receipts) — what a receipt proves and what identity data it intentionally omits.
+- [NEAR Intents Explorer — Get transactions](https://docs.near-intents.org/integration/distribution-channels/1click-api/explorer/transactions) — response fields, filters, and pagination.
+- [NEAR Intents — Receipts](https://docs.near-intents.org/integration/agent-api/receipts) — what a receipt proves and what identity data it intentionally omits.
 - [NEAR Intents Explorer](https://explorer.near-intents.org/) — public 1Click history UI.
 
 ## Local validation
