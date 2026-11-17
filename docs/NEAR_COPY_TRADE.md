@@ -25,9 +25,15 @@ The watchlist is stored in the current browser's local storage. It is not a serv
 
 The UI now links these sources so users can inspect them directly. It does **not** scrape undocumented endpoints or mislabel application/affiliate rankings as traders. A live trader feed should only be connected after its public API contract and attribution fields are verified.
 
+## Monthly leaderboard UI contract
+
+The UI separates the ranked leaderboard from the browser-local watchlist. It requests the current calendar month through the present time, refreshes on demand and every five minutes, and applies a minimum 80% win rate plus at least 20 closed trades. A card is accepted only when the response and each trader record are explicitly marked verified and include realized PnL, fees, holding period, drawdown, trade count, source, and observation bounds. Invalid, incomplete, stale, or unavailable data fails closed to an empty leaderboard.
+
+The expected read-only endpoint is `GET /api/copy-trade/leaderboard?period=month&from=...&to=...&minWinRate=80&minClosedTrades=20`. **This endpoint is not implemented in this PR**, so the leaderboard intentionally remains empty until a verified DEX-fill provider and server-side accounting are connected. The refresh control checks availability; it does not fabricate or locally estimate performance.
+
 ## Not implemented / must not be claimed
 
-- No verified NEAR trader leaderboard or “top trader” ranking.
+- No verified NEAR trader leaderboard or “top trader” ranking; the monthly leaderboard UI is a fail-closed integration shell only.
 - No attributable DEX fill-history/indexer ingestion or receipt-verified trade attribution.
 - No realized PnL, win rate, ROI, drawdown, Sharpe ratio, or historical performance calculation.
 - No automatic order placement, copy execution, wallet signing, or background transaction submission.
