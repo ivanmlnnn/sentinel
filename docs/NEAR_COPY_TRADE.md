@@ -1,59 +1,95 @@
-# NEAR Copy Trade — Explorer-backed activity
+# NEAR Copy Trade — verified performance gate
 
-## Current implementation
+## Current state
 
-Branch: `feature/near-copy-trader-cards`  
-Pull request: [#45](https://github.com/ivanmlnnn/sentinel/pull/45)
+- Branch: `feature/near-copy-trader-cards`
+- Pull request: [#45](https://github.com/ivanmlnnn/sentinel/pull/45)
+- UI: monthly leaderboard is deliberately **locked**; no ranked trader cards are rendered.
+- Watchlist: browser-local only; it does not establish ownership, performance, or copy execution.
+- Execution: disabled. No wallet signing, order submission, or automatic copying is implemented.
 
-This revision integrates the official NEAR Intents Explorer API as a read-only activity source. It does not copy the NEAR Intents product UI or claim to implement a complete trader-performance product.
+This is an explicit fail-closed state, not a claim that no profitable NEAR traders exist.
 
-### Backend
+## Ranking contract
 
-`GET /api/copy-trade/leaderboard?from=<ISO>&to=<ISO>`
+A wallet may appear only after the complete observation window is available and all of these conditions are met:
 
-- Calls `https://explorer.near-intents.org/api/v0/transactions`.
-- Requires the Partner JWT in the Cloudflare Worker secret `NEAR_INTENTS_EXPLORER_JWT`.
-- Sends `Authorization: Bearer <JWT>`.
-- Requests up to 1,000 rows with `statuses=SUCCESS`, `startTimestamp`, and `endTimestamp`.
-- Makes one upstream request per refresh to respect the documented one-request-per-five-seconds-per-partner limit.
-- Groups successful records whose `recipientType` is `INTENTS` and whose `recipient` is a named NEAR `.near` or `.testnet` account.
-- Shows successful swap count, summed input USD volume, last activity time, and returned NEAR transaction hashes.
+| Requirement | Eligibility / evidence |
+|---|---|
+| Observation window | Current calendar month, with explicit start and end timestamps |
+| Closed trades | At least 20 receipt-attributed, settled DEX fills |
+| Win rate | At least 80%, computed from closed positions rather than raw swap count |
+| Realized PnL | Net realized PnL after trading, protocol, and execution fees |
+| Holding period | Entry/exit linkage and elapsed holding time for each closed position |
+| Drawdown | Equity curve or equivalent realized/unrealized portfolio series with methodology stated |
+| Attribution | Cryptographic/on-chain evidence linking each fill to the wallet being ranked |
+| Completeness | Pagination/indexer coverage proven for the entire window; gaps and failed reads invalidate ranking |
 
-### Deliberate data boundary
+A swap transaction count is not a closed-trade count. Input/output USD amounts are not PnL. Token price movement between unrelated transactions cannot be treated as realized profit without a defensible position-matching and cost-basis model.
 
-The endpoint returns `complete: false` and `coverage: single_page_only`. It does not implement cursor traversal or claim complete monthly coverage. If 1,000 records are returned, the source page may be truncated. The UI therefore calls these cards **Top Intents Activity**, not top profitable traders.
+## Why NEAR Intents Explorer is not used as a trader leaderboard
 
-Explorer records describe 1Click Swap activity only. `recipient` is the recorded destination, not proof of beneficial ownership or necessarily the origin-chain trader. The source's `amountInUsd` is swap input volume, not profit. No win rate, realized PnL, ROI, drawdown, Sharpe ratio, or closed-position matching is calculated.
+The official Explorer API documents a read-only history of 1Click Swap transactions. It supports up to 1,000 records per page and cursor pagination with `lastDepositAddress` and `lastDepositMemo`; it is not a universal NEAR DEX indexer.
 
-The Explorer API is not a general NEAR DEX indexer. It does not cover every Ref Finance, Burrow, or other DEX transaction.
+More importantly, its fields do not satisfy the ranking contract:
 
-### Authentication and setup
+- `amountInUsd` and `amountOutUsd` are transaction input/output valuations, not realized PnL.
+- `recipient` is a destination field; it does not establish beneficial ownership of the origin-chain trader.
+- `senders` may contain an address from another chain and cannot be silently equated with a NEAR account.
+- `recipientType` has multiple valid values, including `DESTINATION_CHAIN`, `INTENTS`, and `CONFIDENTIAL_INTENTS`; filtering only `INTENTS` drops valid transactions.
+- The API covers 1Click Swap history, not every NEAR DEX fill.
+- A public NEAR Intents receipt proves that a particular execution settled with committed terms, but it deliberately omits the tenant, agent/account, wallet ID, and payer identity. It cannot alone link multiple receipts to one public trader.
 
-Set the JWT as a Worker secret; never expose it to browser JavaScript or commit it:
+Therefore the previous one-page activity aggregation has been removed from the ranking path. It must not be relabeled as a top-trader or profitability leaderboard.
 
-```bash
-npx wrangler secret put NEAR_INTENTS_EXPLORER_JWT
-```
+## API behavior
 
-The JWT is obtained from the [NEAR Intents Partner Dashboard](https://partners.near-intents.org/). Without it, the endpoint returns `DATA_SOURCE_OFFLINE` (503). Invalid credentials return `AUTHENTICATION_FAILED`; upstream rate limiting returns `UPSTREAM_RATE_LIMITED`.
+`GET /api/copy-trade/leaderboard`
 
-### Validation
+Returns HTTP `503` with:
 
-Focused test:
+- `status: VERIFIED_LEADERBOARD_NOT_AVAILABLE`
+- `ranking: disabled`
+- the exact eligibility criteria and current data-source blockers.
+
+This is intentional. It prevents clients and judges from mistaking an incomplete sample for a valid empty leaderboard or a ranked performance result. No Explorer Partner JWT is required for this locked response.
+
+## Watchlist behavior
+
+The browser stores a maximum of 30 public NEAR account strings in local storage. Users can add, remove, copy, and locally toggle watch entries. These controls do not:
+
+- prove the account belongs to a particular person;
+- discover or verify trading performance;
+- monitor all DEX activity;
+- place or sign transactions;
+- copy another wallet's orders.
+
+## Enabling the real leaderboard — required future implementation
+
+Before unlocking cards, integrate a source/indexer that provides:
+
+1. complete settled DEX fills across the explicitly declared supported venues and chains;
+2. receipt/transaction verification and wallet attribution for every fill;
+3. deterministic entry/exit matching and token-denominated cost basis;
+4. realized PnL net of all applicable fees;
+5. holding-period and drawdown calculation from a documented portfolio methodology;
+6. complete monthly pagination, reorg/finality handling, and source freshness checks;
+7. reproducible fixtures and adversarial tests for missing pages, duplicate fills, refunds, partial fills, multi-wallet attribution, token decimals, price gaps, and fee treatment.
+
+Only after those gates pass should the server emit `verified: true` records. The UI must still validate every required metric before rendering a card. Copy execution is a separate feature and must remain disabled until its own dual-agent review, exact-intent binding, wallet approval, and settlement verification are implemented.
+
+## Official source references
+
+- [NEAR Intents Explorer — Get transactions](https://docs.agentsonintents.com/api-reference/get-transactions) — response fields, filters, and pagination.
+- [NEAR Intents — Receipts](https://docs.agentsonintents.com/integration/agent-api/receipts) — what a receipt proves and what identity data it intentionally omits.
+- [NEAR Intents Explorer](https://explorer.near-intents.org/) — public 1Click history UI.
+
+## Local validation
+
+From the repository root:
 
 ```bash
 node --test tests/copy-trade-ui.test.mjs tests/near-intents-explorer.test.mjs
 ```
 
-The source integration requires a real Partner JWT and an authorized live request to verify the upstream account. Unit tests do not prove the secret is configured or the live API is reachable.
-
-### Not implemented
-
-- Full cursor pagination and complete month coverage.
-- Wallet ownership proof or mapping of external-chain senders to NEAR recipient accounts.
-- General NEAR DEX coverage.
-- Receipt-level cross-chain attribution beyond the Explorer's returned transaction hashes.
-- Profitability, win-rate, realized PnL, fees paid by trader, drawdown, or holding-period accounting.
-- Automated copying, signing, or order execution.
-
-The local browser watchlist remains local-only and does not place orders.
+These tests validate the fail-closed API contract, the UI eligibility gate, and local-only watchlist behavior. They do not prove that a future indexer exists, that trader PnL is available, or that copy execution works.
