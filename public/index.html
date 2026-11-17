@@ -109,15 +109,15 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
 
 
 <section class="copy-trade-section reveal" id="copy-trade">
- <div class="section-heading copy-trade-heading"><div><span class="section-index">05 / SOCIAL TRADING</span><h2>NEAR copy trade</h2><p class="copy-trade-intro">Rank only traders with receipt-attributed DEX fills and complete, independently verifiable monthly performance.</p></div><span class="section-meta">VERIFIED PERFORMANCE · FAIL CLOSED</span></div>
+ <div class="section-heading copy-trade-heading"><div><span class="section-index">05 / SOCIAL TRADING</span><h2>NEAR copy trade</h2><p class="copy-trade-intro">Discover NEAR accounts appearing as recipients in successful NEAR Intents swaps. Activity cards are not profitability rankings.</p></div><span class="section-meta">INTENTS ACTIVITY · UNRANKED</span></div>
  <div class="copy-trade-toolbar">
   <div class="copy-trade-network"><span class="copy-live-dot"></span><span>TRADER DISCOVERY</span><b>NEAR MAINNET</b></div>
   <div class="copy-trade-toolbar-note" id="copyTradeFeedStatus" role="status" aria-live="polite">Ranking locked · verified performance source not integrated</div>
  </div>
  <div class="copy-leaderboard-panel">
-  <div class="copy-leaderboard-head"><div><b>VERIFIED TRADER LEADERBOARD</b><small id="copyTradeWindow">Monthly eligibility · 20+ closed trades · 80% minimum win rate</small></div><div class="copy-leaderboard-controls"><label>REQUIRED <strong>REALIZED PNL AFTER FEES</strong></label></div></div>
-  <div class="copy-trader-grid" id="copyTraderGrid"><article class="copy-trader-empty"><b>Verified trader leaderboard is not available yet</b><p>Sentinel has not integrated a source that can verify receipt-attributed settled DEX fills, realized PnL after fees, holding periods, drawdown, and complete monthly coverage. This is an unavailable data source, not a finding that no profitable traders exist.</p></article></div>
-  <p class="copy-leaderboard-foot">Eligibility: current calendar month · at least 20 closed trades · at least 80% win rate · realized PnL net of fees · drawdown and holding-period evidence. This leaderboard remains disabled until its data source proves wallet attribution and complete coverage.</p>
+  <div class="copy-leaderboard-head"><div><b>NEAR INTENTS ACTIVITY CARDS</b><small id="copyTradeWindow">Current month · successful 1Click swaps · NEAR recipients</small></div><div class="copy-leaderboard-controls"><label>SOURCE <strong>NEAR INTENTS EXPLORER</strong></label></div></div>
+  <div class="copy-trader-grid" id="copyTraderGrid"><article class="copy-trader-empty"><b>Loading NEAR Intents activity…</b><p>Sentinel is requesting successful 1Click swaps from the official Explorer API.</p></article></div>
+  <p class="copy-leaderboard-foot">These cards show sampled successful 1Click swap recipients and observed received value. Recipient activity does not prove trader ownership, realized PnL, or complete DEX history. Profitability ranking and copy execution remain disabled.</p>
  </div>
  <div class="copy-watchlist-heading"><b>YOUR WATCHLIST</b><span>Local wallets · not ranked</span></div>
  <div class="copy-trade-source-links"><a href="https://nearly.trade/traders" target="_blank" rel="noopener noreferrer">Nearly · platform trader leaderboard ↗</a><a href="https://explorer.near-intents.org/" target="_blank" rel="noopener noreferrer">NEAR Intents Explorer ↗</a><a href="https://docs.near-intents.org/api-reference/get-transactions" target="_blank" rel="noopener noreferrer">Explorer API docs ↗</a></div>
@@ -158,7 +158,7 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
 <footer><span>NEAR SENTINEL <b>·</b> NEAR SECURITY</span><span>TESTNET / READ-ONLY SCANNER + TESTNET AGENT / 2026 · <a href="https://testnet.nearblocks.io/" target="_blank" rel="noopener noreferrer">Powered by NearBlocks.io APIs</a></span></footer>
 </main>
 <div id="toast" class="toast"></div>
-<script src="/motion.js?v=20261111-divider-scroll1" defer></script>\n<script type="module" src="/copy-trade.js?v=20261117-explorer1"></script>
+<script src="/motion.js?v=20261111-divider-scroll1" defer></script>\n<script type="module" src="/copy-trade.js?v=20261117-intents-cards1"></script>
 <script type="module">
 // Cancel native chat navigation before auth/app modules finish loading.
 // Do not stop propagation: app.js still receives this event and sends the prompt.
