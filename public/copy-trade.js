@@ -33,7 +33,7 @@ function render() {
   if (!traders.length) {
     const empty = node("article", "copy-trader-empty");
     empty.append(node("div", "copy-empty-icon", "⌁"));
-    empty.append(node("b", "", "Your trader watchlist is empty"));
+    empty.append(node("b", "", "Your watchlist is empty"));
     empty.append(node("p", "", "Add a public NEAR account to create a trader card. Sentinel will show verified on-chain metrics only when a DEX trade-history indexer is connected."));
     grid.append(empty);
     return;
@@ -44,7 +44,7 @@ function render() {
     head.append(node("div", "copy-trader-avatar", trader.account.slice(0, 2).toUpperCase()));
     const identity = node("div", "copy-trader-identity");
     identity.append(node("b", "", trader.account));
-    identity.append(node("small", "", "NEAR MAINNET · PUBLIC ACCOUNT"));
+    identity.append(node("small", "", "NEAR MAINNET · PUBLIC WALLET"));
     head.append(identity, node("span", "copy-trader-badge", "UNRANKED"));
     card.append(head);
     const stats = node("div", "copy-trader-stats");
@@ -54,7 +54,7 @@ function render() {
       stats.append(stat);
     }
     card.append(stats);
-    card.append(node("div", "copy-trader-status", "Performance unavailable · wallet identity has not been independently ranked."));
+    card.append(node("div", "copy-trader-status", "Not ranked · no verified DEX performance feed is connected."));
     const actions = node("div", "copy-trader-actions");
     const copy = node("button", "", "Copy wallet address");
     copy.type = "button";
