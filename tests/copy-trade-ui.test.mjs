@@ -14,8 +14,8 @@ test("leaderboard remains locked until all verified monthly metrics are availabl
   assert.match(js, /receipt-attributed settled DEX fills/i);
   assert.doesNotMatch(js, /fetch\(["']\/api\/copy-trade\/leaderboard/);
   assert.doesNotMatch(js, /successfulSwaps|volumeUsd|TOP INTENTS ACTIVITY/);
-  assert.match(docs, /No trader cards are rendered/);
-  assert.match(docs, /realized PnL after fees/i);
+  assert.match(docs, /no ranked trader cards are rendered/i);
+  assert.match(docs, /Net realized PnL after trading, protocol, and execution fees/i);
 });
 
 test("watchlist remains local-only and cannot place or sign orders", () => {
