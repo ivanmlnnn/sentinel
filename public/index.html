@@ -109,16 +109,17 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
 
 
 <section class="copy-trade-section reveal" id="copy-trade">
- <div class="section-heading copy-trade-heading"><div><span class="section-index">05 / SOCIAL TRADING</span><h2>NEAR copy trade</h2><p class="copy-trade-intro">Discover and track public NEAR trader wallets. Performance rankings appear only after a verifiable trade-history source is connected.</p></div><span class="section-meta">MAINNET DISCOVERY · TESTNET PAPER MODE</span></div>
+ <div class="section-heading copy-trade-heading"><div><span class="section-index">05 / SOCIAL TRADING</span><h2>NEAR copy trade</h2><p class="copy-trade-intro">Discover and track public NEAR trader wallets. Performance rankings appear only after a verifiable trade-history source is connected.</p></div><span class="section-meta">MAINNET DATA · TESTNET EXECUTION</span></div>
  <div class="copy-trade-toolbar">
   <div class="copy-trade-network"><span class="copy-live-dot"></span><span>TRADER DISCOVERY</span><b>NEAR MAINNET</b></div>
-  <div class="copy-trade-toolbar-note">No fabricated rankings · no automatic signing</div>
+  <div class="copy-trade-toolbar-note">Explorer activity ≠ trader profitability · no automatic signing</div>
  </div>
+ <div class="copy-trade-source-links"><a href="https://nearly.trade/traders" target="_blank" rel="noopener noreferrer">Nearly · platform trader leaderboard ↗</a><a href="https://api.nearblocks.io/api-docs/" target="_blank" rel="noopener noreferrer">NearBlocks v3 API ↗</a><a href="https://nearstats.org/" target="_blank" rel="noopener noreferrer">NearStats · Intents analytics ↗</a></div>
  <div class="copy-trade-grid" id="copyTraderGrid">
   <article class="copy-trader-empty"><div class="copy-empty-icon">⌁</div><b>Verified trader feed not connected</b><p>Sentinel will not label wallets “top traders” or invent PnL and win-rate figures without indexed DEX trade history. Add public trader accounts to build a watchlist while the verified analytics adapter is prepared.</p></article>
  </div>
  <form class="copy-trader-add" id="copyTraderForm">
-  <div class="copy-trader-form-copy"><b>Add a trader wallet</b><span>Public NEAR Mainnet account · read-only verification</span></div>
+  <div class="copy-trader-form-copy"><b>Add a trader wallet</b><span>Public NEAR Mainnet account · read-only watchlist</span></div>
   <label class="copy-trader-account"><span>near://</span><input id="copyTraderAccount" autocomplete="off" maxlength="64" placeholder="trader.near" required></label>
   <button class="copy-trader-add-button" type="submit">＋ Add trader</button>
  </form>
