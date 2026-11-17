@@ -15,7 +15,7 @@ Pull request: [#45 — Add NEAR copy-trader card dashboard](https://github.com/i
 - A browser-local public-wallet watchlist with account-ID validation, duplicate prevention, a maximum list size, copy-address, remove, and watch-toggle controls.
 - UI regression tests in `tests/copy-trade-ui.test.mjs`.
 
-The watchlist is stored in the current browser's local storage. It is not a server-synced portfolio and does not prove ownership or trading skill. The mobile card layout is responsive; source links expose NearBlocks v3, Nearly.trade's platform-scoped trader page, and NearStats without pretending those pages provide a universal NEAR trader ranking.
+The watchlist is stored in the current browser's local storage. It is not a server-synced portfolio and does not prove ownership or trading skill. The mobile card layout is responsive; source links expose NearBlocks v3, Nearly.trade's platform-scoped trader page, and NearStats without pretending those pages provide a universal NEAR trader ranking. The dashboard now has a separate monthly Top Traders panel; it is an integration shell, not a connected data feed.
 
 ## Data-source assessment
 
@@ -27,13 +27,14 @@ The UI now links these sources so users can inspect them directly. It does **not
 
 ## Monthly leaderboard UI contract
 
-The UI separates the ranked leaderboard from the browser-local watchlist. It requests the current calendar month through the present time, refreshes on demand and every five minutes, and applies a minimum 80% win rate plus at least 20 closed trades. A card is accepted only when the response and each trader record are explicitly marked verified and include realized PnL, fees, holding period, drawdown, trade count, source, and observation bounds. Invalid, incomplete, stale, or unavailable data fails closed to an empty leaderboard.
+The UI separates the ranked leaderboard from the browser-local watchlist. It requests the current calendar month through the present time, refreshes on demand and every five minutes while the page is open, and applies a minimum 80% win rate plus at least 20 closed trades. The 80% threshold is a filter, not a hard-coded or promised trader result. The calendar window rolls over automatically when the month changes. A card is accepted only when the response and each trader record are explicitly marked verified and include realized PnL, fees, holding period, drawdown, trade count, source, and observation bounds. Invalid, incomplete, stale, or unavailable data fails closed to an empty leaderboard. The client requests `cache: no-store`; the five-minute timer is a browser refresh cadence only, not a guarantee that the upstream indexer has new data or that the backend has completed ingestion.
 
-The expected read-only endpoint is `GET /api/copy-trade/leaderboard?period=month&from=...&to=...&minWinRate=80&minClosedTrades=20`. **This endpoint is not implemented in this PR**, so the leaderboard intentionally remains empty until a verified DEX-fill provider and server-side accounting are connected. The refresh control checks availability; it does not fabricate or locally estimate performance.
+The expected read-only endpoint is `GET /api/copy-trade/leaderboard?period=month&from=...&to=...&minWinRate=80&minClosedTrades=20`. **This endpoint is not implemented in this PR**, so the leaderboard intentionally remains empty until a verified DEX-fill provider, server-side accounting, and scheduled/incremental ingestion are connected. The refresh control checks availability; it does not fabricate or locally estimate performance. The UI does not itself discover wallets, index fills, calculate PnL, or maintain historical snapshots.
 
 ## Not implemented / must not be claimed
 
 - No verified NEAR trader leaderboard or “top trader” ranking; the monthly leaderboard UI is a fail-closed integration shell only.
+- No automatic backend refresh, cron ingestion, DEX fill indexing, PnL ledger, or historical monthly snapshots are implemented by this UI change.
 - No attributable DEX fill-history/indexer ingestion or receipt-verified trade attribution.
 - No realized PnL, win rate, ROI, drawdown, Sharpe ratio, or historical performance calculation.
 - No automatic order placement, copy execution, wallet signing, or background transaction submission.
