@@ -109,20 +109,20 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
 
 
 <section class="copy-trade-section reveal" id="copy-trade">
- <div class="section-heading copy-trade-heading"><div><span class="section-index">05 / SOCIAL TRADING</span><h2>NEAR copy trade</h2><p class="copy-trade-intro">Discover and track public NEAR trader wallets. Performance rankings appear only after a verifiable trade-history source is connected.</p></div><span class="section-meta">MAINNET DATA · TESTNET EXECUTION</span></div>
+ <div class="section-heading copy-trade-heading"><div><span class="section-index">05 / SOCIAL TRADING</span><h2>NEAR copy trade</h2><p class="copy-trade-intro">Explore successful 1Click swaps indexed by NEAR Intents. Activity volume is not a profit ranking.</p></div><span class="section-meta">MAINNET DATA · TESTNET EXECUTION</span></div>
  <div class="copy-trade-toolbar">
   <div class="copy-trade-network"><span class="copy-live-dot"></span><span>TRADER DISCOVERY</span><b>NEAR MAINNET</b></div>
   <div class="copy-trade-toolbar-note" id="copyTradeFeedStatus" role="status" aria-live="polite">Verified feed unavailable · no fabricated rankings</div>
  </div>
  <div class="copy-leaderboard-panel">
-  <div class="copy-leaderboard-head"><div><b>TOP TRADERS</b><small id="copyTradeWindow">Monthly window · loading…</small></div><div class="copy-leaderboard-controls"><label>MIN WIN RATE <strong>80%</strong></label><button type="button" id="copyTradeRefresh">↻ Refresh</button></div></div>
-  <div class="copy-trader-grid" id="copyTraderGrid"><article class="copy-trader-empty"><b>Verified leaderboard not connected</b><p>Top-trader cards will appear only after Sentinel verifies DEX fills and calculates monthly realized PnL, fees, holding time, and drawdown.</p></article></div>
-  <p class="copy-leaderboard-foot">Period: current calendar month to now · refresh target: every 5 minutes · minimum 80% win rate and at least 20 closed trades.</p>
+  <div class="copy-leaderboard-head"><div><b>TOP INTENTS ACTIVITY</b><small id="copyTradeWindow">Monthly sample · loading…</small></div><div class="copy-leaderboard-controls"><label>METRIC <strong>SUCCESS + INPUT VOLUME</strong></label><button type="button" id="copyTradeRefresh">↻ Refresh</button></div></div>
+  <div class="copy-trader-grid" id="copyTraderGrid"><article class="copy-trader-empty"><b>Explorer activity feed loading</b><p>Cards summarize successful 1Click swaps returned by the official Explorer API. The feed is one page only and does not establish profitability or cover every NEAR DEX.</p></article></div>
+  <p class="copy-leaderboard-foot">Current month · latest Explorer page only · refreshed every 5 minutes. Activity ranking only; no PnL or win-rate claims.</p>
  </div>
  <div class="copy-watchlist-heading"><b>YOUR WATCHLIST</b><span>Local wallets · not ranked</span></div>
- <div class="copy-trade-source-links"><a href="https://nearly.trade/traders" target="_blank" rel="noopener noreferrer">Nearly · platform trader leaderboard ↗</a><a href="https://api.nearblocks.io/api-docs/" target="_blank" rel="noopener noreferrer">NearBlocks v3 API ↗</a><a href="https://nearstats.org/" target="_blank" rel="noopener noreferrer">NearStats · Intents analytics ↗</a></div>
+ <div class="copy-trade-source-links"><a href="https://nearly.trade/traders" target="_blank" rel="noopener noreferrer">Nearly · platform trader leaderboard ↗</a><a href="https://explorer.near-intents.org/" target="_blank" rel="noopener noreferrer">NEAR Intents Explorer ↗</a><a href="https://docs.near-intents.org/api-reference/get-transactions" target="_blank" rel="noopener noreferrer">Explorer API docs ↗</a></div>
  <div class="copy-trade-grid" id="copyWatchlistGrid">
-  <article class="copy-trader-empty"><div class="copy-empty-icon">⌁</div><b>Verified trader feed not connected</b><p>Sentinel will not label wallets “top traders” or invent PnL and win-rate figures without indexed DEX trade history. Add public trader accounts to build a watchlist while the verified analytics adapter is prepared.</p></article>
+  <article class="copy-trader-empty"><div class="copy-empty-icon">⌁</div><b>Local watchlist only</b><p>This local list does not imply ranking, profitability, or wallet ownership. Add public NEAR accounts to keep a personal watchlist.</p></article>
  </div>
  <form class="copy-trader-add" id="copyTraderForm">
   <div class="copy-trader-form-copy"><b>Add a trader wallet</b><span>Public NEAR Mainnet account · read-only watchlist</span></div>
@@ -158,7 +158,7 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
 <footer><span>NEAR SENTINEL <b>·</b> NEAR SECURITY</span><span>TESTNET / READ-ONLY SCANNER + TESTNET AGENT / 2026 · <a href="https://testnet.nearblocks.io/" target="_blank" rel="noopener noreferrer">Powered by NearBlocks.io APIs</a></span></footer>
 </main>
 <div id="toast" class="toast"></div>
-<script src="/motion.js?v=20261111-divider-scroll1" defer></script>\n<script type="module" src="/copy-trade.js?v=20261117-monthly2"></script>
+<script src="/motion.js?v=20261111-divider-scroll1" defer></script>\n<script type="module" src="/copy-trade.js?v=20261117-explorer1"></script>
 <script type="module">
 // Cancel native chat navigation before auth/app modules finish loading.
 // Do not stop propagation: app.js still receives this event and sends the prompt.
