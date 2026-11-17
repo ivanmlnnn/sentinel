@@ -17,7 +17,7 @@ NEAR Sentinel is a security checkpoint for AI-proposed actions: it evaluates NEA
 4. [Signed Verdict](docs/SIGNED_VERDICT.md) — Ed25519 assessment attestation and exact-intent binding.
 5. [Trading Core Testnet](docs/TRADING_CORE_TESTNET.md) — Tidepool/1Click Testnet quote, deposit, Meteor approval, and provider settlement flow.
 6. [Dual-Agent Trading Demo](docs/DUAL_AGENT_TRADING_DEMO.md) — distinction between market-research agents and swap-review agents.
-7. [NEAR Copy Trade](docs/NEAR_COPY_TRADE.md) — current card/watchlist UI, explicit non-execution boundary, and requirements for verified trader analytics.
+7. [NEAR Copy Trade](docs/NEAR_COPY_TRADE.md) — monthly Top Traders UI shell (current-month window, 80% minimum win rate, 20 closed trades, five-minute client refresh), local watchlist, explicit fail-closed behavior, and the still-missing verified DEX-fill API/accounting.
 8. [Independent Local Stress Lab](docs/INDEPENDENT_LOCAL_STRESS_LAB.md) — local simulation results and explicit limits.
 9. [Judge Evidence Pack](docs/JUDGE_EVIDENCE_PACK.md) — linked CI, deployment, regression, and manual evidence.
 10. [End-to-End Verification](docs/END_TO_END_VERIFICATION.md) and [Real Integration Verification](docs/REAL_INTEGRATION_VERIFICATION.md) — what external integrations and recorded deployment checks prove.
