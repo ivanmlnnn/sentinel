@@ -15,7 +15,15 @@ Pull request: [#45 — Add NEAR copy-trader card dashboard](https://github.com/i
 - A browser-local public-wallet watchlist with account-ID validation, duplicate prevention, a maximum list size, copy-address, remove, and watch-toggle controls.
 - UI regression tests in `tests/copy-trade-ui.test.mjs`.
 
-The watchlist is stored in the current browser's local storage. It is not a server-synced portfolio and does not prove ownership or trading skill.
+The watchlist is stored in the current browser's local storage. It is not a server-synced portfolio and does not prove ownership or trading skill. The mobile card layout is responsive; source links expose NearBlocks v3, Nearly.trade's platform-scoped trader page, and NearStats without pretending those pages provide a universal NEAR trader ranking.
+
+## Data-source assessment
+
+- **NearBlocks v3** is the correct explorer/indexer for NEAR account, transaction, receipt, fungible-token, and NEAR Intents event evidence. Its documented endpoints include `/v3/intents/txns` and account/transaction statistics. These are chain-activity data, not a ready-made profitable-trader leaderboard; raw transfer activity cannot be converted into PnL or win rate without attributable DEX fills and price/fee accounting. [NearBlocks API docs](https://api.nearblocks.io/api-docs/).
+- **Nearly.trade /traders** publishes a platform-scoped PnL leaderboard based on buys and sells executed on Nearly.trade, with 24h/7d/30d/all-time and total/realized/unrealized views. It is not a whole-NEAR ecosystem leaderboard. Its public page reported zero traders in the observed window when this integration was researched, and no supported public JSON API contract was verified. [Nearly trader leaderboard](https://nearly.trade/traders) · [methodology and scope](https://nearly.trade/docs).
+- **NearStats** provides NEAR Intents volume, routes, assets, integrator/referral/affiliate leaderboards and protocol analytics. Those rank routing applications/affiliates, not individual profitable wallets. [NearStats](https://nearstats.org/) · [methodology](https://nearstats.org/methodology).
+
+The UI now links these sources so users can inspect them directly. It does **not** scrape undocumented endpoints or mislabel application/affiliate rankings as traders. A live trader feed should only be connected after its public API contract and attribution fields are verified.
 
 ## Not implemented / must not be claimed
 
