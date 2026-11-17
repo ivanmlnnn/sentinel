@@ -17,7 +17,7 @@ NEAR Sentinel is a security checkpoint for AI-proposed actions: it evaluates NEA
 4. [Signed Verdict](docs/SIGNED_VERDICT.md) — Ed25519 assessment attestation and exact-intent binding.
 5. [Trading Core Testnet](docs/TRADING_CORE_TESTNET.md) — Tidepool/1Click Testnet quote, deposit, Meteor approval, and provider settlement flow.
 6. [Dual-Agent Trading Demo](docs/DUAL_AGENT_TRADING_DEMO.md) — distinction between market-research agents and swap-review agents.
-7. [NEAR Copy Trade](docs/NEAR_COPY_TRADE.md) — fail-closed monthly profitability leaderboard (20+ closed trades, ≥80% win rate, realized PnL after fees, holding periods, drawdown, and complete wallet-attributed fill coverage); local-only watchlist; no ranking or copy execution until the evidence gate is met.
+7. [NEAR Copy Trade](docs/NEAR_COPY_TRADE.md) — fail-closed monthly profitability leaderboard (20+ closed trades, ≥80% win rate, realized PnL after fees, holding periods, drawdown, and complete wallet-attributed fill coverage); the unavailable state is not evidence that no profitable traders exist; local-only watchlist; no ranking or copy execution until the evidence gate is met. Auth loading/login uses a fixed viewport overlay and must not reappear during dashboard scrolling.
 8. [Independent Local Stress Lab](docs/INDEPENDENT_LOCAL_STRESS_LAB.md) — local simulation results and explicit limits.
 9. [Judge Evidence Pack](docs/JUDGE_EVIDENCE_PACK.md) — linked CI, deployment, regression, and manual evidence.
 10. [End-to-End Verification](docs/END_TO_END_VERIFICATION.md) and [Real Integration Verification](docs/REAL_INTEGRATION_VERIFICATION.md) — what external integrations and recorded deployment checks prove.
