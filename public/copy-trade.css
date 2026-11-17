@@ -81,3 +81,8 @@
 @media(min-width:561px) and (max-width:850px){.copy-trade-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(prefers-reduced-motion:reduce){.copy-trader-card{transition:none}}
 @media(prefers-reduced-motion:reduce){.copy-trader-card{transition:none}}
+
+.copy-trade-source-links{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 13px}
+.copy-trade-source-links a{display:inline-flex;align-items:center;min-height:32px;padding:7px 10px;border:1px solid rgba(145,165,215,.18);border-radius:8px;background:rgba(12,20,34,.68);color:#a9c6dc;font-size:9px;text-decoration:none}
+.copy-trade-source-links a:hover{border-color:rgba(85,230,223,.4);color:#c8fff7}
+@media(max-width:560px){.copy-trade-source-links{display:grid;grid-template-columns:1fr;gap:7px}.copy-trade-source-links a{min-height:38px;font-size:10px}}
