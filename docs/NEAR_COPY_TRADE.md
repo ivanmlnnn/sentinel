@@ -21,7 +21,7 @@ Example local development setup (do not commit the secret):
 wrangler secret put NEAR_INTENTS_EXPLORER_JWT
 ```
 
-The Explorer requires `Authorization: Bearer <JWT>` and documents a limit of one request every five seconds per partner. The UI makes one request on page load; do not add aggressive polling.
+The Explorer requires `Authorization: Bearer <JWT>`. Its public API reference documents HTTP 429 rate limiting but does not state a fixed request interval; the UI currently makes one request on page load and should avoid aggressive polling.
 
 ## Explorer query and interpretation
 
@@ -34,10 +34,10 @@ Query:
 - `startTimestampUnix=<UTC month start>`
 - `direction=next`
 
-The endpoint is read-only and covers historical 1Click Swap transactions, not all NEAR DEX activity. A single page is a bounded sample; the response marks coverage as `SAMPLED_PAGE_NOT_COMPLETE_MARKET_COVERAGE` and reports sampled count and the 1,000-row limit. It is not complete market coverage and does not paginate through the entire month.
+The endpoint is read-only and covers historical 1Click Swap transactions, not all NEAR DEX activity. `toChainId=near` filters for the NEAR destination chain (Mainnet); it does not mean the source is every NEAR-native DEX trade. The wider Sentinel dashboard's wallet scanner is labelled Testnet, so this panel's Mainnet data scope must be kept explicit. A single page is a bounded sample; the response marks coverage as `SAMPLED_PAGE_NOT_COMPLETE_MARKET_COVERAGE` and reports sampled count and the 1,000-row limit. It is not complete market coverage and does not paginate through the entire month.
 
 Recipient aggregation is a discovery heuristic only:
-- only successful records with a syntactically recognizable NEAR account in `recipient` become cards;
+- only successful records with a syntactically recognizable NEAR Mainnet account (`.near` or implicit 64-hex account) in `recipient` become cards; Testnet `.testnet` accounts are excluded;
 - `recipient` is the destination field, not proof of beneficial ownership or the source trader;
 - `amountOutUsd` is displayed only as observed received value and is never treated as profit;
 - a NEAR transaction hash is shown only as an observed reference; confidential settlement may not expose a swap transaction hash;
@@ -71,7 +71,7 @@ Intents Explorer data alone cannot establish these conditions. Cross-chain sende
 ## Official references
 
 - [Explorer API introduction](https://docs.agentsonintents.com/integration/distribution-channels/1click-api/explorer/introduction)
-- [Get transactions API reference](https://docs.agentsonintents.com/api-reference/get-transactions)
+- [Get transactions API reference](https://docs.agentsonintents.com/api-reference/get-transactions) — documents `toChainId` as a destination-chain filter, `direction=next` as older-page pagination, a maximum of 1,000 rows, and `amountOutUsd` as the USD value of the destination amount.
 - [NEAR Intents Explorer](https://explorer.near-intents.org/)
 
 ## Local validation
