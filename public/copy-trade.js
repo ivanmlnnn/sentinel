@@ -1,5 +1,5 @@
 const STORAGE_KEY = "sentinel:near-copy-traders:v1";
-const ACCOUNT_RE = /^(?=.{2,64}$)[a-z0-9]+(?:[._-][a-z0-9]+)*$/i;
+const ACCOUNT_RE = /^(?=.{2,64}$)(?:[a-z0-9]+(?:[._-][a-z0-9]+)*\\.near|[a-f0-9]{64})$/i;
 const grid = document.getElementById("copyWatchlistGrid");
 const leaderboardGrid = document.getElementById("copyTraderGrid");
 const feedStatus = document.getElementById("copyTradeFeedStatus");
@@ -128,13 +128,13 @@ function render() {
     head.append(identity, node("span", "copy-trader-badge", "UNRANKED"));
     card.append(head);
     const stats = node("div", "copy-trader-stats");
-    for (const [label, value] of [["REALIZED PNL", "Not available"], ["WIN RATE", "Not available"], ["MAX DRAWDOWN", "Not available"], ["TRADES INDEXED", "—"]]) {
+    for (const [label, value] of [["VERIFIED PNL", "Not available"], ["WIN RATE", "Not available"], ["MAX DRAWDOWN", "Not available"], ["TRADES INDEXED", "—"]]) {
       const stat = node("div", "copy-trader-stat");
       stat.append(node("span", "", label), node("b", "", value));
       stats.append(stat);
     }
     card.append(stats);
-    card.append(node("div", "copy-trader-status", "Not ranked · Explorer recipient activity is not a full wallet trade ledger."));
+    card.append(node("div", "copy-trader-status", "Saved locally only · no per-wallet activity feed is queried for this account."));
     const actions = node("div", "copy-trader-actions");
     const copy = node("button", "", "Copy wallet address");
     copy.type = "button";
@@ -146,17 +146,17 @@ function render() {
     remove.type = "button";
     remove.addEventListener("click", () => {
       traders = traders.filter(item => item.account !== trader.account);
-      save(); render(); setStatus("Trader removed from this device.");
+      save(); render(); setStatus("Wallet removed from this device.");
     });
     actions.append(copy, remove);
     card.append(actions);
     const follow = node("div", "copy-trader-follow");
-    const label = node("label", "", trader.watching ? "Watching wallet" : "Watch wallet");
-    label.append(node("small", "", "Local watchlist only · no orders copied"));
+    const label = node("label", "", trader.watching ? "Saved in watchlist" : "Save to watchlist");
+    label.append(node("small", "", "Local bookmark only · no per-wallet activity feed is queried"));
     const toggle = node("input");
     toggle.type = "checkbox";
     toggle.checked = trader.watching;
-    toggle.setAttribute("aria-label", "Watch " + trader.account);
+    toggle.setAttribute("aria-label", "Save " + trader.account + " to watchlist");
     toggle.addEventListener("change", () => {
       trader.watching = toggle.checked;
       save(); setStatus(toggle.checked ? "Wallet added to your local watchlist." : "Wallet watch paused.");
@@ -176,6 +176,6 @@ form?.addEventListener("submit", event => {
   if (traders.length >= 30) { setStatus("Watchlist limit reached (30 wallets)."); return; }
   traders.unshift({ account, watching: true, addedAt: new Date().toISOString() });
   save(); render(); form.reset();
-  setStatus("Added locally. Trader performance is not verified.");
+  setStatus("Saved locally. This account is not being polled for activity.");
 });
 render();
