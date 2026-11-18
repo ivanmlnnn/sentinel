@@ -13,8 +13,30 @@ Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verifi
 - [Judge Start Here — Claude Code / Codex / human reviewers](JUDGE_START_HERE.md)
 - [Validation Gates A–E — source, D1, adversarial, Testnet and submission evidence](docs/VALIDATION_GATES.md)
 - [Dual-Agent Swap Review source](src/trading-swap-agents.mjs) · [focused tests](tests/trading-swap-agents.test.mjs) · [Testnet swap flow](docs/TRADING_CORE_TESTNET.md)
+- [NEAR Copy Trade — judge walkthrough](docs/NEAR_COPY_TRADE.md) · [Explorer API route](functions/api/copy-trade/leaderboard.js) · [activity-card UI](public/copy-trade.js) · [Explorer tests](tests/near-intents-explorer.test.mjs) · [UI tests](tests/copy-trade-ui.test.mjs) — reads successful 1Click activity from NEAR Intents Explorer and renders unranked recipient-activity cards. Requires server-side `NEAR_INTENTS_EXPLORER_JWT`; no NearBlocks/Intear source is used for this feature. Cards do not prove trader ownership or profit; verified ranking and copy execution remain disabled.
 - [Independent Stress Lab](docs/INDEPENDENT_LOCAL_STRESS_LAB.md) — local simulation only; it is not a D1 stress benchmark.
 - **D1 test isolation:** a separate Cloudflare D1 test database is provisioned apart from production Main `sentinel-db` and Signer `db2`. Its ID is intentionally not published; use the authorized test configuration and verify the target before writes. The local stress-lab results below were not run against D1.
+
+## NEAR Intents Copy Trade — judge quick path
+
+The Copy Trade feature uses **NEAR Intents Explorer only** as its activity-discovery source.
+
+| Judge entry point | What to inspect |
+|---|---|
+| [Implementation guide](docs/NEAR_COPY_TRADE.md) | API endpoint, JWT setup, query, sample limit, and data limitations |
+| [Backend route](functions/api/copy-trade/leaderboard.js) | Server-side Explorer request, recipient aggregation, fail-closed behavior |
+| [UI renderer](public/copy-trade.js) | Unranked activity cards and clear distinction between received value and PnL |
+| [Explorer tests](tests/near-intents-explorer.test.mjs) | Success filtering, aggregation, missing secret, upstream rate limit |
+| [UI tests](tests/copy-trade-ui.test.mjs) | Activity-card rendering contract and local-only watchlist |
+
+**Live demo prerequisite:** set `NEAR_INTENTS_EXPLORER_JWT` as a Cloudflare Worker secret. Do not commit the JWT. Without the secret, the endpoint intentionally returns `EXPLORER_AUTH_NOT_CONFIGURED`; an empty/unavailable state is not a fabricated leaderboard.
+
+**Claim boundary:** the API currently samples at most 1,000 successful 1Click transactions for the current UTC month. It groups records by NEAR `recipient`, which is a destination and not proof of trader identity or beneficial ownership. Cards are unranked activity summaries. They do not establish closed trades, win rate, realized PnL, drawdown, complete DEX coverage, or copy-trading execution.
+
+Reproduce focused tests (run them before reporting a pass):
+```bash
+node --test tests/near-intents-explorer.test.mjs tests/copy-trade-ui.test.mjs
+```
 
 ## Current production deployment — 12 November 2026
 
