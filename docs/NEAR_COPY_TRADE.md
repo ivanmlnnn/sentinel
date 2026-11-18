@@ -1,15 +1,15 @@
-# NEAR Copy Trade — Intents activity cards and verified ranking gate
+# NEAR Activity Monitoring — Intents recipient activity and ranking limits
 
-## Current implementation
+## Current monitoring implementation
 
-- Branch: `feature/near-copy-trader-cards`
+- Merged source branch: `feature/near-copy-trader-cards` (PR #45)
 - Pull request: [#45](https://github.com/ivanmlnnn/sentinel/pull/45)
 - Discovery source: official NEAR Intents Explorer API (read-only 1Click Swap history).
 - Backend: `GET /api/copy-trade/leaderboard` reads a server-side `NEAR_INTENTS_EXPLORER_JWT` secret and requests up to 1,000 successful swaps in the current UTC calendar month with `toChainId=near`.
 - Cards: group successful records by a recognizable NEAR recipient account; show successful Intents count, sum of observed `amountOutUsd` (labelled received value, not PnL), latest activity, and up to five observed NEAR transaction hashes.
-- UI: renders unranked activity cards. It does not claim these recipients are the swap initiators, beneficial owners, or profitable traders.
+- UI: renders unranked recipient-activity cards; this is monitoring, not copy trading. It does not claim these recipients are the swap initiators, beneficial owners, or profitable traders.
 - Watchlist: browser-local only.
-- Execution: disabled. No wallet signing, order submission, or automatic copying is implemented.
+- Scope: read-only monitoring and a browser-local watchlist. No wallet signing, order submission, or automatic copy execution is implemented.
 
 ## Required server secret
 
