@@ -3390,3 +3390,31 @@ button:disabled{cursor:wait;filter:saturate(.55);opacity:.72}
 @media(max-width:560px){
   #agentForm>.agent-result:not(.hidden){max-height:62svh!important;min-height:120px!important;padding:12px!important}
 }
+
+
+/* Auth gate must remain a viewport overlay, never a scrollable dashboard section.
+   Earlier editorial auth styles changed .sentinel-auth-screen to position:relative,
+   which allowed the login/loading screen to participate in document scrolling. */
+body:not(.sentinel-authenticated) {
+  overflow: hidden !important;
+}
+body:not(.sentinel-authenticated) #auth-root {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10000 !important;
+  overflow: hidden !important;
+}
+body:not(.sentinel-authenticated) #auth-root .sentinel-auth-screen {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100% !important;
+  min-height: 100svh !important;
+  overflow: auto !important;
+  overscroll-behavior: contain;
+}
+body.sentinel-authenticated #auth-root {
+  position: static !important;
+  inset: auto !important;
+  z-index: auto !important;
+  display: contents;
+}

@@ -25,7 +25,7 @@ The signer account configured by source defaults to `freshnook5462.testnet`; `ra
 
 The exact current results are summarized in [End-to-End Verification Report](END_TO_END_VERIFICATION.md):
 
-- 124 automated tests passed and 0 failed in [run 42873243801](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243801).
+- Historical baseline: 124 automated tests passed and 0 failed in [run 42873243801](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243801). This is not a test result for the current branch head; use the current branch CI run for current validation.
 - Prompt-injection regression returned `DENIED - SENTINEL_BLOCK` and `Signer invoked: NO`.
 - 8 production HTTP smoke checks passed in [run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638): dashboard HTTP 200; expected HTTP 400 for missing Turnstile; expected HTTP 401 for missing bearer/HMAC authentication.
 - Signer and Main Worker deploy jobs passed in [run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536); the later Main Worker deployment and smoke test passed in [run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638).
@@ -287,7 +287,7 @@ This protects the service-to-service request against body tampering and replay. 
 
 ## 7. Human approval and NEP-413 wallet signature
 
-The AI route uses Anthropic tool calling to propose a payment. The tool is named `request_near_payment`; its description and system instruction explicitly state that it proposes a payment but does not authorize or execute one.
+The AI route uses a server-side tool-calling adapter to propose a payment. The tool is named `request_near_payment`; its description and system instruction explicitly state that it proposes a payment but does not authorize or execute one. The selected model output remains untrusted; deterministic policy, human NEP-413 approval, and the isolated signer remain the authorization boundary.
 
 The Main Worker stores a pending approval bound to the authenticated Privy actor, exact receiver, amount and five-minute expiry. The separate approval route requires a NEAR wallet signature. The Signer Worker checks the pending approval again and verifies the NEP-413 message using NEAR account/public-key verification. The signed message binds:
 
@@ -359,13 +359,13 @@ The following claims are now supported by linked records:
 - Private Signer Worker deployment completed successfully; version and secret-upload events are visible in [run 42859362536](https://github.com/ivanmlnnn/sentinel/actions/runs/42859362536).
 - Main Worker deployment and production smoke tests completed successfully in [run 42871954699](https://github.com/ivanmlnnn/sentinel/actions/runs/42871954699), with a later successful Main deployment in [run 42873243638](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243638).
 - Automated source/security workflows completed successfully: [Sentinel checks](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243801), [CodeQL](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243329), and [Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42873243623).
-- The payment contract was previously deployed and existing signer configuration was reused, as reported by the maintainer and recorded in the [deployment status guide](DEPLOYMENT_STATUS_AND_AI_PROVIDER.md).
+- The payment contract was previously deployed and existing signer configuration was reused, as recorded in the linked deployment workflow evidence.
 
 Keep the following distinctions explicit during judging:
 
 - The signer queries and enforces the configured contract-scoped FunctionCall permission before signing.
 - A successful HTTP smoke test is not a real Privy browser session, a live LLM conversation, or a blockchain payment.
-- The current Anthropic credit-balance error is an upstream provider billing condition. The application classifies it as `AI_PROVIDER_BILLING_ERROR`; restoring provider credits is separate from Worker deployment and wallet scanning.
+
 - The final verification path matches the successful payment-contract FunctionCall and native Transfer receipt against the exact recipient and amount.
 
 Do not label an item independently verified based only on source code, local tests, mocked tests, screenshots of configuration, or a successful dry-run. Use the [Judge Evidence Pack](JUDGE_EVIDENCE_PACK.md) as the concise index of current evidence and reproducible judge steps.

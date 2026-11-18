@@ -8,6 +8,36 @@ Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verifi
 
 ## Judge start here — 5-minute evidence path
 
+**AI judges: read [JUDGE_START_HERE.md](JUDGE_START_HERE.md) first.** It gives the canonical reading order, source map, security claim boundaries, separate dual-agent workflows, D1 database isolation, and evidence interpretation. Then open the [Judge Evidence Pack](docs/JUDGE_EVIDENCE_PACK.md).
+
+- [Judge Start Here — Claude Code / Codex / human reviewers](JUDGE_START_HERE.md)
+- [Validation Gates A–E — source, D1, adversarial, Testnet and submission evidence](docs/VALIDATION_GATES.md)
+- [Dual-Agent Swap Review source](src/trading-swap-agents.mjs) · [focused tests](tests/trading-swap-agents.test.mjs) · [Testnet swap flow](docs/TRADING_CORE_TESTNET.md)
+- [NEAR Activity Monitoring — judge walkthrough](docs/NEAR_COPY_TRADE.md) · [Explorer API route](functions/api/copy-trade/leaderboard.js) · [activity-card UI](public/copy-trade.js) · [Explorer tests](tests/near-intents-explorer.test.mjs) · [UI tests](tests/copy-trade-ui.test.mjs) — reads successful 1Click activity from NEAR Intents Explorer and renders unranked recipient-activity cards. Requires server-side `NEAR_INTENTS_EXPLORER_JWT`; no NearBlocks/Intear source is used for this feature. Cards do not prove trader ownership or profit; verified ranking and copy execution remain disabled.
+- [Independent Stress Lab](docs/INDEPENDENT_LOCAL_STRESS_LAB.md) — local simulation only; it is not a D1 stress benchmark.
+- **D1 test isolation:** a separate Cloudflare D1 test database is provisioned apart from production Main `sentinel-db` and Signer `db2`. Its ID is intentionally not published; use the authorized test configuration and verify the target before writes. The local stress-lab results below were not run against D1.
+
+## NEAR Intents Activity Monitoring — judge quick path
+
+The monitoring feature uses **NEAR Intents Explorer only** as its activity-discovery source.
+
+| Judge entry point | What to inspect |
+|---|---|
+| [Implementation guide](docs/NEAR_COPY_TRADE.md) | API endpoint, JWT setup, query, sample limit, and data limitations |
+| [Backend route](functions/api/copy-trade/leaderboard.js) | Server-side Explorer request, recipient aggregation, fail-closed behavior |
+| [UI renderer](public/copy-trade.js) | Unranked activity cards and clear distinction between received value and PnL |
+| [Explorer tests](tests/near-intents-explorer.test.mjs) | Success filtering, aggregation, missing secret, upstream rate limit |
+| [UI tests](tests/copy-trade-ui.test.mjs) | Activity-card rendering contract and local-only watchlist |
+
+**Live demo prerequisite:** set `NEAR_INTENTS_EXPLORER_JWT` as a Cloudflare Worker secret. Do not commit the JWT. Without the secret, the endpoint intentionally returns `EXPLORER_AUTH_NOT_CONFIGURED`; an empty/unavailable state is not a fabricated leaderboard.
+
+**Claim boundary:** the API currently samples at most 1,000 successful 1Click transactions for the current UTC month. It groups records by NEAR `recipient`, which is a destination and not proof of trader identity or beneficial ownership. Cards are unranked activity summaries. They do not establish closed trades, win rate, realized PnL, drawdown, complete DEX coverage, or trading execution.
+
+Reproduce focused tests (run them before reporting a pass):
+```bash
+node --test tests/near-intents-explorer.test.mjs tests/copy-trade-ui.test.mjs
+```
+
 ## Current production deployment — 12 November 2026
 
 The current production Workers were deployed directly with Wrangler from the local repository, not by a GitHub Actions deployment queue.
@@ -39,7 +69,6 @@ GitHub remains the source-control and backup repository. GitHub Actions deployme
 - **[Judge Evidence Pack](docs/JUDGE_EVIDENCE_PACK.md)** — project explanation, evidence index, reproducible commands and judge walkthrough.
 - **[End-to-End Verification Report](docs/END_TO_END_VERIFICATION.md)** — exact test counts, production HTTP smoke results, deployment scope and provenance attestation.
 - **[Independent Local Stress Lab](docs/INDEPENDENT_LOCAL_STRESS_LAB.md)** — nine local simulation checks, raw concurrency/load outcomes, and a strict boundary between simulated results and live D1/NEAR verification.
-- **[Gemini AI Provider Setup](docs/DEPLOYMENT_STATUS_AND_AI_PROVIDER.md#gemini-ai-provider)** — Gemini API integration, runtime secret setup, tool-calling compatibility, and verification steps.
 - **[NEAR Ecosystem Integration & Wallet-to-Agent Flow](docs/NEAR_ECOSYSTEM_INTEGRATION.md)** — the actual NEAR-native flow, identity separation, NEP-413 approval, restricted FunctionCall signer, and payment contract.
 - **[Signed Verdict Attestation](docs/SIGNED_VERDICT.md)** — Ed25519-signed assessment integrity at the isolated signer boundary; merged in [PR #10](https://github.com/ivanmlnnn/sentinel/pull/10).
 - **[Tracked recipient in NEAR Testnet Explorer](https://testnet.nearblocks.io/address/rawvest6817.testnet)** — inspect the public account activity for `rawvest6817.testnet` independently.
@@ -51,10 +80,6 @@ GitHub remains the source-control and backup repository. GitHub Actions deployme
 
 **Historical main release — 11 November 2026:** commit `281759475b4f8d72735cc3c43ae1f4b609df38b6` passed **127/127 automated tests**, the prompt-injection regression (`DENIED - SENTINEL_BLOCK`; `Signer invoked: NO`), validation of 8 Main D1 migrations (10 tables, 24 indexes) and 1 Signer D1 migration (3 tables, 7 indexes), both Worker bundle checks, and the NEAR payment-contract WASM build. [Main + isolated Signer deployment run](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218870) completed successfully: Signer Worker version `98dc36e1-f9ef-4f6e-b4a5-f28de4a59661`, Main Worker version `df27ffb5-cafc-4ab0-bedc-b1ff8bf4cfa7`, and **8/8 production HTTP smoke checks passed**. [Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218721), [Sentinel checks](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218667), and [CodeQL](https://github.com/ivanmlnnn/sentinel/actions/runs/42901218658) all completed successfully. The separate [local stress lab report](docs/INDEPENDENT_LOCAL_STRESS_LAB.md) records simulation-only results and explicitly does not represent D1 concurrency, production latency, or live NEAR transaction evidence. These workflow records prove the listed build, deployment, and HTTP checks; they do not substitute for a separately verifiable live payment transaction.
 
-**Gemini migration validation in [PR #13](https://github.com/ivanmlnnn/sentinel/pull/13):** 135/135 automated tests passed, including five Gemini adapter tests; Main and Signer D1 migrations validated; NEAR payment-contract WASM release build passed; [Security CI](https://github.com/ivanmlnnn/sentinel/actions/runs/42906396166) and [CodeQL JavaScript analysis](https://github.com/ivanmlnnn/sentinel/actions/runs/42906396384) passed; both Cloudflare Worker preview builds passed. See the [Gemini migration verification record](docs/END_TO_END_VERIFICATION.md#9-gemini-provider-migration--11-november-2026). Production activation requires the `GEMINI_API_KEY` secret on the Main Worker.
-
-**Merged-main release (commit `7e88eee64954dbf61ce6e28dc4c31530c3ce14b2`):** production deployment succeeded, 135/135 automated tests passed, NEAR payment-contract WASM release build passed, CodeQL and Security CI passed, and production HTTP smoke checks passed 8/8. See [Deploy run #42907136456](https://github.com/ivanmlnnn/sentinel/actions/runs/42907136456) and the [end-to-end verification record](docs/END_TO_END_VERIFICATION.md#10-merged-main-gemini-production-release--11-november-2026). Live Gemini conversations still require `GEMINI_API_KEY` to be configured on the production Main Worker.
-
 
 
 ## Historical GitHub Actions merged-main release — 11 November 2026
@@ -63,7 +88,6 @@ Commit [`c7bf59d`](https://github.com/ivanmlnnn/sentinel/commit/c7bf59df0b5596e0
 
 | Verification | Result | Evidence |
 |---|---|---|
-| Automated tests | **136 passed, 0 failed** | [Sentinel checks #42913399066](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399066) and deployment job log |
 | Main D1 remote migrations | **PASS — no migrations pending** | [Deployment run #42913399162](https://github.com/ivanmlnnn/sentinel/actions/runs/42913399162) |
 | Signer D1 remote migrations | **PASS — no migrations pending** | Same deployment run |
 | Main Worker deployment | **PASS** — version `91d0798d-3af0-4853-a6ae-1e951e3eb8c7` | Same deployment run |
@@ -76,6 +100,22 @@ The deployment log confirms both remote D1 migration commands completed with “
 
 The independent local stress lab remains a separate evidence set: its nine checks passed in a local SQLite/Python simulation, including nonce, approval, idempotency, spend-cap and simulated multi-instance races. These results are not represented as production D1 concurrency measurements.
 
+## Feature branch — dual-agent research and swap review
+
+The `feature/sentinel-trading-core-lab` branch contains two distinct dual-agent workflows; do not conflate them:
+
+1. **Market research:** Agent 1 forms an evidence-backed market thesis; Agent 2 performs an independent adversarial review. This produces research/paper-trading candidates, not wallet authorization.
+2. **Swap review:** `src/trading-swap-agents.mjs` runs Agent 1 intent/route review and Agent 2 independent signed-quote/risk review. Deterministic checks bind the user prompt to the selected assets, integer base-unit amount, chains, provider signature, policy hash, recipient, refund address, deposit address, and deadline. Either agent can VETO; model PASS cannot override failed deterministic checks. The review result itself sets `execution_authorized: false`.
+
+The separate Tidepool community Testnet / 1Click SDK path is documented in [Trading Core Testnet](docs/TRADING_CORE_TESTNET.md). It obtains a fresh signed quote, validates exact parameters, opens Meteor wallet approval for the exact token transfer, and waits for provider `SUCCESS` before describing a swap as successful. Native NEAR and WNEAR remain separate assets; unsupported wrap/unwrap paths fail closed.
+
+**Scope boundary:** this feature branch is not the same thing as the currently deployed production Cloudflare Worker. Tidepool is a community-operated Testnet sandbox, not an official NEAR/Defuse production service. Do not claim mainnet readiness, unattended agent signing, or profitability.
+
+- [Dual-Agent Judge Demo](docs/DUAL_AGENT_TRADING_DEMO.md)
+- [Dual-Agent Swap Review implementation](src/trading-swap-agents.mjs)
+- [Swap review regression tests](tests/trading-swap-agents.test.mjs)
+- [Trading Core Testnet flow](docs/TRADING_CORE_TESTNET.md)
+
 ## What is implemented
 
 - NEAR account-state checks through FastNear JSON-RPC.
@@ -84,8 +124,8 @@ The independent local stress lab remains a separate evidence set: its nine check
 - First-seen indexed activity proxy, explicitly not account creation age.
 - Contract code-hash comparison against earlier Sentinel scans.
 - Deployment-local D1 threat registry; only verified reports can trigger `BLOCK`.
-- Privy-authenticated investigation, Gemini-powered AI review, and authenticated/guest agent routes.
-- Google Gemini tool-calling agent whose output is treated as an untrusted proposal.
+- Privy-authenticated investigation, AI-assisted review, and authenticated/guest agent routes.
+- Tool-calling AI agent whose output is treated as an untrusted proposal.
 - Actor-bound, exact-intent, five-minute human approval plus signer-side one-time approval claim.
 - Separate signer Worker, private service binding, signer-owned D1 ledger, HMAC-SHA256 timestamp/nonce protection, replay ledger, Ed25519-signed preflight verdict verification, NEP-413 wallet signature verification, receiver allowlist, spend caps, kill switch, and conservative `UNKNOWN` handling.
 - Merged Ed25519-signed, short-lived preflight verdicts from PR #10. The payload binds sender, receiver, exact microNEAR amount, nonce, expiry, decision, risk score, assessment status, and assessment ID; the isolated signer verifies the signature and exact intent before policy evaluation and payment execution.

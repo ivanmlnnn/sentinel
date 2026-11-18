@@ -164,3 +164,39 @@ test("authenticated wallet investigation verifies the token before reaching Priv
   assert.equal(response.status, 401);
   assert.equal((await response.json()).error, "UNAUTHORIZED");
 });
+
+
+test("rate limiter exceptions return a scoped 503 instead of a masked internal server error", async () => {
+  const throwingLimiter = {
+    async limit() { throw new Error("simulated rate-limit service outage"); }
+  };
+  const response = await worker.fetch(
+    new Request("https://sentinel.example/api/trading/live-quote", {
+      method: "POST",
+      headers: { "content-type": "application/json", "CF-Connecting-IP": "203.0.113.20" },
+      body: JSON.stringify({})
+    }),
+    { API_RATE_LIMITER: throwingLimiter },
+    {}
+  );
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error, "RATE_LIMIT_CHECK_UNAVAILABLE");
+});
+
+test("agent rate limiter exceptions return a scoped 503 instead of a masked internal server error", async () => {
+  const response = await worker.fetch(
+    new Request("https://sentinel.example/api/trading/live-quote", {
+      method: "POST",
+      headers: { "content-type": "application/json", "CF-Connecting-IP": "203.0.113.21" },
+      body: JSON.stringify({})
+    }),
+    {
+      API_RATE_LIMITER: limiter(true),
+      AGENT_RATE_LIMITER: { async limit() { throw new Error("simulated agent rate-limit outage"); } }
+    },
+    {}
+  );
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error, "AGENT_RATE_LIMIT_CHECK_UNAVAILABLE");
+});
+

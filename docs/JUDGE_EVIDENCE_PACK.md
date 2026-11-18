@@ -1,6 +1,18 @@
 # NEAR Sentinel — Judge Evidence Pack
 
-> **Start here for AI judges and human reviewers.** This page is the concise, evidence-linked guide to what Sentinel does, how to run it, which security controls are implemented, and what the published deployment records prove.
+> **Evidence index for AI judges and human reviewers.** First read the repository-root [JUDGE_START_HERE.md](../JUDGE_START_HERE.md), then [Validation Gates](VALIDATION_GATES.md) for the Gate A–E matrix, source/test map, D1 isolation, and evidence boundaries. This page links the underlying evidence and records what each item does and does not prove.
+
+## Branch and implementation navigation
+
+The submission branch under review is `feature/sentinel-trading-core-lab`. The branch head audited for the validation-gate documentation is `fec275e8b9d261fa31b96b6217598fc4d213ae92` (15 November 2026); check the live branch before treating this as the current head. The branch contains separate dual-agent market-research and swap-review workflows. For the swap reviewer, inspect `src/trading-swap-agents.mjs`, `tests/trading-swap-agents.test.mjs`, and `tests/trading-swap-route.test.mjs`; for the provider/wallet path, inspect [Trading Core Testnet](TRADING_CORE_TESTNET.md). Two AI PASS results are not wallet authorization: the swap-review result keeps `execution_authorized: false`, and the user must separately approve the exact Testnet transfer in Meteor.
+
+A separate Cloudflare D1 test database is provisioned and is distinct from production Main `sentinel-db` and Signer `db2`. Its identifier is not published here. The checked-in Wrangler configs describe production bindings; use the authorized test configuration and verify the selected target before running mutating tests. The local stress report below did not run its nine checks against D1.
+
+## Validation gates and D1 evidence boundary
+
+Use [Validation Gates](VALIDATION_GATES.md) for the canonical Gate A–E checklist. It maps the checked-in security tests, signer and contract sources, deployment evidence, local stress report, and judge reproduction commands.
+
+The separate Cloudflare D1 test database is provisioned independently from production `sentinel-db` and signer `db2`. The audited branch contains migration/schema validation through in-memory SQLite and historical remote migration/deployment records. The nine-check local stress lab uses SQLite WAL and does not exercise D1. The dedicated D1 benchmark must be linked to its own exact runner, target class, timestamp, raw output, and workload results; do not substitute local SQLite stress numbers for it.
 
 ## Current production deployment — 12 November 2026
 
@@ -221,15 +233,6 @@ For a strict independent review, keep these statements separate:
 
 Do not mistake a successful Worker deployment for proof of a successful blockchain payout. If a real Sentinel transaction hash is added later, include the exact hash, signer, contract, recipient, amount, final status, payout receipt ID, and an independent Testnet Explorer/API link. Never invent or substitute a hash from an unrelated wallet.
 
-## 7. AI provider integration
-
-The Agent, Guest Agent, and AI Review routes use Google Gemini through a shared server-side adapter. The adapter translates Sentinel's allowlisted tool declarations and multi-turn tool results to Gemini function-calling format. The model remains an untrusted proposer and evidence explainer; deterministic policy and the isolated signer remain the authorization boundary.
-
-Runtime configuration: set `GEMINI_API_KEY` as a secret on the Cloudflare Main Worker. The default model is `gemini-3.8-flash`. See [Gemini AI Provider Setup](DEPLOYMENT_STATUS_AND_AI_PROVIDER.md#gemini-ai-provider) for deployment and verification steps.
-
-The provider migration is covered by `tests/gemini-provider.test.mjs` and the repository's CI workflows. A passing adapter test or build is not, by itself, proof that the production secret is configured or that a live model response has succeeded. Use the linked release workflow and live route smoke test as the evidence for production availability.
-
-
 ## AI prompt-injection hardening — implementation and evidence boundary
 
 The Agent route applies a layered boundary between natural-language input, model proposals, trusted investigation evidence, deterministic payment policy, and signing:
@@ -245,4 +248,4 @@ The Agent route applies a layered boundary between natural-language input, model
 
 Run `npm run demo:attack`. The committed demo injects an instruction claiming operator approval and urging a 10 NEAR payment, while the deterministic Sentinel inspection returns a complete critical BLOCK. The demo passes only if the guard returns `DENIED - SENTINEL_BLOCK` and the signer callback is never invoked (`Signer invoked: NO`).
 
-This is a focused offline regression of the application guard, not a live Gemini red-team exercise, not a general prompt-anomaly classifier benchmark, and not a blockchain payment. Sentinel currently has no documented labeled prompt-anomaly benchmark with precision/recall or broad live-provider adversarial coverage. Describe this capability accurately as layered prompt-injection hardening with a deterministic offline regression, not complete prompt-injection immunity.
+This is a focused offline regression of the application guard, not a live-provider red-team exercise, not a general prompt-anomaly classifier benchmark, and not a blockchain payment. Sentinel currently has no documented labeled prompt-anomaly benchmark with precision/recall or broad live-provider adversarial coverage. Describe this capability accurately as layered prompt-injection hardening with a deterministic offline regression, not complete prompt-injection immunity.

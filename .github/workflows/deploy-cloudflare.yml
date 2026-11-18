@@ -2,7 +2,9 @@ name: Deploy Sentinel to Cloudflare Workers
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - feature/sentinel-trading-core-lab
   workflow_dispatch:
 
 permissions:
@@ -10,6 +12,8 @@ permissions:
 
 # Main and isolated Signer are a single release unit. Never cancel an
 # in-progress deployment between the two Worker publishes.
+# The trading-core branch is deployed only through this same full test-and-release
+# pipeline so its wallet approval and swap routes reach the Worker actually tested.
 concurrency:
   group: sentinel-production
   cancel-in-progress: false

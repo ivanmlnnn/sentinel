@@ -1,5 +1,6 @@
 import { applySecurityHeaders, validateMutationRequest } from "./http-security.mjs";
 import { onRequestGet as metricsGet } from "../functions/api/metrics.js";
+import { onRequestGet as copyTradeLeaderboardGet } from "../functions/api/copy-trade/leaderboard.js";
 import { onRequestGet as walletGet } from "../functions/api/wallet.js";
 import { onRequestGet as threatsGet, onRequestPost as threatsPost, onRequestVerifyPost as threatsVerifyPost } from "../functions/api/threats.js";
 import { onRequestPost as investigatePost, onRequestGuestPost as guestInvestigatePost } from "../functions/api/investigate.js";
@@ -9,10 +10,24 @@ import { onRequestPost as guestAgentPost } from "../functions/api/guest-agent.js
 import { onRequestPost as agentApprovePost } from "../functions/api/agent-approve.js";
 import { onRequestPost as internalInvestigatePost } from "../functions/api/internal-investigate.js";
 import { onRequestPost as privyWebhookPost } from "../functions/api/privy-webhook.js";
+import { onRequestGet as tradingTokensGet } from "../functions/api/trading-tokens.js";
+import { onRequestGet as tradingAnalysisGet } from "../functions/api/trading-analysis.js";
+import { onRequestPost as tradingAgentPost } from "../functions/api/trading-agent.js";
+import { onRequestPost as tradingBacktestPost } from "../functions/api/trading-backtest.js";
+import { onRequestPost as tradingQuotePost } from "../functions/api/trading-quote.js";
+import { onRequestPost as tradingLiveQuotePost } from "../functions/api/trading-live-quote.js";
+import { onRequestPost as tradingGenerateIntentPost } from "../functions/api/trading-generate-intent.js";
+import { onRequestPost as tradingSubmitIntentPost } from "../functions/api/trading-submit-intent.js";
+import { onRequestGet as tradingStatusGet } from "../functions/api/trading-status.js";
+import { onRequestPost as tradingKeyStatusPost } from "../functions/api/trading-key-status.js";
+import { onRequestPost as tradingDepositSubmitPost } from "../functions/api/trading-deposit-submit.js";
+import { onRequestPost as tradingBalancePost } from "../functions/api/trading-balance.js";
+import { onRequestGet as tradingPreOrdersGet, onRequestPost as tradingPreOrdersPost, runPreOrderScheduler } from "../functions/api/trading-preorders.js";
 
 const MAX_API_BODY_BYTES = 65536;
 const routes = {
   "GET /api/metrics": metricsGet,
+  "GET /api/copy-trade/leaderboard": copyTradeLeaderboardGet,
   "GET /api/wallet": walletGet,
   "GET /api/threats": threatsGet,
   "POST /api/threats": threatsPost,
@@ -24,7 +39,21 @@ const routes = {
   "POST /api/guest/agent": guestAgentPost,
   "POST /api/agent/approve": agentApprovePost,
   "POST /api/internal/investigate": internalInvestigatePost,
-  "POST /api/privy-webhook": privyWebhookPost
+  "POST /api/privy-webhook": privyWebhookPost,
+  "GET /api/trading/tokens": tradingTokensGet,
+  "POST /api/trading/balance": tradingBalancePost,
+  "GET /api/trading/analysis": tradingAnalysisGet,
+  "POST /api/trading/agent": tradingAgentPost,
+  "POST /api/trading/backtest": tradingBacktestPost,
+  "POST /api/trading/quote": tradingQuotePost,
+  "POST /api/trading/live-quote": tradingLiveQuotePost,
+  "POST /api/trading/generate-intent": tradingGenerateIntentPost,
+  "POST /api/trading/submit-intent": tradingSubmitIntentPost,
+  "GET /api/trading/status": tradingStatusGet,
+  "POST /api/trading/key-status": tradingKeyStatusPost,
+  "POST /api/trading/deposit/submit": tradingDepositSubmitPost,
+  "GET /api/trading/preorders": tradingPreOrdersGet,
+  "POST /api/trading/preorders": tradingPreOrdersPost
 };
 
 async function validateBoundedJsonBody(request) {
@@ -64,16 +93,31 @@ async function validateBoundedJsonBody(request) {
   }
 }
 
-async function enforceRateLimit(binding, key) {
+async function enforceRateLimit(binding, key, scope = "api") {
   if (!binding || typeof binding.limit !== "function") return false;
-  const result = await binding.limit({ key });
-  return result?.success === true;
-}
-async function verifyTurnstileToken(token, request, env) {
-  if (typeof env.TURNSTILE_SECRET !== "string" || !env.TURNSTILE_SECRET.trim()) return { ok: false, reason: "TURNSTILE_NOT_CONFIGURED", status: 503 };
-  if (typeof token !== "string" || token.length < 1 || token.length > 2048) return { ok: false, reason: "TURNSTILE_TOKEN_REQUIRED", status: 400 };
   try {
-    const form = new URLSearchParams({ secret: env.TURNSTILE_SECRET, response: token });
+    const result = await binding.limit({ key });
+    return result?.success === true;
+  } catch (error) {
+    // A rate-limit service outage is an availability failure, not a user
+    // rate-limit rejection. Keep the request fail-closed without masking it
+    // as the generic Worker INTERNAL_SERVER_ERROR.
+    console.error("Sentinel rate-limit check failed:", {
+      scope,
+      error_name: error?.name || "Error",
+      message: String(error?.message || "Rate limiter unavailable").slice(0, 180)
+    });
+    return null;
+  }
+}
+export async function verifyTurnstileToken(token, request, env = {}) {
+  const secret = typeof env.TURNSTILE_SECRET === "string" ? env.TURNSTILE_SECRET.trim() : "";
+  if (!secret) return { ok: false, reason: "TURNSTILE_NOT_CONFIGURED", status: 503 };
+  if (typeof token !== "string" || token.trim().length < 10 || token.length > 2048) {
+    return { ok: false, reason: "TURNSTILE_TOKEN_REQUIRED", status: 400 };
+  }
+  try {
+    const form = new URLSearchParams({ secret, response: token });
     const ip = request.headers.get("CF-Connecting-IP");
     if (ip) form.set("remoteip", ip);
     const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
@@ -82,11 +126,14 @@ async function verifyTurnstileToken(token, request, env) {
     });
     if (!response.ok) throw new Error("Siteverify HTTP failure");
     const result = await response.json();
-    const hostname = new URL(request.url).hostname.toLowerCase();
-    if (result.success !== true || result.action !== "track_wallet" || String(result.hostname || "").toLowerCase() !== hostname) {
+    const configuredHosts = String(env.TURNSTILE_ALLOWED_HOSTNAMES || "")
+      .split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
+    const allowedHosts = configuredHosts.length ? configuredHosts : [new URL(request.url).hostname.toLowerCase()];
+    const verifiedHost = String(result?.hostname || "").trim().toLowerCase();
+    if (result?.success !== true || result.action !== "track_wallet" || !allowedHosts.includes(verifiedHost)) {
       return { ok: false, reason: "TURNSTILE_VERIFICATION_FAILED", status: 403 };
     }
-    return { ok: true };
+    return { ok: true, hostname: verifiedHost };
   } catch { return { ok: false, reason: "TURNSTILE_UNAVAILABLE", status: 503 }; }
 }
 function apiError(code, status) {
@@ -132,14 +179,20 @@ export default {
           }
           const ip = request.headers.get("CF-Connecting-IP") || "unknown";
           if (!env.API_RATE_LIMITER) return respond(serviceUnavailable("RATE_LIMIT_NOT_CONFIGURED"));
-          if (!await enforceRateLimit(env.API_RATE_LIMITER, ip)) return respond(rateLimitResponse());
-          if (request.method === "POST" && ["/api/agent/run", "/api/agent/approve", "/api/guest/agent"].includes(url.pathname)) {
+          const apiLimit = await enforceRateLimit(env.API_RATE_LIMITER, ip, "global");
+          if (apiLimit === null) return respond(serviceUnavailable("RATE_LIMIT_CHECK_UNAVAILABLE"));
+          if (!apiLimit) return respond(rateLimitResponse());
+          if (request.method === "POST" && ["/api/agent/run", "/api/agent/approve", "/api/guest/agent", "/api/trading/agent", "/api/trading/backtest", "/api/trading/live-quote", "/api/trading/generate-intent", "/api/trading/submit-intent", "/api/trading/key-status", "/api/trading/deposit/submit", "/api/trading/preorders"].includes(url.pathname)) {
             if (!env.AGENT_RATE_LIMITER) return respond(serviceUnavailable("AGENT_RATE_LIMIT_NOT_CONFIGURED"));
-            if (!await enforceRateLimit(env.AGENT_RATE_LIMITER, ip)) return respond(rateLimitResponse());
+            const agentLimit = await enforceRateLimit(env.AGENT_RATE_LIMITER, ip, "agent");
+            if (agentLimit === null) return respond(serviceUnavailable("AGENT_RATE_LIMIT_CHECK_UNAVAILABLE"));
+            if (!agentLimit) return respond(rateLimitResponse());
           }
           if (request.method === "POST" && ["/api/investigate", "/api/guest/investigate"].includes(url.pathname)) {
             if (!env.INVESTIGATION_RATE_LIMITER) return respond(serviceUnavailable("INVESTIGATION_RATE_LIMIT_NOT_CONFIGURED"));
-            if (!await enforceRateLimit(env.INVESTIGATION_RATE_LIMITER, ip)) return respond(rateLimitResponse());
+            const investigationLimit = await enforceRateLimit(env.INVESTIGATION_RATE_LIMITER, ip, "investigation");
+            if (investigationLimit === null) return respond(serviceUnavailable("INVESTIGATION_RATE_LIMIT_CHECK_UNAVAILABLE"));
+            if (!investigationLimit) return respond(rateLimitResponse());
           }
         }
         if (request.method === "POST" && ["/api/investigate", "/api/guest/investigate"].includes(url.pathname)) {
@@ -151,11 +204,30 @@ export default {
         }
         return respond(await handler({ request, env, ctx, params: {}, data: { turnstileVerified } }));
       } catch (error) {
-        console.error("NEAR Sentinel API error:", error);
-        return respond(apiError("INTERNAL_SERVER_ERROR", 500));
+        const requestId = crypto.randomUUID();
+        console.error("NEAR Sentinel API error:", {
+          request_id: requestId,
+          route: request.method + " " + url.pathname,
+          error_name: error?.name || "Error",
+          message: String(error?.message || "Unknown Worker exception").slice(0, 240),
+          stack: typeof error?.stack === "string" ? error.stack.slice(0, 1600) : null
+        });
+        return respond(new Response(JSON.stringify({
+          error: "INTERNAL_SERVER_ERROR",
+          request_id: requestId,
+          route: request.method + " " + url.pathname
+        }), {
+          status: 500,
+          headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
+        }));
       }
     }
     if (url.pathname.startsWith("/api/")) return respond(apiError("NOT_FOUND", 404));
     return respond(await env.ASSETS.fetch(request));
+  },
+  async scheduled(controller, env, ctx) {
+    ctx.waitUntil(runPreOrderScheduler(env).catch(error => {
+      console.error("Sentinel Pre-Order scheduler failed:", error);
+    }));
   }
 };

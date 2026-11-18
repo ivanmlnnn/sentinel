@@ -2,6 +2,12 @@
 
 This report records the independent terminal sandbox simulation used during the Sentinel review. It is intentionally separate from production, Cloudflare D1, and NEAR Testnet evidence.
 
+## D1 test database separation
+
+A separate Cloudflare D1 test database is provisioned for isolated D1 testing. It is distinct from the production Main Worker database (`sentinel-db`) and the Signer Worker ledger database (`db2`). The public Worker configs in this branch describe the production bindings; they do not expose the dedicated test database as a safe default target. Use the private/test environment configuration to select it, verify the target before any write, and never run destructive test operations against production databases.
+
+**Important evidence boundary:** this report's nine checks below were executed against local SQLite/Python simulation, not against the dedicated D1 test database. The existence of a separate D1 test database must not be presented as proof that these nine stress checks ran on D1. Any D1 test result should be published separately with its exact command, test database target class, timestamp, raw output, and source commit.
+
 ## Environment and scope
 
 - Lab type: isolated local terminal sandbox simulation

@@ -1,0 +1,83 @@
+# NEAR Activity Monitoring — Intents recipient activity and ranking limits
+
+## Current monitoring implementation
+
+- Merged source branch: `feature/near-copy-trader-cards` (PR #45)
+- Pull request: [#45](https://github.com/ivanmlnnn/sentinel/pull/45)
+- Discovery source: official NEAR Intents Explorer API (read-only 1Click Swap history).
+- Backend: `GET /api/copy-trade/leaderboard` reads a server-side `NEAR_INTENTS_EXPLORER_JWT` secret and requests up to 1,000 successful swaps in the current UTC calendar month with `toChainId=near`.
+- Cards: group successful records by a recognizable NEAR recipient account; show successful Intents count, sum of observed `amountOutUsd` (labelled received value, not PnL), latest activity, and up to five observed NEAR transaction hashes.
+- UI: renders unranked recipient-activity cards; this is monitoring, not copy trading. It does not claim these recipients are the swap initiators, beneficial owners, or profitable traders.
+- Watchlist: browser-local bookmarks only. Manually added accounts are not polled, queried, or monitored individually; they do not generate activity updates or alerts.
+- Scope: read-only monitoring and a browser-local watchlist. No wallet signing, order submission, or automatic copy execution is implemented.
+
+## Required server secret
+
+Configure `NEAR_INTENTS_EXPLORER_JWT` as a Cloudflare Pages/Workers secret. Obtain the JWT through the NEAR Intents Partner Dashboard. Never place it in browser JavaScript, HTML, a committed `.env`, or client-visible configuration.
+
+Example local development setup (do not commit the secret):
+
+```bash
+wrangler secret put NEAR_INTENTS_EXPLORER_JWT
+```
+
+The Explorer requires `Authorization: Bearer <JWT>`. Its public API reference documents HTTP 429 rate limiting but does not state a fixed request interval; the UI currently makes one request on page load and should avoid aggressive polling.
+
+## Explorer query and interpretation
+
+Endpoint: `https://explorer.near-intents.org/api/v0/transactions`
+
+Query:
+- `numberOfTransactions=1000` (API maximum)
+- `toChainId=near`
+- `statuses=SUCCESS`
+- `startTimestampUnix=<UTC month start>`
+- `direction=next`
+
+The endpoint is read-only and covers historical 1Click Swap transactions, not all NEAR DEX activity. `toChainId=near` filters for the NEAR destination chain (Mainnet); it does not mean the source is every NEAR-native DEX trade. The wider Sentinel dashboard's wallet scanner is labelled Testnet, so this panel's Mainnet data scope must be kept explicit. A single page is a bounded sample; the response marks coverage as `SAMPLED_PAGE_NOT_COMPLETE_MARKET_COVERAGE` and reports sampled count and the 1,000-row limit. It is not complete market coverage and does not paginate through the entire month.
+
+Recipient aggregation is a discovery heuristic only:
+- only successful records with a syntactically recognizable NEAR Mainnet account (`.near` or implicit 64-hex account) in `recipient` become cards; Testnet `.testnet` accounts are excluded;
+- `recipient` is the destination field, not proof of beneficial ownership or the source trader;
+- `amountOutUsd` is displayed only as observed received value and is never treated as profit;
+- a NEAR transaction hash is shown only as an observed reference; confidential settlement may not expose a swap transaction hash;
+- cards are unranked and do not meet the 20 closed trades / 80% win-rate contract.
+
+## Verified performance ranking remains disabled
+
+A wallet may be ranked only after the complete observation window and all of these are proven:
+
+| Requirement | Evidence |
+|---|---|
+| Observation window | Complete current calendar month, explicit start/end |
+| Closed trades | At least 20 independently attributed and settled closed positions |
+| Win rate | At least 80%, computed from closed positions, not swap count |
+| Realized PnL | Net of all trading, protocol, and execution fees |
+| Holding period | Defensible entry/exit linkage for each position |
+| Drawdown | Documented equity curve and portfolio valuation method |
+| Attribution | Evidence linking every fill to the wallet being ranked |
+| Completeness | Full pagination, freshness, finality/reorg and gap handling |
+
+Intents Explorer data alone cannot establish these conditions. Cross-chain senders, recipients, deposit addresses, and USD input/output amounts must not be conflated with one NEAR trader's complete trading ledger.
+
+## API response behavior
+
+- Missing JWT: HTTP 503, `EXPLORER_AUTH_NOT_CONFIGURED`.
+- Explorer 401/403: HTTP 502 with a configuration message.
+- Explorer 429: HTTP 503 `EXPLORER_RATE_LIMITED`.
+- Invalid payload or network failure: fail closed; no stale or fabricated cards.
+- Success: `cards` contains unranked Intents recipient activity profiles; `ranking` and `execution` remain disabled.
+
+## Official references
+
+- [Explorer API introduction](https://docs.agentsonintents.com/integration/distribution-channels/1click-api/explorer/introduction)
+- [Get transactions API reference](https://docs.agentsonintents.com/api-reference/get-transactions) — documents `toChainId` as a destination-chain filter, `direction=next` as older-page pagination, a maximum of 1,000 rows, and `amountOutUsd` as the USD value of the destination amount.
+- [NEAR Intents Explorer](https://explorer.near-intents.org/)
+
+## Local validation
+
+```bash
+node --test tests/copy-trade-ui.test.mjs tests/near-intents-explorer.test.mjs
+```
+
+Run tests on the checked-out branch and record actual results. These tests cannot prove production JWT validity, upstream availability, complete market coverage, trader ownership, or profitability.
