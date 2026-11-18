@@ -150,7 +150,7 @@ This feature is an **Explorer activity-card integration**, not a verified profit
 
 1. Read [NEAR Activity Monitoring implementation notes](docs/NEAR_COPY_TRADE.md) for the source contract, authentication, query parameters, sampling boundary, and claim limits.
 2. Inspect [Explorer API route](functions/api/copy-trade/leaderboard.js). It calls the NEAR Intents Explorer server-side and fails closed if the Partner JWT is missing or the upstream request fails.
-3. Inspect [Activity Monitoring UI](public/copy-trade.js) and the Copy Trade section in [public/index.html](public/index.html). The UI renders unranked recipient activity cards; it does not label received USD as PnL.
+3. Inspect [Activity Monitoring UI](public/copy-trade.js) and the Activity Monitoring section in [public/index.html](public/index.html). The UI renders unranked recipient activity cards; it does not label received USD as PnL.
 4. Inspect [Explorer route tests](tests/near-intents-explorer.test.mjs) and [UI tests](tests/copy-trade-ui.test.mjs).
 5. For a live environment, the operator must provision `NEAR_INTENTS_EXPLORER_JWT` as a Worker secret. Never commit or expose the JWT. Without it, the endpoint intentionally returns `EXPLORER_AUTH_NOT_CONFIGURED`.
 
