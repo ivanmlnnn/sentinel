@@ -8,7 +8,7 @@
 - Backend: `GET /api/copy-trade/leaderboard` reads a server-side `NEAR_INTENTS_EXPLORER_JWT` secret and requests up to 1,000 successful swaps in the current UTC calendar month with `toChainId=near`.
 - Cards: group successful records by a recognizable NEAR recipient account; show successful Intents count, sum of observed `amountOutUsd` (labelled received value, not PnL), latest activity, and up to five observed NEAR transaction hashes.
 - UI: renders unranked recipient-activity cards; this is monitoring, not copy trading. It does not claim these recipients are the swap initiators, beneficial owners, or profitable traders.
-- Watchlist: browser-local only.
+- Watchlist: browser-local bookmarks only. Manually added accounts are not polled, queried, or monitored individually; they do not generate activity updates or alerts.
 - Scope: read-only monitoring and a browser-local watchlist. No wallet signing, order submission, or automatic copy execution is implemented.
 
 ## Required server secret
