@@ -16,7 +16,7 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
 <header class="topbar">
  <a class="brand" href="#overview"><span class="brand-icon brand-logo"><img src="/IMG_20260629_220728_136.jpg?v=1" alt="Wayang Tech and Kitchen Needs"></span><span class="brand-name">NEAR <b>SENTINEL</b></span></a>
  <nav class="main-nav" aria-label="Main navigation">
-  <a class="nav-item active" href="#overview">Overview</a><a class="nav-item" href="#investigate">Wallet tracker</a><a class="nav-item" id="agentNav" href="#agentLab">AI agent</a><a class="nav-item" href="#threats">Threat registry</a><a class="nav-item" href="#activity">Audit log</a><a class="nav-item" href="#copy-trade">Copy trade</a><a class="nav-item" href="#protocol">Protocol</a>
+  <a class="nav-item active" href="#overview">Overview</a><a class="nav-item" href="#investigate">Wallet tracker</a><a class="nav-item" id="agentNav" href="#agentLab">AI agent</a><a class="nav-item" href="#threats">Threat registry</a><a class="nav-item" href="#activity">Audit log</a><a class="nav-item" href="#copy-trade">Activity monitor</a><a class="nav-item" href="#protocol">Protocol</a>
  </nav>
  <div class="top-actions"><span class="network-pill"><i></i> NEAR TESTNET</span><button id="walletBtn" class="wallet-btn" type="button">Connect NEAR Wallet <span>↗</span></button><a class="wallet-help-link" href="#wallet-guide">Wallet help</a></div>
 </header>
@@ -109,9 +109,9 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
 
 
 <section class="copy-trade-section reveal" id="copy-trade">
- <div class="section-heading copy-trade-heading"><div><span class="section-index">05 / SOCIAL TRADING</span><h2>NEAR copy trade</h2><p class="copy-trade-intro">Discover NEAR accounts appearing as recipients in successful NEAR Intents swaps. Activity cards are not profitability rankings.</p></div><span class="section-meta">INTENTS ACTIVITY · UNRANKED</span></div>
+ <div class="section-heading copy-trade-heading"><div><span class="section-index">05 / NEAR INTENTS MONITORING</span><h2>NEAR activity monitor</h2><p class="copy-trade-intro">Discover NEAR accounts appearing as recipients in successful NEAR Intents swaps. Activity cards are not profitability rankings.</p></div><span class="section-meta">INTENTS ACTIVITY · UNRANKED</span></div>
  <div class="copy-trade-toolbar">
-  <div class="copy-trade-network"><span class="copy-live-dot"></span><span>TRADER DISCOVERY</span><b>NEAR MAINNET</b></div>
+  <div class="copy-trade-network"><span class="copy-live-dot"></span><span>RECIPIENT ACTIVITY</span><b>NEAR MAINNET</b></div>
   <div class="copy-trade-toolbar-note" id="copyTradeFeedStatus" role="status" aria-live="polite">Ranking locked · verified performance source not integrated</div>
  </div>
  <div class="copy-leaderboard-panel">
@@ -120,16 +120,16 @@ window.setTimeout(function(){var r=document.getElementById("auth-root");if(r&&!r
   <p class="copy-leaderboard-foot">These cards show sampled successful 1Click swap recipients and observed received value. Recipient activity does not prove trader ownership, realized PnL, or complete DEX history. Profitability ranking and copy execution remain disabled.</p>
  </div>
  <div class="copy-watchlist-heading"><b>YOUR WATCHLIST</b><span>Local wallets · not ranked</span></div>
- <div class="copy-trade-source-links"><a href="https://nearly.trade/traders" target="_blank" rel="noopener noreferrer">Nearly · platform trader leaderboard ↗</a><a href="https://explorer.near-intents.org/" target="_blank" rel="noopener noreferrer">NEAR Intents Explorer ↗</a><a href="https://docs.near-intents.org/api-reference/get-transactions" target="_blank" rel="noopener noreferrer">Explorer API docs ↗</a></div>
+ <div class="copy-trade-source-links"><a href="https://explorer.near-intents.org/" target="_blank" rel="noopener noreferrer">NEAR Intents Explorer ↗</a><a href="https://docs.near-intents.org/api-reference/get-transactions" target="_blank" rel="noopener noreferrer">Explorer API docs ↗</a></div>
  <div class="copy-trade-grid" id="copyWatchlistGrid">
   <article class="copy-trader-empty"><div class="copy-empty-icon">⌁</div><b>Local watchlist only</b><p>This local list does not imply ranking, profitability, or wallet ownership. Add public NEAR accounts to keep a personal watchlist.</p></article>
  </div>
  <form class="copy-trader-add" id="copyTraderForm">
-  <div class="copy-trader-form-copy"><b>Add a trader wallet</b><span>Public NEAR Mainnet account · read-only watchlist</span></div>
+  <div class="copy-trader-form-copy"><b>Add a wallet to watch</b><span>Public NEAR Mainnet account · read-only watchlist</span></div>
   <label class="copy-trader-account"><span>near://</span><input id="copyTraderAccount" autocomplete="off" maxlength="64" placeholder="trader.near" required></label>
-  <button class="copy-trader-add-button" type="submit">＋ Add trader</button>
+  <button class="copy-trader-add-button" type="submit">＋ Add wallet</button>
  </form>
- <div class="copy-trade-safety"><div><span class="copy-safety-icon">◈</span><span><b>Paper-follow only</b><small>Follow settings are saved locally; no live order is placed.</small></span></div><div><span class="copy-safety-icon">⛨</span><span><b>Sentinel risk gate</b><small>Live copying stays disabled until trade feed, attribution, and execution are independently verified.</small></span></div><div><span class="copy-safety-icon">↗</span><span><b>Human approval</b><small>Any future transaction must pass dual-agent checks and wallet approval.</small></span></div></div>
+ <div class="copy-trade-safety"><div><span class="copy-safety-icon">◈</span><span><b>Read-only watchlist</b><small>Wallets are saved locally for manual activity monitoring.</small></span></div><div><span class="copy-safety-icon">⛨</span><span><b>Unranked activity</b><small>Recipient records are not proof of trader identity or profitability.</small></span></div><div><span class="copy-safety-icon">↗</span><span><b>No transaction execution</b><small>This feature does not submit, sign, or copy transactions.</small></span></div></div>
  <p class="copy-trade-footnote">Important: wallet balance and transaction count do not prove trading skill. Ranking requires verified DEX fills, realized PnL, fees, holding periods, drawdown, and a defined observation window.</p>
 </section>
 <section class="preorders-dashboard reveal" id="preOrdersDashboard">
