@@ -30,7 +30,8 @@ test("activity cards never represent observed USD output as PnL or ranking", () 
 test("watchlist remains local-only and cannot place or sign orders", () => {
   assert.match(js, /localStorage\.setItem/);
   assert.match(js, /no per-wallet activity feed is queried/i);
-  assert.doesNotMatch(js, /signAndSendTransaction|signMessage|eth_sendTransaction/);\n  assert.match(js, /\\.near\|\[a-f0-9\]\{64\}/);
+  assert.doesNotMatch(js, /signAndSendTransaction|signMessage|eth_sendTransaction/);
+  assert.doesNotMatch(js, /testnet/);
 });
 
 test("auth loading and login remain viewport-fixed and do not enter dashboard scroll", () => {
