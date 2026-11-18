@@ -17,7 +17,7 @@ Sentinel inspects a NEAR receiver, checks indexed on-chain evidence and a verifi
 - [Independent Stress Lab](docs/INDEPENDENT_LOCAL_STRESS_LAB.md) — local simulation only; it is not a D1 stress benchmark.
 - **D1 test isolation:** a separate Cloudflare D1 test database is provisioned apart from production Main `sentinel-db` and Signer `db2`. Its ID is intentionally not published; use the authorized test configuration and verify the target before writes. The local stress-lab results below were not run against D1.
 
-## NEAR Intents Copy Trade — judge quick path
+## NEAR Intents Activity Monitoring — judge quick path
 
 The monitoring feature uses **NEAR Intents Explorer only** as its activity-discovery source.
 
