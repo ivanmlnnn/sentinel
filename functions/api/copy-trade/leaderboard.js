@@ -10,7 +10,7 @@ function monthStartUnix(now = new Date()) {
 
 function isNearAccount(value) {
   return typeof value === "string" && validAccountId(value) &&
-    (value.endsWith(".near") || value.endsWith(".testnet") || /^[a-f0-9]{64}$/i.test(value));
+    (value.endsWith(".near") || /^[a-f0-9]{64}$/i.test(value));
 }
 
 function finiteUsd(value) {
