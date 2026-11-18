@@ -1,5 +1,5 @@
 const STORAGE_KEY = "sentinel:near-copy-traders:v1";
-const ACCOUNT_RE = /^(?=.{2,64}$)(?:[a-z0-9]+(?:[._-][a-z0-9]+)*\\.near|[a-f0-9]{64})$/i;
+const ACCOUNT_RE = /^(?=.{2,64}$)(?:[a-z0-9]+(?:[._-][a-z0-9]+)*\.near|[a-f0-9]{64})$/i;
 const grid = document.getElementById("copyWatchlistGrid");
 const leaderboardGrid = document.getElementById("copyTraderGrid");
 const feedStatus = document.getElementById("copyTradeFeedStatus");
