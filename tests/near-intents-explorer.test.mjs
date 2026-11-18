@@ -26,7 +26,8 @@ test("aggregates only successful swaps addressed to recognizable NEAR accounts",
       { status: "SUCCESS", recipient: "alice.near", amountOutUsd: "2.75", createdAtTimestamp: 1762000100, nearTxHashes: ["def"] },
       { status: "REFUNDED", recipient: "alice.near", amountOutUsd: "999", createdAtTimestamp: 1762000200 },
       { status: "SUCCESS", recipient: "0x1234567890123456789012345678901234567890", amountOutUsd: "100", createdAtTimestamp: 1762000300 },
-      { status: "SUCCESS", recipient: "bob.near", amountOutUsd: "5", createdAtTimestamp: 1762000400 }
+      { status: "SUCCESS", recipient: "bob.near", amountOutUsd: "5", createdAtTimestamp: 1762000400 },
+      { status: "SUCCESS", recipient: "alice.testnet", amountOutUsd: "50", createdAtTimestamp: 1762000500 }
     ]), { status: 200, headers: { "content-type": "application/json" } });
   };
   try {
